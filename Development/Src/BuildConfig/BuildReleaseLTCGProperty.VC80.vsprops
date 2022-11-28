@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="gb2312"?>
+<VisualStudioPropertySheet
+	ProjectType="Visual C++"
+	Version="8.00"
+	Name="BuildReleaseLTCGProperty"
+	OutputDirectory="$(OutPath)\$(ConfigurationName)"
+	IntermediateDirectory="$(IntermediatePath)\$(ConfigurationName)\$(ProjectName)"
+	InheritedPropertySheets=".\UnrealEngine3.VC80.vsprops"
+	>
+	<Tool
+		Name="VCCLCompilerTool"
+		AdditionalOptions="/Zm256 "
+		Optimization="0"
+		EnableIntrinsicFunctions="true"
+		WholeProgramOptimization="true"
+		PreprocessorDefinitions="_WINDOWS;WIN32"
+		MinimalRebuild="true"
+		RuntimeLibrary="2"
+		StructMemberAlignment="3"
+		BufferSecurityCheck="false"
+		EnableFunctionLevelLinking="true"
+		EnableEnhancedInstructionSet="0"
+		AssemblerListingLocation="$(IntDir)\"
+		ProgramDataBaseFileName="$(IntDir)\$(ProjectName).pdb"
+		WarningLevel="4"
+		WarnAsError="true"
+		DebugInformationFormat="3"
+		DisableSpecificWarnings="4996"
+	/>
+	<Tool
+		Name="VCLibrarianTool"
+		AdditionalOptions="/LTCG"
+	/>
+	<Tool
+		Name="VCLinkerTool"
+		LinkIncremental="2"
+	/>
+</VisualStudioPropertySheet>

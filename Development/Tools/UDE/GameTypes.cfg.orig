@@ -1,0 +1,50 @@
+[GameTypes]
+Type0=Engine 3 Demo Content
+
+[Engine 3 Demo Content]
+DisplayName=Engine 3 Demo Content
+MenuName=UE3Demo
+MapFileFilter=UE3 Demo Map Files (*.war)|*.war
+BaseExe=DemoGame
+CompileCmd=
+SourcePath=Development\Src
+GamePath=
+DeletedClasses=
+GameIniFile=
+UserIniFile=
+RunCommandline=
+TestMap=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

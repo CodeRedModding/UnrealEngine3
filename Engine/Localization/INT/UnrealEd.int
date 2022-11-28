@@ -1,0 +1,20 @@
+[Public]
+Class=(Class=UnrealEd.WxClient,SuperClass=Engine.Client)
+
+[Errors]
+Failed3D=3d hardware initialization failed
+DDrawMode=DirectDraw was unable to set the requested video mode
+
+[General]
+FrameWindow=Unreal Level Editor
+ViewPersp=Perspective map
+ViewXY=Overhead map
+ViewXZ=XZ map
+ViewYZ=YZ map
+ViewOther=Viewport
+Color16=&16-bit color
+Color32=&32-bit color
+AdvancedOptions=Advanced Options
+
+[WxClient]
+ClassCaption="WxWindows Manager"

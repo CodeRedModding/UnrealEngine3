@@ -1,0 +1,140 @@
+[Comment]
+Background=536870911
+Foreground=536870911
+Style=3
+[Directive]
+Background=536870911
+Foreground=1850941
+Style=1
+[Identifier]
+Background=536870911
+Foreground=3304812
+Style=0
+[Illegal Char]
+Background=536870911
+Foreground=536870911
+Style=0
+[Number]
+Background=536870911
+Foreground=1850941
+Style=0
+[Reserved Word]
+Background=536870911
+Foreground=3304812
+Style=1
+[Second Reserved Word]
+Background=536870911
+Foreground=3304812
+Style=1
+[Single Quoted String]
+Background=536870911
+Foreground=5789992
+Style=0
+[Space]
+Background=536870911
+Foreground=536870911
+Style=0
+[String]
+Background=536870911
+Foreground=5789992
+Style=0
+[Symbol]
+Background=536870911
+Foreground=1850941
+Style=0
+[Assembler]
+Background=536870911
+Foreground=536870911
+Style=0
+[Character]
+Background=536870911
+Foreground=5789992
+Style=0
+[Float]
+Background=536870911
+Foreground=1850941
+Style=0
+[Hexadecimal]
+Background=536870911
+Foreground=1850941
+Style=0
+[Preprocessor]
+Background=536870911
+Foreground=536870911
+Style=2
+[Key]
+Background=536870911
+Foreground=536870911
+Style=0
+[Section]
+Background=536870911
+Foreground=3304812
+Style=1
+[Text]
+Background=536870911
+Foreground=536870911
+Style=0
+[Escape Ampersand]
+Background=536870911
+Foreground=3304812
+Style=1
+[Unknown Word]
+Background=536870911
+Foreground=1850941
+Style=1
+[Value]
+Background=536870911
+Foreground=5789992
+Style=0
+[Attribute Name]
+Background=536870911
+Foreground=3304812
+Style=1
+[Attribute Value]
+Background=536870911
+Foreground=5789992
+Style=0
+[CDATA Section]
+Background=536870911
+Foreground=1850941
+Style=1
+[DOCTYPE Section]
+Background=536870911
+Foreground=3304812
+Style=0
+[Element Name]
+Background=536870911
+Foreground=3304812
+Style=1
+[Entity Reference]
+Background=536870911
+Foreground=5789992
+Style=0
+[Namespace Attribute Name]
+Background=536870911
+Foreground=3304812
+Style=1
+[Namespace Attribute Value]
+Background=536870911
+Foreground=5789992
+Style=0
+[Processing Instruction]
+Background=536870911
+Foreground=1850941
+Style=1
+[Whitespace]
+Background=536870911
+Foreground=536870911
+Style=0
+[Default]
+Foreground=2711899
+Background=13560551
+[SelectedText]
+Foreground=13560551
+Background=2711899
+[Tree]
+Foreground=2711899
+Background=13560551
+[HighlightedLine]
+Foreground=13560551
+Background=2711899

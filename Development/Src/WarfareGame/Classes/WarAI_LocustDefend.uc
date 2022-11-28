@@ -1,0 +1,1 @@
+class WarAI_LocustDefend extends WarAI_Infantry;

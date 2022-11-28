@@ -1,0 +1,244 @@
+; Unreal Data
+FNameEntry=<Name,su>
+; Unreal的FColor
+FColor = R=<R,u> G=<G,u> B=<B,u> A=<A,u>
+
+
+FString{
+    preview([$c.Data,su])
+    stringview([$c.Data,su])
+}
+
+TArray<*>{
+    children
+    (
+        #array
+        (
+            expr : (($T1*)($c.Data))[$i],  
+            size : $c.ArrayNum
+        )
+    )
+    
+    preview
+    ( 
+        #( 
+            "[", 
+            $c.ArrayNum ,
+            "](", 
+            
+            #array
+            (
+                expr : (($T1*)($c.Data))[$i],  
+                size : $c.ArrayNum
+            ), 
+            ")"
+        )
+    )
+}
+
+FName{
+    preview([((FNameEntry**)FName.Names.Data)[$c.Index]->Name,su])
+    stringview([((FNameEntry**)FName.Names.Data)[$c.Index]->Name])
+}
+
+; Unreal格式的数组
+TArrayNoInit<*>{
+     children
+     (
+         #array
+         (
+             expr :     (($T1*)($c.Data))[$i], 
+             size :     $c.ArrayNum
+         )
+     )
+   
+     preview
+     (
+         #(
+            "[",
+             $c.ArrayNum ,
+            "](",
+           
+             #array
+             (
+                 expr : (($T1*)($c.Data))[$i], 
+                 size :      $c.ArrayNum
+             ),
+            ")"
+         )
+     )
+}
+
+; Unreal格式的数组
+TArray<FString>{
+     children
+     (
+         #array
+         (
+             expr :    ((FString*)($c.Data))[$i],
+             size :     $c.ArrayNum
+         )
+     )
+   
+     preview
+     (
+         #(
+            "[",
+             $c.ArrayNum ,
+            "](",
+           
+             #array
+             (
+                 expr :         [((FString*)($e.Data))[$i].Data,su],
+                 size :      $c.ArrayNum
+             ),
+            ")"
+         )
+     )
+    
+     stringview
+     (
+         #(
+            "[",
+             $c.ArrayNum ,
+            "](",
+           
+             #array
+             (
+                 expr :         [((FString*)($e.Data))[$i].Data,su],
+                 size :      $c.ArrayNum
+             ),
+            ")"
+         )
+     )
+}
+
+TArrayNoInit<FString>{
+     children
+     (
+         #array
+         (
+             expr :    ((FString*)($c.Data))[$i],
+             size :     $c.ArrayNum
+         )
+     )
+   
+     preview
+     (
+         #(
+            "[",
+             $c.ArrayNum ,
+            "](",
+           
+             #array
+             (
+                 expr :         [((FString*)($e.Data))[$i].Data,su],
+                 size :      $c.ArrayNum
+             ),
+            ")"
+         )
+     )
+    
+     stringview
+     (
+         #(
+            "[",
+             $c.ArrayNum ,
+            "](",
+           
+             #array
+             (
+                 expr :         [((FString*)($e.Data))[$i].Data,su],
+                 size :      $c.ArrayNum
+             ),
+            ")"
+         )
+     )
+}
+
+; Unreal格式的数组
+TArray<FStringNoInit>{
+     children
+     (
+         #array
+         (
+             expr :    ((FStringNoInit*)($c.Data))[$i],
+             size :     $c.ArrayNum
+         )
+     )
+   
+     preview
+     (
+         #(
+            "[",
+             $c.ArrayNum ,
+            "](",
+           
+             #array
+             (
+                 expr :         [((FStringNoInit*)($e.Data))[$i].Data,su],
+                 size :      $c.ArrayNum
+             ),
+            ")"
+         )
+     )
+    
+     stringview
+     (
+         #(
+            "[",
+             $c.ArrayNum ,
+            "](",
+           
+             #array
+             (
+                 expr :         [((FStringNoInit*)($e.Data))[$i].Data,su],
+                 size :      $c.ArrayNum
+             ),
+            ")"
+         )
+     )
+}
+
+TArrayNoInit<FStringNoInit>{
+     children
+     (
+         #array
+         (
+             expr :    ((FStringNoInit*)($c.Data))[$i],
+             size :     $c.ArrayNum
+         )
+     )
+   
+     preview
+     (
+         #(
+            "[",
+             $c.ArrayNum ,
+            "](",
+           
+             #array
+             (
+                 expr :         [((FStringNoInit*)($e.Data))[$i].Data,su],
+                 size :      $c.ArrayNum
+             ),
+            ")"
+         )
+     )
+    
+     stringview
+     (
+         #(
+            "[",
+             $c.ArrayNum ,
+            "](",
+           
+             #array
+             (
+                 expr :         [((FStringNoInit*)($e.Data))[$i].Data,su],
+                 size :      $c.ArrayNum
+             ),
+            ")"
+         )
+     )
+}

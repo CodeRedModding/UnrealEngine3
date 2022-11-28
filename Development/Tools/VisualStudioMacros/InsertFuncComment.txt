@@ -1,0 +1,64 @@
+Imports EnvDTE
+Imports System.Diagnostics
+Imports Microsoft.VisualBasic
+Imports Microsoft.VisualBasic.ControlChars
+
+' Contains macros used in the Unreal development environment
+Public Module UnrealMacros
+
+    ' For a given function, it inserts the function level comment information
+    ' into the C++ file. It uses the code model to automatically spit out the
+    ' names of the parameters
+    Sub InsertFuncComment()
+        ' Find where the cursor is
+        Dim ts As TextSelection = DTE.ActiveWindow.Selection
+        ' Get the function relative to where the cursor is
+        Dim celt As CodeElement = ts.ActivePoint.CodeElement(vsCMElement.vsCMElementFunction)
+        ' Create an edit point so we can modify the document
+        Dim ep As EditPoint = celt.GetStartPoint(vsCMPart.vsCMPartHeader).CreateEditPoint()
+        ' Define the various comment strings
+        Dim commentStart As String = "/**"
+        Dim commentContinue As String = " * "
+        Dim commentEnd As String = " */"
+        ' Make sure any changes made are "undoable"
+        Try
+            DTE.UndoContext.Open("Insert Func Comments")
+            ' Iterate over code elements emitting doc comments for functions
+            If (celt.Kind = vsCMElement.vsCMElementFunction) Then
+                Dim codefun As CodeFunction = celt
+                ' Move the cursor to the function start
+                ep.MoveToPoint(codefun.GetStartPoint(vsCMPart.vsCMPartHeader))
+                ' Get the parameter list for this function
+                Dim params As CodeElements = codefun.Parameters
+                ' Insert the common comment elements
+                ep.Insert(Microsoft.VisualBasic.Constants.vbCrLf)
+                ep.LineUp()
+                ep.Insert(commentStart)
+                ep.Insert(Microsoft.VisualBasic.Constants.vbCrLf)
+                ep.Insert(commentContinue & "Insert function documentation here")
+                ep.Insert(Microsoft.VisualBasic.Constants.vbCrLf)
+                ep.Insert(commentContinue)
+                ep.Insert(Microsoft.VisualBasic.Constants.vbCrLf)
+                Dim celt2 As CodeElement
+                Dim cp As CodeParameter
+                ' Now iterate through the parameters adding those
+                For Each celt2 In params
+                    cp = celt2
+                    ep.Insert(commentContinue & "@param " & cp.Name & " Insert parameter documentation here")
+                    ep.Insert(Microsoft.VisualBasic.Constants.vbCrLf)
+                Next
+                ' Append the closing information (return + comment off)
+                ep.Insert(commentContinue)
+                ep.Insert(Microsoft.VisualBasic.Constants.vbCrLf)
+                ep.Insert(commentContinue & "@return " & "Insert return documentation here")
+                ep.Insert(Microsoft.VisualBasic.Constants.vbCrLf)
+                ep.Insert(commentEnd)
+            Else
+                ep.Insert("Error with function comment macro")
+            End If
+        Finally
+            DTE.UndoContext.Close()
+        End Try
+    End Sub
+
+End Module

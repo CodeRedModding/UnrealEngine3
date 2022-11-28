@@ -1,0 +1,48 @@
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+From:    Your RegSoft.com order has been Authorized! <registrations@regsoft.com>
+To:      warren@epicgames.com <warren@epicgames.com>
+Date:    Tuesday, May 27, 2003, 2:16:11 PM
+Subject: Order Number 05272003-59303-4 - Purchase of DialogBlocks, Tracking Number 1882840
+Files:   <none>
+--====----====----====----====----====----====----====----====----====----===--
+Thank you for using RegSoft.com for your online purchase of DialogBlocks.  Please save this email message for your records.
+
+Your order has been Processed and Authorized.
+ 
+Your Order Number is 05272003-59303-4.
+Please note: The Order Number should not be mistaken for a registration code.
+
+Please download DialogBlocks from http://www.anthemion.co.uk/dialogblocks, and then enter the following two pieces of information in the Registration Dialog which you can find on the Help menu.
+
+User name:          Warren D Marshall
+Registration key:   8EC4AE99-D8DE37FC-2DE43BFF
+
+This will unlock your demo copy of DialogBlocks. Please save this information for future reference.
+
+If you have any questions, please email support@anthemion.co.uk.
+
+
+IMPORTANT : Your credit card will be charged as RegSoft.com.  Please note this for your records.
+
+Receipt for Your Order
+==================
+A printable receipt for your order is available online now at:
+
+http://www.regsoft.net/invoice/invoice.php?tid=1882840&sid=1054059103
+
+Please note that the link above will not expire.  You may view your receipt at a future date by following the link.
+
+If your purchase is job-related and your employer has any questions or concerns, please have their Accounting Department contact us directly at sales@regsoft.com. Please be sure to have them include the Order Number, shown above, in any emails that are sent.
+
+Again, thank you for using RegSoft.com.
+
+Sincerely,
+The RegSoft Team
+        
+RegSoft.com, a service of Digital River, Inc.
+9625 West 76th Street, Suite 150
+Eden Prairie, MN  55344
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+

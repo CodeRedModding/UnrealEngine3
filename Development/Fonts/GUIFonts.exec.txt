@@ -1,0 +1,6 @@
+// Run this with the command   exec ..\fonts\GUIFonts.exec.txt
+
+new TrueTypeFontFactory PACKAGE="GUIFonts" Name="FontNeuzeit9"   Height=9  Kerning=1 DropShadowX=0 DropShadowY=0 Style=400 AntiAlias=0 USize=256 VSize=256 FontName="NeuzeitSLTStd-Book"  Chars=" 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz`~!@#$%^&*()_+-=[]\\{}|;:',./?><\"¡«°»¿ÀÁÄÈÉÊËÌÍÑÒÓÖÙÚÜ‗אבגהחטיךכלםמןסעףפצשתûüזרו"
+
+OBJ SAVEPACKAGE PACKAGE="GUIFonts" FILE="..\Textures\GUIFonts.utx"
+

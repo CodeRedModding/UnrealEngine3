@@ -1,0 +1,7 @@
+#	$Header: /pack/cvsroots/wxwindows/wxWindows/src/tiff/TODO,v 1.1.6.1 2002/11/10 13:13:54 JS Exp $
+
+o tiffcmp read data by strip/tile instead of scanline
+o YCbCr sampling support
+o extracate colorspace conversion support
+o look at isolating all codecs from TIFF library
+o JPEG colormode order dependency problem

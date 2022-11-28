@@ -1,0 +1,366 @@
+NovodeX Physics SDK Changelog
+
+2.1.2 - 2004.11.08
+==================
+- more strict error checking
+- multithreaded implementation
+- shape descriptors in NxActorDesc can now be allocated using a custom allocator.
+- fluid API
+- NX_MESH_SMOOTH_SPHERE_COLLISIONS now disabled by default
+- made mesh instances default to flat and not smooth sphere mode
+- removed neccesarily reentrant method NxContactPair::setPairNotify(NxU32).  Workaround:  use any of the several different ways to set actor flags.
+- actor group and actor group pair flags
+- raycast car support, including:
+	- New + improved 'multipatch' friction implementation. 
+		Fringe benefits are that rare contact situations with multiple contact normals or materials-per-triangle are now handled correctly.  
+	- Capsule shapes now have a 'swept shape' mode that can be used to get raycast wheel behavior.  
+		This is enabled with the new NX_SWEPT_SHAPE flag in NxCapsuleShapeDesc.
+	- programData member in NxMaterial
+	- NX_MF_SPRING_CONTACT flag of NxMaterial, and the appropriate code to emit suspension-spring-like contacts when this is enabled.
+	- SampleRaycast car
+- Reworked applyForce code:
+	- removed these methods of NxActor because they were causing user confusion (they were hoping that it did more than just read back what they have previously set...)
+    	setForce(), setTorque(), getForce(), getTorque()
+		The replacement for setForce/setTorque is calling addForce/addTorque just once (per frame).
+		The replacement of getForce()/getTorque() is to keep track of the forces you add.  
+	- removed the variables:
+		NxBodyDesc::initialForce, NxBodyDesc::initialTorque.
+		The replacement for initialForce, initialTorque is addForce/addTorque after creating the object.
+	- forces act over the entire time step, including all substeps
+- NxMaterial's vectors are now in shape space not in actor space.
+- added 3 new joint types:
+	- Distance
+	- Pulley
+	- Fixed
+- kinematics perform move over a whole step, not a substep
+- added methods to add impulses and velocity changes
+- exception handling in SDK off, was enabled by mistake in 2.1.1
+- implemented more material combine modes
+- fixed a debug rendering crash bug
+- fixed debug rendering extra lines and zero length lines bugs
+- NX_VISUALIZE_COLLISION_NORMALS now defaults to zero.
+- raycasting based approximate continuous collision detection (enable using NX_CONTINUOUS_CD)
+- faster raycasting, now also supports segment queries
+- 'one shot' scene collision queries
+- added access to internal mesh data
+
+2.1.1 - 2004.07.15
+==================
+- convex-mesh collision detection
+- convex meshes viewer scene
+- broken joints deletion process cleared up
+- raycasting against compounds fix
+- NX_NOTIFY_ON_START_TOUCH bug fixed
+- bugs related to jointing bodies to kinematics fixed
+- crash fixed when switching body from kinematic to dynamic
+- implemented contact and friction force feedback in contact report
+- joints to kinematic bodies now projected correctly
+- removed reduced simulation mode for joints
+- made it possible to set a different number of solver iterations per body
+- added adaptive force parameter
+- improved solver:  bodies don't pop out of other bodies as fast as before
+- improved solver: non-reduced mode joints work better
+- fixed rotating spheres and longs solver problem
+- fixed solver instability on very thin objects
+- visual C++ .NET project files
+- fixed several box-capsule contact generation bugs
+- added more error messages regarding broken joints
+- removed '#'-s in filenames of monster truck demos
+- updated docs with more information on releasing actors and broken joints
+- added angular projection for revolute joints
+- fixed some bias scaling related bugs in friction and joint setup code
+- fixed uninitialized variable bug in viewer
+- removed obsolete files from foundation
+- extended ODF files to permit specification of joint projection
+- fixed joint projection bug
+- fixed fat lines rendering bug in viewer
+- fixed some doc bugs
+- fixed bug regarding kinematic bodies going to sleep
+- fixed sphere joint limit visualization bug
+- visualization flag for shapes, bodies, and joints
+- added docs on masses of trigger shapes
+- added FAQ section to SDK docs
+- simplified versioning mechanism
+- renamed ShapeDesc::triggerFlags into ShapeDesc::flags.
+- fixed bug regarding deletion of trigger shapes
+- removed personal edition copy protection scheme
+
+
+2.1  - 2004.05.15
+=================
+- Pulled enums and typedefs out of classes.  For example NxSomeClass::SOME_FLAG is now NX_SOME_FLAG.
+- NxCollisionGroup changed from an enum to an int.
+- NxCollisionGroup 0 no longer has special meaning.  Static-static collision detection is automatically not performed.
+- Actors, Shapes and Joints now have setName() getName() methods for debugging convenience.
+- Removed support for dynamic meshes flag
+- Optimized mesh inertia tensor computation
+- Removed dynamic and default mesh classes from Foundation 
+- Replaced NxUserTriangleMesh with NxSimpleTriangleMesh, changed the way meshes are provided to the SDK
+- User's meshes are now copied, not referenced
+- Materials are now stored in a global list and indexed by shapes, not actors.
+- New material per triangles feature (for all mesh-primitive combinations)
+- Added sleep velocity thresholds
+- Changed SLEEP_LIN_VEL_SQUARED to SLEEP_DEFAULT_LIN_VEL_QUARED & also angular
+- Documented NX_MIN_SEPARATION_FOR_PENALTY in manual.
+- Removed quaternion accessor functions and made elements public.
+- Added NxMat34::getColumnMajor44(), NxMat34::setColumnMajor44() for ez 4x4 graphics matrix conversion.
+- Added X get*() methods which return the matrix value instead of copying it to a destination address.  void get*(X) methods are now deprecated.
+- Fixed bug with kinematic actors (were generating useless contacts)
+- Fixed bug with raycasting against compounds (was returning internal compound shapes & wasn't testing collision groups)
+- RunFor() timing params are now scene properties.
+- Asynchronous API added. runFor is deprecated.
+- Removed NxUserContactReport::onPairCreated() due to performance concerns!  
+	Users must take care to notice that their implementing code no longer does anything / never gets called!!
+	We don't have a full replacement for this mechanism yet.  For now NxScene::setActorPairFlags() is the best bet.
+- Added CoreDump mechanism.
+- Maya exporter
+- ConvexMesh-ConvexMesh Collision Detection
+- Four new sample programs: SampleConvex, SampleGameLevel, SampleMaterials, SampleMeshMaterials
+- Got rid of NxActor's localToGlobalSpace, globalToLocalSpace, localToGlobalSpaceDirection, globalToLocalSpaceDirection.
+	because the implementation transformed between the wrong spaces.  To get the old behavior, use this code:
+	
+	NxMat34 cmpose; actor->setCMassGlobalPose(cmpose);
+	worldPositon = cmpose * bodyPosition;	//localToGlobalSpace
+	bodyPositon = cmpose % worldPosition;	//globalToLocalSpace
+	
+	worldDirection = cmpose.M * bodyDirection;	//localToGlobalSpaceDirection
+	bodyDirection = cmpose.M % worldDirection;	//globalToLocalSpaceDirection
+	
+	To get the proper behavior, use this code:
+	worldPositon = actor->getGlobalPoseReference() * bodyPosition;	//localToGlobalSpace
+	bodyPositon = actor->getGlobalPoseReference() % worldPosition;	//globalToLocalSpace
+	
+	worldDirection = actor->getGlobalPoseReference().M * bodyDirection;	//localToGlobalSpaceDirection
+	bodyDirection = actor->getGlobalPoseReference().M % worldDirection; //globalToLocalSpaceDirection
+
+- Removed NxScene::enablePair, isEnabledPair.  They are replaced by the new get/setPairFlags().  The old behavior maps to the 
+new calls like so:
+	/**
+	enables or disables collision detection between a pair of actors. Initially all pairs are enabled.
+
+	Collision detection between two shapes a and b occurs if: 
+	NxPhysicsSDK::getGroupCollisionFlag(a->getGroup(), b->getGroup()) && isEnabledPair(a->getActor(),b->getActor()) is true.
+
+	Note: a and b may not refer to the same shape.
+	*/
+	NX_INLINE void					enablePair(NxActor&, NxActor&, bool enable)
+		{
+		if (enable)
+			setPairFlags(a,b, getPairFlags(a,b) | NX_IGNORE_PAIR);
+		else
+			setPairFlags(a,b, getPairFlags(a,b) & ~NX_IGNORE_PAIR);
+		}
+
+	/**
+	Queries the value set by the above call.
+	*/
+	NX_INLINE bool					isEnabledPair(NxActor&a, NxActor&b) = 0
+		{
+		return getPairFlags(a,b) & 1;
+		}
+
+2.03 - 2004.04.08
+=================
+
+-B AM Feb 20 fixed: inertia tensors of meshes are wrong
+-B AM Feb 22 fixed: syntax error in NxQuat template's slerp code
+-B AM Feb 22 fixed: setGlobalAxis/setGlobalAnchor in NxJoint and NxJointDesc transform to body space, while the local frames are documented as being in actor space, as they should be
+-B AM Feb 22 releasing/in any way changing static actor doesn't notify its joints (incl: making it dynamic) ==> workaround for now is to use NULL for static actors when jointing
+-B AM Feb 22 fixed: Spellcheck api doc comments
+-B AM Feb 22 new feature: kinematic motion of bodies
+-B AM Mar 5 fixed: Several class doc comments are not immediately followed by the class declaration so doxygen ignores them.
+-B AM Mar 02 fixed: Sleeping code is time step sensitive:  With small dt stuff goes to sleep unrealistically fast.
+-B AM Mar 05 fixed: Deleting while in bbox vis mode causes a crash
+-B PT Mar 20 Fixed crash when running empty simulation
+-B AM Mar 20 Improved capsule contact generation for parallell case. 
+-B PT Mar 22 Additional parameter in NxActor::wakeUp
+
+API Changes
+
+- replaced bitfields with enum flags (impacts aniso friction and joints)
+
+Other changes
+
+- removed all templates except NxArray
+- Added 3 new samples
+- fixed various contact stream iterator problems
+- updated docs with kinematic bodies infos
+- added this change log
+
+2.02 - 2004.02.19
+=================
+Collision SDK and RB SDK Merged
+Substance SDK Discontinued
+Most of the tech completely rewritten - hence no change list.
+
+
+1.91 - 2003.07.07
+=================
+Rigid Body SDK: get hinge angle and velocity query, for both artic and lagrange.
+Rigid Body SDK: fixed: penetration correction of lagrange jointed stuff is worse than articulated stuff
+Rigid Body SDK: fixed: dense grid of contacts acts weird (Pierre showed that this is fixed but we have no good repro)
+Rigid Body SDK: changed solver to no sub iters (5x faster), and correct bounce correction
+	-- now big stacks go to sleep slower
+	-- boxes don't bounce up straight anymore
+Rigid Body SDK: removed obsolete rigid sdk params
+Rigid Body SDK: very redundant contacts are working.
+Rigid Body SDK: stuff can be created in sleeping mode, even if jointed.
+Rigid Body SDK: fixed: Articulations don't fall asleep
+Collision SDK: heightfield mode for meshes
+Foundation SDK: fixed inplace matrix transpose bug
+Collision SDK: test cave configuration for terrains
+Collision SDK: upgrated to opcode 1.3
+Collision SDK: fixed a bug in mesh-mesh that didn't seem to be having any bad effects.  
+Foundation SDK: all stl gotten rid of
+Foundation SDK: array class with decent memory management
+Viewer: vs7 build of viewer
+Tools: flexporter was exporting spheres wrong (made them off-center with a nonzero offset)
+Rigid Body SDK: fixed: the asymetry of the fixed and prismatic joint leads to breakage if the bodies are not ordered right (it creates a different response.)	Collision SDK: capsules integrated (Simon)
+Rigid Body SDK: new contact solver combines Pierre's work
+Rigid Body SDK: created fixed joint
+Demo: gears demo
+Demo: bride demo
+Rigid Body SDK: added bias for limits.
+Collision SDK: fixed a bug in sphere-sphere penetration computation 
+Foundation SDK: Spelling Error in Nx.h: "usually becase you have passed"
+Rigid Body SDK: Spelling Error in NxRigidBodySDK.h: "byt": Larger values may fix exploding systems byt introduces constraint error.
+Collision SDK: fixed incorrect computation of box-sphere penetration in the special case of the sphere center being embedded in the box.
+Rigid Body SDK: fixed a bug regarding the deletion of effectors not removed from scene
+Rigid Body SDK: fixed a bug regarding removal of joints, bodies, and effectors from one of multiple scenes, where they were not added
+Rigid Body SDK: fixed a bug regarding the duplicate addition of effectors to a scene
+Rigid Body SDK: fixed a bug with non-invertable response of fixed articulation
+Viewer: fixed non pow2 texture widths are loaded badly (jpg format)
+Collision SDK: Fixed a bug in mesh vs. line
+Collision SDK: Fixed a bug in heightfield vs. box
+Collision SDK: Fixed a bug in mesh vs. plane
+Rigid Body SDK: fixed explosion on constraining missing featherstone dofs.
+1.9
+All SDKs: Codewarrior compiler compatibility -- renamed overloaded method names
+All SDKs: Professional Edition DLLs
+Rigid Body SDK: Fixed a crash bug related to deleting certain joints or bodies
+Rigid Body SDK: Completely rewritten solver
+Foundation SDK: changed memory allocation in foundation, + other misc stuff so other SDKs don't have to link with foundation
+
+1.8 - 2003.06.01
+=================
+Rigid Body SDK: gravity applied if group is not sleeping
+Rigid Body SDK: normal forces have different magnitudes, not real normal forces, just an estimate (this is a problem)
+Rigid Body SDK: frict scaling params removed.
+Rigid Body SDK: frict coeffs changed, new ranges
+Rigid Body SDK: FAST linear time contact solver has good friction model!
+Rigid Body SDK: FAST linear time contact solver!
+Rigid Body SDK: add API method to purge limit planes.
+Rigid Body SDK: applyImpulses() should checks f[i], and early outs if it is zero.
+Collision SDK: sweep and prune broad phase, new NxBroadPhase
+Collision SDK: caching of near phase results when there was no movement.
+Collision SDK: redone exact mesh-box
+Collision SDK: redone exact mesh-sphere
+Collision SDK: fixed iterators in scene and shapeSet so that calling getNext() after hasMore() returns zero doesn't result in access violation. Actually, now hasMore() is redundant.
+Viewer: changed default friction and restitution coeffs in viewer.
+Viewer: don't pose change notify unless neccesary
+Viewer: punching of bodies
+Viewer: better mesh visualization
+
+1.6 - 2003.02.21
+=================
+Viewer: delete bodies in viewer demos by right-dragging a body and then pressing delete.
+Viewer: monster truck can now be driven even if some wheels have been deleted.
+Viewer: tweaked monster truck car controller for torque based driving.
+Viewer: Granny support for articulated characters ('ragdolls') (only available for Rad Game Tools Granny licensees)
+Viewer: inertia tensor can be specified explicitly in the body block of an ods file
+Viewer: Made a real collision veto joint in viewer
+Collision SDK: fixed bug in mesh-box colldet (thanks to Jason Zisk of nFusion)
+Collision SDK: mesh data structure can be visualized by appropriate setting SDK param.
+Collision SDK: removed STL from hashGridSpace + optimized it a bit
+Collision SDK: new contact groups methods, removed corresp. group methods from hashGridSpace.
+Collision SDK: new pairwise contact disabling methods
+Rigid Body SDK: hugely improved performance of hinge and prismatic joints, see the monster truck demo for an example.
+Rigid Body SDK: NxBody::createClone()
+Rigid Body SDK: customizeable damping in NxJoint, works only for chains of hinge and prismatic joints.
+Rigid Body SDK: fixed defect in joint limit plane iteration.
+Rigid Body SDK: fixed implementation bug of bool Scene::hasMoreJoints().
+Rigid Body SDK: joint and body scene removal / addition / deletion error checking.
+Rigid Body SDK: setVelocity / momentum only wakes bodies if the set vel is high.
+More orderly shortcuts in startmenu.
+More demos.
+New licensing scheme (registry stuff goes to HKEY_CURRENT_USER, we don't mail reg files anymore.)
+No more double precision libs shipped in personal edition (ask if you still want them)
+updated docs
+
+1.51 - 2003.01.09
+=================
+Fixed vsync slowdown problem in viewer
+Frame rate limited to physics rate (usually 50 Hz)
+single precision floating point DLLs for collision SDK and RB SDK(F32 suffix)
+doc bug fixes
+
+1.5
+=================
+Substance SDK
+userErrorStream has new reportError member
+Foundation SDK as DLL
+substance SDK support in viewer
+breaking joints was broken in 1.45, fixed.
+mesh-box collision detection implemented
+matrix ops of the form Mx::op(A,B) first write to a temp object in case A.op(A,B) is called.
+also same for vector cross product.
+fixed bug regarding edge-edge colldet penetration depth compute.
+improved mesh-sphere
+added fracturable vase and road blocks to monster truck demo
+
+1.45 - 2002.12.02
+=================
+updated simple demos
+added colldet block and sim params block to demo scripts.
+obstacle support removed
+mass = 0 bodies can have material properties
+getBodies method in NxJoint
+fixed hashspace problem
+solver params settable from scripts
+fixed box-box bug
+stuff stuck in air now wake up
+thin rod spin limiting by max angular velocity
+joint support improved for Juice
+
+1.44 - 2002.10.30
+=================
+mesh-mesh collision detection added
+mesh-sphere collision detection added
+mesh-line collision detection added
+mesh-plane collision detection added
+internal parameters exposed
+doc bugs fixed
+full screen mode put back
+box-sphere collision penetration depth fix
+isAttachedByJoint typo
+NxSphere, etc. can have release() called on it directly.
+
+1.431
+=================
+mass adaptive drag force strength in viewer
+
+1.43 - 2002.10.15
+=================
+additions and fixes in viewer and rigid body documentation (thanks to Nate and Pierre)
+memory leak fix in viewer (thanks to Mete)
+domino demo failure
+included Pierre's new toboggan demo
+
+1.42 - 2002.10.08
+=================
+fixed installer problem (DLL placement)
+
+1.41 - 2002.10.03
+=================
+memory manager issues
+readme for max exporter
+shortcuts to viewer doc and projects
+readme file correction
+
+1.4 - 2002.08.25 
+================
+first public SDK release
+
+
+==EOF==
+

@@ -1,0 +1,75 @@
+Up;Up
+Select Up;Shift+Up
+Scroll Up;Ctrl+Up
+Down;Down
+Select Down;Shift+Down
+Scroll Down;Ctrl+Down
+Left;Left
+Select Left;Shift+Left
+Word Left;Ctrl+Left
+Select Word Left;Shift+Ctrl+Left
+Right;Right
+Select Right;Shift+Right
+Word Right;Ctrl+Right
+Select Word Right;Shift+Ctrl+Right
+Page Down;PgDn
+Select Page Down;Shift+PgDn
+Page Bottom;Ctrl+PgDn
+Select Page Bottom;Shift+Ctrl+PgDn
+Page Up;PgUp
+Select Page Up;Shift+PgUp
+Page Top;Ctrl+PgUp
+Select Page Top;Shift+Ctrl+PgUp
+Line Start;Home
+Select Line Start;Shift+Home
+Editor Top;Ctrl+Home
+Select Editor Top;Shift+Ctrl+Home
+Line End;End
+Select Line End;Shift+End
+Editor Bottom;Ctrl+End
+Select Editor Bottom;Shift+Ctrl+End
+Toggle Mode;Ins
+Copy;Ctrl+Ins
+Cut;Shift+Del
+Paste;Shift+Ins
+Delete Char;Del
+Delete Last Char;BkSp
+Delete Last Char;Shift+BkSp
+Delete Last Word;Ctrl+BkSp
+Undo;Alt+BkSp
+Redo;Shift+Alt+BkSp
+Line Break;Enter
+Line Break;Shift+Enter
+Tab;Tab
+Shift Tab;Shift+Tab
+Context Help;Ctrl+F1
+Copy;Ctrl+C
+Paste;Ctrl+V
+Cut;Ctrl+X
+Block Indent;Shift+Ctrl+I
+Block Unindent;Shift+Ctrl+U
+Line Break;Ctrl+M
+Delete Word;Ctrl+T
+Delete EOL;Shift+Ctrl+Y
+Redo;Shift+Ctrl+Z
+Goto Bookmark 0;Ctrl+0
+Goto Bookmark 1;Ctrl+1
+Goto Bookmark 2;Ctrl+2
+Goto Bookmark 3;Ctrl+3
+Goto Bookmark 4;Ctrl+4
+Goto Bookmark 5;Ctrl+5
+Goto Bookmark 6;Ctrl+6
+Goto Bookmark 7;Ctrl+7
+Goto Bookmark 8;Ctrl+8
+Goto Bookmark 9;Ctrl+9
+Set Bookmark 0;Shift+Ctrl+0
+Set Bookmark 1;Shift+Ctrl+1
+Set Bookmark 2;Shift+Ctrl+2
+Set Bookmark 3;Shift+Ctrl+3
+Set Bookmark 4;Shift+Ctrl+4
+Set Bookmark 5;Shift+Ctrl+5
+Set Bookmark 6;Shift+Ctrl+6
+Set Bookmark 7;Shift+Ctrl+7
+Set Bookmark 8;Shift+Ctrl+8
+Set Bookmark 9;Shift+Ctrl+9
+Line Select;Shift+Ctrl+L

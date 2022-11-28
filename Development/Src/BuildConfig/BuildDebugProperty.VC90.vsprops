@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="gb2312"?>
+<VisualStudioPropertySheet
+	ProjectType="Visual C++"
+	Version="8.00"
+	Name="BuildDebugProperty"
+	OutputDirectory="$(OutPath)\$(ConfigurationName)"
+	IntermediateDirectory="$(IntermediatePath)\$(ConfigurationName)\$(ProjectName)"
+	InheritedPropertySheets=".\UnrealEngine3.VC90.vsprops"
+	>
+	<Tool
+		Name="VCCLCompilerTool"
+		AdditionalOptions="/Zm256 "
+		Optimization="0"
+		AdditionalIncludeDirectories=""
+		PreprocessorDefinitions="_WINDOWS;WIN32"
+		MinimalRebuild="true"
+		RuntimeLibrary="3"
+		StructMemberAlignment="3"
+		EnableFunctionLevelLinking="true"
+		EnableEnhancedInstructionSet="2"
+		AssemblerListingLocation="$(IntDir)\"
+		ProgramDataBaseFileName="$(IntDir)\$(ProjectName).pdb"
+		WarningLevel="4"
+		WarnAsError="true"
+		DebugInformationFormat="4"
+		DisableSpecificWarnings="4996"
+	/>
+	<Tool
+		Name="VCLinkerTool"
+		LinkIncremental="2"
+	/>
+</VisualStudioPropertySheet>

@@ -1,0 +1,50 @@
+Microsoft Visual Studio Solution File, Format Version 8.00
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ActorX", "ActorX.vcproj", "{9525C085-1060-4BA0-B061-D359E94F54B8}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SourceCodeControl) = preSolution
+		SccNumberOfProjects = 1
+		SccProjectUniqueName0 = ActorX.vcproj
+		SccProjectName0 = Perforce\u0020Project
+		SccLocalPath0 = .
+		SccProvider0 = MSSCCI:Perforce\u0020SCM
+		CanCheckoutShared = true
+	EndGlobalSection
+	GlobalSection(SolutionConfiguration) = preSolution
+		Debug = Debug
+		Hybrid = Hybrid
+		Release = Release
+		ReleaseMax40 = ReleaseMax40
+		ReleaseMax42 = ReleaseMax42
+		ReleaseMax50 = ReleaseMax50
+		ReleaseMax51 = ReleaseMax51
+		ReleaseMax60 = ReleaseMax60
+		ReleaseMax70 = ReleaseMax70
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.Debug.ActiveCfg = Debug|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.Debug.Build.0 = Debug|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.Hybrid.ActiveCfg = Hybrid|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.Hybrid.Build.0 = Hybrid|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.Release.ActiveCfg = Release|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.Release.Build.0 = Release|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.ReleaseMax40.ActiveCfg = ReleaseMax40|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.ReleaseMax40.Build.0 = ReleaseMax40|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.ReleaseMax42.ActiveCfg = ReleaseMax42|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.ReleaseMax42.Build.0 = ReleaseMax42|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.ReleaseMax50.ActiveCfg = ReleaseMax50|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.ReleaseMax50.Build.0 = ReleaseMax50|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.ReleaseMax51.ActiveCfg = ReleaseMax51|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.ReleaseMax51.Build.0 = ReleaseMax51|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.ReleaseMax60.ActiveCfg = ReleaseMax60|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.ReleaseMax60.Build.0 = ReleaseMax60|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.ReleaseMax70.ActiveCfg = ReleaseMax70|Win32
+		{9525C085-1060-4BA0-B061-D359E94F54B8}.ReleaseMax70.Build.0 = ReleaseMax70|Win32
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal

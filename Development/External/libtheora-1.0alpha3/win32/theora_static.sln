@@ -1,0 +1,21 @@
+Microsoft Visual Studio Solution File, Format Version 8.00
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "theora_static", "theora_static.vcproj", "{174CEC12-074A-4658-99E6-7B8E70225BCB}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfiguration) = preSolution
+		Debug = Debug
+		Release = Release
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{174CEC12-074A-4658-99E6-7B8E70225BCB}.Debug.ActiveCfg = Debug|Win32
+		{174CEC12-074A-4658-99E6-7B8E70225BCB}.Debug.Build.0 = Debug|Win32
+		{174CEC12-074A-4658-99E6-7B8E70225BCB}.Release.ActiveCfg = Release|Win32
+		{174CEC12-074A-4658-99E6-7B8E70225BCB}.Release.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal

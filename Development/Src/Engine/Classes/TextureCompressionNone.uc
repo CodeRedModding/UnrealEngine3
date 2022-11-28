@@ -1,0 +1,2 @@
+class TextureCompressionNone extends TextureCompressionProfile
+	deprecated;

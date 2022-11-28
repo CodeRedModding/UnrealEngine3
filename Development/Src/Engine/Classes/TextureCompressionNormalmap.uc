@@ -1,0 +1,2 @@
+class TextureCompressionNormalmap extends TextureCompressionProfile
+	deprecated;

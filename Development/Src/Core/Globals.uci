@@ -1,0 +1,112 @@
+/**
+ * Copyright © 2005 Epic Games, Inc. All Rights Reserved.
+ */
+/**
+ * Globals.uci - Unreal Engine global include file for UnrealScript.
+ * Never include this file before the class definition.
+ */
+
+
+/**
+ * Macro for including the current function name in a string.
+ */
+`define	location	Name$"::"$GetFuncName()
+
+/**
+ * Expands to an in-line if statement with a log if debug is defined;
+ * it expands to nothing if debug is not defined. The debug macro takes
+ * its value from the -debug flag on the script compilation command line.
+ *
+ * Also demonstrates how to use backslashes to declare a multi-line macro.
+ *
+ * @param	msg		the string that should be logged
+ * @param	cond	[opt] the condition that is used to evaluate whether the message should be written
+ * @param	tag		[opt] the tag for the log statement
+ */
+
+/*
+  this macro is now added to the hardcoded symbol table, so don't try adding it again
+`if(`isdefined(debug))
+`define logd(msg,cond,tag)\
+  `if(`cond)\
+	if (`cond)\
+  `{endif}\
+	log(`msg`if(`tag),`tag`endif)
+`else
+`define logd
+`endif
+*/
+
+/**
+ * Expands to an in-line if statement with a log unless FINAL_RELEASE is defined;
+ *
+ *
+ * @param	msg		the string that should be logged
+ * @param	cond	[opt] the condition that is used to evaluate whether the message should be written
+ * @param	tag		[opt] the tag for the log statement
+ */
+/*
+  this macro is now added to the hardcoded symbol table, so don't try adding it again
+`if(`isdefined(FINAL_RELEASE))
+`define	log(msg,cond,tag)
+`else
+`define	log(msg,cond,tag)	`if(`cond)if(`cond)`{endif}log(`msg`if(`tag),`tag`endif)
+`endif
+*/
+
+/**
+ * Macro for easily logging a property or function return value.  Expands into a string
+ * containing the name of the expression and value of the expression.
+ * Useful for writing self-documenting log statements.
+ *
+ * @param	expr	the expression that you want to log
+ * @param	name	[opt] the text that will immediately preceed the expression's value
+ *					in the log statement. if not specified, uses expr.
+ */
+`define	showvar(expr,name)	"`if(`name)`name`else`expr`endif:'"$`expr$"'"
+
+/**
+ * Macro for easily logging the name of an object.  Useful for logging objects without extraneous
+ * checks against None.
+ *
+ * @param	obj		the object that you want to log
+ * @param	name	[opt] the text that will immediately preceed the object's name
+ *					in the log statement. if not specified, uses obj.
+ */
+`define	showobj(obj,name)		"`if(`name)`name`else`obj`endif:"$(`obj != None ? string(`obj.Name) : "None")
+
+/**
+ * Macro for logging the entry into a function.
+ *
+ * @param	msg		[opt] any additional text you'd like included in the log message
+ * @param	cond	[opt] the condition that is used to evaluate whether the message should be written
+ */
+`define	entry(msg,cond)	`log("> "$ `location `if(`msg)$`msg`endif, `if(`cond), `cond`endif)
+
+/**
+ * Macro for logging the exit from a function.
+ *
+ * @param	msg		[opt] any additional text you'd like included in the log message
+ * @param	cond	[opt] the condition that is used to evaluate whether the message should be written
+ */
+`define	exit(msg,cond)	`log("< "$ `location `if(`msg)$`msg`endif, `if(`cond), `cond`endif)
+
+/**
+ * Macro for logging an IP address
+ *
+ * @param	addr	the IP address you want to log
+ */
+// `define	showaddr(addr)	"   Addr:'"$IpAddrToString(`addr)$"'"
+
+
+`define LogFatal(cat,msg)	`log("FATAL:" @ `msg,,`cat)
+`define LogError(cat,msg)	`log("ERROR:" @ `msg,,`cat)
+`define LogWarn(cat,msg)	`log("WARN:" @ `msg,,`cat)
+`define LogInfo(cat,msg)	`log("INFO:" @ `msg,,`cat)
+`define LogDebug(cat,msg)	`log("DEBUG:" @ `msg,,`cat)
+`define LogTrace(cat,msg)	`log("TRACE:" @ `msg,,`cat)
+
+/** Convenience macro for inventory debugging */
+`define LogInv(msg)		`log(WorldInfo.TimeSeconds @ Instigator @ GetStateName() $ "::" $ GetFuncName() @ `msg,,'Inventory')
+
+

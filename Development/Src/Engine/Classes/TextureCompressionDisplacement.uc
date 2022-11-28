@@ -1,0 +1,2 @@
+class TextureCompressionDisplacement extends TextureCompressionProfile
+	deprecated;
