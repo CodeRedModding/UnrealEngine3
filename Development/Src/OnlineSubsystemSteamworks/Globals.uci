@@ -1,0 +1,8 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+// Enables/disables the lobby interface in OnlineSubsystemSteamworks (requires recompilation of native code)
+`define STEAM_MATCHMAKING_LOBBY 0
+
+

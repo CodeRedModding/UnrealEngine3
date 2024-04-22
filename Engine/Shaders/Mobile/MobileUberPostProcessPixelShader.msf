@@ -1,0 +1,165 @@
+/*=============================================================================
+	MobileUberPostProcessPixelShader.msf: Applies the mobile uber post-process
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+UNIFORM(vec4, TiltShiftParameters);
+
+/**
+ * x: FocusDistance - The distance which is 100% focused
+ * y: InverseFocusRadius - The focus falloff exponent
+ * z: One over the minimum distance from the focal which is 0% focused
+ * w: MinBlurAmount - clamp for min blur amount
+ */
+UNIFORM_HIGH(vec4, DOFPackedParameters);
+
+/**
+ * Max blur factor for the far geometry
+ */
+UNIFORM_HIGH(float, DOFFactor);
+
+/**
+ * Color grading parameters
+ */
+UNIFORM(float, MobileColorGradingBlend);
+UNIFORM(float, MobileColorGradingDesaturation);
+UNIFORM(vec4, MobileColorGradingHighlightsMinusShadows);
+UNIFORM(vec4, MobileColorGradingMidTones);
+UNIFORM(vec4, MobileColorGradingShadows);
+
+UNIFORM_HIGH(vec4, MinZ_MaxZRatio);
+
+UNIFORM_SAMPLER2D(SceneColorTexture, TEXUNIT0);
+UNIFORM_SAMPLER2D(SceneDepthTexture, TEXUNIT1);
+UNIFORM_SAMPLER2D(Texture3, TEXUNIT2);
+
+IN_VARYING_DEFAULT(vec2, SceneColorUV, TEXCOORD0);
+IN_VARYING_DEFAULT(vec2, SourceTextureUV, TEXCOORD1);
+
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+/** return the scene lighting texture */
+vec4 CalcSceneColor(vec2 ScreenUV)
+{
+	return USE_SCENECOLOR( texture2D(SceneColorTexture,ScreenUV) );
+}
+
+/** return the world space converted depth (float precision needed for distances >65000, can affect fog) */
+float CalcSceneDepth( vec2 ScreenUV )
+{
+#if NGP
+	float DeviceZ = tex2D<float>(SceneDepthTexture,ScreenUV).r;
+#else
+	highp float DeviceZ = texture2D(SceneDepthTexture,ScreenUV).r;
+#endif
+
+	//return MinZ_MaxZRatio[0] / (1.0 - (DeviceZ / MinZ_MaxZRatio[1]));
+	return 1.0 / (DeviceZ * MinZ_MaxZRatio[2] - MinZ_MaxZRatio[3]);	
+}
+
+half3 ApplyTiltShift( half3 SceneColor, half3 SourceTextureColor, half Position )
+{
+	half TiltShiftPosition = TiltShiftParameters.x;
+	half TiltShiftMinRadius = TiltShiftParameters.y;
+	half TiltShiftMaxRadius = TiltShiftParameters.z;
+	half TiltShiftTransitionWidth = TiltShiftParameters.w;
+
+ 	half BlendFactor = (clamp(abs(Position - TiltShiftPosition), TiltShiftMinRadius, TiltShiftMaxRadius) - TiltShiftMinRadius) / TiltShiftTransitionWidth;
+//	half BlendFactor = 0.1;
+ 	half3 BlendedColor = lerp( SceneColor, SourceTextureColor, BlendFactor );
+	return BlendedColor;
+}
+
+/** Returns 0-1 blur factor based on DOF. 0 = no blur, 1 = full blur. */
+float CalcDOFFactor(float SceneDepth)
+{
+	highp float FocusDistance			= DOFPackedParameters.x;
+	highp float FocusMinRadius			= DOFPackedParameters.y;
+	highp float FocusMaxRadius			= DOFPackedParameters.z;
+	highp float InverseTransitionRange	= DOFPackedParameters.w;
+
+	highp float Distance = SceneDepth - FocusDistance;
+	highp float DOFScale = saturate((Distance - FocusMinRadius) * InverseTransitionRange);
+	return DOFFactor * DOFScale;
+}
+
+half3 ApplyBloomAndDOF( half3 SceneColor, half4 SourceTextureColor, float SceneDepth )
+{
+	// Recalculate DOF factor for the SceneColor (unblurred)
+	half FocusedWeight = 1.0 - CalcDOFFactor( SceneDepth );
+
+	// Blurred DOF factor (from the quarter-resolution SceneColor)
+	half BlurredWeight = SourceTextureColor.a;
+
+	// Note that SourceTextureColor.rgb is premultiplied with the DOF factor
+	half WeightSum = FocusedWeight + BlurredWeight;
+	half3 BlendedColor = (SceneColor * FocusedWeight + SourceTextureColor.rgb) / WeightSum;
+
+	return BlendedColor;
+}
+
+
+half3 ApplyDOFOnly( half3 SceneColor, half4 SourceTextureColor, float SceneDepth )
+{
+	// Recalculate DOF factor for the SceneColor (unblurred)
+	half FocusedWeight = 1.0 - CalcDOFFactor( SceneDepth );
+
+	// Blurred DOF factor (from the quarter-resolution SceneColor)
+	half BlurredWeight = SourceTextureColor.a;
+
+	// Note that SourceTextureColor.rgb is premultiplied with the DOF factor
+	half WeightSum = FocusedWeight + BlurredWeight;
+	half3 BlendedColor = (SceneColor * FocusedWeight + SourceTextureColor.rgb) / WeightSum;
+
+	return BlendedColor;
+}
+
+half3 ApplyBloomOnly( half3 SceneColor, half4 SourceTextureColor )
+{
+	// Blurred Bloom factor (from the quarter-resolution SceneColor)
+	half BlurredWeight = (SourceTextureColor.a + 1.0) / 2.0;
+
+	// In the Bloom-only case, we precalculated the inverse, biased blurred weight in
+	// the lower-res gather pass rather than in this high-res apply pass, to avoid
+	// expensive math with virtually no visual impact
+
+	// Note that SourceTextureColor.rgb is premultiplied with the DOF factor
+	half3 BlendedColor = (SceneColor + SourceTextureColor.rgb) * BlurredWeight;
+	return BlendedColor;
+}
+
+half3 ApplyColorGrade( half3 Color )
+{
+	// todo: this needs testing on NGP (ambiguous conversion of float)
+
+	half3 Desaturation = Color * vec3(MobileColorGradingBlend) + vec3((Color.r + Color.g + Color.b) * MobileColorGradingDesaturation);
+
+	half3 ColorGrading = MobileColorGradingShadows.rgb + Desaturation * MobileColorGradingHighlightsMinusShadows.rgb + (Desaturation * (vec3(1.0) - Desaturation)) * MobileColorGradingMidTones.rgb;
+	 
+	return ColorGrading.rgb;
+}
+
+PIXEL_MAIN
+{
+	half3 SceneColor = CalcSceneColor(SceneColorUV).rgb;
+	half4 SourceTextureColor = texture2D(Texture3, SourceTextureUV);
+
+//	half3 BlendedColor = ApplyTiltShift( SceneColor, SourceTextureColor.rgb, SceneColorUV.y );
+
+#if USE_POSTPROCESS_MOBILE_DOF
+	highp float SceneDepth = CalcSceneDepth(SceneColorUV);
+	half3 BlendedColor = ApplyBloomAndDOF(SceneColor, SourceTextureColor, SceneDepth);
+#else
+	#if USE_POSTPROCESS_MOBILE_BLOOM
+		half3 BlendedColor = ApplyBloomOnly(SceneColor, SourceTextureColor);
+	#else
+		half3 BlendedColor = SceneColor;
+	#endif
+#endif
+ 
+#if USE_POSTPROCESS_MOBILE_COLOR 
+	BlendedColor = ApplyColorGrade( BlendedColor );
+#endif
+
+ 	gl_FragColor = vec4( BlendedColor, 1.0 );
+}

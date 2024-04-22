@@ -1,0 +1,23 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+ 
+
+`if(`isdefined(FINAL_RELEASE))
+
+`define AILog(text)
+`define AILog(text, category)
+`define AILog(text, category, bForce)
+`define AILog_Ext(text, category, object)
+`define DEBUGSTATE
+
+`else
+
+`define StaticEngineContext class'Engine'.static.GetEngine()
+`define AILog(text)							if( ! `StaticEngineContext.bDisableAILogging) {AILog_Internal(`text);}
+`define AILog(text, category)				if( ! `StaticEngineContext.bDisableAILogging) {AILog_Internal(`text,`category);}
+`define AILog(text, category, bForce)		if( ! `StaticEngineContext.bDisableAILogging) {AILog_Internal(`text,`category,`bForce);}
+`define AILog_Ext(text, category, object)  if( !`StaticEngineContext.bDIsableAILogging && `object != None ) { `object.AILog_Internal(`text,`category); }
+`define DEBUGSTATE              extends DEBUGSTATE
+
+`endif

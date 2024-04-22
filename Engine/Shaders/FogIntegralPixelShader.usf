@@ -1,0 +1,271 @@
+/*=============================================================================
+	FogIntegralPixelShader.usf: Computes the line integral for fog volumes
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "FogVolumeCommon.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+/* transform from post projective space to world space */
+float4x4 ScreenToWorld;
+
+/* world space camera position */
+float4	FogCameraPosition;
+
+/* set to 1.0f for backfaces, and -1.0f for frontfaces */
+float	FaceScale;
+
+/* offsets for filtering scene depth */
+float4  DepthFilterSampleOffsets[2];
+
+/* 1 / MaxIntegral estimate for the density function */
+float	InvMaxIntegral;
+
+float	MaxDistance;
+
+/*
+* Filters scene depth by taking 4 samples and averaging the results
+* which helps to antialias it when rendering to a downsampled integral buffer.
+*/
+half PreviousFilteredDepth(float4 ScreenPosition)
+{
+	float2 PersCorrectScreenPos = ScreenPosition.xy / ScreenPosition.w * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+	half4 Depths;
+	float4 FirstOffsetPos = DepthFilterSampleOffsets[0] + PersCorrectScreenPos.xyxy; 
+	float4 SecondOffsetPos = DepthFilterSampleOffsets[1] + PersCorrectScreenPos.xyxy; 
+
+#if SUPPORTS_DEPTH_TEXTURES
+
+	Depths.x = texDepth2D(SceneDepthTexture, FirstOffsetPos.xy).r; 
+	Depths.y = texDepth2D(SceneDepthTexture, FirstOffsetPos.zw).r;
+	Depths.z = texDepth2D(SceneDepthTexture, SecondOffsetPos.xy).r;
+	Depths.w = texDepth2D(SceneDepthTexture, SecondOffsetPos.zw).r;
+	Depths = 1.f / (Depths * MinZ_MaxZRatio.zzzz - MinZ_MaxZRatio.wwww);
+
+#else
+
+	Depths.x = CalcSceneDepth(FirstOffsetPos.xy);
+	Depths.y = CalcSceneDepth(FirstOffsetPos.zw);
+	Depths.z = CalcSceneDepth(SecondOffsetPos.xy);
+	Depths.w = CalcSceneDepth(SecondOffsetPos.zw);
+
+#endif
+
+	half SampleWeight = 1.0f / 4.0f;
+	float AverageDepth = dot(min(Depths, MaxDistance.xxxx), SampleWeight.xxxx);
+
+	//sample the current position if desired, doesn't make a big visual difference
+	//AverageDepth = AverageDepth + 1.0f / 3.0f * tex2D(SceneColorTexture, PersCorrectScreenPos.xy).w;
+	return AverageDepth;
+}
+
+/*
+* Returns the filtered world space position of ScreenPosition or the closest opaque object.
+*/
+float3 GetClosestFilteredWorldPos(float4 ScreenPosition)
+{
+	half SceneW = PreviousFilteredDepth(ScreenPosition);
+
+	//clamp scene depth to a reasonable range
+	SceneW = min(SceneW, 65535.0f);
+
+	//use whichever is closest, this pixel or the nearest opaque object
+	half ClosestDistance = min(SceneW, ScreenPosition.z);
+	
+	//transform into worldspace
+	return MulMatrix(ScreenToWorld, float4(ScreenPosition.xy / ScreenPosition.w * ClosestDistance, ClosestDistance, 1)).xyz;
+}
+
+/*
+* Returns the world space position of ScreenPosition or the closest opaque object.
+*/
+float3 GetClosestWorldPos(float4 ScreenPosition)
+{
+	half SceneW = min(PreviousDepth(ScreenPosition), MaxDistance);
+
+	//clamp scene depth to a reasonable range
+	SceneW = min(SceneW, 65535.0f);
+
+	//use whichever is closest, this pixel or the nearest opaque object
+	half ClosestDistance = min(SceneW, ScreenPosition.z);
+	
+	//transform into worldspace
+	return MulMatrix(ScreenToWorld, float4(ScreenPosition.xy / ScreenPosition.w * ClosestDistance, ClosestDistance, 1)).xyz;
+}
+
+/*
+* Encodes the floating point integral based on what the current platform needs.  
+* Platforms that can do high precision fp blending negate the integral for frontfaces,
+* Platforms without fp blending pack the integral into a fixed point buffer.
+*/
+float4 EncodeIntegral(float Integral)
+{
+#if XBOX
+
+/*
+	//pack the integral into G16R16
+	float NormalizedIntegral = Integral * InvMaxIntegral;
+	float2 Shift = float2(65536.0f, 1.0f);
+	float2 Mask = float2(0.0f, 1.0f / 65536.0f);
+	float2 ClampedIntegral = frac(NormalizedIntegral.xx * Shift);
+	float2 EncodedIntegral = ClampedIntegral - ClampedIntegral.xx * Mask;
+	return float4(EncodedIntegral.x, EncodedIntegral.y, 0.0f, 0.0f);
+*/
+
+	//24bits, from the lowest 6 bits of RGBA8.  2 are left over for overflow in each channel, for a max of 4 additive blends
+	//normalize the integral
+	float NormalizedIntegral = saturate(Integral * InvMaxIntegral);
+	//shift up 18, 12, 6, 0 bits
+	//x will store the lowest value 6 bits of the integral, w will store the highest 6 bits
+	float4 Shift = float4(262144.0f, 4096.0f, 64.0f, 1.0f);
+	//shift the values and clamp off anything greater than 1
+	float4 ClampedIntegral = frac(NormalizedIntegral.xxxx * Shift);
+	//6 bit shift down, converts between channels
+	float ChannelShift = 1.0f / 64.0f;
+	//clamp off anything lower than what can be stored in the channel's 6 bits to avoid rounding by the hardware
+	//this is done by subtracting the lower channels after shifting them into the same space 
+	ClampedIntegral.yzw = ClampedIntegral.yzw - ClampedIntegral.xyz * ChannelShift.xxx;
+	//shift every channel down 2 bits, so additive blends will overflow into these bits
+	return ClampedIntegral / 4.0f;
+
+#else
+
+	//add backface integral results, subtract frontface results
+	return float4(Integral * FaceScale, 0.0f, 0.0f, 0.0f);
+
+#endif
+	
+}
+
+/*
+* Constant density - constant density factor stored in FirstDensityFunctionParameters.x
+*
+* Computes the line integral from the camera to the current face of the fog volume being rendered
+* or an intersecting opaque object.
+*/
+void ConstantDensityMain(
+	FVertexFactoryInterpolantsVSToPS Interpolants,
+	float4	ScreenPosition	: TEXCOORD5,
+	out float4 OutColor		: COLOR0
+	)
+{
+	half SceneW = PreviousFilteredDepth(ScreenPosition);
+
+	SceneW = min(SceneW, 65535.0f);
+
+	//use whichever is closest, this pixel or the nearest opaque object
+	half ClosestDistance = min(SceneW, ScreenPosition.z);
+
+	ClosestDistance = max(ClosestDistance - StartDistance, 0.0f);
+	
+	//constant density
+	float LineIntegral = ClosestDistance * FirstDensityFunctionParameters.x;
+
+	OutColor = EncodeIntegral(LineIntegral);
+}
+
+/*
+* Entry point for LinearHalfspace Density
+*/
+void LinearHalfspaceDensityMain(
+	FVertexFactoryInterpolantsVSToPS Interpolants,
+	float4	ScreenPosition	: TEXCOORD5,
+	out float4 OutColor		: COLOR0
+	)
+{
+	float3 WorldReceiverPos = GetClosestFilteredWorldPos(ScreenPosition);
+	OutColor = EncodeIntegral(LinearHalfspaceLineIntegral(WorldReceiverPos, FogCameraPosition.xyz));  
+}
+
+/*
+* Entry point for Spherical Density
+*/
+void SphericalDensityMain(
+	FVertexFactoryInterpolantsVSToPS Interpolants,
+	float4	ScreenPosition	: TEXCOORD5,
+	out float4 OutColor		: COLOR0
+	)
+{
+	float3 WorldReceiverPos = GetClosestFilteredWorldPos(ScreenPosition);
+	OutColor = EncodeIntegral(SphericalLineIntegral(WorldReceiverPos, FogCameraPosition.xyz));
+}
+
+/*
+* Not fully implemented
+*
+* Computes the line integral from the camera to the current face of the fog volume being rendered
+* or an intersecting opaque object.
+*/
+void ConeDensityMain(
+	FVertexFactoryInterpolantsVSToPS Interpolants,
+	float4	ScreenPosition	: TEXCOORD5,
+	out float4 OutColor		: COLOR0
+	)
+{
+	float LineIntegral = 0;
+
+	float3 WorldReceiverPos = GetClosestFilteredWorldPos(ScreenPosition);
+
+	float3 ConeVertex = FirstDensityFunctionParameters.xyz;
+	float MaxDensity = FirstDensityFunctionParameters.w;
+	float3 ConeAxis = SecondDensityFunctionParameters.xyz;
+	float ConeRadius = SecondDensityFunctionParameters.w;
+/*
+	float3 ConeVertex = FirstDensityFunctionParameters.xyz;
+	float MaxDensity = .01;
+	float3 ConeAxis = float3(1,0,0);
+	float ConeRadius = 600.0f;
+	*/
+
+	float CosSqTheta = cos(3.1415926535f / 4.0f) * cos(3.1415926535f / 4.0f);
+	//float CosSqTheta = .5;
+
+	float3 View = WorldReceiverPos - FogCameraPosition.xyz;
+
+	//@todo: eliminate the reflection
+	{
+		//find intersections with the cone
+		//Point along Ray from camera to receiver = X = FogCameraPosition + View * t
+		//Cone Equation => dot(ConeAxis, (X - ConeVertex) / length(X - ConeVertex)) = cos(theta)
+		//Solve for 2 intersections
+		float3 QuadraticCoef;
+		float ConeAxisDotView = dot(ConeAxis, View);
+		QuadraticCoef.x = ConeAxisDotView * ConeAxisDotView - CosSqTheta * dot(View, View);
+
+		float ConeAxisDotVertex = dot(ConeAxis, ConeVertex);
+		float AxisDotCameraPos = dot(ConeAxis, FogCameraPosition);
+		QuadraticCoef.y = 2.0f * AxisDotCameraPos * ConeAxisDotView - 2.0f * ConeAxisDotView * ConeAxisDotVertex
+			- CosSqTheta * 2.0f * dot(FogCameraPosition.xyz - ConeVertex, View);
+		
+		QuadraticCoef.z = AxisDotCameraPos * AxisDotCameraPos - 2.0f * AxisDotCameraPos * ConeAxisDotVertex + ConeAxisDotVertex * ConeAxisDotVertex
+			- CosSqTheta * dot(FogCameraPosition.xyz - ConeVertex, FogCameraPosition.xyz - ConeVertex);
+
+		//b^2 - 4 * a * c
+		float Discriminant = QuadraticCoef.y * QuadraticCoef.y - 4.0f * QuadraticCoef.x * QuadraticCoef.z;
+
+		if (Discriminant >= 0)
+		{
+			float InvTwoA = 1.0f / (2.0f * QuadraticCoef.x);
+			float SqrtDiscriminant = sqrt(Discriminant);
+
+			//closest intersection stored in x, furthest in y
+			float2 Intersections = (-QuadraticCoef.yy + float2(SqrtDiscriminant, -SqrtDiscriminant)) * InvTwoA;
+
+			//handle special case where the ray only intersects the near side of the cone
+			if (Intersections.y < Intersections.x)
+			{
+				Intersections = float2(Intersections.x, 1);
+			}
+
+			//clamp intersections to [0, 1]
+			Intersections = saturate(Intersections);
+
+			LineIntegral = MaxDensity * (Intersections.y - Intersections.x) * length(View);
+		}
+
+	}
+
+	OutColor = EncodeIntegral(LineIntegral);
+}

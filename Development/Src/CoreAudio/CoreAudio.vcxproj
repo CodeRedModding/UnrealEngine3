@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="BuiltWithUnrealBuildTool|Win32">
+      <Configuration>BuiltWithUnrealBuildTool</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A4140EF4-F4D0-41A9-B9A2-3032776B2E38}</ProjectGuid>
+    <Keyword>MakeFileProj</Keyword>
+    <RootNamespace>CoreAudio</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</IntDir>
+    <NMakeBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeReBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeCleanCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeOutput Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\CoreAudioBuffer.cpp" />
+    <ClCompile Include="Src\CoreAudioDevice.cpp" />
+    <ClCompile Include="Src\CoreAudioEffects.cpp" />
+    <ClCompile Include="Src\CoreAudioSource.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\CoreAudioDevice.h" />
+    <ClInclude Include="Inc\CoreAudioEffects.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

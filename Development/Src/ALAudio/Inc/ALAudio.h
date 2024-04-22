@@ -1,11 +1,6 @@
-/*=============================================================================
-	ALAudio.h: Unreal OpenAL Audio public header file.
-	Copyright 1997-2004 Epic Games, Inc. All Rights Reserved.
-
-Revision history:
-	* Created by Daniel Vogel.
-	* Ported to Linux by Ryan C. Gordon.
-=============================================================================*/
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 
 #ifndef _INC_ALAUDIO
 #define _INC_ALAUDIO
@@ -16,6 +11,9 @@ Revision history:
 
 #include "Core.h"
 #include "Engine.h"
+#include "EngineAudioDeviceClasses.h"
+#include "EngineSoundClasses.h"
+#include "UnAudioEffect.h"
 
 /*-----------------------------------------------------------------------------
 	Audio public includes.
@@ -23,9 +21,16 @@ Revision history:
 
 #include "ALAudioDevice.h"
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
+#if _WINDOWS
+
+// OpenAL function prototypes.
+#define AL_EXT( name, strname ) extern UBOOL SUPPORTS##name;
+#define AL_PROC( name, strname, ret, func, parms ) extern ret ( CDECL * func ) parms;
+#include "ALFuncs.h"
+#undef AL_EXT
+#undef AL_PROC
+
+#endif
 
 #endif
 

@@ -1,0 +1,22 @@
+/*=============================================================================
+	DOFAndBloomGatherPixelShader.usf: Vertex shader for gathering the combined depth of field and bloom samples for blurring.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+/** The offsets used to sample the scene texture. */
+float4 SampleOffsets[(NUM_SAMPLES + 1) / 2];
+
+/** The entry point. */
+void Main(
+	in float4 InPosition : POSITION,
+	in float2 InUV : TEXCOORD0,
+	out float4 OutOffsetUVs[(NUM_SAMPLES + 1) / 2] : TEXCOORD0,
+	out float4 OutPosition : POSITION
+	)
+{
+	OutPosition = InPosition;
+	for(int OffsetIndex = 0;OffsetIndex < (NUM_SAMPLES + 1) / 2;OffsetIndex++)
+	{
+		OutOffsetUVs[OffsetIndex] = InUV.xyyx + SampleOffsets[OffsetIndex];
+	}
+}

@@ -1,32 +1,84 @@
 /*=============================================================================
 	UnPNG.h: Unreal PNG support.
-	Copyright 2004 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Daniel Vogel
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 /*------------------------------------------------------------------------------
 	FPNGHelper definition.
 ------------------------------------------------------------------------------*/
 
-#ifndef clock
-#error remember to remove the below hack when deprecating clock
-#endif
-#undef clock
+// don't include this on consoles or in gcc
+#if !CONSOLE && defined(_MSC_VER)
+
 #pragma pack (push,8)
 #include "..\..\..\External\libpng\png.h"
+#include "..\..\..\External\zlib\inc\zlib.h"
 #pragma pack (pop)
-#define clock(Timer)   {Timer -= appCycles();}
+
+/**
+ * Given a BYTE* to some PNG data (probably read from disk), decompresses the PNG
+ * into raw image data consumable by the engine.
+ * The PNGLoader does not make copies of the data!
+ */
+class FPNGLoader
+{
+public:
+	/**
+	 * Construct a PNGLoader given some data (presumably PNG data)
+	 * and its size.
+	 *
+	 * @param InPNGData Pointer to PNG data.
+	 * @param InPNGDataSize Size of PNGData in bytes.
+	 */
+	FPNGLoader( const BYTE* InPNGData, UINT InPNGDataSize );
+
+	/**
+	 * Decode the PNG data into the provided buffer.
+	 * Assumes that the output buffer is big enough
+	 * for accommodate Width() x Height() x sizeof(Pixel)
+	 *
+	 * @param OutRawData Output buffer for decoded image data.
+	 */
+	UBOOL Decode( BYTE* OutRawData );
+
+	/** @return Test whether the data this PNGLoader is pointing at is a PNG or not. */
+	UBOOL IsPNG() const;
+	/** @return The width of this PNG, based on the header. */
+	UINT Width() const;
+	/** @return The height of this PNG, based on the header. */
+	UINT Height()  const;
+	/** @return The color type of the PNG data (e.g. PNG_COLOR_TYPE_RGBA, PNG_COLOR_TYPE_RGB) */
+	INT ColorType() const;
+		
+private:
+
+	static void user_read_data( png_structp png_ptr, png_bytep data, png_size_t length );
+	static void user_flush_data( png_structp png_ptr );
+
+	static void user_error_fn( png_structp png_ptr, png_const_charp error_msg );
+	static void user_warning_fn( png_structp png_ptr, png_const_charp warning_msg );
+
+	INT ReadOffset;
+	UINT PNGDataSize;
+	const BYTE* PNGData;
+	INT WidthFromHeader;
+	INT HeightFromHeader;
+	INT PNGColorType;
+
+	
+};
 
 class FPNGHelper
 {
 public:
-	void InitCompressed( void* InCompressedData, INT InCompressedSize, INT InWidth, INT InHeight );
-	void InitRaw( void* InRawData, INT InRawSize, INT InWidth, INT InHeight );
+	void InitCompressed( const void* InCompressedData, INT InCompressedSize, INT InWidth, INT InHeight );
+	void InitRaw( const void* InRawData, INT InRawSize, INT InWidth, INT InHeight );
 
-	TArray<BYTE> GetRawData();
-	TArray<BYTE> GetCompressedData();
+	const TArray<BYTE>& GetRawData();
+	const TArray<BYTE>& GetCompressedData();
+
+	INT GetPNGHeaderWidth() const { return PNGHeaderWidth; }
+	INT GetPNGHeaderHeight() const { return PNGHeaderHeight; }
 
 protected:
 	void Uncompress();
@@ -45,10 +97,10 @@ protected:
 
 	INT				ReadOffset,
 					Width,
-					Height;
+					Height,
+					PNGHeaderWidth,
+					PNGHeaderHeight;
 };
 
+#endif // !CONSOLE && defined(_MSC_VER)
 
-/*------------------------------------------------------------------------------
-	The end.
-------------------------------------------------------------------------------*/

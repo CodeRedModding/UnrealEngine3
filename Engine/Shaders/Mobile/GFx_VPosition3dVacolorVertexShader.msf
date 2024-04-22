@@ -1,0 +1,14 @@
+UNIFORM( mat4, Transform );
+ATTRIBUTE( vec4, Position, POSITION );
+ATTRIBUTE( vec4, Color, COLOR0 );
+OUT_VARYING_LOW( vec4, color, COLOR0 );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// E Position3d
+
+  gl_Position = MulMatrix(Position, Transform);
+// E Vacolor
+  color = Color;
+
+}
+

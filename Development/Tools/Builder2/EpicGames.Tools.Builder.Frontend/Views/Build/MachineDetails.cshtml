@@ -1,0 +1,156 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Database.SP_GetMachineDetailsResult
+
+@{
+    Layout = null;
+    
+    TimeSpan lastSeen = (Model.CurrentTime.HasValue) ? DateTime.UtcNow.Subtract(Model.CurrentTime.Value) : TimeSpan.FromDays(999);
+}
+
+@functions{
+    string SdkToString (string sdk)
+    {
+        if (sdk == "None")
+        {
+            return "-";
+        }
+        
+        return sdk;
+    }
+}
+
+
+<div class="grid4">
+    <a name="details"></a><h2>Machine Details</h2>
+
+    <p>
+        @if (string.Equals(Model.MachineName, Model.MachineLock, StringComparison.CurrentCultureIgnoreCase))
+        {
+            <img class="icon" src="~/Content/Themes/Base/Images/warning.png" alt="Warning" />
+            <text>This machine is currently in <strong>maintenance</strong> mode and will not participate in the build system.</text>
+        }
+        else
+        {
+            <text>This machine is currently participating in the build system.</text>
+        }
+    </p>
+
+    <table class="tableKeyValue">
+        <tbody>
+            <tr>
+                <th>Name:</th>
+                <td>@Model.MachineName</td>
+            </tr>
+            <tr>
+                <th>Uptime:</th>
+                <td>
+                    @if (lastSeen.TotalHours <= 4)
+                    {
+                        if ((Model.CurrentState == "Building") || (Model.CurrentState == "Connected"))
+                        {
+                            <text>@TimeSpan.FromSeconds(Model.CurrentUptime.GetValueOrDefault()).ToString("c")</text>
+                        }
+                    }
+                    else
+                    {
+                        <text>Offline</text>
+                    }
+                </td>
+            </tr>
+            <tr>
+                @if (lastSeen.TotalHours <= 4)
+                {
+                    <th>Current State:</th>
+                    <td class="@("state" + Model.CurrentState)">@Model.CurrentState</td>
+                }
+                else
+                {
+                    <th>Last State:</th>
+                    <td>@Model.CurrentState</td>
+                }
+            </tr>
+            <tr>
+                <th>Installed:</th>
+                <td>@Model.FirstStart.GetValueOrDefault().ToShortDateString()</td>
+            </tr>
+            <tr>
+                <th>Crashes:</th>
+                <td>@Model.Crashes.Value</td>
+            </tr>
+
+            <tr class="p"><td colspan="2"><a name="specs"></a><h2>Specs</h2></td></tr>
+
+            <tr>
+                <th>CPU Count:</th>
+                <td>@Model.ProcessorCount</td>
+            </tr>
+            <tr>
+                <th>CPU Type:</th>
+                <td>@Model.CPUString</td>
+            </tr>
+            <tr>
+                <th>Memory:</th>
+                <td>@Model.Memory GB</td>
+            </tr>
+            <tr>
+                <th>C-Drive:</th>
+                <td>@Model.DriveCFree of @Model.DriveCSize GB free</td>
+            </tr>
+            <tr>
+                <th>D-Drive:</th>
+                <td>@Model.DriveDFree of @Model.DriveDSize GB free</td>
+            </tr>
+
+            <tr class="p"><td colspan="2"><a name="software"></a><h2>Software</h2></td></tr>
+
+            <tr>
+                <th>Android SDK:</th>
+                <td>@SdkToString(Model.CurrendAndroidSDKVersion)</td>
+            </tr>
+            <tr>
+                <th>DirectX SDK:</th>
+                <td>@SdkToString(Model.CurrentDirectXSDKVersion)</td>
+            </tr>
+            <tr>
+                <th>Flash SDK:</th>
+                <td>@SdkToString(Model.CurrentFlashSDKVersion)</td>
+            </tr>
+            <tr>
+                <th>iPhone SDK:</th>
+                <td>@SdkToString(Model.CurrentIPhoneSDKVersion)</td>
+            </tr>
+            <tr>
+                <th>Mac SDK:</th>
+                <td>@SdkToString(Model.CurrentMacSDKVersion)</td>
+            </tr>
+            <tr>
+                <th>NGP SDK:</th>
+                <td>@SdkToString(Model.CurrentNgpSDKVersion)</td>
+            </tr>
+            <tr>
+                <th>PS3 SDK:</th>
+                <td>@SdkToString(Model.CurrentPS3SDKVersion)</td>
+            </tr>
+            <tr>
+                <th>WiiU SDK:</th>
+                <td>@SdkToString(Model.CurrentWiiUSDKVersion)</td>
+            </tr>
+            <tr>
+                <th>X360 SDK:</th>
+                <td>@SdkToString(Model.CurrentXbox360SDKVersion)</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="grid2">
+    <h2>&nbsp;</h2>
+
+    @if (string.Equals(Model.MachineName, Model.MachineLock, StringComparison.CurrentCultureIgnoreCase))
+    {
+        <a class="button" href="javascript: disableMaintenance()">Disable Maintenance Mode</a>
+    }
+    else
+    {
+        <a class="button" href="javascript: enableMaintenance()">Enable Maintenance Mode</a>
+    }
+</div>

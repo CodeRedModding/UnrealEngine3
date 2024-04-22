@@ -1,0 +1,107 @@
+/*=============================================================================
+	LUTBlender.usf: Filter pixel shader source.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "PostProcessCommon.usf"
+
+void MainVS(
+	float2 InPosition		: POSITION,
+	float2 InUV				: TEXCOORD0,
+	out float2 OutUV		: TEXCOORD0,
+	out float4 OutPosition	: POSITION
+	)
+{
+	OutPosition = float4( InPosition, 0, 1 );
+    OutUV = InUV;
+}
+
+// ---------------------------------------------------
+
+// Texture0 is the neutral one and is computed in the shader
+sampler2D Texture1, Texture2, Texture3, Texture4;
+// 0 is for neutral, 1 for Texture1, 2 for ...
+float LUTWeights[5];
+
+// todo: Weight[0] should be used for neutral, Texture* name should start with 1, color correction should apply on top of that
+void MainPS(float2 InUV : TEXCOORD0, out float4 OutColor : COLOR0)
+{
+	float4 Neutral;
+#if XBOX
+	// construct the neutral color from a 2d position in 16x256
+	{
+		float2 UV = InUV;
+
+		UV -= float2(0.5f / 16.0f, 0.5f / 512.0f);
+
+		float Scale = 16.0f / 15.0f;
+
+		float3 RGB;
+
+		RGB.r = UV.x;
+		RGB.g = frac(UV.y * 16.0f);
+		RGB.b = UV.y - RGB.g / 16.0f;
+		RGB.g *= 2;
+
+		Neutral = float4(RGB * Scale, 0);
+	}
+	// Transform position in 16x256 to 256x16 as the resource layout doesn't match the texture layout.
+	{
+		float Scale = 15.0f / 16.0f; 
+
+		float IntB = floor(Neutral.b * 15.9999f) / 16.0f;
+
+		InUV = float2(Neutral.r * Scale / 16.0f + IntB, Neutral.g * Scale);
+		
+		InUV += float2(0.5f / 256.0f, 0.5f / 16.0f);
+	}
+#else // XBOX
+	// construct the neutral color from a 2d position in 256x16
+	{ 
+		float2 UV = InUV;
+
+		UV -= float2(0.5f / 256.0f, 0.5f / 16.0f);
+
+		float Scale = 16.0f / 15.0f;
+
+		float3 RGB;
+		
+		RGB.r = frac(UV.x * 16.0f);
+		RGB.b = UV.x - RGB.r / 16.0f;
+		RGB.g = UV.y;
+
+		Neutral = float4(RGB * Scale, 0);
+	}
+#endif
+
+    OutColor = LUTWeights[0] * Neutral;
+
+	// BLENDCOUNT is the number of LUT that are blended together including the neutral one
+#if BLENDCOUNT >= 2
+	OutColor += LUTWeights[1] * tex2D(Texture1, InUV);
+#endif
+
+#if BLENDCOUNT >= 3
+	OutColor += LUTWeights[2] * tex2D(Texture2, InUV);
+#endif
+
+#if BLENDCOUNT >= 4
+	OutColor += LUTWeights[3] * tex2D(Texture3, InUV);
+#endif
+
+#if BLENDCOUNT >= 5
+	OutColor += LUTWeights[4] * tex2D(Texture4, InUV);
+#endif
+
+	// apply math color correction on top ot texture based solution
+	// (faster than doing it in the full screen pass)
+	OutColor.rgb = ColorCorrection(OutColor.rgb);
+
+	// needed for d3d11 and if custom gamma is specified
+	// could be integrated into the uberpostprocess but here it is much cheaper
+	// max() clamp to get nice behavior for negative colors (see level sm2test)
+	OutColor = UnClampedPow(max(float4(SmallPowConst,SmallPowConst,SmallPowConst,SmallPowConst), OutColor), 2.2f * GammaInverse);
+}
+
+
+

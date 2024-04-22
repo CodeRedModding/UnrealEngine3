@@ -1,0 +1,143 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ordesignerObjectsDiagram dslVersion="1.0.0.0" absoluteBounds="0, 0, 12.75, 9.625" name="CrashReport">
+  <DataContextMoniker Name="/CrashReportDataContext" />
+  <nestedChildShapes>
+    <classShape Id="1175f94e-7575-4a49-93b1-1f7cec02aeed" absoluteBounds="0.5, 4.625, 2, 3.6939111328124996">
+      <DataClassMoniker Name="/CrashReportDataContext/Bugg" />
+      <nestedChildShapes>
+        <elementListCompartment Id="27aefb85-aaa1-49b2-884f-94be456a3150" absoluteBounds="0.51500000000000057, 5.0850000000000009, 1.9700000000000002, 3.1339111328125" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="79719349-5073-4211-a05b-31dddf1353ba" absoluteBounds="5.625, 1.25, 2, 1.3862939453125005">
+      <DataClassMoniker Name="/CrashReportDataContext/User" />
+      <nestedChildShapes>
+        <elementListCompartment Id="562666e5-ca2c-427b-8598-4fc430dbfb33" absoluteBounds="5.6400000000000006, 1.7100000000000009, 1.9700000000000002, 0.8262939453125" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="b452fa1f-0ac9-4a65-a2cb-2d7b7faa30f6" absoluteBounds="3.125, 7, 2, 1.1939925130208344">
+      <DataClassMoniker Name="/CrashReportDataContext/Bugg_Crash" />
+      <nestedChildShapes>
+        <elementListCompartment Id="5b1cea73-289a-4b49-8c0d-a1bf44c1f68c" absoluteBounds="3.1400000000000006, 7.4600000000000009, 1.9700000000000002, 0.63399251302083326" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="52f61b18-79aa-45b4-98ff-a6caadf72899" absoluteBounds="0.5, 3, 2, 1.1939925130208335">
+      <DataClassMoniker Name="/CrashReportDataContext/Bugg_UserGroup" />
+      <nestedChildShapes>
+        <elementListCompartment Id="208ad43c-5627-4ed4-afb7-da637f6fcf77" absoluteBounds="0.51500000000000057, 3.4600000000000009, 1.9700000000000002, 0.63399251302083326" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="39ea3404-6995-4760-8db2-2dc0260e48fe" absoluteBounds="3.25, 1.25, 2, 1.1939925130208335">
+      <DataClassMoniker Name="/CrashReportDataContext/Bugg_User" />
+      <nestedChildShapes>
+        <elementListCompartment Id="6172fa91-e5ab-4b07-8980-d3f74b3bc204" absoluteBounds="3.2650000000000006, 1.71, 1.9700000000000002, 0.63399251302083326" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="216f10a4-8cfa-469e-8b67-12f8f6e43e7a" absoluteBounds="5.75, 2.875, 2, 6.0015283203125005">
+      <DataClassMoniker Name="/CrashReportDataContext/Crash" />
+      <nestedChildShapes>
+        <elementListCompartment Id="81f86795-bee1-4532-854b-9466d9c56b78" absoluteBounds="5.7650000000000006, 3.3350000000000009, 1.9700000000000002, 5.4415283203125" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="66068582-4f33-4a79-afe3-bf955ad1c617" absoluteBounds="10.5, 1.125, 2, 1.1939925130208344">
+      <DataClassMoniker Name="/CrashReportDataContext/Crash_FunctionCall" />
+      <nestedChildShapes>
+        <elementListCompartment Id="a60534b2-1797-4452-ba1c-370f32a8dcb3" absoluteBounds="10.515, 1.5850000000000009, 1.9700000000000002, 0.63399251302083326" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="6a02802c-2247-43cc-bc3d-a73ea86bb810" absoluteBounds="8, 1.25, 2, 1.1939925130208335">
+      <DataClassMoniker Name="/CrashReportDataContext/FunctionCall" />
+      <nestedChildShapes>
+        <elementListCompartment Id="dcb2f006-c9e1-4dc5-8c10-4006d76c461a" absoluteBounds="8.015, 1.71, 1.9700000000000002, 0.63399251302083326" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="546044fa-923d-4b42-b42c-d5b07e921540" absoluteBounds="8.375, 7.625, 2, 1.7708968098958344">
+      <DataClassMoniker Name="/CrashReportDataContext/Note" />
+      <nestedChildShapes>
+        <elementListCompartment Id="e91ab4f4-3e0a-4aed-b179-a6030ef20e17" absoluteBounds="8.39, 8.085, 1.9700000000000002, 1.2108968098958333" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="89ea685c-09c4-4db3-9b1a-a7d1183e3013" absoluteBounds="0.5, 1.25, 2, 1.1939925130208344">
+      <DataClassMoniker Name="/CrashReportDataContext/UserGroup" />
+      <nestedChildShapes>
+        <elementListCompartment Id="6449eb88-9c84-43f1-a4f4-337be40968ef" absoluteBounds="0.51500000000000057, 1.7100000000000009, 1.9700000000000002, 0.63399251302083326" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(1.5 : 8.3189111328125); (1.5 : 9.16746256510417); (8.375 : 9.16746256510417)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/CrashReportDataContext/Bugg/Bugg_Note" />
+      <nodes>
+        <classShapeMoniker Id="1175f94e-7575-4a49-93b1-1f7cec02aeed" />
+        <classShapeMoniker Id="546044fa-923d-4b42-b42c-d5b07e921540" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(2.5 : 7.59699625651042); (3.125 : 7.59699625651042)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/CrashReportDataContext/Bugg/Bugg_Bugg_Crash" />
+      <nodes>
+        <classShapeMoniker Id="1175f94e-7575-4a49-93b1-1f7cec02aeed" />
+        <classShapeMoniker Id="b452fa1f-0ac9-4a65-a2cb-2d7b7faa30f6" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(5.75 : 7.59699625651042); (5.125 : 7.59699625651042)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/CrashReportDataContext/Crash/Crash_Bugg_Crash" />
+      <nodes>
+        <classShapeMoniker Id="216f10a4-8cfa-469e-8b67-12f8f6e43e7a" />
+        <classShapeMoniker Id="b452fa1f-0ac9-4a65-a2cb-2d7b7faa30f6" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(1.5 : 4.625); (1.5 : 4.19399251302083)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/CrashReportDataContext/Bugg/Bugg_Bugg_UserGroup" />
+      <nodes>
+        <classShapeMoniker Id="1175f94e-7575-4a49-93b1-1f7cec02aeed" />
+        <classShapeMoniker Id="52f61b18-79aa-45b4-98ff-a6caadf72899" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(1.5 : 2.44399251302083); (1.5 : 3)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/CrashReportDataContext/UserGroup/UserGroup_Bugg_UserGroup" />
+      <nodes>
+        <classShapeMoniker Id="89ea685c-09c4-4db3-9b1a-a7d1183e3013" />
+        <classShapeMoniker Id="52f61b18-79aa-45b4-98ff-a6caadf72899" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(2.5 : 5.78125); (5.21875 : 5.78125); (5.21875 : 2.44399251302083)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/CrashReportDataContext/Bugg/Bugg_Bugg_User" />
+      <nodes>
+        <classShapeMoniker Id="1175f94e-7575-4a49-93b1-1f7cec02aeed" />
+        <classShapeMoniker Id="39ea3404-6995-4760-8db2-2dc0260e48fe" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(5.625 : 1.84699625651042); (5.25 : 1.84699625651042)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/CrashReportDataContext/User/User_Bugg_User" />
+      <nodes>
+        <classShapeMoniker Id="79719349-5073-4211-a05b-31dddf1353ba" />
+        <classShapeMoniker Id="39ea3404-6995-4760-8db2-2dc0260e48fe" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(6.6875 : 2.6362939453125); (6.6875 : 2.875)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/CrashReportDataContext/User/User_Crash" />
+      <nodes>
+        <classShapeMoniker Id="79719349-5073-4211-a05b-31dddf1353ba" />
+        <classShapeMoniker Id="216f10a4-8cfa-469e-8b67-12f8f6e43e7a" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(7.75 : 5.21875); (11.5 : 5.21875); (11.5 : 2.31899251302083)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/CrashReportDataContext/Crash/Crash_Crash_FunctionCall" />
+      <nodes>
+        <classShapeMoniker Id="216f10a4-8cfa-469e-8b67-12f8f6e43e7a" />
+        <classShapeMoniker Id="66068582-4f33-4a79-afe3-bf955ad1c617" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(10 : 1.78449625651042); (10.5 : 1.78449625651042)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/CrashReportDataContext/FunctionCall/FunctionCall_Crash_FunctionCall" />
+      <nodes>
+        <classShapeMoniker Id="6a02802c-2247-43cc-bc3d-a73ea86bb810" />
+        <classShapeMoniker Id="66068582-4f33-4a79-afe3-bf955ad1c617" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(7.75 : 8.25076416015625); (8.375 : 8.25076416015625)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/CrashReportDataContext/Crash/Crash_Note" />
+      <nodes>
+        <classShapeMoniker Id="216f10a4-8cfa-469e-8b67-12f8f6e43e7a" />
+        <classShapeMoniker Id="546044fa-923d-4b42-b42c-d5b07e921540" />
+      </nodes>
+    </associationConnector>
+  </nestedChildShapes>
+</ordesignerObjectsDiagram>

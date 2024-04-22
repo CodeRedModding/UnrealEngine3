@@ -1,0 +1,117 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.HomeDashboardModel
+
+@{
+    ViewBag.Title = "Dashboard";
+}
+
+<script type="text/javascript">
+    function UpdateCharts () {
+        $('#branchesStateChart').attr("src", $('#branchesStateChart').attr("src").replace(/\?.*$/, '') + '?' + Math.random());
+        $('#commandsStateChart').attr("src", $('#commandsStateChart').attr("src").replace(/\?.*$/, '') + '?' + Math.random());
+        $('#infrastructureStateChart').attr("src", $('#infrastructureStateChart').attr("src").replace(/\?.*$/, '') + '?' + Math.random());
+
+        setTimeout(
+            function () {
+                UpdateCharts();
+            },
+            10000
+        );
+    }
+
+    $(document).ready(function () {
+        UpdateCharts();
+    });
+</script>
+
+
+<section>
+    <div class="grid6">
+        <span class="fr">
+            <a href="#branches">Branches</a> |
+            <a href="#buildcommands">Build Commands</a> |
+            <a href="#machines">Machines</a> |
+            <a href="#buildsperday">Builds Per Day</a> |
+            <a href="#cisturnaround">CIS Turnaround</a> |
+            <a href="#perforcesize">Perforce Size</a> |
+            <a href="#misc">Miscellaneous</a>
+        </span>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <p class="defunct padded">
+            Welcome to the new Builder Frontend. Many of its features are still under construction, and the site (or parts of it) may
+            occasionally be unavailable while the server is being updated. If you find any bugs or isues, please file a TTP and
+            assign it to @Html.ActionLink("Max.Preussner", "UserProfile", "Home", new { id = "Max.Preussner" }, null). Thanks!
+        </p>
+    </div>
+</section>
+
+<section>
+    <div class="grid2">
+        <a name="branches"></a><h2>Branches</h2>
+
+        <img id="branchesStateChart" class="chart" src="@Url.RouteUrl(new { action = "BranchesState", controller = "Chart" })" alt="Chart" />
+    </div>
+
+    <div class="grid2">
+        <a name="buildcommands"></a><h2>Build Commands</h2>
+
+        <img id="commandsStateChart" class="chart" src="@Url.RouteUrl(new { action = "CommandsState", controller = "Chart" })" alt="Chart" />
+
+        @Html.ActionLink("Show current build status", "Status", "Build")
+    </div>
+
+    <div class="grid2">
+        <a name="machines"></a><h2>Machines</h2>
+
+        <img id="infrastructureStateChart" class="chart" src="@Url.RouteUrl(new { action = "InfrastructureState", controller = "Chart" })" alt="Chart" />
+
+        @Html.ActionLink("Show all build machines", "Infrastructure", "Build")
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="buildsperday"></a><h2>Builds Per Day</h2>
+
+        <p>
+            Number of builds per day in the last <strong>180</strong> days:
+            <img id="buildsPerDayChart" class="chart" src="@Url.RouteUrl(new { action = "BuildsPerDay", controller = "Chart", numDays = 180 })" alt="Chart" />
+        </p>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="cisturnaround"></a><h2>CIS Turnaround</h2>
+
+        <p>
+            Number of minutes for CIS turnaround in the last <strong>7</strong> days:
+            <img id="cisTurnaroundChart" class="chart" src="@Url.RouteUrl(new { action = "CisTurnaround", controller = "Chart", numDays = 7 })" alt="Chart" />
+        </p>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="perforcesize"></a><h2>Perforce Size</h2>
+
+        <p>
+            Gigabytes submitted per week in the last <strong>80</strong> weeks:
+            <img id="perforceSizeChart" class="chart" src="@Url.RouteUrl(new { action = "PerforceSizes", controller = "Chart", numWeeks = 80 })" alt="Chart" />
+        </p>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="misc"></a><h2>Miscellaneous</h2>
+
+        <p>@Html.ActionLink("Desktop Performance", "DesktopPerformance", "Build")</p>
+        <p>@Html.ActionLink("UE4 Build Times", "UE4BuildTimes", "Build")</p>
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>

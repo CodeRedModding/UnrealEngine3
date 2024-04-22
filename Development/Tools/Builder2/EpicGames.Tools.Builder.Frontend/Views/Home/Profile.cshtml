@@ -1,0 +1,70 @@
+﻿@{
+    ViewBag.Title = "Home";
+    ViewBag.Description = "User Profile for '" + "foobar" + "'";
+}
+
+
+<section>
+    <div class="grid6">
+        <span class="fr">
+            <a href="#details">Profile Details</a> |
+            <a href="#activity">Recent Activity</a> |
+            <a href="#changelists">Recently Submitted Changelists</a>
+        </span>
+    </div>
+</section>
+
+<section class="clearfix">
+    <div class="grid2">
+        <a name="details"></a><h2>Profile Details</h2>
+
+        <table class="tableKeyValue">
+            <tbody>
+                <tr>
+                    <th>User Name:</th>
+                    <td>Joe Schmoe</td>
+                </tr>
+                <tr>
+                    <th>Access Level:</th>
+                    <td>Administrator</td>
+                </tr>
+                <tr>
+                    <th>Contact</th>
+                    <td>
+                        <a href="mailto:joe.schmoe@epicgames.com"><img class="icon" src="~/Content/Themes/Base/Images/iconOutlook.png" alt="IM" /></a>
+                        <a href="sip:joe.schmoe@epicgames.com"><img class="icon" src="~/Content/Themes/Base/Images/iconLync.png" alt="Send Email" /></a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="grid4">
+        <a name="activity"></a><h2>Recent Activity</h2>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="changelists"></a><h2>Recently Submitted Changelists</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Changelist</th>
+                    <th class="enum">Branch</th>
+                    <th class="enum">Checked In</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td></td>
+                    <td class="enum"></td>
+                    <td class="enum"></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>

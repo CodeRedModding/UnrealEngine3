@@ -3,6 +3,8 @@
 // 
 // Defaults here will give you a ball and socket joint.
 // Positions are in Physics scale.
+// When adding stuff here, make sure to update URB_ConstraintSetup::CopyConstraintParamsFrom
+// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 //=============================================================================
 
 
@@ -10,28 +12,56 @@ class RB_ConstraintSetup extends Object
 	hidecategories(Object)
 	native(Physics);
 
-
+/** Name of bone that this joint is associated with. */
 var()	const name JointName;
 
+///////////////////////////// CONSTRAINT GEOMETRY
 
-////////// CONSTRAINT GEOMETRY
-
+/** 
+ *	Name of first bone (body) that this constraint is connecting. 
+ *	This will be the 'child' bone in a PhysicsAsset.
+ */
 var() name ConstraintBone1;
+
+/** 
+ *	Name of second bone (body) that this constraint is connecting. 
+ *	This will be the 'parent' bone in a PhysicsAset.
+ */
 var() name ConstraintBone2;
 
-// Body1 ref frame
+///////////////////////////// Body1 ref frame
+
+/** Location of constraint in Body1 reference frame. Physics scale. */
 var vector Pos1;
+
+/** Primary (twist) axis in Body1 reference frame. */
 var vector PriAxis1;
+
+/** Seconday axis in Body1 reference frame. Orthogonal to PriAxis1. */
 var vector SecAxis1;
 
-// Body2 ref frame
+///////////////////////////// Body2 ref frame
+
+/** Location of constraint in Body2 reference frame. Physics scale. */
 var vector Pos2;
+
+/** Primary (twist) axis in Body2 reference frame. */
 var vector PriAxis2;
+
+/** Seconday axis in Body2 reference frame. Orthogonal to PriAxis2. */
 var vector SecAxis2;
 
+// Pulley info
+var	vector	PulleyPivot1;
+var	vector	PulleyPivot2;
 
+/** 
+ * If distance error between bodies exceeds 0.1 units, or rotation error exceeds 10 degrees, body will be projected to fix this.
+ * For example a chain spinning too fast will have its elements appear detached due to velocity, this will project all bodies so they still appear attached to each other. 
+ */
+var()	bool	bEnableProjection;
 
-// LINEAR DOF
+///////////////////////////// LINEAR DOF
 
 /** 
  *	Struct specying one Linear Degree Of Freedom for this constraint.
@@ -48,7 +78,7 @@ struct native LinearDOFSetup
 	 */
 	var() float			LimitSize; 
 
-	structdefaults
+	structdefaultproperties
 	{
 		bLimited=1
 		LimitSize=0.0
@@ -61,8 +91,10 @@ var(Linear)	LinearDOFSetup	LinearXSetup;
 var(Linear)	LinearDOFSetup	LinearYSetup;
 var(Linear)	LinearDOFSetup	LinearZSetup;
 
-var(Linear)		float		LinearStiffness;
-var(Linear)		float		LinearDamping;
+var(Linear)		bool		bLinearLimitSoft;
+
+var(Linear)		float		LinearLimitStiffness;
+var(Linear)		float		LinearLimitDamping;
 
 var(Linear)		bool		bLinearBreakable;
 var(Linear)		float		LinearBreakThreshold;	
@@ -72,20 +104,32 @@ var(Linear)		float		LinearBreakThreshold;
 var(Angular)	bool		bSwingLimited;
 var(Angular)	bool		bTwistLimited;
 
+var(Angular)	bool		bSwingLimitSoft;
+var(Angular)	bool		bTwistLimitSoft;
+
 var(Angular)	float		Swing1LimitAngle;	// Used if bSwing1Limited is true. In degrees.
 var(Angular)	float		Swing2LimitAngle;	// Used if bSwing2Limited is true. In degrees.
 var(Angular)	float		TwistLimitAngle;	// Used if bTwistLimited is true. In degrees.
 
-var(Angular)	float		AngularStiffness;
-var(Angular)	float		AngularDamping;
+var(Angular)	float		SwingLimitStiffness;
+var(Angular)	float		SwingLimitDamping;
+
+var(Angular)	float		TwistLimitStiffness;
+var(Angular)	float		TwistLimitDamping;
 
 var(Angular)	bool		bAngularBreakable;
 var(Angular)	float		AngularBreakThreshold;
 
+// PULLEY
+
+var(Pulley)		bool		bIsPulley;
+var(Pulley)		bool		bMaintainMinDistance;
+var(Pulley)		float		PulleyRatio;
+
 cpptext
 {
 	// UObject interface
-	virtual void PostEditChange(UProperty* PropertyThatChanged);
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent);
 
 	// Get/SetRefFrameMatrix only used in PhAT
 	FMatrix GetRefFrameMatrix(INT BodyIndex);
@@ -94,9 +138,9 @@ cpptext
 	void CopyConstraintGeometryFrom(class URB_ConstraintSetup* fromSetup);
 	void CopyConstraintParamsFrom(class URB_ConstraintSetup* fromSetup);
 
-	void DrawConstraint(struct FPrimitiveRenderInterface* PRI, 
-		FLOAT Scale, UBOOL bDrawLimits, UBOOL bDrawSelected, UMaterialInstance* LimitMaterial,
-		const FMatrix& Con1Frame, const FMatrix& Con2Frame);
+	void DrawConstraint(class FPrimitiveDrawInterface* PDI, 
+		FLOAT Scale, FLOAT LimitDrawScale, UBOOL bDrawLimits, UBOOL bDrawSelected, UMaterialInterface* LimitMaterial,
+		const FMatrix& Con1Frame, const FMatrix& Con2Frame, UBOOL bDrawAsPoint);
 }
 
 defaultproperties
@@ -111,4 +155,6 @@ defaultproperties
 
 	LinearBreakThreshold=300.0
 	AngularBreakThreshold=500.0
+	
+	PulleyRatio=1.0
 }

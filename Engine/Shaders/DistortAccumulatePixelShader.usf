@@ -1,0 +1,56 @@
+/*=============================================================================
+	DistortionAccumulatePixelShader.usf: Pixel shader for accumulating distortion offsets
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+static const half DistortionScaleBias = 4.0f;
+
+/** output distortion offsets as color so they can be accumulated (via blending) */
+void Main(
+	FVertexFactoryInterpolantsVSToPS Interpolants,
+	float4	PixelPosition	: TEXCOORD5,
+	in float4 CameraVectorOrVertexColor : TEXCOORD6,
+	OPTIONAL_FacingSign
+	out float4 OutColor		: COLOR0
+	)
+{
+	// material parameter inputs
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(Interpolants);
+	CalcMaterialParameters(MaterialParameters,FacingSign,CameraVectorOrVertexColor,PixelPosition);
+	
+	// material distortion offset
+	float2 Distortion = GetMaterialDistortion(MaterialParameters);	
+
+#if !XBOX
+	//clip if the distortion distance (squared) is too small to be noticed
+	//this will result in a less expensive apply pass since the clipped pixels won't set stencil to pass
+	//don't clip on Xbox, since it will disable writing to Hi-Stencil
+	clip(dot(Distortion, Distortion) - .1);
+#endif
+
+
+	// make sure that the distortion offset position has a scene depth that is <= the current pixel depth of the distortion primitive
+	// this prevents silhouettes from geometry that is in front of distortion from being seen in the distortion 
+	float2 ScreenPos = (MaterialParameters.ScreenPosition.xy / MaterialParameters.ScreenPosition.w) * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+	float OffsetSceneDepth = CalcSceneDepth(ScreenPos + Distortion / float2(255,-255));
+	if( OffsetSceneDepth <= MaterialParameters.ScreenPosition.w )
+	{
+		Distortion = 0;
+	}
+
+	// scale up offsets for better precision
+	// clamp [-255,255] and normalize to [-1,1]
+	Distortion = clamp(Distortion * DistortionScaleBias,-255,255)/255.f;
+	// store positive and negative offsets separately
+	float2 PosOffset = max(Distortion,0);
+	float2 NegOffset = abs(min(Distortion,0));
+
+	// output positives in R|G channels and negatives in B|A channels
+	OutColor = float4(PosOffset.x,PosOffset.y,NegOffset.x,NegOffset.y);
+}
+
+

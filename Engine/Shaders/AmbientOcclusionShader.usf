@@ -1,0 +1,699 @@
+/*=============================================================================
+	AmbientOcclusionShader.usf - Contains shaders for screen space ambient occlusion.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+// The Cg preprocessor gives an error if you use a macro that hasn't been defined instead of just defaulting to 0
+#ifndef AO_QUALITY
+#define AO_QUALITY 0
+#endif
+
+#ifndef APPLY_FROM_AOHISTORY
+#define APPLY_FROM_AOHISTORY 0
+#endif
+
+#ifndef ARBITRARY_PROJECTION
+#define ARBITRARY_PROJECTION 0
+#endif
+
+#ifndef AO_ANGLEBASED
+#define AO_ANGLEBASED 0
+#endif
+
+#ifndef USE_MANUAL_DEPTH_TEST
+#define USE_MANUAL_DEPTH_TEST 0
+#endif
+
+/** Texture storing occlusion calculated so far in x and downsampled depth in y. */
+sampler2D AmbientOcclusionTexture;
+
+/** Texture storing fog factors. */
+sampler2D FogFactorTexture;
+
+/** Transforms a position in NDC space [-1, 1] to screen space, taking into account a half pixel offset for D3D. */
+float4 AOScreenPositionScaleBias;
+
+/** Helper functions that hide the storage semantics of occlusion and depth. */
+float CalcDownsampledDepth(float2 UV)
+{
+	return tex2D(AmbientOcclusionTexture, UV).y;
+}
+
+float CalcOcclusion(float2 UV)
+{
+	return tex2D(AmbientOcclusionTexture, UV).x;
+}
+
+float2 CalcOcclusionAndDepth(float2 UV)
+{
+	return tex2D(AmbientOcclusionTexture, UV).xy;
+}
+
+float4 OutputOcclusionAndDepth(float Occlusion, float Depth)
+{
+	return float4(Occlusion, Depth, 0, 0);
+}
+
+/** Texture storing a running occlusion history in x and a convergence weight in y. */
+sampler2D AOHistoryTexture;
+
+float CalcHistoryOcclusion(float2 UV)
+{
+	return tex2D(AOHistoryTexture, UV).x;
+}
+
+float2 CalcHistoryOcclusionAndConvergence(float2 UV)
+{
+	return tex2D(AOHistoryTexture, UV).xy;
+}
+
+/*-----------------------------------------------------------------------------
+	DownsampleDepth
+-----------------------------------------------------------------------------*/
+
+/** The size of half of a scene color texel. */
+float2 HalfSceneColorTexelSize;
+
+void DownsampleDepthVertexMain(
+	in float4 InPosition : POSITION,
+	in float2 InTexCoord : TEXCOORD0,
+	out float2 OutTexCoord0 : TEXCOORD0,
+	out float2 OutTexCoord1 : TEXCOORD1,
+	out float2 OutTexCoord2 : TEXCOORD2,
+	out float4 OutPosition : POSITION
+	)
+{
+	OutPosition = InPosition;
+	// Offsets around the actual texture coordinate to get a representation of neighbor depths
+	OutTexCoord0 = InTexCoord - HalfSceneColorTexelSize;
+	OutTexCoord1 = InTexCoord + float2(HalfSceneColorTexelSize.x, 0);
+	OutTexCoord2 = InTexCoord + float2(0, HalfSceneColorTexelSize.y);
+}
+
+void DownsampleDepthPixelMain(
+	in float2 TexCoord0 : TEXCOORD0,
+	in float2 TexCoord1 : TEXCOORD1,
+	in float2 TexCoord2 : TEXCOORD2,
+	out float4 OutColor : COLOR0
+	)
+{
+	float A0 = CalcSceneDepth(TexCoord0);
+	float A1 = CalcSceneDepth(TexCoord1);
+	float A2 = CalcSceneDepth(TexCoord2);
+	float A3 = CalcSceneDepth(TexCoord1 + TexCoord2 - TexCoord0);
+
+	float MinA = min(min(A0, A1), min(A2, A3));
+	float MaxA = max(max(A0, A1), max(A2, A3));
+
+#if PS3 || SM3_PROFILE
+	// clamp to fp 16 max to avoid INF on Geforce 6, 7 and RSX
+	MinA = min(MinA, 65503.0f);
+	MaxA = min(MaxA, 65503.0f);
+#endif
+
+	OutColor = OutputOcclusionAndDepth(MinA, MaxA);
+}
+
+struct FAOVertexOutput
+{
+	float2 TexCoord : TEXCOORD0;
+	float3 ViewScreenVector : TEXCOORD1;
+	float4 Position : POSITION;
+};
+
+/** transform from [-1,1] screen space to view */
+float4x4 ScreenToView;
+
+void OcclusionVertexMain(
+	in float4 InPosition : POSITION,
+	in float2 InTexCoord : TEXCOORD0,
+	out FAOVertexOutput Out
+	)
+{
+	Out.Position = InPosition;
+	Out.TexCoord = InTexCoord;
+
+	// deproject to view space
+	Out.ViewScreenVector = MulMatrix(ScreenToView, float4(InPosition.xy, 1, 0)).xyz;
+}
+
+/** RGBA8 linear texture containing random normals */
+sampler2D RandomNormalTexture;
+
+/** Occlusion buffer size / RandomNormalTexture size */
+float4 NoiseScale;
+
+/** X and Y scaling factors from the world DPG projection matrix multiplied with AOScreenPositionScaleBias.xy. */
+float2 ProjectionScale;
+
+/** This frame's projection matrix */
+float4x4 ProjectionMatrix;
+
+/** OcclusionRadius, <unused>, HaloDistanceThreshold, HaloOcclusion */
+float4 OcclusionCalcParameters;
+
+/** Amount that distance should affect HaloDistanceThreshold */
+float HaloDistanceScale;
+
+/** OcclusionPower, OcclusionScale, OcclusionBias, MinOcclusion */
+float4 OcclusionRemapParameters;
+
+/** OcclusionFadeoutMinDistance, 1.0f / (OcclusionFadeoutMaxDistance - OcclusionFadeoutMinDistance) */
+float4 OcclusionFadeoutParameters;
+
+/** Transforms a fixed screen space radius into view space along the x axis when multiplied with view space z. */
+float MaxRadiusTransform;
+
+/*-----------------------------------------------------------------------------
+	Occlusion
+-----------------------------------------------------------------------------*/
+
+// Nicely distributed points with distances from 1/8 to 8/8
+static float3 OcclusionSamplesOffsets2[8]=
+{	
+	// GA optimized set of points in a sphere pow 0.5 distribution (points distributed over the volume) -6.939256
+	float3(0.068099, -0.029749, 0.345655),
+	float3(-0.333219, -0.031481, -0.371448),
+	float3(0.484993, -0.106742, -0.358312),
+	float3(0.140918, 0.672336, -0.167649),
+	float3(0.005538, -0.785597, -0.088357),
+	float3(-0.633421, 0.527250, 0.266055),
+	float3(-0.744960, -0.458875, 0.330861),
+	float3(0.870996, 0.392627, 0.295312),
+};
+
+// Nicely distributed points
+static float3 OcclusionSamplesOffsets3[]=
+{
+	// GA optimized set of points in a sphere pow 0.5 distribution (points distributed over the volume) -17.233309
+	// to be mirrored with RandomMirrorDisc.dds xy used, z dropped
+	float3(0.016987, 0.353134, 0.002735),
+	float3(0.521023, -0.321706, 0.006338),
+	float3(-0.499725, 0.016565, 0.000278),
+	float3(0.617887, 0.343620, -0.011841),
+};
+
+
+// @return like length() without sqrt()
+float length2(float3 vec)
+{
+	return dot(vec, vec);
+}
+
+// approximates a > b (soft, might be even faster), one MAD_sat 
+// @param Bias 0..1, 0.5 is the middle where half of the transiation is on both sides, using 0 can be faster
+// @param Scale higher numbers mean a more rapid transiation (size = 1 / Scale)
+float SoftCompare(float a, float b, float Bias = 0.5f, float Scale = 100000.0f )
+{
+	return saturate((a - b) * Scale - Bias);
+}
+float2 SoftCompare(float2 a, float2 b, float Bias = 0.5f, float Scale = 100000.0f )
+{
+	return saturate((a - b) * Scale - Bias);
+}
+
+/**
+ * Pixel shader that calculates an occlusion factor per-pixel using a heuristic dependent only on scene depth. 
+ */
+#if	!AO_ANGLEBASED
+void OcclusionPixelMain(
+	in FAOVertexOutput In,
+	out float4 OutColor : COLOR0
+	)
+{
+	float SceneDepth = CalcDownsampledDepth(In.TexCoord);
+
+	// Calculate view space position of the current pixel
+	float3 ViewSpacePosition = In.ViewScreenVector.xyz * SceneDepth;
+	// Get a random normal for this pixel
+	half3 RandomNormal = tex2D(RandomNormalTexture, In.TexCoord * NoiseScale.xy).xyz;
+
+	// PS3 texture lookup already does *2-1
+#if !PS3
+	RandomNormal = RandomNormal*2-1;
+#endif
+
+	half3 RandomNormalX2 = RandomNormal * 2.0f;
+
+	// Clamp the radius in screen space to provide an upper bound on texture cache thrashing, which is esp needed on xenon.
+	float Radius = min(MaxRadiusTransform * SceneDepth, OcclusionCalcParameters.x);
+
+	float HaloDistanceThreshold = -OcclusionCalcParameters.z - HaloDistanceScale * SceneDepth;
+
+	// Occlusion factor for this pixel, where 0 is completely unoccluded and 1 is fully occluded.
+	float OccludedPercent = 0;
+
+	int NumOcclusionSampleCount = 8;
+
+	UNROLL
+	for (int i = 0; i < NumOcclusionSampleCount; i += 4)
+	{
+		// Operate on 4 samples at a time to take advantage of vectorized instructions
+		// Reflect each sample across a random normal, scale by radius
+		// This is necessary to hide the low sample count and view dependence of the results.
+		// Calculate view space sample position
+		//@todo - calculate sample positions in screenspace to save instructions
+
+		float3 SamplePosition0 = ViewSpacePosition + (OcclusionSamplesOffsets2[i].xyz - dot(OcclusionSamplesOffsets2[i].xyz, RandomNormal) * RandomNormalX2) * Radius.xxx; 
+		float3 SamplePosition1 = ViewSpacePosition + (OcclusionSamplesOffsets2[i + 1].xyz - dot(OcclusionSamplesOffsets2[i + 1].xyz, RandomNormal) * RandomNormalX2) * Radius.xxx; 
+		float3 SamplePosition2 = ViewSpacePosition + (OcclusionSamplesOffsets2[i + 2].xyz - dot(OcclusionSamplesOffsets2[i + 2].xyz, RandomNormal) * RandomNormalX2) * Radius.xxx; 
+		float3 SamplePosition3 = ViewSpacePosition + (OcclusionSamplesOffsets2[i + 3].xyz - dot(OcclusionSamplesOffsets2[i + 3].xyz, RandomNormal) * RandomNormalX2) * Radius.xxx; 
+
+		float2 InvSampleZ01 = 1.0f / float2(SamplePosition0.z, SamplePosition1.z);
+		float2 InvSampleZ23 = 1.0f / float2(SamplePosition2.z, SamplePosition3.z);
+
+		// Transform the positions into screen space 
+#if ARBITRARY_PROJECTION
+		// Handle projection matrices which scale and translate x and y
+		float2 SampleProjPostion0 = MulMatrix(ProjectionMatrix,float4(SamplePosition0, 1)).xy;
+		float2 SampleProjPostion1 = MulMatrix(ProjectionMatrix,float4(SamplePosition1, 1)).xy;
+		float4 SampleCoords01 = float4(SampleProjPostion0.xy, SampleProjPostion1.xy) * InvSampleZ01.xxyy * AOScreenPositionScaleBias.xyxy + AOScreenPositionScaleBias.zwzw;
+		float2 SampleProjPostion2 = MulMatrix(ProjectionMatrix,float4(SamplePosition2, 1)).xy;
+		float2 SampleProjPostion3 = MulMatrix(ProjectionMatrix,float4(SamplePosition3, 1)).xy;
+		float4 SampleCoords23 = float4(SampleProjPostion2.xy, SampleProjPostion3.xy) * InvSampleZ23.xxyy * AOScreenPositionScaleBias.xyxy + AOScreenPositionScaleBias.zwzw;
+#else
+		// Optimized path for normal projection matrices which only scale x and y
+		float4 SampleCoords01 = float4(SamplePosition0.xy, SamplePosition1.xy) * ProjectionScale.xyxy * InvSampleZ01.xxyy + AOScreenPositionScaleBias.zwzw;
+		float4 SampleCoords23 = float4(SamplePosition2.xy, SamplePosition3.xy) * ProjectionScale.xyxy * InvSampleZ23.xxyy + AOScreenPositionScaleBias.zwzw;
+#endif
+
+		float2 Sample0 = CalcOcclusionAndDepth(SampleCoords01.xy);
+		float2 Sample1 = CalcOcclusionAndDepth(SampleCoords01.zw);
+		float2 Sample2 = CalcOcclusionAndDepth(SampleCoords23.xy);
+		float2 Sample3 = CalcOcclusionAndDepth(SampleCoords23.zw);
+
+		// View space z of the nearest opaque occluder at the sample positions
+		float4 OccluderDepths = float4(Sample0.y, Sample1.y, Sample2.y, Sample3.y);
+
+		// Difference in view space z between the samples and the nearest opaque occluder
+		float4 DepthDeltas = OccluderDepths - float4(SamplePosition0.z, SamplePosition1.z, SamplePosition2.z, SamplePosition3.z);
+
+		// Soft comparison (instead of DepthDeltas<0.0f),  tweaked constant
+		float4 NewDepthDeltas = saturate(-0.15f * DepthDeltas);
+
+		// 0.5f means unknown, better keep this hard coded (instead of OcclusionCalcParameters.wwww)
+		NewDepthDeltas = DepthDeltas < HaloDistanceThreshold.xxxx ? 0.5f : NewDepthDeltas;
+
+		OccludedPercent += dot(NewDepthDeltas, 1.0f / NumOcclusionSampleCount);
+	}
+
+	float UnOccludedPercent = 1 - OccludedPercent;
+
+	// Apply contrast and brightness remappings to the unoccluded factor.
+	// @todo - need depth-dependent controls over contrast and brightness since distant occlusion gets lighter after blurring
+	UnOccludedPercent = saturate(pow(UnOccludedPercent, OcclusionRemapParameters.x) * OcclusionRemapParameters.y + OcclusionRemapParameters.z);
+
+	// Fade out occlusion based on distance, used to hide artifacts on distant objects.
+	UnOccludedPercent = lerp(UnOccludedPercent, 1.0f, saturate((SceneDepth - OcclusionFadeoutParameters.x) * OcclusionFadeoutParameters.y)); 
+
+	// Clamp the unoccluded percent to the adjustable minimum
+	// Output occlusion and depth
+	OutColor = OutputOcclusionAndDepth(max(UnOccludedPercent, OcclusionRemapParameters.w), SceneDepth);
+}
+#else	// AO_ANGLEBASED
+void OcclusionPixelMain(
+	in FAOVertexOutput In,
+	out float4 OutColor : COLOR0
+	)
+{
+	float SceneDepth = CalcDownsampledDepth(In.TexCoord);
+
+	// Calculate view space position of the current pixel
+	float3 ViewSpacePosition = In.ViewScreenVector.xyz * SceneDepth;
+	// Get a random normal for this pixel
+	half3 RandomNormal = tex2D(RandomNormalTexture, In.TexCoord * NoiseScale.xy).xyz;
+
+	// PS3 texture lookup already does * 2 - 1
+#if !PS3
+	RandomNormal = RandomNormal * 2 - 1;
+#endif
+
+	half3 RandomNormalX2 = RandomNormal * 2.0f;
+
+	// Clamp the radius in screen space to provide an upper bound on texture cache thrashing, which is esp needed on xenon.
+	float Radius = min(MaxRadiusTransform * SceneDepth, OcclusionCalcParameters.x);
+
+	float HaloDistanceThreshold = -OcclusionCalcParameters.z - HaloDistanceScale * SceneDepth;
+
+	float InvSceneDepth = 1.0f / SceneDepth; 
+
+	int NumOcclusionSampleCount = 8;
+
+#if AO_QUALITY == 0
+	NumOcclusionSampleCount = 4;
+#endif
+
+	float2 InvSampleZScaled = InvSceneDepth;
+
+#if ARBITRARY_PROJECTION
+	// Handle projection matrices which scale and translate x and y
+	InvSampleZScaled *= AOScreenPositionScaleBias.xy;
+#else
+	// Optimized path for normal projection matrices which only scale x and y
+	InvSampleZScaled *= ProjectionScale.xy;
+#endif
+
+	// optimization to move the multiplier out of the inner loop
+	const float InnerLoopMul = 2.0f;
+
+	// .x = accumuated values * weight, .y = sum of the weights
+	half2 WeightSum = half2(1 * Square(InnerLoopMul), 1);
+	UNROLL
+	for (int i = 0; i < NumOcclusionSampleCount / 2; ++i)
+	{
+		float2 RandomDirection = (OcclusionSamplesOffsets3[i].xyz - dot(OcclusionSamplesOffsets3[i].xyz, RandomNormal) * RandomNormalX2).xy * Radius.xx;
+		float3 SamplePosition0 = ViewSpacePosition + float3(RandomDirection, 0); 
+		float3 SamplePosition1 = ViewSpacePosition - float3(RandomDirection, 0); 
+
+		// Transform the positions into view space 
+#if ARBITRARY_PROJECTION
+		// Handle projection matrices which scale and translate x and y
+		float2 SampleProjPostion0 = MulMatrix(ProjectionMatrix,float4(SamplePosition0, 1)).xy;
+		float2 SampleProjPostion1 = MulMatrix(ProjectionMatrix,float4(SamplePosition1, 1)).xy;
+		float4 SampleCoords01 = float4(SampleProjPostion0.xy, SampleProjPostion1.xy) * InvSampleZScaled.xyxy + AOScreenPositionScaleBias.zwzw;
+#else
+		// Optimized path for normal projection matrices which only scale x and y
+		float4 SampleCoords01 = float4(SamplePosition0.xy, SamplePosition1.xy) * InvSampleZScaled.xyxy + AOScreenPositionScaleBias.zwzw;
+#endif
+
+		// View space z of the nearest opaque occluder at the sample positions
+		float leftAbs = CalcDownsampledDepth(SampleCoords01.xy);
+		float rightAbs = CalcDownsampledDepth(SampleCoords01.zw);
+
+		float left = leftAbs - SceneDepth;
+		float right = rightAbs - SceneDepth;
+
+		SamplePosition0.z = SamplePosition0.z * leftAbs * InvSceneDepth;
+		SamplePosition1.z = SamplePosition1.z * rightAbs * InvSceneDepth;
+
+	    float3 DeltaLeft = SamplePosition0 - ViewSpacePosition;
+	    float3 DeltaRight = SamplePosition1 - ViewSpacePosition;
+
+		// removing InnerLoopMul becomes (1 - x) * 0.5f which approximates a trigonometrical function
+	    float NormAngle = (0.5f * InnerLoopMul) - (0.5f * InnerLoopMul) * ( dot(DeltaLeft, DeltaRight) / sqrt(length2(DeltaLeft) * length2(DeltaRight)));
+	   	
+		// convex surfaces are considered to have no occlusion (implementation not 100% correct but simple and quite good)
+	    // bias is needed to avoid flickering on almost perfectly flat surfaces
+
+//		if(left + right > -0.00002f) NormAngle = InnerLoopMul;
+		// optimized version of the line above
+		NormAngle = lerp(NormAngle, InnerLoopMul, SoftCompare(left + right, -0.00002f));
+
+		// fade out occlusion if samples are too far from the center
+
+//		float2 ComparisonOp = float2(left > HaloDistanceThreshold, right > HaloDistanceThreshold);
+		// optimized version of the line above
+		float2 ComparisonOp = SoftCompare(float2(left, right), HaloDistanceThreshold, 0);
+
+//		float Weight = min(ComparisonOp.x, ComparisonOp.y);
+		// optimized version of the line above, looks almost the same
+		float Weight = ComparisonOp.x * ComparisonOp.y;
+
+		// Square because the area of a hemisphere slice scales quardatic with the angle
+		WeightSum += half2(Square(NormAngle), 1) * Weight;
+	}
+
+	float UnOccludedPercent = WeightSum.x / (WeightSum.y * Square(InnerLoopMul));
+
+	// Apply contrast and brightness remappings to the unoccluded factor.
+	// @todo - need depth-dependent controls over contrast and brightness since distant occlusion gets lighter after blurring
+	UnOccludedPercent = saturate(pow(UnOccludedPercent, OcclusionRemapParameters.x) * OcclusionRemapParameters.y + OcclusionRemapParameters.z);
+
+	// Fade out occlusion based on distance, used to hide artifacts on distant objects.
+	UnOccludedPercent = lerp(UnOccludedPercent, 1.0f, saturate((SceneDepth - OcclusionFadeoutParameters.x) * OcclusionFadeoutParameters.y)); 
+
+	// Clamp the unoccluded percent to the adjustable minimum
+	// Output occlusion and depth
+	OutColor = OutputOcclusionAndDepth(max(UnOccludedPercent, OcclusionRemapParameters.w), SceneDepth);
+}
+#endif	// AO_ANGLEBASED
+
+/*-----------------------------------------------------------------------------
+	Filter
+-----------------------------------------------------------------------------*/
+
+void FilterVertexMain(
+	in float4 InPosition : POSITION,
+	in float2 UV : TEXCOORD0,
+	out float2 OutCenterUV : TEXCOORD0,
+	out float4 OutPosition : POSITION
+	)
+{
+	OutPosition = InPosition;
+	OutCenterUV = UV.xy;
+}
+
+/** EdgeDistanceThreshold, EdgeDistanceScale */
+float4 FilterParameters;
+
+/** AmbientOcclusionBufferSizeX, AmbientOcclusionBufferSizeY, 1 / AmbientOcclusionBufferSizeX, 1 / AmbientOcclusionBufferSizeY */
+float4 CustomParameters;
+
+/*
+ * Separable filter used to reduce spatial noise.  Uses depth to identify object boundaries and avoid filtering across them.
+ */
+void FilterPixelMain(
+	float2 InCenterUV : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	// Occlusion value in x, Depth in y
+	float2 CenterOcclusionAndDepth = CalcOcclusionAndDepth(InCenterUV);
+	// Calculate a kernel scale factor inversely proportional to depth.
+	// This is used to decrease the blur amount on distant pixels which preserves detail and unfortunately noise.
+	float KernelScale = clamp(FilterParameters.z / CenterOcclusionAndDepth.y, .5f, 1.0f);
+	// Calculate a depth delta scale based on distance, so that nearby edges are calculated more accurately and large slopes at a distance are not identified as edges.
+	float DeltaScale = clamp(FilterParameters.y * CenterOcclusionAndDepth.y, 1.0f, 100.0f);
+	// Depth delta that will be used to identify edges
+	half DepthDelta = FilterParameters.x * DeltaScale;
+	// Start out with the current occlusion value
+	half Sum = CenterOcclusionAndDepth.x;
+	// Stores an accumulation of valid weights, starts out with 1 as the current occlusion value is fully weighted.
+	half TotalWeight = 1.0f;
+
+	Sum = 0;
+	TotalWeight = 0;
+
+	UNROLL for(int x = -2; x < 2; ++x)
+	{
+		// we generate a diagonal and the x and y multiply makes this horizontal or vertical
+		int y = x;
+
+		// Apply offsets for each sample, scaling by the depth-dependent KernelScale
+		float2 SampleOffsets = InCenterUV + CustomParameters.zw * float2( x, y);
+		// Find depth and occlusion at the current pixel
+		float2 SampleOcclusionAndDepths = CalcOcclusionAndDepth(SampleOffsets);
+
+		// If the sample's depth is within DepthDelta units from the current pixel's depth, consider it a valid sample,
+		// which avoids filtering across object boundaries as determined by depth only.
+		float DepthCompares = 1 - saturate(0.0001f * Square(SampleOcclusionAndDepths.y - CenterOcclusionAndDepth.y));
+
+		// if there is very little others to blend we rater take that (less noise in gras)
+		DepthCompares += 0.2f;
+
+		TotalWeight += DepthCompares;
+
+		// Accumulate occlusion values from valid samples
+		Sum += SampleOcclusionAndDepths.x * DepthCompares;
+	}
+
+	// Pass depth through, Normalize and output the filtered occlusion value
+	OutColor = OutputOcclusionAndDepth(Sum / TotalWeight, CenterOcclusionAndDepth.y);
+}
+
+float4x4 ScreenToWorldOffset;
+
+/*-----------------------------------------------------------------------------
+	History Update
+-----------------------------------------------------------------------------*/
+
+void HistoryUpdateVertexMain(
+	in float4 InPosition : POSITION,
+	in float2 InTexCoord : TEXCOORD0,
+	out float2 OutTexCoord : TEXCOORD0,
+	out float3 OutScreenVector : TEXCOORD1,
+	out float4 OutPosition : POSITION
+	)
+{
+	OutPosition = InPosition;
+	OutTexCoord = InTexCoord;
+
+	OutScreenVector = MulMatrix(ScreenToWorldOffset, float4(InPosition.xy, 1, 0)).xyz;
+}
+
+/** Last frame's view projection matrix. */
+float4x4 PrevViewProjMatrix;
+
+/** Weight to lerp between the current occlusion value and the running history. */
+float2 HistoryConvergenceRates;
+
+/** Screen space extents, used to identify new pixels on the edges of the screen which don't have a history. */
+float4 ScreenEdgeLimits;
+
+/**
+ * Gets the history's occlusion and convergence stored at PrevScreenCoord and 
+ */
+void HistoryUpdateCommon(in float2 PrevScreenCoord, in float CurrentOcclusion, out float UpdatedOcclusion, out float UpdatedConvergence)
+{
+	float2 HistoryOcclusionAndConvergence = CalcHistoryOcclusionAndConvergence(PrevScreenCoord);
+
+#if !XBOX && !PS3
+	// Clamp the history max to its valid range.  It can be out of range if the history buffer was not cleared initially.
+	HistoryOcclusionAndConvergence.x = min(HistoryOcclusionAndConvergence.x, 1.0f);
+#endif
+	
+	// HistoryOcclusionAndConvergence.y stores a running convergence weight, used to accelerate convergence after a history reset.
+	float Weight = HistoryConvergenceRates.x * (1.0f - HistoryOcclusionAndConvergence.y);
+
+	// Check if the reprojected pixel was off the screen last frame
+	float EdgeResult = all(float4(PrevScreenCoord.xy > ScreenEdgeLimits.xy, PrevScreenCoord.xy < ScreenEdgeLimits.zw));
+
+	FLATTEN
+	if (EdgeResult < .05)
+	{
+		// Discard history for new pixels on the edges of the screen
+		Weight = 0;
+		// Reset the convergence weight
+		HistoryOcclusionAndConvergence.y = 1;
+	}
+
+	// Increase the running convergence (0 is fully converged, 1 is not converged)
+	HistoryOcclusionAndConvergence.y = saturate(HistoryOcclusionAndConvergence.y - HistoryConvergenceRates.y);
+
+	// @todo: Apply contrast and brightness remapping here instead of before filtering?
+	// Interpolate between the current value and the history value based on Weight
+	UpdatedOcclusion = saturate(lerp(CurrentOcclusion, HistoryOcclusionAndConvergence.x, Weight));
+	UpdatedConvergence = HistoryOcclusionAndConvergence.y;
+}
+
+/*
+ * Updates the history for every pixel in the history buffer.
+ * Uses SceneDepth to calculate world position and does not handle moving objects.
+ */
+void StaticHistoryUpdatePixelMain(
+	in float2 InTexCoord : TEXCOORD0,
+	in float3 InScreenVector : TEXCOORD1,
+	out float4 OutColor : COLOR0
+	)
+{
+	// Find the view space depth at the current pixel
+	float2 CurrentOcclusionAndDepth = CalcOcclusionAndDepth(InTexCoord);
+	// Calculate the world space position offset by camera position of the nearest opaque object
+	float3 OffsetWorldPos = InScreenVector * CurrentOcclusionAndDepth.y;
+	// Assuming this frame's world position is the same as last frame's, for the current pixel.  That is why this only works for non-moving objects.
+	// Transform into the previous frame's clip space
+	float4 PrevClipPos = MulMatrix(PrevViewProjMatrix, float4(OffsetWorldPos, 1));
+	// Transform into the previous frame's screen coordinates
+	float2 PrevScreenCoord = PrevClipPos.xy / PrevClipPos.w * AOScreenPositionScaleBias.xy + AOScreenPositionScaleBias.zw;
+	
+	float UpdatedOcclusion;
+	float UpdatedConvergence;
+	HistoryUpdateCommon(PrevScreenCoord, CurrentOcclusionAndDepth.x, UpdatedOcclusion, UpdatedConvergence);
+
+	// Update the running history with the new occlusion and convergence factor
+	OutColor = float4(UpdatedOcclusion, UpdatedConvergence, 0, 0);
+}
+
+/*
+ * Attempts to do depth testing manually, by clipping based on depth.  
+ * Obviously this has lots of limitations and is not performant, but is necessary when the depth buffer cannot be used.
+ */
+void ManualDepthTest(float CurrentDepth, float ExistingDepth)
+{
+	float Slope = min(max(abs(ddx(CurrentDepth)), abs(ddy(CurrentDepth))), 10.0f);
+	clip(ExistingDepth - CurrentDepth + 1 + Slope * 2.0f);
+}
+
+/*
+ * Updates the history for moving meshes which do support a precise previous world position.
+ */
+void DynamicHistoryUpdatePixelMain(
+	float4 InScreenPosition : TEXCOORD0,
+	float4 InPrevScreenPosition : TEXCOORD1,
+	out float4 OutColor : COLOR0
+	)
+{
+	float2 ScreenAlignedPosition = InScreenPosition.xy / InScreenPosition.w * AOScreenPositionScaleBias.xy + AOScreenPositionScaleBias.zw;
+	float2 CurrentOcclusionAndDepth = CalcOcclusionAndDepth(ScreenAlignedPosition);
+
+#if USE_MANUAL_DEPTH_TEST
+	// Do depth testing manually, since the depth buffer is a different size than the history render target
+	ManualDepthTest(InScreenPosition.w, CurrentOcclusionAndDepth.y);
+#endif
+
+	float2 PrevScreenCoord = InPrevScreenPosition.xy / InPrevScreenPosition.w * AOScreenPositionScaleBias.xy + AOScreenPositionScaleBias.zw;
+	
+	float UpdatedOcclusion;
+	float UpdatedConvergence;
+	HistoryUpdateCommon(PrevScreenCoord, CurrentOcclusionAndDepth.x, UpdatedOcclusion, UpdatedConvergence);
+
+	// Update the running history with the new occlusion and convergence factor
+	OutColor = float4(UpdatedOcclusion, UpdatedConvergence, 0.0f, 0.0f);
+}
+
+float4 OcclusionColor;
+
+/*-----------------------------------------------------------------------------
+	Apply
+-----------------------------------------------------------------------------*/
+
+void AOApplyMain(
+	in FAOVertexOutput In,
+	out float4 OutColor : COLOR0
+	)
+{
+#if APPLY_FROM_AOHISTORY
+	float Occlusion = CalcHistoryOcclusion(In.TexCoord);
+#else
+	float Occlusion = CalcOcclusion(In.TexCoord);
+#endif
+
+	OutColor = RETURN_COLOR(float4(OcclusionColor.rgb, Occlusion));
+}
+
+#if XBOX
+
+/** Size of FogFactorTexture, in pixels */
+float2 TargetSize;
+
+/** Lighting contribution from fog.  This uses 4 components to avoid platform-specific alignment of each element of the array. */
+half4	FogInScattering;
+
+/** Inverse of power to apply to the fog factor to increase nearby precision, while hurting distant precision. */
+half InvEncodePower;
+
+void AOAndFogApplyMain(
+	in FAOVertexOutput In,
+	out float4 OutColor : COLOR0
+	)
+{
+#if APPLY_FROM_AOHISTORY
+	float Occlusion = CalcHistoryOcclusion(In.TexCoord);
+#else
+	float Occlusion = CalcOcclusion(In.TexCoord);
+#endif
+	// read the fog values encoded during DownsampleDepthAndFogMain 
+	const half4 FogInput = tex2D(FogFactorTexture,In.TexCoord);
+	
+	// Fog values were encoded as exp(x*8) to make better use of the 8bit range.
+	// We restore the fog samples to the original curve using the exponent 1/8.
+	const half4 FogFactors = pow(FogInput, InvEncodePower);
+	
+	int2 FractionalTexcoord = floor(fmod(In.TexCoord*TargetSize, float2(2,2)));
+	int Index = FractionalTexcoord.x + 2*FractionalTexcoord.y;
+	half FogScattering = FogFactors[Index];
+	half InScattering = FogScattering - 1;	
+	half3 FogColor = InScattering * FogInScattering.rgb;	
+
+	// Ambient occlusion is blended as FinalColor = OcclusionColor * (1.0f - OcclusionFactor) + DestColor * OcclusionFactor
+	// Height fog is blended as FinalColor = FogColor + DestColor * FogFactor
+	// Combine these blend functions, treating ambient occlusion as being filtered through the fog
+	// FinalColor = FogColor + FogFactor * OcclusionColor * (1.0f - OcclusionFactor) + DestColor * OcclusionFactor * FogFactor
+	// So using a blend mode of TStaticBlendState<BO_Add,BF_One,BF_SourceAlpha>:
+	half3 AddColor = FogColor + FogScattering * OcclusionColor.rgb * (1.0f - Occlusion);
+	OutColor = RETURN_COLOR(float4(AddColor, Occlusion * FogScattering));
+}
+
+#endif

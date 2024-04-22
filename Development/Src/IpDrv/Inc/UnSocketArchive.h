@@ -1,9 +1,8 @@
 /*============================================================================
 	UnSocketArchive.h: FArchive interface for TCP sockets.
-
-	Revision history:
-		* Created by Jack Porter
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 ============================================================================*/
+#if WITH_UE3_NETWORKING
 
 /*-----------------------------------------------------------------------------
 	FArchiveSocket
@@ -32,7 +31,11 @@ struct FArchiveSocketReader : public FArchiveSocket
 	// tor.
 	FArchiveSocketReader( INT InVersion, FInternetLink* InLink  )
 	:	FArchiveSocket( InVersion, InLink )
-	{}
+	{
+		ArIsLoading = 1;
+		// Crash protection: the max string size serializable on this archive 
+		ArMaxSerializeSize = MAX_STRING_SERIALIZE_SIZE;
+	}
 
 	// FArchiveSocketReader interface.
 	virtual void ReceivedDataFromLink()=0;
@@ -101,7 +104,5 @@ private:
     TArray<BYTE> SendData;
 };
 
+#endif	//#if WITH_UE3_NETWORKING
 
-/*----------------------------------------------------------------------------
-	The End.
-----------------------------------------------------------------------------*/

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+	<string name="Error">Error</string>
+	<string name="Init_Failed">Application initialization failed. The application will exit.</string>
+	<string name="OpenGL_Failed">OpenGL initialization failed, your device likely does not support shader model ES2.0, a requirement for UE3.</string>
+	<string name="NotEnoughSpace">Not Enough SDCard space for installation.</string>
+	<string name="NoSDCard">No SDCard found mounted.</string>
+	<string name="DownloadManualURL">Error downloading game content. Please try again.</string>
+	<string name="NoConnectionOrExpansions">"Game data was either not installed or was deleted. Please connect to the internet and relaunch so it can download!"</string>
+
+	<string name="MemNotEnough">Warning: This Android device does not meet the minimum requirement of 512 MB RAM. This application may not run correctly.</string>
+	
+	<string name="CheckLicense">Validating License...</string>
+	<string name="NoLicense">Unable to obtain a license!</string>
+	
+	<string name="Download_Failed">Failed Downloading File</string>
+	<string name="Checksum_Failed">Failed Checksum Compare</string>
+	<string name="SyncFile_Failed">Failed Generating Sync File</string>
+	<string name="Composite_Failed">Failed Checksum on Composited Split Files</string>	
+	
+	<string name="NoNetwork_Failed">No network connection detected.</string>	
+	<string name="CouldntConnect_Failed">Couldn\'t connect to remote file host.</string>	
+	<string name="UnknownError_Failed">Unknown error.</string>	
+	
+	<string name="Downloading">Downloading</string>
+	<string name="UpdateMessageBox">Update Found, Would you like to update?</string>	
+	<string name="Yes">Yes</string>
+	<string name="No">No</string>
+	
+	<string name="WifiMessageBox">No Wifi Found, what would you like to do?</string>	
+	<string name="Retry">Retry</string>
+	<string name="Exit">Exit</string>
+	<string name="BinaryUpdateMessage">New Market update found, would you like to download it?</string>
+	
+	<string name="WifiSettings">Wifi Settings</string>
+	
+	<string name="File">File</string>	
+	<string name="SplitFile">Split File</string>	
+	<string name="Downloaded">Downloaded</string>	
+	<string name="InstallDirectory">Checking/Installing Directory</string>	
+	
+    <string name="Text_Paused_Cellular">Would you like to enable downloading over cellular connections? Depending on your data plan, this may cost you money.</string>
+    <string name="Text_Paused_Cellular_2">If you choose not to enable downloading over cellular connections, the download will automatically resume when wi-fi is available </string>
+    <string name="Text_Button_Resume_Cellular">Resume Download</string>
+    
+    <string name="Text_Verifying_Download">Verifying Download</string>
+    <string name="Text_Validation_Complete">XAPK File Validation Complete.  Select OK to exit.</string>
+    <string name="Text_Validation_Failed">XAPK File Validation Failed. Please restart the app and we will re-download the files.</string>
+    <string name="Text_Button_Pause">Pause Download</string>
+    <string name="Text_Button_Resume">Resume Download</string>
+    <string name="Text_Button_Cancel">Cancel</string>
+    <string name="Text_Button_Cancel_Verify">Cancel Verification</string>
+
+    <string name="Out_Of_Memory">There is not enough memory available on the external card. Please delete some files and try again.</string>
+    <string name="Wifi_Disabled">Wifi is not turned on. You may need to enable wifi or use a data service</string>
+
+	<string name="Set_Preference">Preferences</string>
+	<string name="PerformancePref_Key">list_pref_key</string>
+	<string name="ResolutionPref_Key">resolution_pref_key</string>
+
+	<string name="Apply_Button">apply_button</string>
+</resources>

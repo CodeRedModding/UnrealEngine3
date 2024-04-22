@@ -1,5 +1,6 @@
 //=============================================================================
 // PathNode.
+// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 //=============================================================================
 class PathNode extends NavigationPoint
 	placeable
@@ -7,14 +8,19 @@ class PathNode extends NavigationPoint
 
 cpptext
 {
-	virtual UBOOL ReviewPath(APawn* Scout);
-	virtual void CheckSymmetry(ANavigationPoint* Other);
+#if WITH_EDITOR
 	virtual INT AddMyMarker(AActor *S);
+#endif
+}
+
+simulated event string GetDebugAbbrev()
+{
+	return "PN";
 }
 
 defaultproperties
 {
 	Begin Object NAME=Sprite
-		Sprite=Texture2D'EngineResources.S_Pickup'
+		Sprite=Texture2D'EditorResources.S_Pickup'
 	End Object
 }

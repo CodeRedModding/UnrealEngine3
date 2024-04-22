@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ordesignerObjectsDiagram dslVersion="1.0.0.0" absoluteBounds="0, 0, 11, 8.875" name="Changelists">
+  <DataContextMoniker Name="/ChangelistsDataContext" />
+  <nestedChildShapes>
+    <classShape Id="2f5664b5-2e2a-4dde-a439-248e6d5e191c" absoluteBounds="0.5, 3.25, 2, 1.5891951497395831">
+      <DataClassMoniker Name="/ChangelistsDataContext/CISJobState" />
+      <nestedChildShapes>
+        <elementListCompartment Id="50425f62-a824-45c9-9232-909fec71adf9" absoluteBounds="0.51500000000000012, 3.71, 1.9700000000000002, 1.0291951497395833" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="eff35e39-b6ab-45ac-9a89-33aca5b1a271" absoluteBounds="0.5, 0.5, 2, 1.9178898111979166">
+      <DataClassMoniker Name="/ChangelistsDataContext/Changelists2" />
+      <nestedChildShapes>
+        <elementListCompartment Id="b43fac38-f235-4539-9489-469a7d8badbc" absoluteBounds="0.51500000000000012, 0.96, 1.9700000000000002, 1.3578898111979165" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(1.5 : 2.41788981119792); (1.5 : 3.25)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/ChangelistsDataContext/Changelists2/Changelists2_CISJobState" />
+      <nodes>
+        <classShapeMoniker Id="eff35e39-b6ab-45ac-9a89-33aca5b1a271" />
+        <classShapeMoniker Id="2f5664b5-2e2a-4dde-a439-248e6d5e191c" />
+      </nodes>
+    </associationConnector>
+    <classShape Id="385d990f-8c3e-4af1-a2de-26fdad95ee31" absoluteBounds="3.5, 0.5, 2, 5.3691837565104157">
+      <DataClassMoniker Name="/ChangelistsDataContext/BranchConfigAlt" />
+      <nestedChildShapes>
+        <elementListCompartment Id="47b3b298-a515-44f7-a882-ad90f13e47e6" absoluteBounds="3.5149999999999997, 0.96, 1.9700000000000002, 4.8091837565104161" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(3.5 : 1.45894490559896); (2.5 : 1.45894490559896)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/ChangelistsDataContext/BranchConfigAlt/BranchConfigAlt_Changelists2" />
+      <nodes>
+        <classShapeMoniker Id="385d990f-8c3e-4af1-a2de-26fdad95ee31" />
+        <classShapeMoniker Id="eff35e39-b6ab-45ac-9a89-33aca5b1a271" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(4.20923076923077 : 5.86918375651042); (4.20923076923077 : 6.11918375651042); (4.80461538461539 : 6.11918375651042); (4.80461538461539 : 5.86918375651042)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/ChangelistsDataContext/BranchConfigAlt/BranchConfigAlt_BranchConfigAlt" />
+      <nodes>
+        <classShapeMoniker Id="385d990f-8c3e-4af1-a2de-26fdad95ee31" />
+        <classShapeMoniker Id="385d990f-8c3e-4af1-a2de-26fdad95ee31" />
+      </nodes>
+    </associationConnector>
+    <classShape Id="8b5d77c3-6d1e-43bb-9c07-6424b8c37982" absoluteBounds="0.5, 5.5, 2, 3.0683211263020831">
+      <DataClassMoniker Name="/ChangelistsDataContext/CISTask" />
+      <nestedChildShapes>
+        <elementListCompartment Id="1b4d3968-8833-4348-8114-5a75e7e06ec1" absoluteBounds="0.51500000000000012, 5.96, 1.9700000000000002, 2.508321126302083" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(1.5 : 5.5); (1.5 : 4.83919514973958)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/ChangelistsDataContext/CISTask/CISTask_CISJobState" />
+      <nodes>
+        <classShapeMoniker Id="8b5d77c3-6d1e-43bb-9c07-6424b8c37982" />
+        <classShapeMoniker Id="2f5664b5-2e2a-4dde-a439-248e6d5e191c" />
+      </nodes>
+    </associationConnector>
+  </nestedChildShapes>
+</ordesignerObjectsDiagram>

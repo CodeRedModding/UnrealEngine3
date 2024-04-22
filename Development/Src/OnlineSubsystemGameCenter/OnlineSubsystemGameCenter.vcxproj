@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="BuiltWithUnrealBuildTool|Win32">
+      <Configuration>BuiltWithUnrealBuildTool</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{BC3BEC63-61DC-4831-A12E-1D4A8BA1E544}</ProjectGuid>
+    <RootNamespace>OnlineSubsystemGameCenter</RootNamespace>
+    <SccProjectName>
+    </SccProjectName>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+    <Keyword>MakeFileProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</IntDir>
+    <NMakeBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeReBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeCleanCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeOutput Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="Classes\OnlineSubsystemGameCenter.uc" />
+    <None Include="Classes\OnlineSuppliedUIGameCenter.uc" />
+    <None Include="Src\GameCenter.mm" />
+    <None Include="Src\GameCenterNetworking.mm" />
+    <None Include="Src\OnlineSubsystemGameCenter.mm" />
+    <None Include="Src\OnlineSubsystemGameCenterPackage.mm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\GameCenter.h" />
+    <ClInclude Include="Inc\GameCenterNetworking.h" />
+    <ClInclude Include="Inc\OnlineSubsystemGameCenter.h" />
+    <ClInclude Include="Inc\OnlineSubsystemGameCenterClasses.h" />
+    <ClInclude Include="Inc\OnlineSubsystemGameCenterNames.h" />
+    <ClInclude Include="Inc\UOnlineSubsystemGameCenter.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -1,0 +1,71 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ordesignerObjectsDiagram dslVersion="1.0.0.0" absoluteBounds="0, 0, 11, 8.5" name="Changelist2">
+  <DataContextMoniker Name="/Changelist2DataContext" />
+  <nestedChildShapes>
+    <classShape Id="d550c278-7a2e-4f9c-a8ec-33b7581fcd4e" absoluteBounds="0.5, 0.5, 2, 1.9178898111979166">
+      <DataClassMoniker Name="/Changelist2DataContext/Changelists2" />
+      <nestedChildShapes>
+        <elementListCompartment Id="d6a78387-d74f-488b-8624-b5f51138c4fb" absoluteBounds="0.51500000000000012, 0.96, 1.9700000000000002, 1.3578898111979165" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="7b223589-4a52-436d-8bbc-1d61a520f32d" absoluteBounds="0.5, 2.875, 2, 1.5891951497395831">
+      <DataClassMoniker Name="/Changelist2DataContext/CISJobStateAlt" />
+      <nestedChildShapes>
+        <elementListCompartment Id="b880db1a-db5c-4930-a0eb-efc3948b0670" absoluteBounds="0.51500000000000012, 3.335, 1.9700000000000002, 1.0291951497395833" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(1.5 : 2.41788981119792); (1.5 : 2.875)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/Changelist2DataContext/Changelists2/Changelists2_CISJobStateAlt" />
+      <nodes>
+        <classShapeMoniker Id="d550c278-7a2e-4f9c-a8ec-33b7581fcd4e" />
+        <classShapeMoniker Id="7b223589-4a52-436d-8bbc-1d61a520f32d" />
+      </nodes>
+    </associationConnector>
+    <classShape Id="d0a953fe-e588-44e2-bc18-ed33f9049da8" absoluteBounds="3.75, 0.5, 2, 5.3691837565104157">
+      <DataClassMoniker Name="/Changelist2DataContext/BranchConfigAlt" />
+      <nestedChildShapes>
+        <elementListCompartment Id="11a53cae-f347-4266-aafb-e5ac58ce7d94" absoluteBounds="3.7649999999999997, 0.96, 1.9700000000000002, 4.8091837565104161" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(3.75 : 1.45894490559896); (2.5 : 1.45894490559896)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/Changelist2DataContext/BranchConfigAlt/BranchConfigAlt_Changelists2" />
+      <nodes>
+        <classShapeMoniker Id="d0a953fe-e588-44e2-bc18-ed33f9049da8" />
+        <classShapeMoniker Id="d550c278-7a2e-4f9c-a8ec-33b7581fcd4e" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(4.45923076923077 : 5.86918375651042); (4.45923076923077 : 6.11918375651042); (5.05461538461539 : 6.11918375651042); (5.05461538461539 : 5.86918375651042)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/Changelist2DataContext/BranchConfigAlt/BranchConfigAlt_BranchConfigAlt" />
+      <nodes>
+        <classShapeMoniker Id="d0a953fe-e588-44e2-bc18-ed33f9049da8" />
+        <classShapeMoniker Id="d0a953fe-e588-44e2-bc18-ed33f9049da8" />
+      </nodes>
+    </associationConnector>
+    <classShape Id="a89ae21c-caa4-4e2b-99bf-eaec01daf286" absoluteBounds="6.375, 0.5, 2, 4.8761417643229157">
+      <DataClassMoniker Name="/Changelist2DataContext/JobAlt" />
+      <nestedChildShapes>
+        <elementListCompartment Id="50bb41ff-f5df-44b5-ad8f-fcf41dbb7007" absoluteBounds="6.39, 0.96, 1.9700000000000002, 4.3161417643229161" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(5.75 : 2.93807088216146); (6.375 : 2.93807088216146)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/Changelist2DataContext/BranchConfigAlt/BranchConfigAlt_Job" />
+      <nodes>
+        <classShapeMoniker Id="d0a953fe-e588-44e2-bc18-ed33f9049da8" />
+        <classShapeMoniker Id="a89ae21c-caa4-4e2b-99bf-eaec01daf286" />
+      </nodes>
+    </associationConnector>
+    <classShape Id="a1f69149-ec5a-49ca-b58f-774c92a9ea35" absoluteBounds="0.5, 5.125, 2, 3.0683211263020831">
+      <DataClassMoniker Name="/Changelist2DataContext/CISTaskAlt" />
+      <nestedChildShapes>
+        <elementListCompartment Id="78572750-6be9-4447-87f6-7a7721ae341c" absoluteBounds="0.51500000000000012, 5.585, 1.9700000000000002, 2.508321126302083" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(1.5 : 5.125); (1.5 : 4.46419514973958)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/Changelist2DataContext/CISTaskAlt/CISTask_CISJobStateAlt" />
+      <nodes>
+        <classShapeMoniker Id="a1f69149-ec5a-49ca-b58f-774c92a9ea35" />
+        <classShapeMoniker Id="7b223589-4a52-436d-8bbc-1d61a520f32d" />
+      </nodes>
+    </associationConnector>
+  </nestedChildShapes>
+</ordesignerObjectsDiagram>

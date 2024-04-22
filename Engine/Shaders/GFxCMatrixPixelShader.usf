@@ -1,0 +1,32 @@
+#include "Common.usf"
+#if !SM4_PROFILE && !SM5_PROFILE
+	#define int float
+#endif
+
+float4 OverlayColor;
+float4 ColorScale;
+sampler2D TextureBase;
+
+
+void FTexTGCMatrixAc(float2 TexCoords0 : TEXCOORD0,
+                     out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E CMatrixAc
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+}
+
+void FTexTGCMatrixAcMul(float2 TexCoords0 : TEXCOORD0,
+                        out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E CMatrixAc
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+}
+

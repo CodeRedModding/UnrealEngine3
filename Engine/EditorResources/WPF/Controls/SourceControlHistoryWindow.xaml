@@ -1,0 +1,150 @@
+﻿<Border
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	xmlns:cc="clr-namespace:CustomControls;assembly=UnrealEdCSharp"
+	mc:Ignorable="d"
+	x:Name="MainBorder"
+	BorderBrush="{DynamicResource Slate_Panel_Background}"
+	BorderThickness="2,2,2,2" Background="#FF444444" Width="750" MaxHeight="750">
+	<DockPanel>
+		<DockPanel.Resources>
+			<!-- Converters required for the window -->
+			<cc:MultilineToFirstSingleLineConverter x:Key="MultiToSingleConverter"/>
+			<cc:SCCActionToIconConverter x:Key="ActionIconConverter"/>
+			<cc:ByteToMegabyteConverter x:Key="ByteMegabyteConverter"/>
+			
+			<!-- Custom templates required for the window -->
+			<DataTemplate x:Key="DescriptionCellTemplate">
+				<TextBlock Text="{Binding Description, Converter={StaticResource MultiToSingleConverter}}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+			</DataTemplate>
+			<DataTemplate x:Key="RevisionCellTemplate">
+				<StackPanel Orientation="Horizontal">
+					<Image Source="{Binding Action, Converter={StaticResource ActionIconConverter}}"/>
+					<TextBlock Margin="5,0,0,0" Text="{Binding RevisionNumber}"/>
+				</StackPanel>
+			</DataTemplate>
+			<DataTemplate x:Key="ExpanderHeaderTemplate">
+				<TextBlock Text="{Binding}" FontWeight="Medium"  Foreground="White"/>
+			</DataTemplate>
+			
+			<!-- Template for file items, display each as an expander and filename. Expander opens to reveal file revisions in their own grid view -->
+			<ControlTemplate x:Key="FileItems" TargetType="{x:Type ListViewItem}">
+				<Expander ExpandDirection="Down" Width="750" Header="{Binding FileName}" HeaderTemplate="{StaticResource ExpanderHeaderTemplate}">
+					<ListView ItemsSource="{Binding FileRevisions}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+						<ListView.Resources>
+							<Style TargetType="{x:Type ListViewItem}">
+								<Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+							</Style>
+						</ListView.Resources>
+						<ListView.View>
+							<GridView AllowsColumnReorder="False">
+								<GridViewColumn CellTemplate="{StaticResource RevisionCellTemplate}"  Width="{Binding ElementName=RevisionColumn, Path=ActualWidth}"/>
+								<GridViewColumn DisplayMemberBinding="{Binding ChangelistNumber}" Width="{Binding ElementName=ChangelistColumn, Path=ActualWidth}"/>
+								<GridViewColumn DisplayMemberBinding="{Binding Date}" Width="{Binding ElementName=DateColumn, Path=ActualWidth}"/>
+								<GridViewColumn DisplayMemberBinding="{Binding UserName}" Width="{Binding ElementName=UserNameColumn, Path=ActualWidth}"/>
+								<GridViewColumn CellTemplate="{StaticResource DescriptionCellTemplate}" Width="{Binding ElementName=DescriptionColumn, Path=ActualWidth}"/>
+							</GridView>
+						</ListView.View>
+					</ListView>
+				</Expander>
+			</ControlTemplate>
+		</DockPanel.Resources>
+		
+		<!-- Main list view for the window; Displays file items -->
+		<ListView x:Name="MainHistoryListView" SelectionMode="Single"
+				  DockPanel.Dock="Top"
+				  MaxHeight="600"
+				  Style="{StaticResource Slate_ListViewWithGridView}"
+				  ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="False">
+			<ListView.View>
+				<GridView AllowsColumnReorder="False">
+					<GridViewColumn x:Name="RevisionColumn" Header="{StaticResource SourceControlHistoryWindow_Revision_ColumnHeader}" Width="50"/>
+					<GridViewColumn x:Name="ChangelistColumn" Header="{StaticResource SourceControlHistoryWindow_Changelist_ColumnHeader}" Width="70"/>
+					<GridViewColumn x:Name="DateColumn" Header="{StaticResource SourceControlHistoryWindow_Date_ColumnHeader}" Width="130"/>
+					<GridViewColumn x:Name="UserNameColumn" Header="{StaticResource SourceControlHistoryWindow_UserName_ColumnHeader}" Width="120"/>
+					<GridViewColumn x:Name="DescriptionColumn" Header="{StaticResource SourceControlHistoryWindow_Description_ColumnHeader}" Width="380"/>
+				</GridView>
+			</ListView.View>
+			<ListView.ItemContainerStyle>
+				<Style TargetType="{x:Type ListViewItem}">
+					<Style.Resources>
+						<!-- Intentionally make list view items appear unselected at all times -->
+						<SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="Transparent"/>
+						<SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="Transparent"/>
+					</Style.Resources>
+					<Setter Property="Template" Value="{StaticResource FileItems}"/>
+				</Style>
+			</ListView.ItemContainerStyle>
+		</ListView>
+		
+		<!-- ItemsControl to serve as "Additional Info" panel; Displays information on the last selected revision item -->
+		<ItemsControl x:Name="AdditionalInfoItemsControl" DockPanel.Dock="Bottom">
+			<ItemsControl.ItemsPanel>
+				<ItemsPanelTemplate>
+					<StackPanel Orientation="Vertical" Visibility="{Binding Path=Count}"/>
+				</ItemsPanelTemplate>
+			</ItemsControl.ItemsPanel>
+			<ItemsControl.ItemTemplate>
+				<DataTemplate>
+					<Grid>
+						<Grid.Resources>
+							<Style x:Key="TextBlockLabelStyle" TargetType="{x:Type TextBlock}">
+								<Setter Property="Foreground" Value="White"/>
+								<Setter Property="FontWeight" Value="Medium"/>
+								<Setter Property="Margin" Value="5,0,0,0"/>
+							</Style>
+							<Style x:Key="TextBlockValueStyle" TargetType="{x:Type TextBlock}">
+								<Setter Property="Foreground" Value="White"/>
+								<Setter Property="Margin" Value="5,0,0,0"/>
+							</Style>
+							<Style x:Key="TextBoxValueStyle" TargetType="{x:Type TextBox}">
+								<Setter Property="Foreground" Value="White"/>
+								<Setter Property="Margin" Value="5,0,0,0"/>
+								<Setter Property="Background" Value="{StaticResource Slate_Control_Background}"/>
+							</Style>
+						</Grid.Resources>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto"/>
+							<RowDefinition Height="Auto"/>
+							<RowDefinition Height="Auto"/>
+							<RowDefinition Height="Auto"/>
+							<RowDefinition Height="Auto"/>
+							<RowDefinition Height="Auto"/>
+						</Grid.RowDefinitions>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*"/>
+							<ColumnDefinition Width="2*"/>
+							<ColumnDefinition Width="*"/>
+							<ColumnDefinition Width="2*"/>
+						</Grid.ColumnDefinitions>
+						<TextBlock Text="{StaticResource SourceControlHistoryWindow_Revision_Label}" Grid.Row="0" Grid.Column="0" Style="{StaticResource TextBlockLabelStyle}"/>
+						<TextBlock Text="{Binding RevisionNumber}" Grid.Row="0" Grid.Column="1" Style="{StaticResource TextBlockValueStyle}"/>
+						
+						<TextBlock Text="{StaticResource SourceControlHistoryWindow_Date_Label}" Grid.Row="1" Grid.Column="0" Style="{StaticResource TextBlockLabelStyle}"/>
+						<TextBlock Text="{Binding Date}" Grid.Row="1" Grid.Column="1" Style="{StaticResource TextBlockValueStyle}"/>
+						<TextBlock Text="{StaticResource SourceControlHistoryWindow_Changelist_Label}" Grid.Row="1" Grid.Column="2" Style="{StaticResource TextBlockLabelStyle}"/>
+						<TextBlock Text="{Binding ChangelistNumber}" Grid.Row="1" Grid.Column="3" Style="{StaticResource TextBlockValueStyle}"/>
+						
+						<TextBlock Text="{StaticResource SourceControlHistoryWindow_UserName_Label}" Grid.Row="2" Grid.Column="0" Style="{StaticResource TextBlockLabelStyle}"/>
+						<TextBlock Text="{Binding UserName}" Grid.Row="2" Grid.Column="1" Style="{StaticResource TextBlockValueStyle}"/>
+						<TextBlock Text="{StaticResource SourceControlHistoryWindow_ClientSpec_Label}" Grid.Row="2" Grid.Column="2" Style="{StaticResource TextBlockLabelStyle}"/>
+						<TextBlock Text="{Binding ClientSpec}" Grid.Row="2" Grid.Column="3" Style="{StaticResource TextBlockValueStyle}"/>
+						
+						<TextBlock Text="{StaticResource SourceControlHistoryWindow_Action_Label}" Grid.Row="3" Grid.Column="0" Style="{StaticResource TextBlockLabelStyle}"/>
+						<TextBlock Text="{Binding Action}" Grid.Row="3" Grid.Column="1" Style="{StaticResource TextBlockValueStyle}"/>
+						<TextBlock Text="{StaticResource SourceControlHistoryWindow_FileSize_Label}" Grid.Row="3" Grid.Column="2" Style="{StaticResource TextBlockLabelStyle}"/>
+						<TextBlock Text="{Binding FileSize, Converter={StaticResource ByteMegabyteConverter}, StringFormat=\{0:F2\} MB }" 
+								   Style="{StaticResource TextBlockValueStyle}"
+								   Grid.Row="3" Grid.Column="3"/>
+						<TextBlock Text="{StaticResource SourceControlHistoryWindow_Description_Label}" Grid.Row="4" Grid.Column="0" Style="{StaticResource TextBlockLabelStyle}"/>
+						<TextBox Text="{Binding Description}" IsReadOnly="True" Grid.Row="5" Grid.ColumnSpan="4" MaxHeight="75" 
+								 Style="{StaticResource TextBoxValueStyle}"
+								 TextWrapping="Wrap"
+								 VerticalScrollBarVisibility="Auto"/>
+					</Grid>
+				</DataTemplate>
+			</ItemsControl.ItemTemplate>
+		</ItemsControl>
+	</DockPanel>
+</Border>

@@ -1,0 +1,289 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{ED84CA2B-9224-4DC6-BC49-A0CBB2C599EE}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>RemotableType</RootNamespace>
+    <AssemblyName>RemotableType</AssemblyName>
+    <SccProjectName>Perforce Project</SccProjectName>
+    <SccLocalPath>..\..</SccLocalPath>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccProvider>MSSCCI:Perforce SCM</SccProvider>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <OldToolsVersion>3.5</OldToolsVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkProfile />
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.DataSetExtensions">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\Common\MetaData.cs">
+      <Link>Properties\MetaData.cs</Link>
+    </Compile>
+    <Compile Include="BuildConfigs.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>BuildConfigs.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="CachedFileInfo.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>CachedFileInfo.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="ClientGroups.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>ClientGroups.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="ClientMachines.Designer.cs">
+      <DependentUpon>ClientMachines.xsd</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="PlatformBuildFiles.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>PlatformBuildFiles.xsd</DependentUpon>
+    </Compile>
+    <Compile Include="PlatformBuilds.Designer.cs">
+      <DependentUpon>PlatformBuilds.xsd</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="PlatformBuildStatuses.Designer.cs">
+      <DependentUpon>PlatformBuildStatuses.xsd</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="Platforms.designer.cs">
+      <DependentUpon>Platforms.xsd</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="Projects.designer.cs">
+      <DependentUpon>Projects.xsd</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="Tasks.Designer.cs">
+      <DependentUpon>Tasks.xsd</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="TaskStatuses.Designer.cs">
+      <DependentUpon>TaskStatuses.xsd</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <DependentUpon>Settings.settings</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <Compile Include="RemotableType.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="BuildConfigs.xsc">
+      <DependentUpon>BuildConfigs.xsd</DependentUpon>
+    </None>
+    <None Include="BuildConfigs.xsd">
+      <SubType>Designer</SubType>
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>BuildConfigs.Designer.cs</LastGenOutput>
+    </None>
+    <None Include="BuildConfigs.xss">
+      <DependentUpon>BuildConfigs.xsd</DependentUpon>
+    </None>
+    <None Include="CachedFileInfo.xsc">
+      <DependentUpon>CachedFileInfo.xsd</DependentUpon>
+    </None>
+    <None Include="CachedFileInfo.xsd">
+      <SubType>Designer</SubType>
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>CachedFileInfo.Designer.cs</LastGenOutput>
+    </None>
+    <None Include="CachedFileInfo.xss">
+      <DependentUpon>CachedFileInfo.xsd</DependentUpon>
+    </None>
+    <None Include="ClientGroups.xsc">
+      <DependentUpon>ClientGroups.xsd</DependentUpon>
+    </None>
+    <None Include="ClientGroups.xsd">
+      <SubType>Designer</SubType>
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>ClientGroups.Designer.cs</LastGenOutput>
+    </None>
+    <None Include="ClientGroups.xss">
+      <DependentUpon>ClientGroups.xsd</DependentUpon>
+    </None>
+    <None Include="ClientMachines.xsc">
+      <DependentUpon>ClientMachines.xsd</DependentUpon>
+    </None>
+    <None Include="ClientMachines.xsd">
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>ClientMachines.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="ClientMachines.xss">
+      <DependentUpon>ClientMachines.xsd</DependentUpon>
+    </None>
+    <None Include="PlatformBuildFiles.xsc">
+      <DependentUpon>PlatformBuildFiles.xsd</DependentUpon>
+    </None>
+    <None Include="PlatformBuildFiles.xsd">
+      <Generator>MSDataSetGenerator</Generator>
+      <SubType>Designer</SubType>
+      <LastGenOutput>PlatformBuildFiles.Designer.cs</LastGenOutput>
+    </None>
+    <None Include="PlatformBuildFiles.xss">
+      <DependentUpon>PlatformBuildFiles.xsd</DependentUpon>
+    </None>
+    <None Include="PlatformBuilds.xsc">
+      <DependentUpon>PlatformBuilds.xsd</DependentUpon>
+    </None>
+    <None Include="PlatformBuilds.xsd">
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>PlatformBuilds.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="PlatformBuilds.xss">
+      <DependentUpon>PlatformBuilds.xsd</DependentUpon>
+    </None>
+    <None Include="PlatformBuildStatuses.xsc">
+      <DependentUpon>PlatformBuildStatuses.xsd</DependentUpon>
+    </None>
+    <None Include="PlatformBuildStatuses.xsd">
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>PlatformBuildStatuses.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="PlatformBuildStatuses.xss">
+      <DependentUpon>PlatformBuildStatuses.xsd</DependentUpon>
+    </None>
+    <None Include="Platforms.xsc">
+      <DependentUpon>Platforms.xsd</DependentUpon>
+    </None>
+    <None Include="Platforms.xsd">
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>Platforms.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Platforms.xss">
+      <DependentUpon>Platforms.xsd</DependentUpon>
+    </None>
+    <None Include="Projects.xsc">
+      <DependentUpon>Projects.xsd</DependentUpon>
+    </None>
+    <None Include="Projects.xsd">
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>Projects.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Projects.xss">
+      <DependentUpon>Projects.xsd</DependentUpon>
+    </None>
+    <None Include="Tasks.xsc">
+      <DependentUpon>Tasks.xsd</DependentUpon>
+    </None>
+    <None Include="Tasks.xsd">
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>Tasks.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Tasks.xss">
+      <DependentUpon>Tasks.xsd</DependentUpon>
+    </None>
+    <None Include="TaskStatuses.xsc">
+      <DependentUpon>TaskStatuses.xsd</DependentUpon>
+    </None>
+    <None Include="TaskStatuses.xsd">
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>TaskStatuses.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="TaskStatuses.xss">
+      <DependentUpon>TaskStatuses.xsd</DependentUpon>
+    </None>
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 3.1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

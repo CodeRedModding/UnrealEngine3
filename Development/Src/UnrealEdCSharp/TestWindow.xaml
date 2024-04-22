@@ -1,0 +1,11 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+<Window
+	x:Class="TestBench.TestWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Content Browser Test" Height="1024" Width="1280" Left="50" Top="50"
+	xmlns:cb="clr-namespace:ContentBrowser;assembly=UnrealEdCSharp">
+
+	<TextBlock FontSize="32" Text="Dummy File. If in Blend, use MainControl.xaml." HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"></TextBlock>
+
+  </Window>

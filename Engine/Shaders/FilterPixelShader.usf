@@ -1,0 +1,178 @@
+/*=============================================================================
+	FilterPixelShader.usf: Filter pixel shader source.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+// needed for CompressDeviceZIntoHalfResTextureChannel(), also includes Common.usf
+#include "PostProcessCommon.usf"
+
+#ifndef NUM_SAMPLES
+#define NUM_SAMPLES 4
+#endif
+
+sampler2D FilterTexture;
+half4 SampleWeights[NUM_SAMPLES];
+// minv, minv, maxu,maxv
+float4 SampleMaskRect;
+
+// UV.y and UV.wz are the input UV coordinates
+half ComputeMask(float2 UV)
+{
+	// actual masking costs performance and might be not really needed
+	// (only required with spitscreen or not using full screen resolution)
+	// can be a shader combination but when measured it wasn't faster
+	// also the implementation can be changed to
+	//    float4 Mask = saturate(UV.xyxy*MulConst+AddConst);
+	//    return Mask2.x * Mask2.y * Mask2.y * Mask2.w;
+	// which is softer and might be even faster
+	half2 Mask = (UV > SampleMaskRect.xy) * (UV < SampleMaskRect.zw);
+
+	return Mask.x * Mask.y;
+}
+
+void Main(
+	float4 InOffsetUVs[(NUM_SAMPLES + 1) / 2] : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	int SampleIndex;
+	half4 Sum = 0;
+	for(SampleIndex = 0;SampleIndex < NUM_SAMPLES - 1;SampleIndex += 2)
+	{
+		half Mask; 
+		float4 UVUV = InOffsetUVs[SampleIndex / 2];
+		
+		Mask = ComputeMask(UVUV.xy);
+		Sum += tex2D(FilterTexture,UVUV.xy) * Mask * SampleWeights[SampleIndex + 0];
+
+		Mask = ComputeMask(UVUV.wz);
+		Sum += tex2D(FilterTexture,UVUV.wz) * Mask * SampleWeights[SampleIndex + 1];
+	}
+	if(SampleIndex < NUM_SAMPLES)
+	{
+		float4 UVUV = InOffsetUVs[SampleIndex / 2];
+
+		half Mask = ComputeMask(UVUV.xy);
+		Sum += tex2D(FilterTexture,UVUV.xy) * Mask * SampleWeights[SampleIndex + 0];
+	}
+
+	// RETURN_COLOR not needed unless writing to SceneColor;
+	OutColor = Sum;
+}
+
+// image space pixel motion vectors
+sampler2D VelocityTexture;
+
+// currently only used for downsampling, doesn't need to be masked as it doesn't read outside bounds
+// reads 4 samples
+void DownsampleScene(
+	float4 InOffsetUVs[2] : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	int SampleIndex;
+	half4 Sum = 0;
+
+	for(SampleIndex = 0;SampleIndex < 4 - 1;SampleIndex += 2)
+	{
+		{
+			float2 UV = InOffsetUVs[SampleIndex / 2].xy;
+
+			Sum.rgb += FixupSceneColor(tex2D(FilterTexture, UV)).rgb;
+		}
+		{
+			float2 UV = InOffsetUVs[SampleIndex / 2].wz;
+
+			Sum.rgb += FixupSceneColor(tex2D(FilterTexture, UV)).rgb;
+		}
+	}
+
+	Sum.rgb *= 0.25f;
+
+	// depth in alpha feature
+	{
+		float Best;
+		{
+			// to avoid leaking between far and near blur we don't do average on depth
+			// we take the sample that is nearest to the average
+
+			float4 Samples;
+			
+			Samples.x = CalcSceneDepth(InOffsetUVs[0].xy);
+			Samples.y = CalcSceneDepth(InOffsetUVs[0].wz);
+			Samples.z = CalcSceneDepth(InOffsetUVs[1].xy);
+			Samples.w = CalcSceneDepth(InOffsetUVs[1].wz);
+
+			float Avg = dot(Samples, 0.25f);
+
+			Samples -= Avg;
+
+			float Chosen = Samples.x;
+			Chosen = (abs(Samples.y) < abs(Chosen)) ? Samples.y : Chosen;
+			Chosen = (abs(Samples.z) < abs(Chosen)) ? Samples.z : Chosen;
+			Chosen = (abs(Samples.w) < abs(Chosen)) ? Samples.w : Chosen;
+
+			Best = Chosen + Avg;
+		}
+
+		float ObjectMask = 
+			(dot(tex2D(VelocityTexture, InOffsetUVs[0].xy).rg, 1.0f) > 0 ? 1.0f : 0.0f)
+		  + (dot(tex2D(VelocityTexture, InOffsetUVs[0].wz).rg, 1.0f) > 0 ? 1.0f : 0.0f)
+		  + (dot(tex2D(VelocityTexture, InOffsetUVs[1].xy).rg, 1.0f) > 0 ? 1.0f : 0.0f)
+		  + (dot(tex2D(VelocityTexture, InOffsetUVs[1].wz).rg, 1.0f) > 0 ? 1.0f : 0.0f);
+
+		bool SelectorOpaque = ObjectMask > 1.0f;
+
+		Sum.a = CompressSceneDepthIntoHalfResTextureChannel(Best, SelectorOpaque);
+	}
+
+	// RETURN_COLOR not needed unless writing to SceneColor;
+	OutColor = Sum;
+}
+
+// --------------------
+
+// to visualize the content of a texture to the screen, useful for debugging
+// use "VisualizeTexture" in the console to activate
+sampler2D VisualizeTexture;
+// [0]: RGBAdd, AMul, Add, FracScale
+// [1]: BlinkState=0/1, Frac when 0, saturate when 1, unused, unused
+float4 VisualizeParam[2];
+
+void VisualizeTexturePS(
+	float4 InOffsetUVs[1] : TEXCOORD0,
+	out float4 OutColor : COLOR0)
+{
+	float2 UV = InOffsetUVs[0].xy;
+
+	float4 TexLookup = tex2D(VisualizeTexture, UV);
+
+	float Add = TexLookup.a * VisualizeParam[0].y + VisualizeParam[0].z;
+	OutColor.rgb = TexLookup.rgb * VisualizeParam[0].xxx + Add.xxx;
+
+	float3 ScaledColor = OutColor.rgb * VisualizeParam[0].w;
+	float3 FracOutColor = lerp(frac(ScaledColor), saturate(ScaledColor), VisualizeParam[1].y);
+
+	float3 AlternateColor = FracOutColor;
+
+	// blink green if >1
+	if(OutColor.r > 1.0f || OutColor.g > 1.0f || OutColor.b > 1.0f)
+	{
+		AlternateColor = float3(0,1,0);
+	}
+	
+	// blink red if <0
+	if(OutColor.r < 0.0f || OutColor.g < 0.0f || OutColor.b < 0.0f)
+	{
+		AlternateColor = float3(1,0,0);
+	}
+	
+	// blink blue if not finite
+	if (isfinite(OutColor.rgb).x == false)
+	{
+		AlternateColor = float3(0,0,1);
+	}
+
+	OutColor.rgb = lerp(FracOutColor, AlternateColor, VisualizeParam[1].x);
+	OutColor.a = 0;
+}

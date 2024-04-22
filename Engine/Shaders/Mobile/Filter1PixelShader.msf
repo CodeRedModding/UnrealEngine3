@@ -1,0 +1,16 @@
+/*=============================================================================
+	Filter1PixelShader.usf: Filter pixel shader source.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+
+UNIFORM_SAMPLER2D(TextureBase, TEXUNIT0);
+
+IN_VARYING_DEFAULT(vec2, TextureUV, TEXCOORD0);
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+
+PIXEL_MAIN
+{
+	gl_FragColor = texture2D(TextureBase, TextureUV.xy);
+}

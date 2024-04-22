@@ -1,684 +1,826 @@
 /*=============================================================================
 	UnTex.h: Unreal texture related classes.
-	Copyright 2003 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
-//
-//	UTexture
-//
-
-// This needs to be mirrored in UnTex.h, Texture.uc and UnEdFact.cpp.
-enum ETextureCompressionSettings
+/** Thread-safe counter indicating the texture streaming state. The definitions below are mirrored in Texture2D.uc */
+enum ETextureStreamingState
 {
-	TC_Default			= 0,
-	TC_Normalmap		= 1,
-	TC_Displacementmap	= 2,
-	TC_NormalmapAlpha	= 3,
-	TC_Grayscale		= 4,
-	TC_HighDynamicRange = 5,
+	// The renderer hasn't created the resource yet.
+	TexState_InProgress_Initialization	= -1,
+	// There are no pending requests/ all requests have been fulfilled.
+	TexState_ReadyFor_Requests			= 0,
+	// Finalization has been kicked off and is in progress.
+	TexState_InProgress_Finalization	= 1,
+	// Initial request has completed and finalization needs to be kicked off.
+	TexState_ReadyFor_Finalization		= 2,
+	// We're currently loading in mip data.
+	TexState_InProgress_Loading			= 3,
+	// ...
+	// States 2+N means we're currently loading in N mips
+	// ...
+	// Memory has been allocated and we're ready to start loading in mips.
+	TexState_ReadyFor_Loading			= 100,
+	// We're currently allocating/preparing memory for the new mip count.
+	TexState_InProgress_Allocation		= 101,
+	// The RHI is asynchronously allocating/preparing memory for the new mip count.
+	TexState_InProgress_AsyncAllocation = 102
 };
-
-class UTexture : public UObject
-{
-	DECLARE_ABSTRACT_CLASS(UTexture,UObject,0,Engine);
-
-	// Texture settings.
-
-	BITFIELD			SRGB:1 GCC_PACK(PROPERTY_ALIGNMENT);
-	BITFIELD			RGBE:1;
-	FPlane				UnpackMin GCC_PACK(PROPERTY_ALIGNMENT);
-	FPlane				UnpackMax;
-
-	TLazyArray<BYTE>	SourceArt;
-
-	BITFIELD			CompressionNoAlpha:1 GCC_PACK(PROPERTY_ALIGNMENT);
-	BITFIELD			CompressionNone:1;
-	BITFIELD			CompressionNoMipmaps:1;
-	BITFIELD			CompressionFullDynamicRange:1;
-	/** Indicates whether this texture should be considered for streaming (default is true) */
-	BITFIELD			NeverStream:1;
-
-	BYTE				CompressionSettings GCC_PACK(PROPERTY_ALIGNMENT);
-
-	// UObject interface.
-
-	virtual void PostEditChange(UProperty* PropertyThatChanged);
-	virtual void Serialize(FArchive& Ar);
-	/**
-	 * @todo: PostLoad currently ensures that RGBE is correctly set to work around a bug in older versions of the engine.
-	 */
-	virtual void PostLoad();
-
-	// UTexture interface.
-
-	virtual FTextureBase* GetTexture() = 0;
-	
-	/**
-	 * Compresses the texture based on the compression settings. Make sure to update UTexture::PostEditChange
-	 * if you add any variables that might require recompression.
-	 */
-	virtual void Compress();
-};
-
-//
-//	FPixelFormatInfo
-//
-
-struct FPixelFormatInfo
-{
-	const TCHAR*	Name;
-	UINT			BlockSizeX,
-					BlockSizeY,
-					BlockSizeZ,
-					BlockBytes,
-					NumComponents;
-	/** Platform specific token, e.g. D3DFORMAT with D3DDrv										*/
-	DWORD			PlatformFormat;
-	/** Platform specific internal flags, e.g. whether SRGB is supported with this format		*/
-	DWORD			PlatformFlags;
-	/** Whether the texture format is supported on the current platform/ rendering combination	*/
-	UBOOL			Supported;
-};
-
-extern FPixelFormatInfo GPixelFormats[];		// Maps members of EPixelFormat to a FPixelFormatInfo describing the format.
-
-//
-//	CalculateImageBytes
-//
-
-extern SIZE_T CalculateImageBytes(UINT SizeX,UINT SizeY,UINT SizeZ,EPixelFormat Format);
-
-//
-//	FStaticMipMap2D
-//
-
-struct FStaticMipMap2D
-{
-	TLazyArray<BYTE>	Data;
-	UINT				SizeX,
-						SizeY;
-
-	// Constructors.
-
-	FStaticMipMap2D() {}
-	FStaticMipMap2D(UINT InSizeX,UINT InSizeY,UINT NumBytes):
-		SizeX(InSizeX),
-		SizeY(InSizeY),
-		Data(NumBytes)
-	{
-	}
-
-	// Serializer.
-
-	friend FArchive& operator<<(FArchive& Ar,FStaticMipMap2D& M)
-	{
-		Ar << M.Data << M.SizeX << M.SizeY;
-		return Ar;
-	}
-};
-
-//
-//	FStaticTexture2D
-//
-
-struct FStaticTexture2D: FTexture2D
-{
-	DECLARE_RESOURCE_TYPE(FStaticTexture2D,FTexture2D);
-
-	TArray<FStaticMipMap2D>	Mips;
-
-	// Constructor.
-
-	FStaticTexture2D();
-
-	// FTexture2D interface.
-
-	virtual void GetData(void* Buffer,UINT MipIndex,UINT StrideY);
-
-	// FStaticTexture2D interface.
-
-	void Serialize(FArchive& Ar);
-};
-
-
 
 /** 
- * UTexture implementing movie features, including real time updates.
+ * The rendering resource which represents a texture.
  */
-class UTextureMovie : public UTexture, public FTexture2D, public FTickableObject
+class FTextureResource : public FTexture
 {
-	DECLARE_CLASS(UTextureMovie,UTexture,CLASS_SafeReplace,Engine)
+public:
 
-	/** Whether to clamp the texture horizontally. Note that non power of two textures can't be clamped.					*/
-	BITFIELD							ClampX:1 GCC_PACK(PROPERTY_ALIGNMENT);
-	/** Whether to clamp the texture vertically. Note that non power of two textures can't be clamped.						*/
-	BITFIELD							ClampY:1;
+	FRenderCommandFence ReleaseFence;
 
-	/** Class type of Decoder that will be used to decode RawData.															*/
-	UClass*								DecoderClass GCC_PACK(PROPERTY_ALIGNMENT);
-	/** Instance of decoder.																								*/
-	class UCodecMovie*					Decoder;
-	/** Time into the movie in seconds.																						*/
-	FLOAT								TimeIntoMovie;
-	/** Time that has passed since the last frame. Will be adjusted by decoder to combat drift.								*/
-	FLOAT								TimeSinceLastFrame;
-
-	/** Whether the movie is currently paused.																				*/
-	BITFIELD							Paused:1 GCC_PACK(PROPERTY_ALIGNMENT);
-	/** Whether the movie is currently stopped.																				*/
-	BITFIELD							Stopped:1;
-	/** Whether the movie should loop when it reaches the end.																*/
-	BITFIELD							Looping:1;
-	/** Whether the movie should automatically start playing when it is loaded.												*/
-	BITFIELD							AutoPlay:1;
-
-	/** Used to hold the currently decoded frame. Requires syncronization as both the decoder and this object access it.	*/
-	TArray<BYTE>						CurrentFrame GCC_PACK(PROPERTY_ALIGNMENT);
-	/** Raw data containing raw compressed data as imported. Never call unload on this lazy array!							*/
-	TLazyArray<BYTE>					RawData;
-	/** Size of raw data, needed for streaming directly from disk															*/
-	INT									RawSize;
-
-
-	// Native script functions.
-
-	/** Plays the movie and also unpauses.																					*/
-	DECLARE_FUNCTION(execPlay);
-	/** Pauses the movie.																									*/	
-	DECLARE_FUNCTION(execPause);
-	/** Stops movie playback.																								*/
-	DECLARE_FUNCTION(execStop);
-
-	
-	// FTickableObject interface
-
-	/**
-	 * Updates the movie texture if necessary by requesting a new frame from the decoder taking into account both
-	 * game and movie framerate.
-	 *
-	 * @param DeltaTime		Time (in seconds) that has passed since the last time this function has been called.
-	 */
-	virtual void Tick( FLOAT DeltaTime );
-
-	
-	// UTexture interface.
-
-	/**
-	 * Returns the object implementing the FTextureBase interface which in the case of movie textures is "this".
-	 *
-	 * @return Returns a FTextureBase interface used for resource caching.
-	 */
-	virtual FTextureBase* GetTexture() { return this; }
-
-
-	// UObject interface.
-
-	void StaticConstructor();
-	/**
-	 * Serializes the compressed movie data.
-	 *
-	 * @param Ar	FArchive to serialize RawData with.
-	 */
-	virtual void Serialize(FArchive& Ar);
-	
-	/**
-	 * Postload initialization of movie texture. Creates decoder object and retriever first frame.
-	 */
-	virtual void PostLoad();
-	/**
-	 * Destroy - gets called by ConditionalDestroy from within destructor. We need to ensure that the decoder 
-	 * doesn't have any references to RawData before destructing it.
-	 */
-	virtual void Destroy();
-	/**
-	 * PostEditChange - gets called whenever a property is either edited via the Editor or the "set" console command.
-	 * In this particular case we just make sure that non power of two textures have ClampX/Y set to true as wrapping
-	 * isn't supported on them.
-	 *
-	 * @param PropertyThatChanged	Property that changed
-	 */
-	virtual void PostEditChange(UProperty* /*PropertyThatChanged*/);
-
-
-	// FTexture2D interface.
-
-	/**
-	 * Returns whether the texture should be clamped horizontally.
-	 *
-	 * @return TRUE if the texture should be clamped horizontally, FALSE if it should be wrapped
-	 */
-	virtual UBOOL GetClampX() { return ClampX; }
-	/**
-	 * Returns whether the texture should be clamped vertically.
-	 *
-	 * @return TRUE if the texture should be clamped vertically, FALSE if it should be wrapped
-	 */
-	virtual UBOOL GetClampY() { return ClampY; }
-	/**
-	 * Copies the current uncompressed movie frame to the passed in Buffer.
-	 *
-	 * @param Buffer	Pointer to destination data to upload uncompressed movie frame
-	 * @param MipIndex	unused
-	 * @param StrideY	StrideY for destination data.
-	 */
-	virtual void GetData(void* Buffer,UINT /*MipIndex*/,UINT StrideY);
-
-
-	// FTextureBase interface.
-
-	/**
-	 * Returns the lower bound of the expansion range.
-	 *
-	 * @return lower bound of the expansion range
-	 */
-	virtual FPlane GetUnpackMin() { return UnpackMin; }
-	/**
-	 * Returns the upper bound of the expansion range.
-	 *
-	 * @return upper bound of the expansion range
-	 */
-	virtual FPlane GetUnpackMax() { return UnpackMax; }
-	/**
-	 * Returns whether the texture is already gamma corrected.
-	 *
-	 * @return TRUE if gamma corrected, FALSE otherwise.
-	 */
-	virtual UBOOL IsGammaCorrected() { return SRGB; }
-	/**
-	 * Returns whether the texture use Gregory Ward's high dynamic range RGBE format.
-	 *
-	 * @return TRUE if RGBE is used, FALSE otherwise.
-	 */
-	virtual UBOOL IsRGBE() { return RGBE; }
-	
-	/**
-	 * Returns the UTexture interface associated, aka this as we inherit from UTexture.
-	 */
-	virtual class UTexture* GetUTexture() { return this; }
-
-
-	// FResource interface.
-
-	/**
-	 * Returns a human readable description of the resource, in this case
-	 * the full name.
-	 *
-	 * *return Fully qualified object name. 
-	 */
-	virtual FString DescribeResource() { return GetPathName(); }
-
-	// Thumbnail interface.
-
-	virtual FString GetDesc();
-	virtual void DrawThumbnail( EThumbnailPrimType InPrimType, INT InX, INT InY, struct FChildViewport* InViewport, struct FRenderInterface* InRI, FLOAT InZoom, UBOOL InShowBackground, FLOAT InZoomPct, INT InFixedSz );
-	virtual FThumbnailDesc GetThumbnailDesc( FRenderInterface* InRI, FLOAT InZoom, INT InFixedSz );
-	virtual INT GetThumbnailLabels( TArray<FString>* InLabels );
-
-	// Helper.
-
-	/**
-	 * Updates texture format from decoder and re- allocates memory for the intermediate buffer to hold one frame in the decoders texture format.
-	 */
-	void UpdateTextureFormat();
+	FTextureResource()
+	{}
+	virtual ~FTextureResource() {}
 };
-
-
-//
-//	UTexture2D
-//
-
-class UTexture2D : public UTexture, public FStaticTexture2D
-{
-	DECLARE_CLASS(UTexture2D,UTexture,CLASS_SafeReplace,Engine)
-
-	BITFIELD							ClampX:1 GCC_PACK(PROPERTY_ALIGNMENT);
-	BITFIELD							ClampY:1;
-	
-	// FTextureBase interface.
-
-	virtual FPlane GetUnpackMin() { return UnpackMin; }
-	virtual FPlane GetUnpackMax() { return UnpackMax; }
-	virtual UBOOL IsGammaCorrected() { return SRGB; }
-	virtual UBOOL IsRGBE() { return RGBE; }
-	
-	/**
-	 * Returns the UTexture interface associated, aka this as we inherit from UTexture.
-	 */
-	virtual class UTexture* GetUTexture() { return this; }
-
-	// FTexture2D interface.
-
-	virtual UBOOL GetClampX() { return ClampX; }
-	virtual UBOOL GetClampY() { return ClampY; }
-
-	// FResource interface.
-
-	virtual FString DescribeResource() { return GetPathName(); }
-
-	/**
-	 *	Returns whether this UTexture2D can be streamed in. The default behaviour is to allow streaming and
-	 *	UTexture exposes a NeverStream override to artists which can be used to diallow streaming for e.g.
-	 *	HUD and menu textures.
-	 *
-	 *	@return TRUE if resource can be streamed (default case), FALSE if artist explictely disabled streaming
-	 */
-	virtual UBOOL CanBeStreamed() { return !NeverStream; }
-
-	// UObject interface.
-
-	void StaticConstructor();
-	virtual void Serialize(FArchive& Ar);
-	virtual void PostLoad();
-
-	// UTexture interface.
-
-	virtual FTextureBase* GetTexture() { return this; }
-	virtual void Compress();
-
-	// UTexture2D interface.
-
-	void Init(UINT InSizeX,UINT InSizeY,EPixelFormat InFormat);
-	void CreateMips(UINT NumMips,UBOOL Generate);
-	void Clear(FColor Color);
-
-	virtual FString GetDesc();
-	virtual void DrawThumbnail( EThumbnailPrimType InPrimType, INT InX, INT InY, struct FChildViewport* InViewport, struct FRenderInterface* InRI, FLOAT InZoom, UBOOL InShowBackground, FLOAT InZoomPct, INT InFixedSz );
-	virtual FThumbnailDesc GetThumbnailDesc( FRenderInterface* InRI, FLOAT InZoom, INT InFixedSz );
-	virtual INT GetThumbnailLabels( TArray<FString>* InLabels );
-};
-
-//
-//	FStaticMipMap3D
-//
-
-struct FStaticMipMap3D
-{
-	TLazyArray<BYTE>	Data;
-	UINT				SizeX,
-						SizeY,
-						SizeZ;
-
-	// Constructors.
-
-	FStaticMipMap3D() {}
-	FStaticMipMap3D(UINT InSizeX,UINT InSizeY,UINT InSizeZ,UINT NumBytes):
-		SizeX(InSizeX),
-		SizeY(InSizeY),
-		SizeZ(InSizeZ),
-		Data(NumBytes)
-	{
-	}
-
-	// Serializer.
-
-	friend FArchive& operator<<(FArchive& Ar,FStaticMipMap3D& M)
-	{
-		Ar << M.Data << M.SizeX << M.SizeY << M.SizeZ;
-		return Ar;
-	}
-};
-
-//
-//	FStaticTexture2D
-//
-
-struct FStaticTexture3D: FTexture3D
-{
-	DECLARE_RESOURCE_TYPE(FStaticTexture3D,FTexture3D);
-
-	TArray<FStaticMipMap3D>	Mips;
-
-	// Constructor.
-
-	FStaticTexture3D();
-
-	// FTexture3D interface.
-
-	virtual void GetData(void* Buffer,UINT MipIndex,UINT StrideY,UINT StrideZ);
-
-	// FStaticTexture3D interface.
-
-	void Serialize(FArchive& Ar);
-};
-
-//
-//	UTexture2D
-//
-
-class UTexture3D : public UTexture, public FStaticTexture3D
-{
-	DECLARE_CLASS(UTexture3D,UTexture,CLASS_SafeReplace,Engine)
-
-	BITFIELD							ClampX:1 GCC_PACK(PROPERTY_ALIGNMENT);
-	BITFIELD							ClampY:1;
-	BITFIELD							ClampZ:1;
-
-	// FTextureBase interface.
-
-	virtual FPlane GetUnpackMin() { return UnpackMin; }
-	virtual FPlane GetUnpackMax() { return UnpackMax; }
-	virtual UBOOL IsGammaCorrected() { return SRGB; }
-	virtual UBOOL IsRGBE() { return RGBE; }
-	
-	/**
-	 * Returns the UTexture interface associated, aka this as we inherit from UTexture.
-	 */
-	virtual class UTexture* GetUTexture() { return this; }
-
-	// FTexture3D interface.
-
-	virtual UBOOL GetClampX() { return ClampX; }
-	virtual UBOOL GetClampY() { return ClampY; }
-	virtual UBOOL GetClampZ() { return ClampZ; }
-
-	// FResource interface.
-
-	virtual FString DescribeResource() { return GetPathName(); }
-
-	// UObject interface.
-
-	void StaticConstructor();
-	virtual void Serialize(FArchive& Ar);
-	virtual void PostLoad();
-
-	// UTexture interface.
-
-	virtual FTextureBase* GetTexture() { return this; }
-	virtual void Compress();
-
-	// UTexture3D interface.
-
-	void Init(UINT InSizeX,UINT InSizeY,UINT InSizeZ,EPixelFormat InFormat);
-
-	virtual FString GetDesc();
-	virtual void DrawThumbnail( EThumbnailPrimType InPrimType, INT InX, INT InY, struct FChildViewport* InViewport, struct FRenderInterface* InRI, FLOAT InZoom, UBOOL InShowBackground, FLOAT InZoomPct, INT InFixedSz );
-	virtual FThumbnailDesc GetThumbnailDesc( FRenderInterface* InRI, FLOAT InZoom, INT InFixedSz );
-	virtual INT GetThumbnailLabels( TArray<FString>* InLabels );
-};
-
-//
-//	UTextureCube
-//
-
-class UTextureCube : public UTexture, public FTextureCube
-{
-	DECLARE_CLASS(UTextureCube,UTexture,CLASS_SafeReplace,Engine)
-
-	UTexture2D* Faces[6];
-	UBOOL		Valid;
-
-	// FTextureBase interface.
-
-	virtual FPlane GetUnpackMin() { return UnpackMin; }
-	virtual FPlane GetUnpackMax() { return UnpackMax; }
-	virtual UBOOL IsGammaCorrected() { return SRGB; }
-	virtual UBOOL IsRGBE() { return RGBE; }
-
-	// FTextureCube interface.
-
-	virtual void GetData(void* Buffer,UINT FaceIndex,UINT MipIndex,UINT StrideY);
-
-	// UObject interface.
-
-	void StaticConstructor();
-	virtual void Serialize(FArchive& Ar);
-	virtual void PostLoad();
-	virtual void PostEditChange(UProperty* PropertyThatChanged);
-
-	// UTexture interface.
-
-	virtual FTextureBase* GetTexture();
-
-	virtual FString GetDesc();
-	virtual void DrawThumbnail( EThumbnailPrimType InPrimType, INT InX, INT InY, struct FChildViewport* InViewport, struct FRenderInterface* InRI, FLOAT InZoom, UBOOL InShowBackground, FLOAT InZoomPct, INT InFixedSz );
-	virtual FThumbnailDesc GetThumbnailDesc( FRenderInterface* InRI, FLOAT InZoom, INT InFixedSz );
-	virtual INT GetThumbnailLabels( TArray<FString>* InLabels );
-};
-
-
 
 /**
- * A 2D texture object storing shadow map data in PF_G8 format. Includes helper functions to generate
- * mipmaps based on coverage information.
+ * FTextureResource implementation for streamable 2D textures.
  */
-class UShadowMap : public UTexture, public FStaticTexture2D
+class FTexture2DResource : public FTextureResource
 {
-	DECLARE_CLASS(UShadowMap,UTexture,CLASS_SafeReplace,Engine)
-	DECLARE_RESOURCE_TYPE(UShadowMap,FStaticTexture2D);
-
-	/** Light component this texture is associated with */
-	class ULightComponent* Light;
-
-	// UShadowMap interface.
+public:
+	/**
+	 * Minimal initialization constructor.
+	 *
+	 * @param InOwner			UTexture2D which this FTexture2DResource represents.
+	 * @param InitialMipCount	Initial number of miplevels to upload to card
+	 * @param InFilename		Filename to read data from
+ 	 */
+	FTexture2DResource( UTexture2D* InOwner, INT InitialMipCount, const FString& InFilename );
 
 	/**
-	 * Initializes the texture and allocates room in SourceArt array for visibility and coverage data. Please
-	 * note that the texture is not ready for rendering at this point as there aren't ANY miplevels yet.
-	 *
-	 * @param	Size	Width/ height of lightmap
-	 * @param	Light	Light component to associate with texture
-	 * @return			Offset into SourceArt where coverage information is expected.
+	 * Destructor, freeing MipData in the case of resource being destroyed without ever 
+	 * having been initialized by the rendering thread via InitRHI.
 	 */
-	UINT Init( UINT Size, class ULightComponent* Light );
+	virtual ~FTexture2DResource();
+
+	// FRenderResource interface.
 
 	/**
-	 * Creates one or more miplevels based on visibility and potentially coverage information stored in the
-	 * SourceArt array and cleans out SourceArt afterwards as it doesn't make sense to store three times the
-	 * data necessary for something that can easily be recalculated by rebuilding lighting.
-	 *
-	 * @param	CreateMips	Whether to create miplevels or not
+	 * Called when the resource is initialized. This is only called by the rendering thread.
 	 */
-	void CreateFromSourceArt( UBOOL CreateMips );
+	virtual void InitRHI();
+	/**
+	 * Called when the resource is released. This is only called by the rendering thread.
+	 */
+	virtual void ReleaseRHI();
+
+	/** Returns the width of the texture in pixels. */
+	virtual UINT GetSizeX() const;
+
+	/** Returns the height of the texture in pixels. */
+	virtual UINT GetSizeY() const;
 
 	/**
-	 * Downsample the passed in source coverage and visibility information. The filter used is a simple box
-	 * filter albeit only taking into account covered samples.
-	 *
-	 * @param	SrcCoverage		Pointer to the source coverage data
-	 * @param	SrcVisibility	Pointer to the source visibility data
-	 * @param	DstCoverage		Pointer to the destination coverage data
-	 * @param	DstVisibility	Pointer to the destination visibility data
-	 * @param	DstDimension	Width and height of the destination image
+	 * Called from the game thread to kick off a change in ResidentMips after modifying RequestedMips.
+	 * @param bShouldPrioritizeAsyncIORequest	- Whether the Async I/O request should have higher priority
 	 */
-	void DownSample( BYTE* SrcCoverage, BYTE* SrcVisibility, BYTE* DstCoverage, BYTE* DstVisibility, UINT DstDimension );
-
+	void BeginUpdateMipCount( UBOOL bShouldPrioritizeAsyncIORequest );
 	/**
-	 * Upsample the passed in source coverage and visibility information and fill in uncovered areas in the
-	 * destination image. The source image has full coverage and we fill in uncovered areas in the destination
-	 * by looking at the source. Please note that this function does NOT change any already covered pixels.
-	 *
-	 * @param	SrcCoverage		Pointer to the source coverage data
-	 * @param	SrcVisibility	Pointer to the source visibility data
-	 * @param	DstCoverage		Pointer to the destination coverage data
-	 * @param	DstVisibility	Pointer to the destination visibility data
-	 * @param	DstDimension	Width and height of the destination image
+	 * Called from the game thread to kick off async I/O to load in new mips.
 	 */
-	void UpSample( BYTE* SrcCoverage, BYTE* SrcVisibility, BYTE* DstCoverage, BYTE* DstVisibility, UINT DstDimension );
-
-	// UObject interface.
-
+	void BeginLoadMipData();
 	/**
-	 * Serializes the lightmap data.
-	 *
-	 * @param Ar	FArchive to serialize object with.
+	 * Called from the game thread to kick off finalization of mip change.
 	 */
-	virtual void Serialize( FArchive& Ar );
-
-	// UTexture interface.
-
+	void BeginFinalizeMipCount();
 	/**
-	 * Returns the FTextureBase interface of this texture.
-	 *
-	 * @return	"this" as we directly inherit from FTextureBase
+	 * Called from the game thread to kick off cancelation of async operations for request.
 	 */
-	virtual FTextureBase* GetTexture() { return this; }
+	void BeginCancelUpdate();
 
-	// Editor thumbnail interface.
-	virtual FString GetDesc();
-	virtual void DrawThumbnail( EThumbnailPrimType InPrimType, INT InX, INT InY, struct FChildViewport* InViewport, struct FRenderInterface* InRI, FLOAT InZoom, UBOOL InShowBackground, FLOAT InZoomPct, INT InFixedSz );
-	virtual FThumbnailDesc GetThumbnailDesc( FRenderInterface* InRI, FLOAT InZoom, INT InFixedSz );
-	virtual INT GetThumbnailLabels( TArray<FString>* InLabels );
-};
-
-/*-----------------------------------------------------------------------------
-	UFont.
------------------------------------------------------------------------------*/
-
-struct FFontCharacter
-{
-	// Variables.
-	INT StartU, StartV;
-	INT USize, VSize;
-	BYTE TextureIndex;
-
-	// Serializer.
-	friend FArchive& operator<<( FArchive& Ar, FFontCharacter& Ch )
+	/** 
+	 * Accessor
+	 * @return Texture2DRHI
+	 */
+	FTexture2DRHIRef GetTexture2DRHI()
 	{
-		return Ar << Ch.StartU << Ch.StartV << Ch.USize << Ch.VSize << Ch.TextureIndex;
+		return Texture2DRHI;
 	}
-};
 
-//
-// A font object, containing information about a set of glyphs.
-// The glyph bitmaps are stored in the contained textures, while
-// the font database only contains the coordinates of the individual
-// glyph.
-//
-class UFont : public UObject
-{
-	DECLARE_CLASS(UFont,UObject,0,Engine)
+	UBOOL DidUpdateMipCountFail() const
+	{
+		return NumFailedReallocs > 0;
+	}
 
-	// Variables.
+	/**
+	 *	Tries to reallocate the texture for a new mip count.
+	 *	@param OldMipCount	- The old mip count we're currently using.
+	 *	@param NewMipCount	- The new mip count to use.
+	 */
+	UBOOL TryReallocate( INT OldMipCount, INT NewMipCount );
 
-	TArray<FFontCharacter>	Characters;
-	TArray<UTexture2D*>		Textures;
+	virtual FString GetFriendlyName() const;
+
+	UBOOL IsBeingReallocated() const
+	{
+		return bUsingInPlaceRealloc && IsValidRef(IntermediateTextureRHI);
+	}
+
+	//Returns the raw data for a particular mip level
+	void* GetRawMipData( UINT MipIndex);
+
+private:
+	/** Texture streaming command classes that need to be friends in order to call Update/FinalizeMipCount.	*/
+	friend class FUpdateMipCountCommand;
+	friend class FFinalinzeMipCountCommand;
+	friend class FCancelUpdateCommand;
+
+	/** The UTexture2D which this resource represents.														*/
+	const UTexture2D*	Owner;
+	/** Resource memory allocated by the owner for serialize bulk mip data into								*/
+	FTexture2DResourceMem* ResourceMem;
 	
-	TMap<TCHAR,TCHAR> CharRemap;
-	UBOOL IsRemapped;
-    INT Kerning;
+	/** First miplevel used.																				*/
+	INT					FirstMip;
+	/** Cached filename.																					*/
+	FString				Filename;
 
-	// UObject interface.
-	void Serialize( FArchive& Ar );
+	/** Local copy/ cache of mip data between creation and first call to InitRHI.							*/
+	void*				MipData[MAX_TEXTURE_MIP_COUNT];
+	/** Potentially outstanding texture I/O requests.														*/
+	QWORD				IORequestIndices[MAX_TEXTURE_MIP_COUNT];
+	/** Number of file I/O requests for current request														*/
+	INT					IORequestCount;
 
-	// UFont interface
-	TCHAR RemapChar(TCHAR ch)
-	{
-		TCHAR *p;
-		if( !IsRemapped )
-			return ch;
-		p = CharRemap.Find(ch);
-		return p ? *p : 32; // return space if not found.
-	}
+	/** 2D texture version of TextureRHI which is used to lock the 2D texture during mip transitions.		*/
+	FTexture2DRHIRef	Texture2DRHI;
+	/** Intermediate texture used to fulfill mip change requests. Swapped in FinalizeMipCount.				*/
+	FTexture2DRHIRef	IntermediateTextureRHI;
+	/** Whether IntermediateTextureRHI is pointing to the same memory.										*/
+	BITFIELD			bUsingInPlaceRealloc:1;
+	/** Whether the current stream request is prioritized higher than normal.	*/
+	BITFIELD			bPrioritizedIORequest:1;
+	/** Number of times UpdateMipCount has failed to reallocate memory.										*/
+	INT					NumFailedReallocs;
 
-	void GetCharSize(TCHAR InCh, INT& Width, INT& Height);
+#if STATS
+	/** Cached texture size for stats.																		*/
+	INT					TextureSize;
+	/** Cached intermediate texture size for stats.															*/
+	INT					IntermediateTextureSize;
+#if _WINDOWS	// The TextureMemory stat will be what is used on Xbox...
+	/** Cached texture size on 360 for stats. */
+	INT					TextureSize_360;
+	/** Cached intermediate texture size on 360 for stats.															*/
+	INT					IntermediateTextureSize_360;
+#endif
+#endif
+
+	/**
+	 * Writes the data for a single mip-level into a destination buffer.
+	 * @param MipIndex	The index of the mip-level to read.
+	 * @param Dest		The address of the destination buffer to receive the mip-level's data.
+	 * @param DestPitch	Number of bytes per row
+	 */
+	void GetData( UINT MipIndex,void* Dest,UINT DestPitch );
+
+	/**
+	 * Called from the rendering thread to perform the work to kick off a change in ResidentMips.
+	 */
+	void UpdateMipCount();
+	/**
+	 * Called from the rendering thread to start async I/O to load in new mips.
+	 */
+	void LoadMipData();
+	/**
+	 * Called from the rendering thread to finalize a mip change.
+	 */
+	void FinalizeMipCount();
+	/**
+	 * Called from the rendering thread to cancel async operations for request.
+	 */
+	void CancelUpdate();
 };
 
-//
-//	DXTCompress
-//
+/** A dynamic 2D texture resource. */
+class FTexture2DDynamicResource : public FTextureResource
+{
+public:
+	/** Initialization constructor. */
+	FTexture2DDynamicResource(class UTexture2DDynamic* InOwner);
 
-void DXTCompress(FColor* SrcData,INT Width,INT Height,EPixelFormat DestFormat,TArray<BYTE>& DestData);
+	/** Returns the width of the texture in pixels. */
+	virtual UINT GetSizeX() const;
+
+	/** Returns the height of the texture in pixels. */
+	virtual UINT GetSizeY() const;
+
+	/** Called when the resource is initialized. This is only called by the rendering thread. */
+	virtual void InitRHI();
+
+	/** Called when the resource is released. This is only called by the rendering thread. */
+	virtual void ReleaseRHI();
+
+	/** Returns the Texture2DRHI, which can be used for locking/unlocking the mips. */
+	FTexture2DRHIRef GetTexture2DRHI();
+
+private:
+	/** The owner of this resource. */
+	class UTexture2DDynamic* Owner;
+	/** Texture2D reference, used for locking/unlocking the mips. */
+	FTexture2DRHIRef Texture2DRHI;
+};
+
+/** Stores information about a mip map, used by FTexture2DArrayResource to mirror game thread data. */
+class FMipMapDataEntry
+{
+public:
+	UINT SizeX;
+	UINT SizeY;
+	TArray<BYTE> Data;
+};
+
+/** Stores information about a single texture in FTexture2DArrayResource. */
+class FTextureArrayDataEntry
+{
+public:
+
+	FTextureArrayDataEntry() : 
+		NumRefs(0)
+	{}
+
+	/** Number of FTexture2DArrayResource::AddTexture2D calls that specified this texture. */
+	INT NumRefs;
+
+	/** Mip maps of the texture. */
+	TArray<FMipMapDataEntry, TInlineAllocator<MAX_TEXTURE_MIP_COUNT> > MipData;
+};
+
+/** 
+ * Stores information about a UTexture2D so the rendering thread can access it, 
+ * Even though the UTexture2D may have changed by the time the rendering thread gets around to it.
+ */
+class FIncomingTextureArrayDataEntry : public FTextureArrayDataEntry
+{
+public:
+
+	FIncomingTextureArrayDataEntry() {}
+
+	FIncomingTextureArrayDataEntry(UTexture2D* InTexture);
+
+	INT SizeX;
+	INT SizeY;
+	INT NumMips;
+	TextureGroup LODGroup;
+	EPixelFormat Format;
+	ESamplerFilter Filter;
+	UBOOL bSRGB;
+};
+
+/** Represents a 2D Texture Array to the renderer. */
+class FTexture2DArrayResource : public FTextureResource
+{
+public:
+
+	FTexture2DArrayResource() :
+		SizeX(0),
+		bDirty(FALSE),
+		bPreventingReallocation(FALSE)
+	{}
+
+	// Rendering thread functions
+
+	/** 
+	 * Adds a texture to the texture array.  
+	 * This is called on the rendering thread, so it must not dereference NewTexture.
+	 */
+	void AddTexture2D(UTexture2D* NewTexture, const FIncomingTextureArrayDataEntry* InEntry);
+
+	/** Removes a texture from the texture array, and potentially removes the CachedData entry if the last ref was removed. */
+	void RemoveTexture2D(const UTexture2D* NewTexture);
+
+	/** Updates a CachedData entry (if one exists for this texture), with a new texture. */
+	void UpdateTexture2D(UTexture2D* NewTexture, const FIncomingTextureArrayDataEntry* InEntry);
+
+	/** Initializes the texture array resource if needed, and re-initializes if the texture array has been made dirty since the last init. */
+	void UpdateResource();
+
+	/** Returns the index of a given texture in the texture array. */
+	INT GetTextureIndex(const UTexture2D* Texture) const;
+	INT GetNumValidTextures() const;
+
+	/**
+	* Called when the resource is initialized. This is only called by the rendering thread.
+	*/
+	virtual void InitRHI();
+
+	/** Returns the width of the texture in pixels. */
+	virtual UINT GetSizeX() const
+	{
+		return SizeX;
+	}
+
+	/** Returns the height of the texture in pixels. */
+	virtual UINT GetSizeY() const
+	{
+		return SizeY;
+	}
+
+	/** Prevents reallocation from removals of the texture array until EndPreventReallocation is called. */
+	void BeginPreventReallocation();
+
+	/** Restores the ability to reallocate the texture array. */
+	void EndPreventReallocation();
+
+private:
+
+	/** Texture data, has to persist past the first InitRHI call, because more textures may be added later. */
+	TMap<const UTexture2D*, FTextureArrayDataEntry> CachedData;
+	UINT SizeX;
+	UINT SizeY;
+	UINT NumMips;
+	BYTE LODGroup;
+	EPixelFormat Format;
+	ESamplerFilter Filter;
+
+	UBOOL bSRGB;
+	UBOOL bDirty;
+	UBOOL bPreventingReallocation;
+
+	/** Copies data from DataEntry into Dest, taking stride into account. */
+	void GetData(const FTextureArrayDataEntry& DataEntry, INT MipIndex, void* Dest, UINT DestPitch);
+};
+
+/** 3D texture resource */
+class FVolumeTextureResource : public FTextureResource
+{
+public:
+
+	FVolumeTextureResource() :
+		Data(NULL)
+	{}
+
+	virtual void InitRHI()
+	{
+#if PLATFORM_SUPPORTS_D3D10_PLUS
+		check(Data);
+		const DWORD TexCreateFlags = bSRGB ? TexCreate_SRGB : 0;
+		FTexture3DRHIRef Texture3D = RHICreateTexture3D(SizeX, SizeY, SizeZ, Format, 1, TexCreateFlags, Data);
+		TextureRHI = Texture3D;
+#endif
+	}
+
+	EPixelFormat Format;
+	UBOOL bSRGB;
+
+	INT SizeX;
+	INT SizeY;
+	INT SizeZ;
+	const BYTE* Data;
+};
+
+/**
+ * FDeferredUpdateResource for resources that need to be updated after scene rendering has begun
+ * (should only be used on the rendering thread)
+ */
+class FDeferredUpdateResource
+{
+public:
+	/**
+	 * Constructor, initializing UpdateListLink.
+	 */
+	FDeferredUpdateResource()
+		:	UpdateListLink(NULL)
+		,	bOnlyUpdateOnce(FALSE)
+	{}
+
+	/**
+	 * Iterate over the global list of resources that need to
+	 * be updated and call UpdateResource on each one.
+	 */
+	static void UpdateResources();
+
+	/** 
+	 * This is reset after all viewports have been rendered
+	 */
+	static void ResetNeedsUpdate()
+	{
+		bNeedsUpdate = TRUE;
+	}
+
+	// FDeferredUpdateResource interface
+
+	/**
+	 * Updates the resource
+	 */
+	virtual void UpdateResource() = 0;
+
+protected:
+
+	/**
+	 * Add this resource to deferred update list
+	 * @param OnlyUpdateOnce - flag this resource for a single update if TRUE
+	 */
+	void AddToDeferredUpdateList( UBOOL OnlyUpdateOnce=FALSE );
+
+	/**
+	 * Remove this resource from deferred update list
+	 */
+	void RemoveFromDeferredUpdateList();
+
+private:
+	/** 
+	 * Resources can be added to this list if they need a deferred update during scene rendering.
+	 * @return global list of resource that need to be updated. 
+	 */
+	static TLinkedList<FDeferredUpdateResource*>*& GetUpdateList();
+	/** This resource's link in the global list of resources needing clears. */
+	TLinkedList<FDeferredUpdateResource*> UpdateListLink;
+	/** if TRUE then UpdateResources needs to be called */
+	static UBOOL bNeedsUpdate;
+	/** if TRUE then remove this resource from the update list after a single update */
+	UBOOL bOnlyUpdateOnce;
+};
+
+/**
+ * FTextureResource type for render target textures.
+ */
+class FTextureRenderTargetResource : public FTextureResource, public FRenderTarget, public FDeferredUpdateResource
+{
+public:
+	/**
+	 * Constructor, initializing ClearLink.
+	 */
+	FTextureRenderTargetResource()
+	{}
+
+	/** 
+	 * Return true if a render target of the given format is allowed
+	 * for creation
+	 */
+	static UBOOL IsSupportedFormat( EPixelFormat Format );
+
+	// FTextureRenderTargetResource interface
+	
+	virtual class FTextureRenderTarget2DResource* GetTextureRenderTarget2DResource()
+	{
+		return NULL;
+	}
+	virtual class FTextureRenderTargetCubeResource* GetTextureRenderTargetCubeResource()
+	{
+		return NULL;
+	}
+	virtual void ClampSize(INT SizeX,INT SizeY) {}
+
+	// FRenderTarget interface.
+	virtual UINT GetSizeX() const = 0;
+	virtual UINT GetSizeY() const = 0;
+
+	/** 
+	 * Render target resource should be sampled in linear color space
+	 *
+	 * @return display gamma expected for rendering to this render target 
+	 */
+	virtual FLOAT GetDisplayGamma() const;
+};
+
+/**
+ * FTextureResource type for 2D render target textures.
+ */
+class FTextureRenderTarget2DResource : public FTextureRenderTargetResource
+{
+public:
+	
+	/** 
+	 * Constructor
+	 * @param InOwner - 2d texture object to create a resource for
+	 */
+	FTextureRenderTarget2DResource(const class UTextureRenderTarget2D* InOwner);
+
+	FORCEINLINE FLinearColor GetClearColor()
+	{
+		return ClearColor;
+	}
+
+	// FTextureRenderTargetResource interface
+
+	/** 
+	 * 2D texture RT resource interface 
+	 */
+	virtual class FTextureRenderTarget2DResource* GetTextureRenderTarget2DResource()
+	{
+		return this;
+	}
+
+	/**
+	 * Clamp size of the render target resource to max values
+	 *
+	 * @param MaxSizeX max allowed width
+	 * @param MaxSizeY max allowed height
+	 */
+	virtual void ClampSize(INT SizeX,INT SizeY);
+	
+	// FRenderResource interface.
+
+	/**
+	 * Initializes the dynamic RHI resource and/or RHI render target used by this resource.
+	 * Called when the resource is initialized, or when reseting all RHI resources.
+	 * Resources that need to initialize after a D3D device reset must implement this function.
+	 * This is only called by the rendering thread.
+	 */
+	virtual void InitDynamicRHI();
+
+	/**
+	 * Releases the dynamic RHI resource and/or RHI render target resources used by this resource.
+	 * Called when the resource is released, or when reseting all RHI resources.
+	 * Resources that need to release before a D3D device reset must implement this function.
+	 * This is only called by the rendering thread.
+	 */
+	virtual void ReleaseDynamicRHI();
+
+	// FDeferredClearResource interface
+
+	/**
+	 * Clear contents of the render target
+	 */
+	virtual void UpdateResource();
+
+	// FRenderTarget interface.
+
+	virtual UINT GetSizeX() const;
+	virtual UINT GetSizeY() const;	
+
+	/** 
+	 * Render target resource should be sampled in linear color space
+	 *
+	 * @return display gamma expected for rendering to this render target 
+	 */
+	virtual FLOAT GetDisplayGamma() const;
+
+	/** 
+	 * @return TextureRHI for rendering 
+	 */
+	FTexture2DRHIRef GetTextureRHI() { return Texture2DRHI; }
+
+private:
+	/** The UTextureRenderTarget2D which this resource represents. */
+	const class UTextureRenderTarget2D* Owner;
+    /** Texture resource used for rendering with and resolving to */
+    FTexture2DRHIRef Texture2DRHI;
+	/** the color the texture is cleared to */
+	FLinearColor ClearColor;
+	INT TargetSizeX,TargetSizeY;
+};
+
+/**
+ * FTextureResource type for cube render target textures.
+ */
+class FTextureRenderTargetCubeResource : public FTextureRenderTargetResource
+{
+public:
+
+	/** 
+	 * Constructor
+	 * @param InOwner - cube texture object to create a resource for
+	 */
+	FTextureRenderTargetCubeResource(const class UTextureRenderTargetCube* InOwner)
+		:	Owner(InOwner)
+	{
+	}
+
+	/**
+	 * We can only render to one face as a time. So, set the current 
+	 * face which will be used as the render target surface.
+	 * @param Face - face to use as current target face
+	 */
+	void SetCurrentTargetFace(ECubeFace Face);
+
+	// FTextureRenderTargetResource interface
+
+	/** 
+	 * Cube texture RT resource interface 
+	 */
+	virtual class FTextureRenderTargetCubeResource* GetTextureRenderTargetCubeResource()
+	{
+		return this;
+	}
+
+	// FRenderResource interface.
+
+	/**
+	 * Initializes the dynamic RHI resource and/or RHI render target used by this resource.
+	 * Called when the resource is initialized, or when reseting all RHI resources.
+	 * Resources that need to initialize after a D3D device reset must implement this function.
+	 * This is only called by the rendering thread.
+	 */
+	virtual void InitDynamicRHI();
+
+	/**
+	 * Releases the dynamic RHI resource and/or RHI render target resources used by this resource.
+	 * Called when the resource is released, or when reseting all RHI resources.
+	 * Resources that need to release before a D3D device reset must implement this function.
+	 * This is only called by the rendering thread.
+	 */
+	virtual void ReleaseDynamicRHI();	
+
+	// FDeferredClearResource interface
+
+	/**
+	 * Clear contents of the render target. Clears each face of the cube
+	 * This is only called by the rendering thread.
+	 */
+	virtual void UpdateResource();
+
+	// FRenderTarget interface.
+
+	/**
+	 * @return width of the target
+	 */
+	virtual UINT GetSizeX() const;
+	/**
+	 * @return height of the target
+	 */
+	virtual UINT GetSizeY() const;
+
+private:
+	/** The UTextureRenderTargetCube which this resource represents. */
+	const class UTextureRenderTargetCube* Owner;
+	/** Texture resource used for rendering with and resolving to */
+	FTextureCubeRHIRef TextureCubeRHI;
+	/** Target surfaces for each cube face */
+	FSurfaceRHIRef CubeFaceSurfacesRHI[CubeFace_MAX];
+	/** Face currently used for target surface */
+	ECubeFace CurrentTargetFace;
+};
+
+/**
+ * FTextureResource type for movie textures.
+ */
+class FTextureMovieResource : public FTextureResource, public FRenderTarget, public FDeferredUpdateResource
+{
+public:
+
+	/** 
+	 * Constructor
+	 * @param InOwner - movie texture object to create a resource for
+	 */
+	FTextureMovieResource(const class UTextureMovie* InOwner)
+		:	Owner(InOwner)
+	{
+	}
+
+	// FRenderResource interface.
+
+	/**
+	 * Initializes the dynamic RHI resource and/or RHI render target used by this resource.
+	 * Called when the resource is initialized, or when reseting all RHI resources.
+	 * Resources that need to initialize after a D3D device reset must implement this function.
+	 * This is only called by the rendering thread.
+	 */
+	virtual void InitDynamicRHI();
+
+	/**
+	 * Releases the dynamic RHI resource and/or RHI render target resources used by this resource.
+	 * Called when the resource is released, or when reseting all RHI resources.
+	 * Resources that need to release before a D3D device reset must implement this function.
+	 * This is only called by the rendering thread.
+	 */
+	virtual void ReleaseDynamicRHI();	
+
+	// FDeferredClearResource interface
+
+	/**
+	 * Decodes the next frame of the movie stream and renders the result to this movie texture target
+	 */
+	virtual void UpdateResource();
+
+	// FRenderTarget interface.
+
+	virtual UINT GetSizeX() const;
+	virtual UINT GetSizeY() const;
+
+private:
+	/** The UTextureRenderTarget2D which this resource represents. */
+	const class UTextureMovie* Owner;
+	/** Texture resource used for rendering with and resolving to */
+	FTexture2DRHIRef Texture2DRHI;
+};
+
+/**
+ * Structure containing all information related to an LOD group and providing helper functions to calculate
+ * the LOD bias of a given group.
+ */
+struct FTextureLODSettings
+{
+	/**
+	 * Initializes LOD settings by reading them from the passed in filename/ section.
+	 *
+	 * @param	IniFilename		Filename of ini to read from.
+	 * @param	IniSection		Section in ini to look for settings
+	 */
+	void Initialize( const TCHAR* IniFilename, const TCHAR* IniSection );
+
+	/**
+	 * Calculates and returns the LOD bias based on texture LOD group, LOD bias and maximum size.
+	 *
+	 * @param	Texture		Texture object to calculate LOD bias for.
+	 * @return	LOD bias
+	 */
+	INT CalculateLODBias( UTexture* Texture ) const;
+
+	/** 
+	* Useful for stats in the editor.
+	*
+	* @param LODBias			Default LOD at which the texture renders. Platform dependent, call FTextureLODSettings::CalculateLODBias(Texture)
+	*/
+	void ComputeInGameMaxResolution(INT LODBias, UTexture& Texture, UINT& OutSizeX, UINT& OutSizeY) const;
+
+	void GetMipGenSettings(UTexture& Texture, FLOAT& OutSharpen, UINT& OutKernelSize, UBOOL& bOutDownsampleWithAverage, UBOOL& bOutSharpenWithoutColorShift, UBOOL &bOutBorderColorBlack) const;
+
+	/**
+	 * Will return the LODBias for a passed in LODGroup
+	 *
+	 * @param	InLODGroup		The LOD Group ID 
+	 * @return	LODBias
+	 */
+	INT GetTextureLODGroupLODBias( INT InLODGroup ) const;
+
+	/**
+	 * Returns the LODGroup setting for number of streaming mip-levels.
+	 * -1 means that all mip-levels are allowed to stream.
+	 *
+	 * @param	InLODGroup		The LOD Group ID 
+	 * @return	Number of streaming mip-levels for textures in the specified LODGroup
+	 */
+	INT GetNumStreamedMips( INT InLODGroup ) const;
+
+	/**
+	 * Returns the filter state that should be used for the passed in texture, taking
+	 * into account other system settings.
+	 *
+	 * @param	Texture		Texture to retrieve filter state for
+	 * @return	Filter sampler state for passed in texture
+	 */
+	ESamplerFilter GetSamplerFilter( const UTexture* Texture ) const;
+
+	/**
+	 * Returns the texture group names, sorted like enum.
+	 *
+	 * @return array of texture group names
+	 */
+	static TArray<FString> GetTextureGroupNames();
+
+	/** LOD settings for a single texture group. */
+	struct FTextureLODGroup 
+	{
+		FTextureLODGroup()
+		:	MinLODMipCount(0)
+		,	MaxLODMipCount(12)
+		,	LODBias(0) 
+		,	Filter(SF_AnisotropicPoint)
+		,	NumStreamedMips(-1)
+		,	MipGenSettings(TMGS_SimpleAverage)
+		{}
+		/** Minimum LOD mip count below which the code won't bias.						*/
+		INT MinLODMipCount;
+		/** Maximum LOD mip count. Bias will be adjusted so texture won't go above.		*/
+		INT MaxLODMipCount;
+		/** Group LOD bias.																*/
+		INT LODBias;
+		/** Sampler filter state.														*/
+		ESamplerFilter Filter;
+		/** Number of mip-levels that can be streamed. -1 means all mips can stream.	*/
+		INT NumStreamedMips;
+		/** Defines how the the mip-map generation works, e.g. sharpening				*/
+		TextureMipGenSettings MipGenSettings;
+	};
+
+protected:
+	/**
+	 * Reads a single entry and parses it into the group array.
+	 *
+	 * @param	GroupId			Id/ enum of group to parse
+	 * @param	GroupName		Name of group to look for in ini
+	 * @param	IniFilename		Filename of ini to read from.
+	 * @param	IniSection		Section in ini to look for settings
+	 */
+	void ReadEntry( INT GroupId, const TCHAR* GroupName, const TCHAR* IniFilename, const TCHAR* IniSection );
+
+	/**
+	 * TextureLODGroups access with bounds check
+	 *
+	 * @param   GroupIndex      usually from Texture.LODGroup
+	 * @return                  A handle to the indexed LOD group. 
+	 */
+	const FTextureLODGroup& GetTextureLODGroup(TextureGroup GroupIndex) const;
+
+	/** Array of LOD settings with entries per group. */
+	FTextureLODGroup TextureLODGroups[TEXTUREGROUP_MAX];
+};
+
+
+
+
+
+
+
 

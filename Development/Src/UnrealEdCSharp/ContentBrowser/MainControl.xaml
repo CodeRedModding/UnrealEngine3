@@ -1,0 +1,278 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+<UserControl
+	x:Class="ContentBrowser.MainControl"
+	x:Name="userControl"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:cc="clr-namespace:CustomControls"
+	xmlns:cb="clr-namespace:ContentBrowser"
+	Background="{DynamicResource Slate_ContentBrowser_Trim_Background}"
+	Foreground="{DynamicResource Slate_Control_Foreground}" 
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="900">
+	<UserControl.Resources>
+		
+		<BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+		<cb:NegatingConverter x:Key="NegatingConverter"/>
+
+		<!-- Animation that fades the progress bar in gently -->
+		<Storyboard x:Key="ProgressBarFadeIn">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00.50" Storyboard.TargetName="mProgressPanel" Storyboard.TargetProperty="(UIElement.Opacity)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.20" Value="1"/>
+			</DoubleAnimationUsingKeyFrames>
+            <ObjectAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="mProgressPanel" Storyboard.TargetProperty="(UIElement.Visibility)">
+                <DiscreteObjectKeyFrame KeyTime="00:00:00.50" Value="{x:Static Visibility.Visible}"/>
+            </ObjectAnimationUsingKeyFrames>
+        </Storyboard>
+		<!-- Animation that fades the progress bar out gently -->
+		<Storyboard x:Key="ProgressBarFadeOut">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:01" Storyboard.TargetName="mProgressPanel" Storyboard.TargetProperty="(UIElement.Opacity)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.75" Value="0"/>
+			</DoubleAnimationUsingKeyFrames>
+            <ObjectAnimationUsingKeyFrames BeginTime="00:00:01" Storyboard.TargetName="mProgressPanel" Storyboard.TargetProperty="(UIElement.Visibility)">
+                <DiscreteObjectKeyFrame KeyTime="00:00:00.75" Value="{x:Static Visibility.Hidden}"/>
+            </ObjectAnimationUsingKeyFrames>
+        </Storyboard>
+
+		<!-- Animation shows and hides the notification -->
+		<Storyboard x:Key="ShowNotification">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="mNotification" Storyboard.TargetProperty="(UIElement.Opacity)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.00" Value="0"/>
+				<SplineDoubleKeyFrame KeyTime="00:00:00.20" Value="1"/>
+				<SplineDoubleKeyFrame KeyTime="00:00:02.00" Value="1"/>
+				<SplineDoubleKeyFrame KeyTime="00:00:02.75" Value="0"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+
+		<!-- Animation shows and hides the notification -->
+		<Storyboard x:Key="ShowQuickNotification">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="mNotification" Storyboard.TargetProperty="(UIElement.Opacity)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.00" Value="0"/>
+				<SplineDoubleKeyFrame KeyTime="00:00:00.20" Value="1"/>
+				<SplineDoubleKeyFrame KeyTime="00:00:01.00" Value="1"/>
+				<SplineDoubleKeyFrame KeyTime="00:00:01.25" Value="0"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		
+		<!-- Animations that show and hide the warning  -->
+		<Storyboard x:Key="ShowHideWarning">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(FrameworkElement.Height)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00" Value="0"/>
+				<SplineDoubleKeyFrame KeyTime="00:00:00.2000000" Value="30"/>
+				<SplineDoubleKeyFrame KeyTime="00:00:10.0000000" Value="30"/>
+				<SplineDoubleKeyFrame KeyTime="00:00:10.2000000" Value="0"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		
+		<Storyboard x:Key="HideWarning">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(FrameworkElement.Height)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.2000000" Value="0"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+
+
+	</UserControl.Resources>
+
+	<UserControl.CommandBindings>
+		<CommandBinding Command="Save"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+
+    </UserControl.CommandBindings>
+
+	<Grid x:Name="TopLevelGrid">
+		<!-- +-+- - - +-+       -->
+		<!-- | |      | |       -->
+		<!-- +-+- - - +-+       -->
+		<!-- TOP LEVEL HORIZONTAL GRID: splits the left panel and the middle pannel-->
+		<Grid Grid.Row="1" Margin="0">
+			<Grid.ColumnDefinitions>
+				<!-- Left Panel Column-->
+				<ColumnDefinition Width="Auto" />
+				<!-- Middle Panel Column -->
+				<ColumnDefinition Width="*" />
+				<!-- Right Panel Column -->
+				<ColumnDefinition Width="Auto" />
+			</Grid.ColumnDefinitions>
+			<Grid.RowDefinitions>
+				<!-- Warning Panel Row -->
+				<RowDefinition Height="Auto"/>
+				<!-- Content Row (most of the browser is in here) -->
+				<RowDefinition Height="1*"/>
+			</Grid.RowDefinitions>
+			
+			<!-- The warning panel -->
+			<DockPanel x:Name="mWarningPanel" LastChildFill="True" Height="0" Grid.Row="0" Grid.ColumnSpan="5">
+				<DockPanel.Background>
+					<LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+						<GradientStop Color="#FFFFDA04" Offset="0"/>
+						<GradientStop Color="#FFB98D00" Offset="1"/>
+					</LinearGradientBrush>
+				</DockPanel.Background>
+				<!-- Button that dismisses the warning panel -->
+				<Button x:Name="mDismissWarningButton"
+						DockPanel.Dock="Right"
+						Width="16" Height="16"
+						Margin="0,0,5,0"
+						HorizontalAlignment="Center"
+						VerticalAlignment="Center"
+						Style="{DynamicResource DismissWarningButton}" />
+				<!-- Shows the text of the warning -->
+				<TextBlock x:Name="mWarningLabel"
+						   Foreground="{StaticResource Slate_Panel_Shadow}"
+						   HorizontalAlignment="Left"
+						   VerticalAlignment="Center"
+						   Margin="20,0,0,0"
+						   FontSize="12"
+						   FontWeight="Bold" />
+			</DockPanel>
+
+
+			<!-- LEFT PANEL     -->
+			<!--   /¯¯¯This     -->
+			<!-- +-+- - -+-+    -->
+			<!-- |*|     | |    -->
+			<!-- +-+- - -+-+    -->
+			<Border Grid.Column="0" Grid.Row="1" x:Name="mLeftPanelBorder">
+				<StackPanel Orientation="Horizontal">
+					<!-- Button for collapsing the Left Panel -->
+					<ToggleButton x:Name="mLeftPanelCollapseTrigger"
+								  Style="{StaticResource CollapserToggleButton}"
+								  FlowDirection="LeftToRight" 
+								  Width="16" Padding="3,0,3,0" />
+					<cc:CellSizer x:Name="mLeftPanel" ResizeDirection="East" MinWidth="100" MaxWidth="500"
+									  IsCollapsed="{Binding ElementName=mLeftPanelCollapseTrigger, Path=IsChecked, Converter={StaticResource NegatingConverter}}">
+						<cc:CellSizer.Resources>
+							<Style TargetType="{x:Type Thumb}" BasedOn="{StaticResource Slate_LeftPanelGrip}" />
+						</cc:CellSizer.Resources>
+						<cb:SourcesPanel x:Name="m_SourcesPanel" DockPanel.Dock="Top"/>
+					</cc:CellSizer>
+				</StackPanel>
+			</Border>	   
+
+			<!-- MIDDLE PANEL       -->
+			<!--       /¯¯¯This     -->
+			<!-- +-+- - -+-+        -->
+			<!-- | |  *  | |        -->
+			<!-- +-+- - -+-+        -->
+			<Grid Grid.Column="1" Grid.Row="1" FocusManager.IsFocusScope="True">
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto"/>							<!-- Toggle buttons row-->
+					<RowDefinition Height="Auto"/>							<!-- FilterPanel row-->
+					<RowDefinition MinHeight="100" Height="1*"/>			<!-- AssetView row-->
+				</Grid.RowDefinitions>
+
+				<!--															-->
+				<!-- Toggle Search and Filter buttons, Dock, New/Clone, Close	-->
+				<!--															-->
+				<Border x:Name="mCatchAllToolbar" Grid.Row="0" Background="{StaticResource Slate_Panel_Background}" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Slate_Panel_Shadow}">
+					<DockPanel>
+						<!-- Back button for content browser history -->
+                        <Button Style="{DynamicResource ToolbarButton}" ToolTip="{DynamicResource ContentBrowser_History_BackButton}" x:Name="m_BackButton" DockPanel.Dock="Left" VerticalAlignment="Top" IsEnabled="False" Margin="0,0,0,0" Click="OnBackButtonClicked">
+                            <Image Source="{StaticResource imgBackButton}" Width="16" Height="16" SnapsToDevicePixels="True" />
+                            <Button.ContextMenu>
+                                <ContextMenu x:Name="mHistoryBackContextMenu" Opened="OnBackHistoryCMOpening" Closed="OnBackHistoryCMClosing" HasDropShadow="True"/>
+                            </Button.ContextMenu>
+                        </Button>
+                        
+						<!-- Forward button for content browser history -->
+                        <Button Style="{DynamicResource ToolbarButton}" ToolTip="{DynamicResource ContentBrowser_History_ForwardButton}" x:Name="m_ForwardButton" DockPanel.Dock="Left" VerticalAlignment="Top" IsEnabled="False" Margin="0,0,0,0" Click="OnForwardButtonClicked">
+                            <Image Source="{StaticResource imgForwardButton}" Width="16" Height="16" SnapsToDevicePixels="True" />
+                            <Button.ContextMenu>
+                                <ContextMenu x:Name="mHistoryForwardContextMenu" Opened="OnForwardHistoryCMOpening" Closed="OnForwardHistoryCMClosing" HasDropShadow="True"/>
+                            </Button.ContextMenu>
+                        </Button>
+
+                        <cc:RefreshButton />
+
+						<!-- Misc. Stuff Panel -->
+						<Border DockPanel.Dock="Right" SnapsToDevicePixels="True"  >
+							<DockPanel HorizontalAlignment="Right" Margin="5,0">
+								<!-- Button to close the browser (when docked) -->
+								<Button Style="{StaticResource BorderlessButton_16x16}" ToolTip="{DynamicResource ContentBrowser_CloseButtonLabel}" x:Name="m_CloseButton" DockPanel.Dock="Right" VerticalAlignment="Top" IsEnabled="False" Margin="4,0,0,0">
+									<Image Source="{StaticResource imgCloseBrowser}" Width="16" Height="16" SnapsToDevicePixels="True" />
+								</Button>
+
+								<!-- Button that toggles whether the entire browser is docked or floating -->
+								<Button Style="{StaticResource BorderlessButton_16x16}" ToolTip="{DynamicResource ContentBrowser_FloatOrDockButtonLabel}" x:Name="m_FloatOrDockButton" DockPanel.Dock="Right" VerticalAlignment="Top" IsEnabled="False" Margin="4,0,0,0">
+									<Image Source="{StaticResource imgDockBrowser}" Width="16" Height="16" SnapsToDevicePixels="True" />
+								</Button>
+
+								<!-- Button to clone a copy of the browser window -->
+								<Button Style="{StaticResource BorderlessButton_16x16}" ToolTip="{DynamicResource ContentBrowser_CloneButtonLabel}" x:Name="m_CloneButton" DockPanel.Dock="Right" VerticalAlignment="Top" IsEnabled="False" Margin="4,0,0,0">
+									<Image Source="{StaticResource imgNewBrowser}" Width="16" Height="16" SnapsToDevicePixels="True" />
+								</Button>
+								
+							</DockPanel>
+						</Border>
+
+						<!--Number of items and selected items-->
+						<TextBlock x:Name="mItemCountLabel" HorizontalAlignment="Right" DockPanel.Dock="Right" VerticalAlignment="Center"/>
+
+						<!--Toggle -->
+						<TextBlock Focusable="False" x:Name="mQuarantineModeLabel" Visibility="Hidden" TextAlignment="Center" VerticalAlignment="Center" Text="{StaticResource ContentBrowser_AssetView_ToggleQuarantineMode}" Margin="5,0" />
+						
+					</DockPanel>
+				</Border>
+
+				<!-- FilterPanel -->
+				<Border Grid.Row="1" Margin="0">
+					<cb:FilterPanel x:Name="m_FilterPanel" />
+				</Border>
+				
+				<!-- AssetView -->
+				<cb:AssetView Grid.Row="2" x:Name="m_AssetView" />
+                
+                <!-- AssetView Progress Panel -->
+                <Border x:Name="mProgressPanel" Grid.Row="2" VerticalAlignment="Bottom" HorizontalAlignment="Right"
+                        Margin="30, 75" CornerRadius="5" Background="{StaticResource Slate_ContentBrowser_Trim_Background}" IsHitTestVisible="False" >
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Right" Margin="5">
+                        <ProgressBar x:Name="mProgress" MinHeight="8"  Margin="5" MinWidth="200" />
+                        <TextBlock x:Name="mAssetViewProgressStats" HorizontalAlignment="Right" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+			<!-- RIGHT PANEL        -->
+			<!--           /¯¯¯This -->
+			<!-- +-+- - -+-+        -->
+			<!-- | |     |*|        -->
+			<!-- +-+- - -+-+        -->
+			<Border x:Name="mRightPanelBorder" Grid.Column="2" Grid.Row="1">
+				<StackPanel Orientation="Horizontal">
+					<cc:CellSizer x:Name="mRightPanel" ResizeDirection="West" MinWidth="150" MaxWidth="300"
+									  IsCollapsed="{Binding ElementName=mRightPanelCollapseTrigger, Path=IsChecked, Converter={StaticResource NegatingConverter}}">
+						<cc:CellSizer.Resources>
+							<Style TargetType="{x:Type Thumb}" BasedOn="{StaticResource Slate_RightPanelGrip}" />
+						</cc:CellSizer.Resources>
+						<DockPanel LastChildFill="True" >
+							<!-- @todo Temporarily removed while the AssetInspector is indevelopment             -->
+							<!--<cb:AssetInfoPanel x:Name="m_AssetInfoPanel" Height="150" DockPanel.Dock="Top" />-->
+							<cb:AssetInspector x:Name="mAssetInspector" DockPanel.Dock="Top" />
+						</DockPanel>
+					</cc:CellSizer>
+					<!-- Button for collapsing the Right Panel -->
+					<ToggleButton x:Name="mRightPanelCollapseTrigger"
+								  Style="{StaticResource CollapserToggleButton}"
+								  FlowDirection="RightToLeft" 
+								  Width="16" Padding="3,0,3,0" />
+					
+				</StackPanel>
+			</Border>
+			
+		</Grid>
+
+		<!-- Notifier -->
+		<Border x:Name="mNotification" BorderThickness="1" CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0" IsHitTestVisible="False">
+			<Border.BorderBrush>
+				<LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+					<GradientStop Color="#55FFFFFF" Offset="0"/>
+					<GradientStop Color="#55000000" Offset="0.5"/>
+				</LinearGradientBrush>			 
+			</Border.BorderBrush>
+			<Border Background="#BB000000" CornerRadius="10" IsHitTestVisible="False">
+				<TextBlock x:Name="mNotificationLabel" Margin="30" Foreground="White" FontSize="20pt" VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False" />
+			</Border>
+		</Border>
+	</Grid>
+
+</UserControl>

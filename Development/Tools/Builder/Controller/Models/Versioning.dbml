@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="Builder" Class="VersioningDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="AppSettings" ConnectionString="Data Source=db-09;Initial Catalog=Builder;Integrated Security=True" SettingsObjectName="Controller.Properties.Settings" SettingsPropertyName="BuilderConnectionString" Provider="System.Data.SqlClient" />
+  <Table Name="dbo.Versioning" Member="Versionings">
+    <Type Name="Versioning">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Label" Type="System.String" DbType="VarChar(96) NOT NULL" CanBeNull="false" />
+      <Column Name="EngineVersion" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Changelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+    </Type>
+  </Table>
+</Database>

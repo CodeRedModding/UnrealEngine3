@@ -1,0 +1,127 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="CrashReport" Class="CrashReportDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="WebSettings" ConnectionString="Data Source=db-09;Initial Catalog=CrashReport;Integrated Security=True" SettingsObjectName="System.Configuration.ConfigurationManager.ConnectionStrings" SettingsPropertyName="CrashReportConnectionString" Provider="System.Data.SqlClient" />
+  <Table Name="dbo.Buggs" Member="Buggs">
+    <Type Name="Bugg">
+      <Column Name="Id" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="TTPID" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="Title" Type="System.String" DbType="VarChar(120)" CanBeNull="true" />
+      <Column Name="Summary" Type="System.String" DbType="VarChar(250)" CanBeNull="true" />
+      <Column Name="Priority" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Pattern" Type="System.String" DbType="VarChar(250)" CanBeNull="true" />
+      <Column Name="Type" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="NumberOfCrashes" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="NumberOfUsers" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="TimeOfFirstCrash" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="TimeOfLastCrash" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Status" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="FixedChangeList" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="Description" Type="System.String" DbType="Text" CanBeNull="true" UpdateCheck="Never" />
+      <Column Name="ReproSteps" Type="System.String" DbType="Text" CanBeNull="true" UpdateCheck="Never" />
+      <Association Name="Bugg_Bugg_Crash" Member="Bugg_Crashes" ThisKey="Id" OtherKey="BuggId" Type="Bugg_Crash" />
+      <Association Name="Bugg_Bugg_UserGroup" Member="Bugg_UserGroups" ThisKey="Id" OtherKey="BuggId" Type="Bugg_UserGroup" />
+      <Association Name="Bugg_Bugg_User" Member="Bugg_Users" ThisKey="Id" OtherKey="BuggId" Type="Bugg_User" />
+      <Association Name="Bugg_Note" Member="Notes" ThisKey="Id" OtherKey="BuggId" Type="Note" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Users" Member="Users">
+    <Type Name="User">
+      <Column Name="UserName" Type="System.String" DbType="VarChar(50) NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="UserGroup" Type="System.String" DbType="VarChar(50) NOT NULL" CanBeNull="false" />
+      <Column Name="UserGroupId" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Association Name="User_Bugg_User" Member="Bugg_Users" ThisKey="UserName" OtherKey="UserName" Type="Bugg_User" />
+      <Association Name="User_Crash" Member="Crashes" ThisKey="UserName" OtherKey="UserName" Type="Crash" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Buggs_Crashes" Member="Bugg_Crashes">
+    <Type Name="Bugg_Crash">
+      <Column Name="BuggId" Type="System.Int32" DbType="Int NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="CrashId" Type="System.Int32" DbType="Int NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Association Name="Bugg_Bugg_Crash" Member="Bugg" ThisKey="BuggId" OtherKey="Id" Type="Bugg" IsForeignKey="true" DeleteOnNull="true" />
+      <Association Name="Crash_Bugg_Crash" Member="Crash" ThisKey="CrashId" OtherKey="Id" Type="Crash" IsForeignKey="true" DeleteOnNull="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Buggs_UserGroups" Member="Bugg_UserGroups">
+    <Type Name="Bugg_UserGroup">
+      <Column Name="BuggId" Type="System.Int32" DbType="Int NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="UserGroupId" Type="System.Int32" DbType="Int NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Association Name="Bugg_Bugg_UserGroup" Member="Bugg" ThisKey="BuggId" OtherKey="Id" Type="Bugg" IsForeignKey="true" />
+      <Association Name="UserGroup_Bugg_UserGroup" Member="UserGroup" ThisKey="UserGroupId" OtherKey="Id" Type="UserGroup" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Buggs_Users" Member="Bugg_Users">
+    <Type Name="Bugg_User">
+      <Column Name="BuggId" Type="System.Int32" DbType="Int NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="UserName" Type="System.String" DbType="VarChar(50) NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Association Name="Bugg_Bugg_User" Member="Bugg" ThisKey="BuggId" OtherKey="Id" Type="Bugg" IsForeignKey="true" />
+      <Association Name="User_Bugg_User" Member="User" ThisKey="UserName" OtherKey="UserName" Type="User" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Crashes" Member="Crashes">
+    <Type Name="Crash">
+      <Column Name="Id" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Title" Type="System.String" DbType="NChar(20)" CanBeNull="true" />
+      <Column Name="Summary" Type="System.String" DbType="VarChar(140)" CanBeNull="true" />
+      <Column Name="GameName" Type="System.String" DbType="VarChar(15)" CanBeNull="true" />
+      <Column Name="Status" Type="System.String" DbType="VarChar(15)" CanBeNull="true" />
+      <Column Name="TimeOfCrash" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="ChangeListVersion" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="PlatformName" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="EngineMode" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(300)" CanBeNull="true" />
+      <Column Name="RawCallStack" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+      <Column Name="Pattern" Type="System.String" DbType="VarChar(800)" CanBeNull="true" />
+      <Column Name="CommandLine" Type="System.String" DbType="VarChar(512)" CanBeNull="true" />
+      <Column Name="ComputerName" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="Selected" Type="System.Boolean" DbType="Bit" CanBeNull="true" />
+      <Column Name="FixedChangeList" Type="System.String" DbType="VarChar(140)" CanBeNull="true" />
+      <Column Name="LanguageExt" Type="System.String" DbType="VarChar(20)" CanBeNull="true" />
+      <Column Name="BuildVersion" Type="System.String" DbType="VarChar(80)" CanBeNull="true" />
+      <Column Name="BaseDir" Type="System.String" DbType="VarChar(260)" CanBeNull="true" />
+      <Column Name="Version" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="UserName" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="TTPID" Type="System.String" DbType="VarChar(50)" CanBeNull="true" />
+      <Column Name="AutoReporterID" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="HasLogFile" Type="System.Boolean" DbType="Bit" CanBeNull="true" />
+      <Column Name="HasMiniDumpFile" Type="System.Boolean" DbType="Bit" CanBeNull="true" />
+      <Column Name="HasVideoFile" Type="System.Boolean" DbType="Bit" CanBeNull="true" />
+      <Column Member="Module" Type="System.String" CanBeNull="true" />
+      <Association Name="Crash_Bugg_Crash" Member="Bugg_Crashes" ThisKey="Id" OtherKey="CrashId" Type="Bugg_Crash" />
+      <Association Name="Crash_Crash_FunctionCall" Member="Crash_FunctionCalls" ThisKey="Id" OtherKey="CrashId" Type="Crash_FunctionCall" />
+      <Association Name="Crash_Note" Member="Notes" ThisKey="Id" OtherKey="CrashId" Type="Note" />
+      <Association Name="User_Crash" Member="User" ThisKey="UserName" OtherKey="UserName" Type="User" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Crashes_FunctionCalls" Member="Crash_FunctionCalls">
+    <Type Name="Crash_FunctionCall">
+      <Column Name="CrashId" Type="System.Int32" DbType="Int NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="FunctionCallId" Type="System.Int32" DbType="Int NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Association Name="Crash_Crash_FunctionCall" Member="Crash" ThisKey="CrashId" OtherKey="Id" Type="Crash" IsForeignKey="true" />
+      <Association Name="FunctionCall_Crash_FunctionCall" Member="FunctionCall" ThisKey="FunctionCallId" OtherKey="Id" Type="FunctionCall" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.FunctionCalls" Member="FunctionCalls">
+    <Type Name="FunctionCall">
+      <Column Name="Id" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Call" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+      <Association Name="FunctionCall_Crash_FunctionCall" Member="Crash_FunctionCalls" ThisKey="Id" OtherKey="FunctionCallId" Type="Crash_FunctionCall" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Notes" Member="Notes">
+    <Type Name="Note">
+      <Column Name="Id" Type="System.Int32" DbType="Int NOT NULL" IsPrimaryKey="true" CanBeNull="false" />
+      <Column Name="Tag" Type="System.String" DbType="NChar(10)" CanBeNull="true" />
+      <Column Name="Text" Type="System.String" DbType="NChar(10)" CanBeNull="true" />
+      <Column Name="CrashId" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="BuggId" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Association Name="Bugg_Note" Member="Bugg" ThisKey="BuggId" OtherKey="Id" Type="Bugg" IsForeignKey="true" />
+      <Association Name="Crash_Note" Member="Crash" ThisKey="CrashId" OtherKey="Id" Type="Crash" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.UserGroups" Member="UserGroups">
+    <Type Name="UserGroup">
+      <Column Name="Id" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Name" Type="System.String" DbType="VarChar(50) NOT NULL" CanBeNull="false" />
+      <Association Name="UserGroup_Bugg_UserGroup" Member="Bugg_UserGroups" ThisKey="Id" OtherKey="UserGroupId" Type="Bugg_UserGroup" />
+    </Type>
+  </Table>
+</Database>

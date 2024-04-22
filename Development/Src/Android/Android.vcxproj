@@ -1,0 +1,108 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="BuiltWithUnrealBuildTool|Win32">
+      <Configuration>BuiltWithUnrealBuildTool</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{CD4E4C1C-0D52-4992-AE3E-30BF4E502D50}</ProjectGuid>
+    <SccProjectName>
+    </SccProjectName>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+    <Keyword>MakeFileProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</IntDir>
+    <NMakeBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeReBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeCleanCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeOutput Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\Android.h" />
+    <ClInclude Include="Inc\AndroidApsalar.h" />
+    <ClInclude Include="Inc\AndroidAudioDevice.h" />
+    <ClInclude Include="Inc\AndroidClient.h" />
+    <ClInclude Include="Inc\AndroidFullScreenMovie.h" />
+    <ClInclude Include="Inc\AndroidInput.h" />
+    <ClInclude Include="Inc\AndroidJNI.h" />
+    <ClInclude Include="Inc\AndroidThreading.h" />
+    <ClInclude Include="Inc\AndroidViewport.h" />
+    <ClInclude Include="Inc\AsyncLoadingAndroid.h" />
+    <ClInclude Include="Inc\FFileManagerAndroid.h" />
+    <ClInclude Include="Inc\LaunchPrivate.h" />
+    <ClInclude Include="Inc\OpenSLAudio.h" />
+    <ClInclude Include="Inc\OpenSLAudioDevice.h" />
+    <ClInclude Include="Inc\OpenSLAudioPrivate.h" />
+    <ClInclude Include="Inc\UnSocketBSD.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\Android.cpp" />
+    <ClCompile Include="Src\AndroidApsalar.cpp" />
+    <ClCompile Include="Src\AndroidAudioDevice.cpp" />
+    <ClCompile Include="Src\AndroidClient.cpp" />
+    <ClCompile Include="Src\AndroidFullScreenMovie.cpp" />
+    <ClCompile Include="Src\AndroidJNI.cpp" />
+    <ClCompile Include="Src\AndroidLaunch.cpp" />
+    <ClCompile Include="Src\AndroidThreading.cpp" />
+    <ClCompile Include="Src\AndroidViewport.cpp" />
+    <ClCompile Include="Src\AsyncLoadingAndroid.cpp" />
+    <ClCompile Include="Src\FFileManagerAndroid.cpp" />
+    <ClCompile Include="Src\OpenSLAudio.cpp" />
+    <ClCompile Include="Src\OpenSLAudioDevice.cpp" />
+    <ClCompile Include="Src\UnSocketBSD.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\Engine\Config\Android\AndroidEngine.ini" />
+    <None Include="..\..\..\Engine\Config\Android\AndroidGame.ini" />
+    <None Include="..\..\..\Engine\Config\Android\AndroidInput.ini" />
+    <None Include="java\AndroidManifest.xml">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="..\..\..\Engine\Config\Android\AndroidUI.ini" />
+    <None Include="java\build.properties" />
+    <None Include="java\default.properties" />
+    <None Include="java\res\layout\main.xml" />
+    <None Include="java\res\layout\preferencelayout.xml" />
+    <None Include="java\res\values\arrays.xml" />
+    <None Include="java\res\values\messages.xml" />
+    <None Include="java\proguard.cfg" />
+    <None Include="java\res\values\strings.xml" />
+    <None Include="java\res\xml\preferences.xml" />
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaApp.java" />
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaApplicationInfo.java" />
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaApsalar.java" />
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaDownloaderAlarmReceiver.java" />
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaFileDownloader.java" />
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaPhoneHome.java" />
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaPreferences.java" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

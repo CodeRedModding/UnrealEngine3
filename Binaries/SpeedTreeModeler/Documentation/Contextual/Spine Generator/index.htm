@@ -1,0 +1,2323 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" property="text/html; charset=utf-8" />
+<title>Spine Generator</title>
+<link href="../contextual.css" rel="stylesheet" type="text/css" media="screen">
+<script src="../contextual.js" type="text/javascript"></script>
+</head>
+<body scroll="auto" class="container" id="container" topmargin="0" marginheight="0" leftmargin="0" bottommargin="0" rightmargin="0" marginwidth="0">
+<div class="object_label" id="object_label">
+	<div class="btn_house">
+		<a name="reserved.this">
+			<b class="button-next"></b>
+			<b class="button-auto" title="resize"></b>
+			<b class="button-fixed" title="resize"></b>
+		&nbsp;</a>
+	</div>
+	<h5>Spine Generator</h5>
+	<div class="object_desc">
+		<div class="generator-spine"></div>
+		<p class="object_desc">The Spine Generator is responsible for generating <a href="../Spine/index.htm">spine nodes</a>. A &quot;spine&quot; defines the center line of a branch or frond, so both branches and fronds are part of the spine generator.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Generation</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.style">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Style</h2>
+	</div>
+	<div class="property">
+		<h3>Absolute</h3>
+		<p><a href="#generation.frequency">Generation: Frequency</a> and <a href="#generation.steps.number">Steps: Number</a> values are set explicitly.</p>
+		<h3>Relative</h3>
+		<p><a href="#generation.frequency">Generation: Frequency</a> and <a href="#generation.steps.number">Steps: Number</a> values are computed based on the length of the parent node.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.first">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> First</h2>
+	</div>
+	<div class="property">
+		<p>The lowest point on the parent where nodes can occur.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.last">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Last</h2>
+	</div>
+	<div class="property">
+		<p>The highest point on the parent where nodes can occur.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.frequency">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer / float</span> Frequency</h2>
+	</div>
+	<div class="property">
+		<p>The number of nodes generated.</p>
+		<p class="note"><b class="icon"></b>If <a href="#generation.style">Generation: Style</a> is set to relative, this integer becomes a float and the actual number of nodes generated is computed based on the length of the parent.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.pruning">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>curve</span> Pruning</h2>
+	</div>
+	<div class="property">
+		<p>Removes branches systematically after generation (post-balance and stepping).</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.size_scalar">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Size Scalar</h2>
+	</div>
+	<div class="property">
+		<p>Scales not only the size of the nodes themselves, but also the size of their children.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.degradation_style">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Degradation Style</h2>
+	</div>
+	<div class="property">
+		<h3>Default</h3>
+		<p>If <a href="../Tree Generator/index.htm#degradation.enabled">degradation</a> is enabled, the <a href="../Tree Generator/index.htm#degradation.frequency_scalar">frequency scalar</a> will only affect this generator if it is the topological end of a generator chain (i.e. it has no children).</p>
+		<h3>Always</h3>
+		<p>If <a href="../Tree Generator/index.htm#degradation.enabled">degradation</a> is enabled, the <a href="../Tree Generator/index.htm#degradation.frequency_scalar">frequency scalar</a> will always affect this generator.</p>
+		<h3>Never</h3>
+		<p>If <a href="../Tree Generator/index.htm#degradation.enabled">degradation</a> is enabled, the <a href="../Tree Generator/index.htm#degradation.frequency_scalar">frequency scalar</a> will never affect this generator (useful for something like roots, which often have no children but do not slow down compute).</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.orientation.alignment">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Orientation: Alignment</h2>
+	</div>
+	<div class="property">
+		<h3>None</h3>
+		<p>Nodes have  a random orientation.</p>
+		<h3>Align</h3>
+		<p>The first node in each step is centered vertically on its parent.</p>
+		<h3>Center Align</h3>
+		<p>Each step is re-aligned so the <a href="generation.orientation.sweep">Sweep</a> range is centered vertically on its parent.</p>
+		<p class="note"><b class="icon"></b>If <a href="#generation.steps.enabled">Steps</a> are disabled, the initial generation angle is centered vertically on the parent node instead.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.orientation.balanced">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Orientation: Balanced</h2>
+	</div>
+	<div class="property">
+		<p>Nodes can be balanced  (equally spaced) radially by enabling this property.</p>
+		<p class="note"><b class="icon"></b>Changing the <a href="#generation.frequency">Generation: Frequency</a> or <a href="#generation.steps.number">Generation: Step: Number</a> properties will result in positional shifting in order to maintain equal spacing.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.orientation.offset">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Orientation: Offset</h2>
+	</div>
+	<div class="property">
+		<p>The computed angle for each node is offset [+/-] between 0 and this amount.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.orientation.sweep">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Orientation: Sweep</h2>
+	</div>
+	<div class="property">
+		<p>The arc around the parent node where nodes are eligible.</p>
+		<p class="note"><b class="icon"></b><a href="#generation.orientation.balanced">Balance</a> is applied after the sweep arc is defined.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.orientation.roll">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Orientation: Roll</h2>
+	</div>
+	<div class="property">
+		<p>Each node is rotated this absolute amount from its computed angle.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.steps.enabled">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Steps: Enabled</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, nodes are grouped into lengthwise &quot;steps&quot; along the parent node. Balance, angle offset, and other properties will be applied per step. </p>
+		<p>Each step contains approximately (<a href="#generation.frequency">Generation: Frequency</a> &divide; <a href="#generation.steps.number">Generation: Step: Number</a>) branches.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.steps.number">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer / float</span> Steps: Number</h2>
+	</div>
+	<div class="property">
+		<p>The number of steps to distribute the computed frequency among.</p>
+		<p class="note"><b class="icon"></b>If <a href="#generation.style">Generation: Style</a> is set to relative, this integer becomes a float and the actual number of steps generated is computed based on the length of the parent node.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.steps.spread">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Steps: Spread</h2>
+	</div>
+	<div class="property">
+		<p>The maximum amount of lengthwise node spacing allowed from the center of each step to its extents.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="generation.steps.per_step_frequency">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Steps: Per Step Frequency</h2>
+	</div>
+	<div class="property">
+		<p>The number of nodes per step is equal to the value for <a href="#generation.frequency">generation:frequency</a>, rather than the frequency value being distributed among all the steps.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Forces</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="forces.allow_forces">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Allow Forces</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, all forces that are checked will act on the generator.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="forces">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span><a href="../Force/index.htm#force.type">View force definitions</a></span> Forces</h2>
+	</div>
+	<div class="property">
+		<div style="width:64px; float: right; clear: right; ">
+			<div class="force-direction"></div>
+			<div class="force-magnet"></div>
+			<div class="force-gnarl"></div>
+			<div class="force-curl"></div>
+		</div>
+		<h3>Enabled (checkbox)</h3>
+		<p>While all forces in the scene are listed in this group, only enabled forces affect this generator. </p>
+		<br />
+		<p class="note"><b class="icon"></b>Click on the colored square to the right of the force name to edit its properties.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Geometry Types</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="geometry_types.frond">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Frond</h2>
+	</div>
+	<div class="property">
+		<div class="generator-frond"></div>
+		<p>When enabled, 2-sided frond geometry is generated along the spine.</p>
+		<p class="note"><b class="icon"></b>Various properties and property groups related to fronds are only made visible if this property is enabled.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="geometry_types.branch">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Branch</h2>
+	</div>
+	<div class="property">
+		<div class="generator-branch"></div>
+		<p>When enabled, fully 3D branches are skinned over the spine.</p>
+		<p class="note"><b class="icon"></b>Various properties and property groups related to branches are only made visible if this property is enabled.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="geometry_types.cap">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Cap</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, cap geometry is skinned over open ends of branches, either caused by the radius profile or breaking.</p>
+		<p class="note"><b class="icon"></b>Branches must first be enabled.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Random Seeds</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="random_seeds.forces"></a><a name="random_seeds.spine"></a><a name="random_seeds.branch"></a><a name="random_seeds.frond"></a>
+			<a name="random_seeds.generation">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer</span> Random Seeds</h2>
+	</div>
+	<div class="property">
+		<div class="icon-random"></div>
+		<p>Various seed values are used to procedurally generate nodes. Each random number has been separated out into groups of like properties.</p>
+		<h3>
+			<div class="button-random"></div>
+			Randomize button</h3>
+		<p>Seeds can be incremented with the spinner or chosen at random via the Randomize button. All seeds can be randomized at once with 'Randomize all'.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Segments</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="segments.multiplier">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Multiplier</h2>
+	</div>
+	<div class="property">
+		<p>Scales the number of length, radial, and cap segments uniformly..</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="segments.style">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Style</h2>
+	</div>
+	<div class="property">
+		<h3>Relative</h3>
+		<p>Both length and radial segments are computed based on the length and radius of the node, respectively.</p>
+		<h3>Length relative</h3>
+		<p>Length segments are computed based on the length of the node.</p>
+		<h3>Radial relative</h3>
+		<p>Radial Segments are computed based on the radius of the node.</p>
+		<h3>Absolute</h3>
+		<p>Both length and radial segments<a href="#generation.steps.number"></a> are set explicitly.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="segments.accuracy">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer</span> Accuracy</h2>
+	</div>
+	<div class="property">
+		<p>The maximum fidelity of spines.</p>
+		<p class="note"><b class="icon"></b>Changing accuracy may drastically affect the shape of your spines. Set this value to the maximum desired fidelity early to avoid design losses. Higher values result in slower computes.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="segments.length">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer / float</span> Length</h2>
+	</div>
+	<div class="property">
+		<p>The number of segments composing spines.</p>
+		<p class="note"><b class="icon"></b>If <a href="#segments.style">Segments: Style</a> is set to relative, this integer becomes a float and the actual number of segments generated is computed based on the length of the parent.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="segments.optimization">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Optimization</h2>
+	</div>
+	<div class="property">
+		<p>Segments are added and removed adaptively based on the curvature of the branch. Increasing this value increases the angle that must be met for a length segment to survive the optimization.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="segments.radial">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer / float</span> Radial</h2>
+	</div>
+	<div class="property">
+		<p>The number of segments composing the radial cross-section of branches.</p>
+		<p class="note"><b class="icon"></b>If <a href="#segments.style">Segments: Style</a> is set to relative, this integer becomes a float and the actual number of segments generated is computed based on the radius of individual nodes.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="segments.cap">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer / float</span> Cap</h2>
+	</div>
+	<div class="property">
+		<p>The number of segments composing the cap geometry of broken or open-ended branches.</p>
+		<p class="note"><b class="icon"></b>If <a href="#segments.style">Segments: Style</a> is set to relative, this integer becomes a float and the actual number of segments generated is a function of the radius of individual nodes.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="segments.weld">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer</span> Weld</h2>
+	</div>
+	<div class="property">
+		<p>The number of segments composing the fused part of <a href="#branch.welding.enabled">welded</a> branches.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="segments.frond_shape">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer</span> Frond shape</h2>
+	</div>
+	<div class="property">
+		<p>The number of segments composing the <a href="#frond.shape.contour">Frond: Shape: Contour</a> curve.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="segments.frond_optimization">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Frond Optimization</h2>
+	</div>
+	<div class="property">
+		<p>Frond segments are added and removed adaptively based on the curvature of the frond. Increasing this value increases the angle that must be met for a frond length segment to survive the optimization.</p>
+  </div>
+</div>
+<div class="group_label">
+	<h1>Spine</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="spine.length">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Length</h2>
+	</div>
+	<div class="property">
+		<p>The length of the spine nodes as distributed along the parent node.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="spine.start_angle">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Start Angle</h2>
+	</div>
+	<div class="property">
+		<p>The amount of angle offset from the parent node's growth direction at the point where each node occurs.</p>
+		<p>Where 0.0 is equal to the parent's direction, 1.0 is an inversion of the parent's direction.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="spine.alignment">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Alignment</h2>
+	</div>
+	<div class="property">
+		<p>An interpolation between a random &quot;up&quot; direction and absolute (world) &quot;up&quot;.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="spine.roll">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Roll</h2>
+	</div>
+	<div class="property">
+		<p>Uniform rotation of each spine. Roll is applied after <a href="#spine.alignment">Spine:Alignment</a>.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+		<a name="spine.disturbance">
+			<b class="button-prev"></b>
+			<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+		&nbsp;</a>
+		</div>
+		<h2><span>float</span> Disturbance</h2>
+	</div>
+	<div class="property">
+		<p>The amount of randomness applied to each angle along the spine length.</p>
+		<p class="note"><b class="icon"></b>By entering Node Mode, individual disturbance seeds are exposed and can be randomized.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+		<a name="spine.jink_frequency">
+			<b class="button-prev"></b>
+			<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+		&nbsp;</a>
+		</div>
+		<h2><span>float</span> Jink Frequency</h2>
+	</div>
+	<div class="property">
+		<p>The sampling rate of the jink behavior.</p>
+		<p class="note"><b class="icon"></b>Jink:Frequency and <a href="#spine.jink_amount">Jink:Amount</a> work together to make the jink behavior. Either set to 0 nullifies the effect.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+		<a name="spine.jink_amount">
+			<b class="button-prev"></b>
+			<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+		&nbsp;</a>
+		</div>
+		<h2><span>float</span> Jink Amount</h2>
+	</div>
+	<div class="property">
+		<p>The amount to sample the jink behavior.</p>
+		<p class="note"><b class="icon"></b><a href="#spine.jink_frequency">Jink:Frequency</a> and Jink:Amount work together to make the jink behavior. Either set to 0 nullifies the effect.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="spine.break_chance">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Break Chance</h2>
+	</div>
+	<div class="property">
+		<p>The likelihood that any node will &quot;break&quot;, resulting in a capped branch at the <a href="#spine.break_spot">break spot</a>.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="spine.break_spot">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Break Spot</h2>
+	</div>
+	<div class="property">
+		<p>The percentage of the way along any spine where the branch will &quot;break&quot; from <a href="#spine.break_chance">break chance</a>.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Bifurcation</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.chance">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Chance</h2>
+	</div>
+	<div class="property">
+		<p>The likelihood that any node will bifurcate, or "fork" into two spines at the <a href="#bifurcation.spot">bifurcation spot</a>.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.spot">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Spot</h2>
+	</div>
+	<div class="property">
+		<p>The percentage of the way along the spine where the branch will &quot;fork&quot; from <a href="#bifurcation.chance">Bifurcation:Chance</a>.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.angle">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Angle</h2>
+	</div>
+	<div class="property">
+		<p>The angle between the two forked halves.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.distance">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Distance</h2>
+	</div>
+	<div class="property">
+		<p>The length of the bifurcating segment (from the previous ring to the crease between the fork).</p>
+		<p class="note"><b class="icon"></b>As the distance approaches the next segment, it can "consume" that segment and increase in length.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.radius_scale">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Radius Scale</h2>
+	</div>
+	<div class="property">
+		<p>Amount to decrease the radius of each bifurcation end branch.</p>
+		<p class="note"><b class="icon"></b>The variance on this value varies the radius for each end independent of its shared base branch.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.adjust_frequency">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Adjust Frequency</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, bifurcated branches will generate more children than non-bifurcated branches.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.adjust_frond_start">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Adjust Frond Start</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, fronds geometry will not start until the bifurcation point (fronds will be made on each split after the break).</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.web.angle">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Web: Angle</h2>
+	</div>
+	<div class="property">
+		<p>The amount to retract the crease in the middle of the web.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.web.thickness">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Web: Thickness</h2>
+	</div>
+	<div class="property">
+		<p>The width of the crease in the middle of the web.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.web.spread">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Web: Spread</h2>
+	</div>
+	<div class="property">
+		<p>Amount to retract the outer edges of the base ring.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.break.style">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Break: Style</h2>
+	</div>
+	<div class="property">
+		<p>Whether to break the left, right, or both ends if the <a href="#spine.break_spot">break spot</a> lies past the <a href="#bifurcation.spot">bifurcation spot</a>.</p>
+		<p class="note"><b class="icon"></b>Both Bifurcate and Break must be enabled for a node to utilize Break:Style.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.break.left_break_spot">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Left Break Spot</h2>
+	</div>
+	<div class="property">
+		<p>The amount to offset the break spot up or down if it happens on the left end of the bifurcation.</p>
+		<p class="note"><b class="icon"></b>Both 'Bifurcate' and 'Break' must be enabled for the node, as well as <a href="#break.style">Break:Style</a> set to 'left'.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.break.right_break_spot">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage </span>Right Break Spot</h2>
+	</div>
+	<div class="property">
+		<p>The amount to offset the break spot up or down if it happens on the right end of the bifurcation.</p>
+		<p class="note"><b class="icon"></b>Both 'Bifurcate' and 'Break' must be enabled for the node, as well as <a href="#break.style">Break:Style</a> set to 'right'.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="bifurcation.break.cap_variance">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Break: Cap Variance</h2>
+	</div>
+	<div class="property">
+		<p>The amount of variation between the cap displacement of each bifurcation end branch.</p>
+		<p class="note"><b class="icon"></b>Both 'Bifurcate' and 'Break' must be enabled for the node, as well as <a href="#break.style">Break:Style</a> set to 'both'.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Frond</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.shape.width">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Shape: Width</h2>
+	</div>
+	<div class="property">
+		<p>The width of the frond.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.shape.height">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Shape: Height</h2>
+	</div>
+	<div class="property">
+		<p>The height of the <a href="#frond.shape.contour">Frond: Shape: Contour</a> curve.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.shape.contour">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>curve</span> Shape: Contour</h2>
+	</div>
+	<div class="property">
+		<p>The frond shape definition. This curve is extruded along the length of the spine.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.shape.contour_style">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Shape: Contour Style</h2>
+	</div>
+	<div class="property">
+		<h3>Right Side</h3>
+		<p>The <a href="#frond.shape.contour">Shape: Contour</a> curve is mirrored (over the curve Y-axis) on each side of the frond.</p>
+		<h3>Full Width</h3>
+		<p>The Shape: Contour curve is interpreted explicitly, allowing non-symmetrical frond shapes.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.shape.lock_aspect_ratio">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Shape: Lock Aspect Ratio</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, the <a href="#frond.shape.width">frond width</a> will increase and decrease relative to <a href="#spine.length">spine length</a>.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.mapping">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Mapping</h2>
+	</div>
+	<div class="property">
+		<h3>Centered Surface</h3>
+		<p>Fronds are mapped  based  on surface approximation from the center outwards (maintaining the centerline of the textures).</p>
+		<h3>Surface</h3>
+		<p>Fronds are mapped  based strictly on surface approximation (mapping may be heavily weighted on one side rather than staying centered).</p>
+		<h3>Planar</h3>
+		<p>Fronds are planar mapped face down without respecting surface approximation (may result in texture stretching).</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.flip">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Flip</h2>
+	</div>
+	<div class="property">
+		<h3>None</h3>
+		<p>No flipping will occur.</p>
+		<h3>Mapping</h3>
+		<p>Random nodes will have flipped texture coordinates.</p>
+		<h3>Shape</h3>
+		<p>Random nodes will have flipped shapes [<a href="#frond.shape.contour">see Shape: Contour</a>].</p>
+		<h3>Both</h3>
+		<p>Random nodes may have flipped texture coordinates, shapes, or both.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.start">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Start</h2>
+	</div>
+	<div class="property">
+		<p>The percentage along the spine where frond geometry begins.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.end">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> End</h2>
+	</div>
+	<div class="property">
+		<p>The percentage along the spine where frond geometry terminates.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.roll">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Roll</h2>
+	</div>
+	<div class="property">
+		<p>Uniform rotation of the frond, applied after <a href="#spine.roll">spine roll</a> and <a href="#spine.alignment">spine alignment</a>.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.count">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer</span> Count</h2>
+	</div>
+	<div class="property">
+		<p>The number of frond &quot;blades&quot;. Frond blades are instances of the frond shape rotated along the spine.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.spacing">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Spacing</h2>
+	</div>
+	<div class="property">
+		<p>The radial distance between each frond blade. A value of 1.0 results in equal distance on both sides of the frond.</p>
+		<p class="note"><b class="icon"></b>Requires a <a href="frond.count">frond count</a> greater than 1.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.normals.alignment">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Normals: Alignment</h2>
+	</div>
+	<div class="property">
+		<p>Normals are rotated from the face normal towards the direction the node is growing. A value of 1.0 results in normals facing completely out.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.normals.spread">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Normals: Spread</h2>
+	</div>
+	<div class="property">
+		<p>Normals are fanned towards the sides of the frond. Spreading will increase for each <a href="#segments.frond_shape">Frond: Shape</a> segment approaching the edge of the frond.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.mesh.normal_bias">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Mesh: Normal Bias</h2>
+	</div>
+	<div class="property">
+		<p>Modulates between the standard frond normals (0.0) and the normals as set in the source mesh (1.0).</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.mesh.offset_direction">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Mesh: Offset Direction</h2>
+	</div>
+	<div class="property">
+		<h3>Frond</h3>
+		<p>The Z-depth of mesh fronds are applied based on the shape of the <a href="#frond.shape.contour">Frond: Shape: Contour</a>.</p>
+		<h3>Spine</h3>
+		<p>The Z-depth of  mesh fronds are applied in a planar fashion with the up vector defined by the spine's orientation.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frond.mesh.z_scale">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Mesh: Z Scale</h2>
+	</div>
+	<div class="property">
+		<p>Scalar for the Z-depth (height) of mesh fronds.</p>
+		<p class="note"><a href="#frond.shape.height">Frond: Shape: Height</a> value is applied to the deforming surface, not the mesh frond itself.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Branch</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.radius">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Radius</h2>
+	</div>
+	<div class="property">
+		<p>The radius of the extruded branch skin.</p>
+		<p class="note"><b class="icon"></b>Radius is scaled to the radius profile percentage of the parent node at the point where each branch occurs.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.clamp_radius">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Clamp Radius</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, the radius can never exceed the radius of its parent at the point where the branch occured.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.light_seam_reduction">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Light Seam Reduction</h2>
+	</div>
+	<div class="property">
+		<p>The amount to bend the normals toward the spine direction.</p>
+		<p class="note"><b class="icon"></b>Normal bending increases exponentially near the base of the branch since light seams occur where branches intersect.
+		</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.flares.number">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer</span> Flares: Number</h2>
+	</div>
+	<div class="property">
+		<p>The number of flares around the branch.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.flares.balance">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Flares: Balance</h2>
+	</div>
+	<div class="property">
+		<p>An interpolation between equally-spaced and randomly-positioned flares.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.flares.width">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Flares: Width</h2>
+	</div>
+	<div class="property">
+		<p>The radial spread of each flare.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.flares.length">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Flares: Length</h2>
+	</div>
+	<div class="property">
+		<p>The distance out from the initial branch radius that the flares will extend.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.flares.height">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Flares: Height</h2>
+	</div>
+	<div class="property">
+		<p>The distance the flare extends up the spine of each node.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.cap.angle">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Cap: Angle</h2>
+	</div>
+	<div class="property">
+		<p>The rotation of the texture coordinates around the center of the cap.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.cap.scale">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Cap: Scale</h2>
+	</div>
+	<div class="property">
+		<p>Texture coordinate scale. Larger values zoom in towards the center (clamped at 1.0).</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.cap.border">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Cap: Border</h2>
+	</div>
+	<div class="property">
+		<p>Insets the cap from the branch proper to simulate bark thickness.</p>
+		<p class="note"><b class="icon"></b>A cap border greater than 0.0  results in an extra ring of cap segments.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.cap.offset">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Cap: Offset</h2>
+	</div>
+	<div class="property">
+		<p>Extrudes the cap geometry in the direction of the last length segment.</p>
+		<p class="note"><b class="icon"></b>Requires a <a href="#branch.cap.border">Cap: Border</a> value greater than 0.0.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.cap.slope">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Cap: Slope</h2>
+	</div>
+	<div class="property">
+		<p>The length to extend one side of the cap, creating a slope.</p>
+		<p class="note"><b class="icon"></b>Rotate the slope with <a href="#branch.cap.angle">Cap:Angle</a></p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.welding.enabled">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Welding: Enabled</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, branches will be pushed out and fused to their parent, creating a seamless union between the two.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.welding.normal_blending">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Welding: Normal Blending</h2>
+	</div>
+	<div class="property">
+		<p>The  percentage to blend between computed branch normals and the normals from the parent branch at the point of welding.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.welding.distance">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Welding: Distance</h2>
+	</div>
+	<div class="property">
+		<p>The distance away from the parent branch skin to start the welded branch.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.welding.upper_spread">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Welding: Upper Spread</h2>
+	</div>
+	<div class="property">
+		<p>The amount to spread the <a href="#segments.weld">weld segments</a> towards the end of the parent branch, creating a &quot;web&quot; where the branches meet.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="branch.welding.lower_spread">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Welding: Lower Spread</h2>
+	</div>
+	<div class="property">
+		<p>The amount to spread the <a href="#segments.weld">weld segments</a> towards the start of the parent branch, creating a &quot;web&quot; where the branches meet.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Texture Coordinates</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.layer">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Layer</h2>
+	</div>
+	<div class="property">
+		<p>Each layer applies only to branch geometry. Branches have two distinct sets of texture coordinates, 'Base' and 'Detail'.</p>
+		<h3>Base</h3>
+		<p>Show the base layer property set.</p>
+		<h3>Detail</h3>
+		<p>Show the detail layer property set. </p>
+		<p class="note"><b class="icon"></b>The detail layer is a superset of the base layer which includes additional <a href="#texture_coordinates.detail.clamp.style">Clamp</a> properties. Detail textures must be present in the material to show up on the branch and are masked by the Detail: Diffuse texture's alpha channel.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.detail.style"></a><a name="texture_coordinates.base.style">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Style</h2>
+	</div>
+	<div class="property">
+		<h3>Relative</h3>
+		<p>Both U and V tile are  computed based on the length and radius of the node.</p>
+		<h3>U relative</h3>
+		<p>U tile is computed based on the radius of the node.</p>
+		<h3>V relative</h3>
+		<p>V tile is  computed based on the length of the node.</p>
+		<h3>Absolute</h3>
+		<p>Both U and V tile are set  explicitly.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.base.u_correction">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> U Correction</h2>
+	</div>
+	<div class="property">
+		<h3>None</h3>
+		<p>Texture mapping is applied as cylinder before skin disturbance (i.e. displacement, welding, flares). </p>
+		<h3>Early</h3>
+		<p>Texture mapping is applied as cylinder and adjusted before skin disturbance (i.e. displacement, welding, flares). </p>
+		<h3>Late</h3>
+		<p>Texture mapping is applied as cylinder after skin disturbance (i.e. displacement, welding, flares). </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.detail.u_tile"></a><a name="texture_coordinates.base.u_tile">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer / float</span> U Tile</h2>
+	</div>
+	<div class="property">
+		<p>The number of times the material tiles around a branch.</p>
+		<p class="note"><b class="icon"></b>If <a href="#texture_coordinates.base.style">Texture Coordinates: Style</a> is set to relative, this integer becomes a float and the actual value is a function of the radius of individual nodes. The computed U tile value is then rounded to an integer to avoid texture seams.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.detail.v_tile"></a><a name="texture_coordinates.base.v_tile">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> V Tile</h2>
+	</div>
+	<div class="property">
+		<p>The number of times the material tiles along the length of a branch.</p>
+		<p class="note"><b class="icon"></b>If <a href="#texture_coordinates.base.style">Texture Coordinates: Style</a> is set to relative, this integer becomes a float and the actual value is a function of the length of individual nodes. </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.detail.u_offset"></a><a name="texture_coordinates.base.u_offset">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> U Offset</h2>
+	</div>
+	<div class="property">
+		<p>Maximum possible U offset. Each node receives a random value between 0 and this.</p>
+		<p class="note"><b class="icon"></b>Setting the value to 1.0 ensures totally random U offsets.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.detail.v_offset"></a><a name="texture_coordinates.base.v_offset">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> V Offset</h2>
+	</div>
+	<div class="property">
+		<p>Maximum possible V offset. Each node receives a random value between 0 and this.</p>
+		<p class="note"><b class="icon"></b>Setting the value to 1.0 ensures totally random V offsets.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.detail.twist"></a><a name="texture_coordinates.base.twist">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Twist</h2>
+	</div>
+	<div class="property">
+		<p>The number of full revolutions to twist the  material per V tile.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.detail.flip_twist"></a><a name="texture_coordinates.base.flip_twist">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Flip Twist</h2>
+	</div>
+	<div class="property">
+		<h3>False</h3>
+		<p>Each branch twists in a counter-clockwise direction.</p>
+		<h3>True</h3>
+		<p>Each branch twists the same amount in either a clockwise or counter-clockwise direction.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.detail.clamp.style">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Clamp: Style</h2>
+	</div>
+	<div class="property">
+		<p>&quot;Clamping&quot; a detail texture prohibits it from tiling. Use this to make a non-repeating mark that appears on a specific part of a branch.</p>
+		<h3>Both &#8250; <span>Clamp texture from all four sides.</span></h3>
+		<h3>U &#8250; <span>Clamp texture from Left to Right.</span></h3>
+		<h3>V &#8250; <span>Clamp texture from Bottom to Top.</span></h3>
+		<h3>Neither &#8250; <span>Do not clamp this texture.</span></h3>
+		<p class="note"><b class="icon"></b>only available when editing <a href="#texture_coordinates.layer">Layer: Detail</a>. Clamping  streaks the last row of pixels in the clamped direction. Ensure that the detail mask is transparent at the point where the clamping occurs to avoid visible streaking.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.detail.clamp.left">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Clamp: Left</h2>
+	</div>
+	<div class="property">
+		<p>Initial U clamp percentage.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.detail.clamp.right">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Clamp: Right</h2>
+	</div>
+	<div class="property">
+		<p>Terminal U clamp percentage.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.detail.clamp.bottom">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Clamp: Bottom</h2>
+	</div>
+	<div class="property">
+		<p>Initial V clamp percentage.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="texture_coordinates.detail.clamp.top">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Clamp: Top</h2>
+	</div>
+	<div class="property">
+		<p>Terminal V clamp percentage.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Materials</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="materials.branch">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a><a name="materials.cap"></a><a name="materials.frond"></a>
+		</div>
+		<h2> Material/Weight</h2>
+	</div>
+	<div class="property">
+		<p>Branches, caps and fronds can each have multiple materials to be distributed randomly. Use the button controls to add [+] or remove [-] materials per geometry type.</p>
+		<h3>Material</h3>
+		<p>Named material from the material bank.</p>
+		<h3>Weight</h3>
+		<p>Probability that a node will receive this material index (this weight &divide; sum of all weights).</p>
+		<p class="note"><b class="icon"></b>Using multiple branch maps will require additional draw calls in real-time use. Use sparingly for tiling (branch) textures.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Displacement</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="displacement.branch.source">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a><a name="displacement.cap.source"></a><a name="displacement.frond.source"></a>
+		</div>
+		<h2><span>enumeration</span> Source</h2>
+	</div>
+	<div class="property">
+		<h3>Noise</h3>
+		<p>A generic, scalable noise pattern is used for displacement.</p>
+		<h3>Use material</h3>
+		<p>The material's height map (located in the normal map's alpha channel) is used for displacement.</p>
+		<h3>Named Displacement Texture</h3>
+		<p>A named 'displacement map' from the Asset bar is used for displacement.</p>
+		<p class="note"><b class="icon"></b>The displacement source is not exported for real-time use; it is used only as a modeling aid.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="displacement.branch.mapping">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Mapping*</h2>
+	</div>
+	<div class="property">
+		<h3>Use base tex coords</h3>
+		<p>Displacement is mapped on top of the existing <a href="#texture_coordinates.layer">Layer: Base</a> coordinates. Tile and offset are applied after obtaining the base coordinates.</p>
+		<h3>Overwrite base tex coords</h3>
+		<p>Ignore the existing coordinates and map displacement explicitly by the other values in this group.</p>
+		<p class="note"><b class="icon"></b>* Only available for branches since caps and fronds have fixed coordinates.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="displacement.branch.amount">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a><a name="displacement.cap.amount"></a><a name="displacement.frond.amount"></a>
+		</div>
+		<h2><span>float</span> Amount</h2>
+	</div>
+	<div class="property">
+		<p>The amount of surface displacement caused by displacement.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="displacement.branch.jaggedness">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Jaggedness</h2>
+	</div>
+	<div class="property">
+		<p>The amount to offset the vertices of each branch ring. Jaggedness is necessary for creating realistic breaks when physics are enabled.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="displacement.branch.jaggedness_tile">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Jaggedness Tile</h2>
+	</div>
+	<div class="property">
+		<p>Scales the tiling of the displacement source for the jaggedness only. Adjusting this value may be necessary if the displacement map does not have sufficient resolution to offset individual vertices.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="displacement.branch.offset">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a><a name="displacement.cap.amount"></a><a name="displacement.frond.amount"></a>
+		</div>
+		<h2><span>float</span> Offset </h2>
+	</div>
+	<div class="property">
+		<p>The amount to offset the depth of the displacment source. Values greater than one will push the displacment outwards and less than one will bring the displacement in towards the center of the branch. </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="displacement.branch.u_tile">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a><a name="displacement.frond.u_tile"></a>
+		</div>
+		<h2><span>integer</span> U Tile</h2>
+	</div>
+	<div class="property">
+		<p>The number of times displacement is repeated across the U direction of the geometry.</p>
+		<p class="note"><b class="icon"></b>If <a href="#displacement.branch.mapping">Displacement: Mapping</a> is set to 'Use base tex coords', this value is a multiplier of the base U tile value.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="displacement.branch.v_tile">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a><a name="displacement.frond.v_tile"></a>	
+		</div>
+		<h2><span>float</span> V Tile</h2>
+	</div>
+	<div class="property">
+		<p>The number of times displacement is repeated along the length of the geometry.</p>
+		<p class="note"><b class="icon"></b>If <a href="#displacement.branch.mapping">Displacement: Mapping</a> is set to 'Use base tex coords', this value is a multiplier of the base V tile value.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="displacement.branch.u_offset">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a><a name="displacement.cap.u_offset"></a><a name="displacement.frond.u_offset"></a>
+		</div>
+		<h2><span>float</span> U Offset</h2>
+	</div>
+	<div class="property">
+		<p>Maximum possible U offset. Each node receives a random value between 0 and this.</p>
+		<p class="note"><b class="icon"></b>Setting the value to 1.0 ensures totally random U offsets.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="displacement.branch.v_offset">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a><a name="displacement.cap.v_offset"></a><a name="displacement.frond.v_offset"></a>
+		</div>
+		<h2><span>boolean</span> V Offset</h2>
+	</div>
+	<div class="property">
+		<p>Maximum possible V offset. Each node receives a random value between 0 and this.</p>
+		<p class="note"><b class="icon"></b>Setting the value to 1.0 ensures totally random V offsets.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="displacement.cap.uv_tile">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> UV Tile*</h2>
+	</div>
+	<div class="property">
+		<p>The number of times displacement is tiled from the center of a cap.</p>
+		<p class="note"><b class="icon"></b>* Replaces separate U and V tile properties for cap geometry.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="displacement.cap.angle">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Angle*</h2>
+	</div>
+	<div class="property">
+		<p>Rotation offset for displacement texture.</p>
+		<p><span class="note">* Applied only to cap geometry.</span></p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Ambient Occlusion</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="ambient_occlusion.offset">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Offset</h2>
+	</div>
+	<div class="property">
+		<p>An offset for the calculated amount of ambient occlusion. Increasing this value lessens the affect of ambient occlusion.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="ambient_occlusion.contrast">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Contrast</h2>
+	</div>
+	<div class="property">
+		<p>The difference in brightness from the heaviest ambient occlusion to no ambient occlusion.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="ambient_occlusion.min">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Min</h2>
+	</div>
+	<div class="property">
+		<p>This value clamps the least amount of ambient occlusion allowed.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="ambient_occlusion.max">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Max</h2>
+	</div>
+	<div class="property">
+		<p>This value clamps the most that ambient occlusion can ever darken.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Level of Detail</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.optimization">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Optimization</h2>
+	</div>
+	<div class="property">
+		<p>The target <a href="#segments.optimization">optimization</a> amount for the lowest LOD state.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.segment_multiplier">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Segment Multiplier</h2>
+	</div>
+	<div class="property">
+		<p>The percentage of overall segments to keep from highest LOD to lowest LOD.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.length_segments">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Length Segments</h2>
+	</div>
+	<div class="property">
+		<p>The percentage of length segments to keep from highest LOD to lowest LOD.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.radial_segments">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Radial Segments</h2>
+	</div>
+	<div class="property">
+		<p>The percentage of radial segments to keep from highest LOD to lowest LOD.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.cap_rings">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Cap Rings</h2>
+	</div>
+	<div class="property">
+		<p>The percentage of cap ring segments to keep from highest LOD to lowest LOD.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.frond_shape_segments">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Frond Shape Segments</h2>
+	</div>
+	<div class="property">
+		<p>The percentage of frond shape segments to keep from highest LOD to lowest LOD.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.frond_count">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Frond Count</h2>
+	</div>
+	<div class="property">
+		<p>The number of fronds per spine node to keep from highest LOD to lowest LOD.</p>
+		<p class="note"><b class="icon"></b>Requires a <a href="#frond.count">frond count</a> greater than 1.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.branch_volume_threshold">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Branch Volume Threshold</h2>
+	</div>
+	<div class="property">
+		<p>The maximum branch volume allowed from highest LOD to lowest LOD.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.cap_threshold">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Cap Threshold</h2>
+	</div>
+	<div class="property">
+		<p>The maximum cap area allowed from highest LOD to lowest LOD.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.frond_area_threshold">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Frond Area Threshold</h2>
+	</div>
+	<div class="property">
+		<p>The maximum frond area allowed from highest LOD to lowest LOD.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.bones">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Bones</h2>
+	</div>
+	<div class="property">
+		<p>The percentage of bones to keep from highest LOD to lowest LOD.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Wind</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="wind.apply">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Apply</h2>
+	</div>
+	<div class="property">
+		<p>Apply <a href="../fan/index.htm#secondary.strength_exponent">secondary wind</a> at this level.</p>
+		<p class="note"><b class="icon"></b>Applying wind at multiple levels may cause branch disconnection.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="wind.weight">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Weight</h2>
+	</div>
+	<div class="property">
+		<p>Each vertex of each branch oscillates along a vector shared by all vertices of the same branch. The Weight is length of that vector. Use the profile curve to distribute movement along the branch.</p>
+		<p class="note">The left hand side of the profile curve must be zero to avoid branch disconnections.</p>
+  </div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="wind.offset">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>radians</span> Offset</h2>
+	</div>
+	<div class="property">
+		<p>This value provides an offset into the trigonometric functions used during wind oscillation. These values seldom change but can be modified to prevent neighboring branches from oscillating in unison if necessary (this is usually done in node editing mode).</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="wind.rotation">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Rotation</h2>
+	</div>
+	<div class="property">
+		<p>Controls the direction of the vector along which this branch travels during wind oscillation. These values seldom change but can be modified to prevent neighboring branches from oscillating in the same direction (this is usually done in node editing mode).</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="wind.fronds.ripple_u">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Frond: Ripple U</h2>
+	</div>
+	<div class="property">
+		<p>Tiles the frond rippling effect across a fronds.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="wind.fronds.ripple_v">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Frond: Ripple V</h2>
+	</div>
+	<div class="property">
+		<p>Tiles the frond rippling effect along the fronds.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="wind.fronds.ripple_scale">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Frond: Ripple Scale</h2>
+	</div>
+	<div class="property">
+		<p>Controls how much this frond adheres to the frond rippling distance values associated with the fan.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Physics</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.bone_style">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Bone Style</h2>
+	</div>
+	<div class="property">
+		<h3>Relative</h3>
+		<p>The number of bones is based on the length of the spine.</p>
+		<h3>Absolute</h3>
+		<p>The number of bones is explicitly set per-node.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.bones">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer / float</span> Bones</h2>
+	</div>
+	<div class="property">
+		<p>The number of bones generated along the length of spines (analogous to <a href="#segments.length">Segments: Length</a>)</p>
+		<p class="note"><b class="icon"></b>If <a href="#physics.bone_style">Bone  Style</a> is set to relative, this integer becomes a float and the actual number of bones generated is a function of the length of individual nodes.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.density">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Density</h2>
+	</div>
+	<div class="property">
+		<p>The weight and stiffness of branch geometry in physics calculations.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.radius_scalar">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Radius Scalar </h2>
+	</div>
+	<div class="property">
+		<p>The percentage to scale the radius of the bones. </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.length_scalar">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Length Scalar </h2>
+	</div>
+	<div class="property">
+		<p>The percentage to scale the length of the bones. </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.breakable_chance">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Breakable Chance</h2>
+	</div>
+	<div class="property">
+		<p>The probability of breaking due to physical interaction for the all nodes created from this generator.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.cap_override">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Cap Override</h2>
+	</div>
+	<div class="property">
+		<h3>None</h3>
+		<p>No custom cap is used for physics-broken branches.</p>
+		<h3>Indexed Material</h3>
+		<p>Select any material from the Asset Editor for use as the cap texture when a branch is broken while physics is enabled.  </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.breakable_chance">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Use Frond Geometry</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, frond geometry is made physical as well. </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.watertight_branch_geometry">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Watertight Branch Geometry</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, branch geometry will be encased as a convex mesh.</p>
+	</div>
+</div>
+</body>
+</html>

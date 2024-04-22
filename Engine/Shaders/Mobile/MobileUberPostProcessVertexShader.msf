@@ -1,0 +1,27 @@
+/*=============================================================================
+	MobileUberPostProcessVertexShader.msf: Applies the mobile uber post-process
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+UNIFORM_HIGH(vec4, SourceTextureScaleBias);
+UNIFORM_HIGH(vec4, SceneColorScaleBias);
+
+ATTRIBUTE(vec4, Position, POSITION);
+ATTRIBUTE(vec2, TexCoords0, TEXCOORD0);
+
+OUT_VARYING_DEFAULT(vec2, SceneColorUV, TEXCOORD0);
+OUT_VARYING_DEFAULT(vec2, SourceTextureUV, TEXCOORD1);
+
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+
+void main()
+{	
+	gl_Position = vec4(Position.xy, 0.0, 1.0);
+//	SceneColorUV = Position * SceneColorScaleBias.xy + SceneColorScaleBias.zw;
+//	SourceTextureUV = Position * SourceTextureScaleBias.xy + SourceTextureScaleBias.zw;
+
+	// Set to TexCoords0 to allow upscaling to work properly
+	SceneColorUV = TexCoords0;
+	SourceTextureUV = TexCoords0;
+}

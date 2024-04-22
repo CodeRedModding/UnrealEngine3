@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="ClientMachines" targetNamespace="http://tempuri.org/ClientMachines.xsd" xmlns:mstns="http://tempuri.org/ClientMachines.xsd" xmlns="http://tempuri.org/ClientMachines.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:msprop="urn:schemas-microsoft-com:xml-msprop" attributeFormDefault="qualified" elementFormDefault="qualified">
+  <xs:annotation>
+    <xs:appinfo source="urn:schemas-microsoft-com:xml-msdatasource">
+      <DataSource DefaultConnectionIndex="1" FunctionsComponentName="QueriesTableAdapter" Modifier="AutoLayout, AnsiClass, Class, Public" SchemaSerializationMode="IncludeSchema" xmlns="urn:schemas-microsoft-com:xml-msdatasource">
+        <Connections>
+          <Connection AppSettingsObjectName="Settings" AppSettingsPropertyName="UPropConnectionString" ConnectionStringObject="" IsAppSettingsProperty="true" Modifier="Assembly" Name="UPropConnectionString (Settings)" ParameterPrefix="@" PropertyReference="ApplicationSettings.RemotableType.Properties.Settings.GlobalReference.Default.UPropConnectionString" Provider="System.Data.SqlClient" />
+          <Connection AppSettingsObjectName="Settings" AppSettingsPropertyName="UnrealPropConnectionString" ConnectionStringObject="" IsAppSettingsProperty="true" Modifier="Assembly" Name="UnrealPropConnectionString (Settings)" ParameterPrefix="@" PropertyReference="ApplicationSettings.RemotableType.Properties.Settings.GlobalReference.Default.UnrealPropConnectionString" Provider="System.Data.SqlClient" />
+        </Connections>
+        <Tables>
+          <TableAdapter BaseClass="System.ComponentModel.Component" DataAccessorModifier="AutoLayout, AnsiClass, Class, Public" DataAccessorName="ClientMachinesTableAdapter" GeneratorDataComponentClassName="ClientMachinesTableAdapter" Name="ClientMachines" UserDataComponentName="ClientMachinesTableAdapter">
+            <MainSource>
+              <DbSource ConnectionRef="UnrealPropConnectionString (Settings)" DbObjectType="Unknown" FillMethodModifier="Public" FillMethodName="Fill" GenerateMethods="Both" GenerateShortCommands="false" GeneratorGetMethodName="GetData" GeneratorSourceName="Fill" GetMethodModifier="Public" GetMethodName="GetData" QueryType="Rowset" ScalarCallRetval="System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="false" UserGetMethodName="GetData" UserSourceName="Fill">
+                <SelectCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>SELECT ClientMachines.ID, ClientMachines.Path, ClientMachines.Name, UserNames.ID AS UserNameID, UserNames.Email AS Email, ClientMachines.Reboot, ClientMachines.Created, ClientGroups.GroupName AS ClientGroupName, Platforms.Name AS Platform
+FROM [ClientMachines] 
+INNER JOIN [UserNames] ON ClientMachines.UserNameID = UserNames.ID
+INNER JOIN [Platforms] ON ClientMachines.PlatformID = Platforms.ID 
+INNER JOIN [ClientGroups] ON ClientMachines.ClientGroupID = ClientGroups.ID</CommandText>
+                    <Parameters />
+                  </DbCommand>
+                </SelectCommand>
+              </DbSource>
+            </MainSource>
+            <Mappings>
+              <Mapping SourceColumn="Path" DataSetColumn="Path" />
+              <Mapping SourceColumn="Name" DataSetColumn="Name" />
+              <Mapping SourceColumn="ClientGroupName" DataSetColumn="ClientGroupName" />
+              <Mapping SourceColumn="Email" DataSetColumn="Email" />
+              <Mapping SourceColumn="Reboot" DataSetColumn="Reboot" />
+              <Mapping SourceColumn="Platform" DataSetColumn="Platform" />
+              <Mapping SourceColumn="ID" DataSetColumn="ID" />
+              <Mapping SourceColumn="UserNameID" DataSetColumn="UserNameID" />
+              <Mapping SourceColumn="Created" DataSetColumn="Created" />
+            </Mappings>
+            <Sources>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectName="" DbObjectType="Unknown" FillMethodModifier="Public" FillMethodName="FillForPlatform" GenerateMethods="Both" GenerateShortCommands="true" GeneratorGetMethodName="GetDataBy" GeneratorSourceName="FillForPlatform" GetMethodModifier="Public" GetMethodName="GetDataBy" QueryType="Rowset" ScalarCallRetval="System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="true" UserGetMethodName="GetDataBy" UserSourceName="FillForPlatform">
+                <SelectCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>SELECT ClientMachines.ID, ClientMachines.Path, ClientMachines.Name, UserNames.ID AS UserNameID, UserNames.Email AS Email, ClientMachines.Reboot, ClientGroups.GroupName AS ClientGroupName, Platforms.Name AS Platform
+FROM [ClientMachines] 
+INNER JOIN [UserNames] ON ClientMachines.UserNameID = UserNames.ID
+INNER JOIN [Platforms] ON ClientMachines.PlatformID = Platforms.ID 
+INNER JOIN [ClientGroups] ON ClientMachines.ClientGroupID = ClientGroups.ID
+WHERE ( ClientMachines.PlatformID = @PlatformID OR @PlatformID = -1 )
+AND ( UserNameID = @UserNameID OR @UserNameID = 1 )
+ORDER BY ClientMachines.Name</CommandText>
+                    <Parameters>
+                      <Parameter AllowDbNull="false" AutogeneratedName="PlatformID" ColumnName="PlatformID" DataSourceName="UnrealProp.dbo.ClientMachines" DataTypeServer="smallint" DbType="Int16" Direction="Input" ParameterName="@PlatformID" Precision="0" ProviderType="SmallInt" Scale="0" Size="2" SourceColumn="PlatformID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="UserNameID" ColumnName="UserNameID" DataSourceName="UnrealProp.dbo.ClientMachines" DataTypeServer="int" DbType="Int32" Direction="Input" ParameterName="@UserNameID" Precision="0" ProviderType="Int" Scale="0" Size="4" SourceColumn="UserNameID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                    </Parameters>
+                  </DbCommand>
+                </SelectCommand>
+              </DbSource>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectName="" DbObjectType="Unknown" FillMethodModifier="Public" FillMethodName="FillForPlatformAndGroup" GenerateMethods="Both" GenerateShortCommands="true" GeneratorGetMethodName="GetDataBy1" GeneratorSourceName="FillForPlatformAndGroup" GetMethodModifier="Public" GetMethodName="GetDataBy1" QueryType="Rowset" ScalarCallRetval="System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="true" UserGetMethodName="GetDataBy1" UserSourceName="FillForPlatformAndGroup">
+                <SelectCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>SELECT ClientMachines.ID, ClientMachines.Path, ClientMachines.Name, UserNames.ID AS UserNameID, UserNames.Email AS Email, ClientMachines.Reboot, ClientGroups.GroupName AS ClientGroupName, Platforms.Name AS Platform
+FROM [ClientMachines] 
+INNER JOIN [UserNames] ON ClientMachines.UserNameID = UserNames.ID
+INNER JOIN [Platforms] ON ClientMachines.PlatformID = Platforms.ID 
+INNER JOIN [ClientGroups] ON ClientMachines.ClientGroupID = ClientGroups.ID
+WHERE ( PlatformID = @PlatformID AND ClientGroupID = @ClientGroupID )
+ORDER BY ClientMachines.Name</CommandText>
+                    <Parameters>
+                      <Parameter AllowDbNull="false" AutogeneratedName="PlatformID" ColumnName="PlatformID" DataSourceName="UnrealProp.dbo.ClientMachines" DataTypeServer="smallint" DbType="Int16" Direction="Input" ParameterName="@PlatformID" Precision="0" ProviderType="SmallInt" Scale="0" Size="2" SourceColumn="PlatformID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="ClientGroupID" ColumnName="ClientGroupID" DataSourceName="UnrealProp.dbo.ClientMachines" DataTypeServer="int" DbType="Int32" Direction="Input" ParameterName="@ClientGroupID" Precision="0" ProviderType="Int" Scale="0" Size="4" SourceColumn="ClientGroupID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                    </Parameters>
+                  </DbCommand>
+                </SelectCommand>
+              </DbSource>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectName="" DbObjectType="Unknown" GenerateShortCommands="true" GeneratorSourceName="InsertQuery" Modifier="Public" Name="InsertQuery" QueryType="NoData" ScalarCallRetval="System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="true" UserGetMethodName="GetDataBy2" UserSourceName="InsertQuery">
+                <InsertCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>INSERT INTO [ClientMachines] ( PlatformID, Path, Name, ClientGroupID, UserNameID, Reboot, Created ) VALUES ( @PlatformID, @Path, @Name, @ClientGroupID, @UserNameID, @Reboot, @Created );
+SELECT SCOPE_IDENTITY() AS ID</CommandText>
+                    <Parameters>
+                      <Parameter AllowDbNull="false" AutogeneratedName="PlatformID" ColumnName="PlatformID" DataSourceName="" DataTypeServer="smallint" DbType="Int16" Direction="Input" ParameterName="@PlatformID" Precision="0" ProviderType="SmallInt" Scale="0" Size="2" SourceColumn="PlatformID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="Path" ColumnName="Path" DataSourceName="" DataTypeServer="varchar(256)" DbType="AnsiString" Direction="Input" ParameterName="@Path" Precision="0" ProviderType="VarChar" Scale="0" Size="256" SourceColumn="Path" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="Name" ColumnName="Name" DataSourceName="" DataTypeServer="varchar(32)" DbType="AnsiString" Direction="Input" ParameterName="@Name" Precision="0" ProviderType="VarChar" Scale="0" Size="32" SourceColumn="Name" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="ClientGroupID" ColumnName="ClientGroupID" DataSourceName="" DataTypeServer="int" DbType="Int32" Direction="Input" ParameterName="@ClientGroupID" Precision="0" ProviderType="Int" Scale="0" Size="4" SourceColumn="ClientGroupID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="UserNameID" ColumnName="UserNameID" DataSourceName="" DataTypeServer="int" DbType="Int32" Direction="Input" ParameterName="@UserNameID" Precision="0" ProviderType="Int" Scale="0" Size="4" SourceColumn="UserNameID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="Reboot" ColumnName="Reboot" DataSourceName="" DataTypeServer="bit" DbType="Boolean" Direction="Input" ParameterName="@Reboot" Precision="0" ProviderType="Bit" Scale="0" Size="1" SourceColumn="Reboot" SourceColumnNullMapping="false" SourceVersion="Current" />
+                    </Parameters>
+                  </DbCommand>
+                </InsertCommand>
+              </DbSource>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectName="" DbObjectType="Unknown" GenerateShortCommands="true" GeneratorGetMethodName="GetDataBy2" GeneratorSourceName="UpdateQuery" Modifier="Public" Name="UpdateQuery" QueryType="NoData" ScalarCallRetval="System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="true" UserGetMethodName="GetDataBy3" UserSourceName="UpdateQuery">
+                <UpdateCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>UPDATE [ClientMachines] SET PlatformID = @PlatformID, Path = @Path, Name = @Name, ClientGroupID = @ClientGroupID, UserNameID = @UserNameID, Reboot = @Reboot, Created = @Created
+WHERE ( ID = @Original_ID )</CommandText>
+                    <Parameters>
+                      <Parameter AllowDbNull="false" AutogeneratedName="PlatformID" ColumnName="PlatformID" DataSourceName="" DataTypeServer="smallint" DbType="Int16" Direction="Input" ParameterName="@PlatformID" Precision="0" ProviderType="SmallInt" Scale="0" Size="2" SourceColumn="PlatformID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="Path" ColumnName="Path" DataSourceName="" DataTypeServer="varchar(256)" DbType="AnsiString" Direction="Input" ParameterName="@Path" Precision="0" ProviderType="VarChar" Scale="0" Size="256" SourceColumn="Path" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="Name" ColumnName="Name" DataSourceName="" DataTypeServer="varchar(32)" DbType="AnsiString" Direction="Input" ParameterName="@Name" Precision="0" ProviderType="VarChar" Scale="0" Size="32" SourceColumn="Name" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="ClientGroupID" ColumnName="ClientGroupID" DataSourceName="" DataTypeServer="int" DbType="Int32" Direction="Input" ParameterName="@ClientGroupID" Precision="0" ProviderType="Int" Scale="0" Size="4" SourceColumn="ClientGroupID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="UserNameID" ColumnName="UserNameID" DataSourceName="" DataTypeServer="int" DbType="Int32" Direction="Input" ParameterName="@UserNameID" Precision="0" ProviderType="Int" Scale="0" Size="4" SourceColumn="UserNameID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="Reboot" ColumnName="Reboot" DataSourceName="" DataTypeServer="bit" DbType="Boolean" Direction="Input" ParameterName="@Reboot" Precision="0" ProviderType="Bit" Scale="0" Size="1" SourceColumn="Reboot" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="Original_ID" ColumnName="ID" DataSourceName="" DataTypeServer="int" DbType="Int32" Direction="Input" ParameterName="@Original_ID" Precision="0" ProviderType="Int" Scale="0" Size="4" SourceColumn="ID" SourceColumnNullMapping="false" SourceVersion="Original" />
+                    </Parameters>
+                  </DbCommand>
+                </UpdateCommand>
+              </DbSource>
+            </Sources>
+          </TableAdapter>
+        </Tables>
+        <Sources />
+      </DataSource>
+    </xs:appinfo>
+  </xs:annotation>
+  <xs:element name="ClientMachines" msdata:IsDataSet="true" msdata:UseCurrentLocale="true" msprop:Generator_DataSetName="ClientMachines" msprop:Generator_UserDSName="ClientMachines">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="ClientMachines" msprop:Generator_UserTableName="ClientMachines" msprop:Generator_RowEvArgName="ClientMachinesRowChangeEvent" msprop:Generator_TableVarName="tableClientMachines" msprop:Generator_TablePropName="_ClientMachines" msprop:Generator_RowDeletingName="ClientMachinesRowDeleting" msprop:Generator_RowChangingName="ClientMachinesRowChanging" msprop:Generator_RowDeletedName="ClientMachinesRowDeleted" msprop:Generator_RowEvHandlerName="ClientMachinesRowChangeEventHandler" msprop:Generator_TableClassName="ClientMachinesDataTable" msprop:Generator_RowChangedName="ClientMachinesRowChanged" msprop:Generator_RowClassName="ClientMachinesRow">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Path" msprop:Generator_ColumnVarNameInTable="columnPath" msprop:Generator_ColumnPropNameInRow="Path" msprop:Generator_ColumnPropNameInTable="PathColumn" msprop:Generator_UserColumnName="Path">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="1000" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="Name" msprop:Generator_ColumnVarNameInTable="columnName" msprop:Generator_ColumnPropNameInRow="Name" msprop:Generator_ColumnPropNameInTable="NameColumn" msprop:Generator_UserColumnName="Name">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="50" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="ClientGroupName" msprop:Generator_ColumnVarNameInTable="columnClientGroupName" msprop:Generator_ColumnPropNameInRow="ClientGroupName" msprop:Generator_ColumnPropNameInTable="ClientGroupNameColumn" msprop:Generator_UserColumnName="ClientGroupName">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="32" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="Email" msprop:Generator_ColumnVarNameInTable="columnEmail" msprop:Generator_ColumnPropNameInRow="Email" msprop:Generator_ColumnPropNameInTable="EmailColumn" msprop:Generator_UserColumnName="Email">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="128" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="Reboot" msprop:Generator_ColumnVarNameInTable="columnReboot" msprop:Generator_ColumnPropNameInRow="Reboot" msprop:Generator_ColumnPropNameInTable="RebootColumn" msprop:Generator_UserColumnName="Reboot" type="xs:boolean" />
+              <xs:element name="Platform" msprop:Generator_ColumnVarNameInTable="columnPlatform" msprop:Generator_ColumnPropNameInRow="Platform" msprop:Generator_ColumnPropNameInTable="PlatformColumn" msprop:Generator_UserColumnName="Platform">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="16" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="ID" msdata:ReadOnly="true" msdata:AutoIncrement="true" msprop:Generator_ColumnVarNameInTable="columnID" msprop:Generator_ColumnPropNameInRow="ID" msprop:Generator_ColumnPropNameInTable="IDColumn" msprop:Generator_UserColumnName="ID" type="xs:int" />
+              <xs:element name="UserNameID" msdata:ReadOnly="true" msdata:AutoIncrement="true" msprop:Generator_ColumnVarNameInTable="columnUserNameID" msprop:Generator_ColumnPropNameInRow="UserNameID" msprop:Generator_ColumnPropNameInTable="UserNameIDColumn" msprop:Generator_UserColumnName="UserNameID" type="xs:int" />
+              <xs:element name="Created" msprop:Generator_ColumnVarNameInTable="columnCreated" msprop:Generator_ColumnPropNameInRow="Created" msprop:Generator_ColumnPropNameInTable="CreatedColumn" msprop:Generator_UserColumnName="Created" type="xs:dateTime" minOccurs="0" />
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:complexType>
+    <xs:unique name="Constraint1" msdata:PrimaryKey="true">
+      <xs:selector xpath=".//mstns:ClientMachines" />
+      <xs:field xpath="mstns:ID" />
+    </xs:unique>
+  </xs:element>
+</xs:schema>

@@ -1,0 +1,24 @@
+UNIFORM( mat4, Transform );
+UNIFORM( vec4, TextureTransform2D[4] );
+ATTRIBUTE( vec4, Position, POSITION );
+ATTRIBUTE( vec4, Color, COLOR0 );
+ATTRIBUTE( vec4, VertexColor, COLOR1 );
+OUT_VARYING_LOW( vec4, color, COLOR0 );
+OUT_VARYING_DEFAULT( vec4, factor, COLOR1 );
+OUT_VARYING_DEFAULT( vec2, TexCoords0, TEXCOORD0 );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// S TexTG
+
+  TexCoords0.x = dot(Position, TextureTransform2D[int(0.1+0.0)]);
+  TexCoords0.y = dot(Position, TextureTransform2D[int(0.1+1.0)]);
+// E Position3d
+
+  gl_Position = MulMatrix(Position, Transform);
+// E Vacolor
+  color = Color;
+// E Vafactor
+  factor = VertexColor;
+
+}
+

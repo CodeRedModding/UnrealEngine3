@@ -1,0 +1,137 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.BuildBranchModel
+
+@{
+    ViewBag.Title = "Build System";
+    ViewBag.Description = "Current Status for Branch '" + Model.Details.Branch + "'";
+}
+
+
+<script type="text/javascript">
+    function getStatusList( ) {
+        return ($.ajax({
+            url: "@Url.RouteUrl(new { action = "BranchCommands", controller = "Build", id = Model.Details.ID })",
+            async: false
+        }));
+    }
+
+    function lockBranch( ) {
+        ($.ajax({
+            url: "@Url.RouteUrl(new { action = "LockBranch", controller = "Build", id = Model.Details.ID })",
+            async: false
+        }));
+
+        location.reload();
+    }
+
+    function unlockBranch( ) {
+        ($.ajax({
+            url: "@Url.RouteUrl(new { action = "UnlockBranch", controller = "Build", id = Model.Details.ID })",
+            async: false
+        }));
+
+        location.reload();
+    }
+
+    function updateStatusList( ) {
+        var query = getStatusList().success(
+            function( ) {
+                setTimeout(function( ) {
+                    updateStatusList();
+                },
+                10000);
+            });
+
+        $('#commandsList').html(query.responseText);
+    }
+
+    $(document).ready(function () {
+        updateStatusList();
+    });
+</script>
+
+
+<section>
+    <div class="grid6">
+        <span class="linkBack">
+            @Html.ActionLink("Build Status", "Status", "Build")
+        </span>
+
+        <span class="fr">
+            <a href="#qa">Branch Details</a> |
+            <a href="#qa">QA Commands</a> |
+            <a href="#promotable">Promotable Builds</a> |
+            <a href="#games">Game Builds</a> |
+            <a href="#other">Other Builds</a> |
+            <a href="#utilities">Utilities</a> |
+            <a href="#maintenance">Maintenance</a> |
+            <a href="#testing">Testing</a>
+        </span>
+    </div>
+</section>
+
+
+<div class="grid4">
+    <a name="details"></a><h2>Branch Details</h2>
+
+    <p>
+        @if (Model.Details.LockedDown)
+        {
+            <img class="icon" src="~/Content/Themes/Base/Images/warning.png" alt="Warning" />
+            <text>This branch is currently locked down. Do not check in files unless told otherwise!</text>
+        }
+        else
+        {
+            <text>This branch is not locked down. Check in files at will.</text>
+        }
+    </p>
+
+    <table class="tableKeyValue">
+        <tbody>
+            <tr>
+                <th>Name:</th>
+                <td>
+                    @Model.Details.Branch
+                </td>
+            </tr>
+            <tr>
+                <th>Head Changelist:</th>
+                <td>@Html.ActionLink("CL " + Model.Details.HeadChangelist.ToString(), "Changelist", "Build", new { id = Model.Details.HeadChangelist.ToString() }, null)</td>
+            </tr>
+            <tr>
+                <th>P4 Server:</th>
+                <td>@Model.Details.Server</td>
+            </tr>
+            <tr>
+                <th>Admin:</th>
+                <td>
+                    @if (!string.IsNullOrEmpty(Model.Details.BranchAdmin))
+                    {
+                        @Html.ActionLink(@Model.Details.BranchAdmin.Substring(0, Model.Details.BranchAdmin.IndexOf('@')), "UserProfile", "Home", new { id = @Model.Details.BranchAdmin.Substring(0, Model.Details.BranchAdmin.IndexOf('@')) }, null)
+                        <a href="mailto:@(Model.Details.BranchAdmin)?subject=Regarding Branch @(Model.Details.Branch)"><img class="icon" src="~/Content/Themes/Base/Images/iconOutlook.png" alt="IM" /></a>
+                        <a href="sip:@(Model.Details.BranchAdmin)"><img class="icon" src="~/Content/Themes/Base/Images/iconLync.png" alt="Send Email" /></a>
+                    }
+                    else
+                    {
+                        <text>n/a</text>
+                    }
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="grid2">
+    <h2>&nbsp;</h2>
+
+    @if (Model.Details.LockedDown)
+    {
+        <a class="button" href="javascript: unlockBranch()" title="Mark this branch as not locked down">Unlock Branch</a>
+    }
+    else
+    {
+        <a class="button" href="javascript: lockBranch()" title="Mark this branch as locked down">Lock Down</a>
+    }
+</div>
+
+
+<section id="commandsList"></section>

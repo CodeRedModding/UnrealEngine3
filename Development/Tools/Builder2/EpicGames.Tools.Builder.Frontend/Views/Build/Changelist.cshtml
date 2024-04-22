@@ -1,0 +1,170 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.BuildChangelistModel
+
+@{
+    ViewBag.Title = "Build System";
+    ViewBag.Description = "Details for Changelist 'CL " + Model.ChangelistId.ToString() + "'";
+
+    // log files are currently saved in branch specific folders
+    if (Model.Details != null)
+    {
+        ViewBag.Branch = @Model.Details.Branch;
+    }
+}
+
+
+<section>
+    <div class="grid6">
+        <span class="linkBack">
+            @Html.ActionLink("Build Status", "Status", "Build") |
+            @Html.ActionLink("CIS Status", "Status", "Cis")
+        </span>
+
+        <span class="fr">
+            <a href="#details">Changelist Details</a> |
+            <a href="#cislog">CIS Log</a> |
+            <a href="#buildlog">Build Log</a>
+        </span>
+    </div>
+</section>
+
+<section class="clearfix">
+    <div class="grid3">
+        <a name="details"></a><h2>Changelist Details</h2>
+
+        @if (Model.Details != null)
+        {
+            <table class="tableKeyValue">
+                <tbody>
+                    <tr>
+                        <th>ID:</th>
+                        <td>@Model.ChangelistId.ToString()</td>
+                    </tr>
+                    <tr>
+                        <th>Submitted</th>
+                        <td>@Model.Details.TimeStamp.ToLocalTime().ToString()</td>
+                    </tr>
+                    <tr>
+                        <th>Submitter</th>
+                        <td>
+                            @Html.ActionLink(@Model.Details.Submitter, "UserProfile", "Home", new { id = @Model.Details.Submitter }, null)
+                            <a href="mailto:@(Model.Details.Submitter.Replace('_', '.') + "@epicgames.com")?subject=Regarding your changelist CL @Model.ChangelistId.ToString() from @Model.Details.TimeStamp.ToString()" title="Send Email"><img class="icon" src="~/Content/Themes/Base/Images/iconOutlook.png" alt="Email" /></a>
+                            <a href="sip:@(Model.Details.Submitter.Replace('_', '.') + "@epicgames.com")" title="Send IM"><img class="icon" src="~/Content/Themes/Base/Images/iconLync.png" alt="IM" /></a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Branch</th>
+                        <td>@Html.ActionLink(Model.Details.Branch, "Branch", "Build", new { id = Model.Details.BranchConfigID }, null)</td>
+                    </tr>
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>No information was found in the database.</p>
+        }
+    </div>
+</section>
+
+@if (Model.Details != null)
+{
+    <section>
+        <div class="grid6">
+            <h2>Description</h2>
+
+                <pre>@Model.Details.Description</pre>
+        </div>
+    </section>
+}
+
+<section class="clearfix">
+    <div class="grid6">
+        <a name="cislog"></a><h2>CIS Log</h2>
+
+        @if (Model.CisLogs.Count() > 0)
+        {
+            <p>This changelist has been checked by the following CIS tasks:</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th class="string">CIS Task</th>
+                        <th class="string">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var l in Model.CisLogs)
+                    {
+                        if (l.JobState != 0)
+                        {
+                            <tr class="">
+                                <td class="string nowrap">
+                                    @if ((DateTime.UtcNow - Model.Details.TimeStamp) > TimeSpan.FromHours(4))
+                                    {
+                                        if ((l.JobState == 3) || (l.JobState == 4))
+                                        {
+                                            l.JobState = 255;
+                                        }
+                                    }
+
+                                    @Html.Partial("_CisTaskStateImage", l.JobState)
+                                    @l.Name
+                                </td>
+                                <td class="string">
+                                    @Html.Raw(HttpUtility.HtmlEncode(l.Error).Replace("\n", "<br />"))
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>No CIS logs were found in the database.</p>
+        }
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="buildlog"></a><h2>Build Log</h2>
+
+        @if (Model.BuildLogs != null)
+        {
+            if (Model.BuildLogs.Count() > 0)
+            {
+                <p>This changelist has been processed by the following build commands:</p>
+            
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="string">Build Command</th>
+                            <th class="string">Machine</th>
+                            <th class="enum">Started</th>
+                            <th class="enum">Duration</th>
+                            <th class="enum">Log</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in Model.BuildLogs)
+                        {
+                            @Html.Partial("_ChangelistBuildLogEntry", e)
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p>This changelist has not been built yet.</p>
+            }
+        }
+        else
+        {
+            <p>No build logs were found in the database.</p>
+        }
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>

@@ -1,0 +1,24 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+OUT_VARYING_HIGH(vec4, ScreenPosition, TEXCOORD0);
+OUT_VARYING_HIGH(vec4, HomScreenDirection, TEXCOORD1);
+OUT_VARYING_HIGH(float, Divider, TEXCOORD2);
+
+UNIFORM_HIGH(mat4, ScreenToShadowMatrix);
+UNIFORM(mat4, ViewProjection);
+
+ATTRIBUTE(vec4, Position, POSITION);
+
+void main()
+{
+	ScreenPosition = MulMatrix( ViewProjection, vec4(Position.xyz, 1.0) );
+
+	HomScreenDirection = MulMatrix(ScreenToShadowMatrix, float4(ScreenPosition.xy, ScreenPosition.w, 0.0));
+
+	Divider = ScreenPosition.w; 
+
+	gl_Position = ScreenPosition;
+}

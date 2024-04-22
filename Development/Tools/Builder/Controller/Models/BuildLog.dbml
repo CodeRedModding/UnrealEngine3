@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="Builder" Class="BuildLogDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="AppSettings" ConnectionString="Data Source=db-09;Initial Catalog=Builder;Integrated Security=True" SettingsObjectName="Controller.Properties.Settings" SettingsPropertyName="BuilderConnectionString" Provider="System.Data.SqlClient" />
+  <Table Name="dbo.BuildLog" Member="BuildLogs">
+    <Type Name="BuildLog">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Command" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="BranchConfigID" Type="System.Int16" DbType="SmallInt" CanBeNull="true" />
+      <Column Name="CommandID" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="JobID" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Machine" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="ChangeList" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="BuildStarted" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="BuildEnded" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="CurrentStatus" Type="System.String" DbType="VarChar(128)" CanBeNull="true" />
+      <Column Name="BuildLabel" Type="System.String" DbType="VarChar(128)" CanBeNull="true" />
+      <Column Name="DetailedLogPath" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+    </Type>
+  </Table>
+</Database>

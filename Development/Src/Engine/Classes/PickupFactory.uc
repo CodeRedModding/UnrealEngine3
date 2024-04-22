@@ -3,84 +3,152 @@
 // Produces pickups when active and touched by valid toucher
 // Combines functionality of old Pickup and InventorySpot classes
 // Pickup class now just used for dropped/individual items
+// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 //=============================================================================
 class PickupFactory extends NavigationPoint
 	abstract
 	placeable
 	native
-	nativereplication;
+	nativereplication
+	ClassGroup(Pickups);
 
 var		bool						bOnlyReplicateHidden;	// only replicate changes in bPickupHidden and bHidden
 var		RepNotify bool				bPickupHidden;			// Whether the pickup mesh should be hidden
 var		bool						bPredictRespawns;		// high skill bots may predict respawns for this item
+var		bool						bIsSuperItem;
 
-var		class<Inventory>			InventoryType;
+/** set when the respawn process has been paused because DelayRespawn() is returning true */
+var bool bRespawnPaused;
+
+var repnotify class<Inventory>		InventoryType;
 var		float						RespawnEffectTime;
-var		TransformComponent		PickupMesh;
+var		float						MaxDesireability;
+
+var	PrimitiveComponent				PickupMesh;
+
+/** when replacing a pickup factory with another (e.g. mutators), set this property on the original to point to the replacement
+ * so that AI queries can be redirected to the right one
+ */
+var PickupFactory ReplacementFactory;
+/** similarly, set this property on the replacement to point to the original so
+ * that it can optimally anchor itself on the path network
+ */
+var PickupFactory OriginalFactory;
 
 cpptext
 {
-    virtual APickupFactory* GetAPickupFactory() { return this; }
+	virtual APickupFactory* GetAPickupFactory() { return this; }
 	INT* GetOptimizedRepList( BYTE* InDefault, FPropertyRetirement* Retire, INT* Ptr, UPackageMap* Map, UActorChannel* Channel );
+	virtual UBOOL ReachedBy(APawn* P, const FVector& TestPosition, const FVector& Dest);
+	virtual ANavigationPoint* SpecifyEndAnchor(APawn* RouteFinder);
 }
 
 replication
 {
 	// Things the server should send to the client.
-	reliable if ( bNetDirty && (Role == Role_Authority) )
+	if ( bNetDirty && (Role == ROLE_Authority) )
 		bPickupHidden;
+	if (bNetInitial && Role == ROLE_Authority)
+		InventoryType;
 }
 
-// FIXMESTEVE - make this native?
-simulated event ReplicatedEvent(string VarName)
+simulated event ReplicatedEvent(name VarName)
 {
-	if ( VarName ~= "bPickupHidden" )
+	if ( VarName == 'bPickupHidden' )
 	{
 		if ( bPickupHidden )
-			SetHidden();
+		{
+			SetPickupHidden();
+		}
 		else
-			SetVisible();
+		{
+			SetPickupVisible();
+		}
+	}
+	else if (VarName == 'InventoryType')
+	{
+		InitializePickup();
 	}
 }
 
-simulated function PostBeginPlay()
+simulated event PreBeginPlay()
 {
-	Super.PostBeginPlay();
+	InitializePickup();
 
-	bPredictRespawns = InventoryType.Default.bPredictRespawns;
+	Super.PreBeginPlay();
+}
 
+simulated function InitializePickup()
+{
 	if ( InventoryType == None )
 	{
-		warn("No inventory type for "$self);
-		GotoState('Disabled');
+		`Warn("No inventory type for" @ self);
 		return;
 	}
 
+	bPredictRespawns = InventoryType.Default.bPredictRespawns;
+	MaxDesireability = InventoryType.Default.MaxDesireability;
 	SetPickupMesh();
+	bIsSuperItem = InventoryType.Default.bDelayedSpawn;
+}
 
-	if ( InventoryType.Default.bDelayedSpawn )
+// Called after PostBeginPlay.
+//
+simulated event SetInitialState()
+{
+	bScriptInitialized = true;
+
+	if (InventoryType == None)
+	{
+		`warn("Disabling as no inventory type for " $ self);
+		GotoState('Disabled');
+	}
+	else if (bIsSuperItem)
 	{
 		GotoState('WaitingForMatch');
 	}
+	else
+	{
+		Super.SetInitialState();
+	}
+}
+
+simulated function ShutDown()
+{
+	GotoState('Disabled');
 }
 
 simulated function SetPickupMesh()
 {
 	if ( InventoryType.Default.PickupFactoryMesh != None )
 	{
-		PickupMesh = TransformComponent(AddComponent(InventoryType.Default.PickupFactoryMesh, true));
+		if (PickupMesh != None)
+		{
+			DetachComponent(PickupMesh);
+			PickupMesh = None;
+		}
+		PickupMesh = new(self) InventoryType.default.PickupFactoryMesh.Class(InventoryType.default.PickupFactoryMesh);
+
+		AttachComponent(PickupMesh);
+
+		if (bPickupHidden)
+		{
+			SetPickupHidden();
+		}
+		else
+		{
+			SetPickupVisible();
+		}
 	}
 }
-
-static function StaticPrecache(LevelInfo L);
 
 /* Reset()
 reset actor to initial state - used when restarting level without reloading.
 */
 function Reset()
 {
-	if ( InventoryType.Default.bDelayedSpawn )
-		GotoState('Sleeping', 'DelayedSpawn');
+	if ( bIsSuperItem )
+		GotoState('Sleeping');
 	else
 		GotoState('Pickup');
 	Super.Reset();
@@ -94,7 +162,7 @@ function bool CheckForErrors()
 	HitActor = Trace(HitLocation, HitNormal,Location - Vect(0,0,10), Location,false);
 	if ( HitActor == None )
 	{
-		log(self$" FLOATING");
+		`log(self$" FLOATING");
 		return true;
 	}
 	return Super.CheckForErrors();
@@ -105,7 +173,7 @@ function bool CheckForErrors()
 //
 function SetRespawn()
 {
-	if( (InventoryType.Default.RespawnTime != 0) && Level.Game.ShouldRespawn(self) )
+	if( (InventoryType.Default.RespawnTime != 0) && WorldInfo.Game.ShouldRespawn(self) )
 		StartSleeping();
 	else
 		GotoState('Disabled');
@@ -116,28 +184,13 @@ function StartSleeping()
     GotoState('Sleeping');
 }
 
-function bool IsSuperItem()
-{
-	return InventoryType.Default.bDelayedSpawn;
-}
-
 /* DetourWeight()
 value of this path to take a quick detour (usually 0, used when on route to distant objective, but want to grab inventory for example)
 */
-event float DetourWeight(Pawn Other,float PathWeight)
+event float DetourWeight(Pawn Other, float PathWeight)
 {
-	return InventoryType.static.DetourWeight(Other,PathWeight);
-}	
-
-/* Inventory has an AI interface to allow AIControllers, such as bots, to assess the
- desireability of acquiring that pickup.  The BotDesireability() method returns a
- float typically between 0 and 1 describing how valuable the pickup is to the
- AIController.  This method is called when an AIController uses the
- FindPathToBestInventory() navigation intrinsic.
-*/
-function float BotDesireability( pawn Bot )
-{
-	return InventoryType.static.BotDesireability(Bot);
+	// not ready to pick up
+	return (ReplacementFactory != None ? ReplacementFactory.DetourWeight(Other, PathWeight) : 0.0);
 }
 
 function SpawnCopyFor( Pawn Recipient )
@@ -152,55 +205,102 @@ function SpawnCopyFor( Pawn Recipient )
 	}
 }
 
+function bool ReadyToPickup(float MaxWait)
+{
+	return false;
+}
+
+/** give pickup to player */
+function GiveTo( Pawn P )
+{
+	SpawnCopyFor(P);
+	PickedUpBy(P);
+}
+
+function PickedUpBy(Pawn P)
+{
+	SetRespawn();
+
+	TriggerEventClass(class'SeqEvent_PickupStatusChange', P, 1);
+
+	if (P.Controller != None && P.Controller.MoveTarget == self)
+	{
+		P.SetAnchor(self);
+		P.Controller.MoveTimer = -1.0;
+	}
+}
+
 //=============================================================================
 // Pickup state: this inventory item is sitting on the ground.
 
+function RecheckValidTouch();
+
 auto state Pickup
 {
+	/* DetourWeight()
+	value of this path to take a quick detour (usually 0, used when on route to distant objective, but want to grab inventory for example)
+	*/
+	event float DetourWeight(Pawn Other,float PathWeight)
+	{
+		return InventoryType.static.DetourWeight(Other,PathWeight);
+	}
+
 	function bool ReadyToPickup(float MaxWait)
 	{
 		return true;
 	}
 
-	/* ValidTouch()
+	/*
 	 Validate touch (if valid return true to let other pick me up and trigger event).
 	*/
 	function bool ValidTouch( Pawn Other )
 	{
 		// make sure its a live player
-		if ( (Other == None) || !Other.bCanPickupInventory || (Other.DrivenVehicle == None && Other.Controller == None) )
+		if (Other == None || !Other.bCanPickupInventory)
+		{
 			return false;
-
+		}
+		else if (Other.Controller == None)
+		{
+			// re-check later in case this Pawn is in the middle of spawning, exiting a vehicle, etc
+			// and will have a Controller shortly
+			SetTimer( 0.2, false, nameof(RecheckValidTouch) );
+			return false;
+		}
 		// make sure not touching through wall
-		if ( !FastTrace(Other.Location, Location) )
+		else if ( !FastTrace(Other.Location, Location) )
+		{
+			SetTimer( 0.5, false, nameof(RecheckValidTouch) );
 			return false;
+		}
 
 		// make sure game will let player pick me up
-		if( Level.Game.PickupQuery(Other, InventoryType) )
+		if (WorldInfo.Game.PickupQuery(Other, InventoryType, self))
 		{
 			return true;
 		}
 		return false;
 	}
 
+	/**
+	Pickup was touched through a wall.  Check to see if touching pawn is no longer obstructed
+	*/
+	function RecheckValidTouch()
+	{
+		CheckTouching();
+	}
+
 	// When touched by an actor.
-	event Touch( Actor Other, vector HitLocation, vector HitNormal )
+	event Touch( Actor Other, PrimitiveComponent OtherComp, vector HitLocation, vector HitNormal )
 	{
 		local Pawn P;
 
 		// If touched by a player pawn, let him pick this up.
 		P = Pawn(Other);
 
-		if( (P != None) && ValidTouch(P) )
+		if( P != None && ValidTouch(P) )
 		{
-			SpawnCopyFor(Pawn(Other));
-            SetRespawn();
-
-			if ( (P.Controller != None) && (P.Controller.MoveTarget == self) )
-			{
-				P.Anchor = self;
-				P.Controller.MoveTimer = -1.0;
-			}
+			GiveTo(P);
  		}
 	}
 
@@ -210,7 +310,12 @@ auto state Pickup
 		local Pawn P;
 
 		ForEach TouchingActors(class'Pawn', P)
-			Touch(P, Location, Normal(Location-P.Location) );
+			Touch(P, None, Location, Normal(Location-P.Location) );
+	}
+
+	event BeginState(name PreviousStateName)
+	{
+		TriggerEventClass(class'SeqEvent_PickupStatusChange', None, 0);
 	}
 
 Begin:
@@ -226,20 +331,39 @@ function float GetRespawnTime()
 
 function RespawnEffect();
 
-function SetHidden()
+/** 
+  * Make pickup mesh and associated effects hidden.
+  */
+simulated function SetPickupHidden()
 {
-	NetUpdateTime = Level.TimeSeconds - 1;
+	bForceNetUpdate = TRUE;
 	bPickupHidden = true;
-	if ( PickupMesh != None && PrimitiveComponent(PickupMesh.TransformedComponent) != None )
-		PrimitiveComponent(PickupMesh.TransformedComponent).SetHidden(true);
+	if ( PickupMesh != None )
+		PickupMesh.SetHidden(true);
 }
 
-function SetVisible()
+/** 
+  * Make pickup mesh and associated effects visible.
+  */
+simulated function SetPickupVisible()
 {
-	NetUpdateTime = Level.TimeSeconds - 1;
+	bForceNetUpdate = TRUE;
 	bPickupHidden = false;
-	if ( PickupMesh != None && PrimitiveComponent(PickupMesh.TransformedComponent) != None )
-		PrimitiveComponent(PickupMesh.TransformedComponent).SetHidden(true);
+	if ( PickupMesh != None )
+		PickupMesh.SetHidden(false);
+}
+
+event Destroyed()
+{
+	// remove from any replacement chain
+	if (OriginalFactory != None)
+	{
+		OriginalFactory.ReplacementFactory = ReplacementFactory;
+	}
+	if (ReplacementFactory != None)
+	{
+		ReplacementFactory.OriginalFactory = OriginalFactory;
+	}
 }
 
 State WaitingForMatch
@@ -248,13 +372,19 @@ State WaitingForMatch
 
 	function MatchStarting()
 	{
-		GotoState( 'Sleeping', 'DelayedSpawn' );
+		GotoState('Sleeping');
 	}
 
-	function BeginState()
+	event BeginState(Name PreviousStateName)
 	{
-		SetHidden();
+		SetPickupHidden();
 	}
+}
+
+/** @return whether the respawning process for this pickup is currently halted */
+function bool DelayRespawn()
+{
+	return false;
 }
 
 State Sleeping
@@ -263,42 +393,37 @@ State Sleeping
 
 	function bool ReadyToPickup(float MaxWait)
 	{
-		return ( bPredictRespawns && (LatentFloat < MaxWait) );
+		return (bPredictRespawns && !bRespawnPaused && LatentFloat <= MaxWait && LatentFloat > 0.0);
 	}
 
 	function StartSleeping() {}
 
-	function BeginState()
+	event BeginState(Name PreviousStateName)
 	{
-		SetHidden();
+		SetPickupHidden();
 	}
 
-	function EndState()
+	event EndState(Name NextStateName)
 	{
-		SetVisible();
+		SetPickupVisible();
 	}
 
-DelayedSpawn:
-	if ( Level.NetMode == NM_Standalone )
-		Sleep(FMin(30, Level.Game.GameDifficulty * 8));
-	else
-		Sleep(30);
-	Goto('Respawn');
 Begin:
+	bRespawnPaused = true;
+	while (DelayRespawn())
+	{
+		Sleep(1.0);
+	}
+	bRespawnPaused = false;
 	Sleep( GetReSpawnTime() - RespawnEffectTime );
 Respawn:
 	RespawnEffect();
 	Sleep(RespawnEffectTime);
-    GotoState('Pickup');
+	GotoState('Pickup');
 }
 
 State Disabled
 {
-	function float BotDesireability( pawn Bot )
-	{
-		return 0;
-	}
-
 	function bool ReadyToPickup(float MaxWait)
 	{
 		return false;
@@ -307,15 +432,27 @@ State Disabled
 	function Reset() {}
 	function StartSleeping() {}
 
-	simulated function BeginState()
+	simulated event SetInitialState()
 	{
-		bHidden = true;
+		bScriptInitialized = true;
+	}
+
+	simulated event BeginState(Name PreviousStateName)
+	{
+		SetPickupHidden();
 		SetCollision(false,false);
+	}
+
+	simulated event EndState(Name NextStateName)
+	{
+		SetPickupVisible();
 	}
 }
 
 defaultproperties
 {
+	TickGroup=TG_DuringAsyncWork
+
 	Begin Object NAME=CollisionCylinder
 		CollisionRadius=+00040.000000
 		CollisionHeight=+00080.000000
@@ -324,8 +461,9 @@ defaultproperties
 
 	bCollideWhenPlacing=False
 	bHiddenEd=false
-    bOnlyReplicateHidden=true
-	bStatic=true
+	bOnlyReplicateHidden=true
+	bStatic=false
+	bNoDelete=true
 	RemoteRole=ROLE_SimulatedProxy
 	bAlwaysRelevant=true
 	bCollideActors=true
@@ -333,4 +471,6 @@ defaultproperties
 	bBlockActors=false
 	bIgnoreEncroachers=true
 	bHidden=false
+	NetUpdateFrequency=1.0
+	SupportedEvents.Add(class'SeqEvent_PickupStatusChange')
 }

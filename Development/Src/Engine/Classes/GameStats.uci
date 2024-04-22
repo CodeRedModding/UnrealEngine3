@@ -1,0 +1,202 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+// Global gameplay stat defines
+
+`if(`isdefined(INCLUDE_GAME_STATS))
+
+	/*************************************
+		GAME EVENTS
+	*************************************/
+	/** Match has started */
+	const GAMEEVENT_MATCH_STARTED = 0;
+	/** Match has ended */
+	const GAMEEVENT_MATCH_ENDED = 1;
+	/** Round has started */
+	const GAMEEVENT_ROUND_STARTED = 2;
+	/** Round has ended */
+	const GAMEEVENT_ROUND_ENDED = 3;
+	/** Game type defined */
+	const GAMEEVENT_GAME_CLASS = 6;
+	/** Game options defined */
+	const GAMEEVENT_GAME_OPTION_URL = 7;
+	/** Map name defined */
+	const GAMEEVENT_GAME_MAPNAME = 8;
+	
+	/*************************************
+		SYSTEM STATS
+	*************************************/
+	/** Memory usage */
+	const GAMEEVENT_MEMORYUSAGE_POLL = 35;
+	/** Frame rate */
+	const GAMEEVENT_FRAMERATE_POLL = 36;
+	/** Network usage in */
+	const GAMEEVENT_NETWORKUSAGEIN_POLL = 37;
+	/** Network usage out */
+	const GAMEEVENT_NETWORKUSAGEOUT_POLL = 38;
+	/** Ping */
+	const GAMEEVENT_PING_POLL = 39;
+	/** Render thread time */
+	const GAMEEVENT_RENDERTHREAD_POLL = 40;
+	/** Game thread time */
+	const GAMEEVENT_GAMETHREAD_POLL = 41;
+	/** GPU frame time */
+	const GAMEEVENT_GPUFRAMETIME_POLL = 42;
+	/** Total frame time */
+	const GAMEEVENT_FRAMETIME_POLL = 43;
+
+	/*************************************
+		TEAM EVENTS
+	*************************************/
+	/** Team created */
+	const GAMEEVENT_TEAM_CREATED = 50;
+	/** Team score recorded */
+	const GAMEEVENT_TEAM_GAME_SCORE = 51;
+	/** Match has been won */
+	const GAMEEVENT_TEAM_MATCH_WON = 4;
+	/** Round has been won */
+	const GAMEEVENT_TEAM_ROUND_WON = 5;
+	/** Round stalemate */
+	const GAMEEVENT_TEAM_ROUND_STALEMATE = 52;
+
+	/*************************************
+		PLAYER EVENTS
+	*************************************/
+	/** Player logged in */
+	const GAMEEVENT_PLAYER_LOGIN = 100;
+	/** Player logged out */
+	const GAMEEVENT_PLAYER_LOGOUT = 101;
+	/** Player has just spawned in */
+	const GAMEEVENT_PLAYER_SPAWN = 102;
+	/** Player on winning team */
+	const GAMEEVENT_PLAYER_MATCH_WON = 103;
+	/** Player killed another player */
+	const GAMEEVENT_PLAYER_KILL = 104;
+	/** Player location poll */
+	const GAMEEVENT_PLAYER_LOCATION_POLL = 105;
+	/** Player has changed teams */
+	const GAMEEVENT_PLAYER_TEAMCHANGE = 106;
+	/** Kill streak recorded */
+	const GAMEEVENT_PLAYER_KILL_STREAK = 107;
+	/** Player died */
+	const GAMEEVENT_PLAYER_DEATH = 108;
+	/** Player winning round */
+	const GAMEEVENT_PLAYER_ROUND_WON = 109;
+	/** Player stalemate round */
+	const GAMEEVENT_PLAYER_ROUND_STALEMATE = 110;
+
+	/** Weapon damage has occurred */
+	const GAMEEVENT_WEAPON_DAMAGE = 150;
+	/** Weapon melee damage has occurred */
+	const GAMEEVENT_WEAPON_DAMAGE_MELEE = 151;
+	/** Weapon has been fired */
+	const GAMEEVENT_WEAPON_FIRED = 152;
+
+	/** Kill types (add others to derived class) */
+	const GAMEEVENT_PLAYER_KILL_NORMAL = 200; 
+
+	/** generic param list event range (300-400) */
+	const GAMEEVENT_GENERIC_PARAM_LIST_START = 300;
+	const GAMEEVENT_GENERIC_PARAM_LIST_END = 400;
+
+	/** Game specific starts here */
+	const GAMEEVENT_GAME_SPECIFIC = 1000;
+
+	/** Only 16 bits of events are possible */
+	const GAMEEVENT_MAX_EVENTID = 0x0000FFFF;
+`endif
+
+
+// these are defines so that we don't have to recompile every time one of these is added
+`define GAMEEVENT_AI_PATH_FAILURE 302 
+`define GAMEEVENT_AI_FIRELINK 305
+
+// mirror the EGameplayEventType enum in GameplayEventsUtilities.h
+`define GET_GameString			0
+`define GET_GameInt				1
+`define GET_TeamInt				2
+`define GET_PlayerInt			3
+`define GET_PlayerFloat			4
+`define GET_PlayerString		5
+`define GET_PlayerSpawn			6
+`define GET_PlayerLogin			7
+`define GET_PlayerLocationPoll	8
+`define GET_PlayerKillDeath		9
+`define GET_PlayerPlayer		10
+`define GET_WeaponInt			11
+`define GET_DamageInt			12
+`define GET_ProjectileInt		13
+`define GET_GenericParamList	14
+`define GET_GameFloat			15
+`define GET_TeamString			16
+`define GET_TeamFloat			17
+`define GET_GamePosition		18
+`define GET_GameAggregate		19
+`define GET_TeamAggregate		20
+`define GET_PlayerAggregate		21
+`define GET_WeaponAggregate		22
+`define GET_DamageAggregate		23
+`define GET_ProjectileAggregate	24
+`define GET_PawnAggregate		25
+`define GET_GameType			1000 // Game Specific Values start after this
+
+
+// Change this or predefine it to your class type
+`if(`notdefined(StatsClass))
+	`define StatsClass class'GameplayEventsWriterBase'
+`endif
+
+`define StatId(Id) `StatsClass.const.GAMEEVENT_`Id
+`define TeamStatId(Id) `StatsClass.const.GAMEEVENT_TEAM_`Id
+`define PlayerStatId(Id) `StatsClass.const.GAMEEVENT_PLAYER_`Id
+`define KillStatType(Type) `StatsClass.const.GAMEEVENT_PLAYER_KILL_`Type
+
+`if(`notdefined(StatsContext))
+
+	`if(`isdefined(GAMEINFO))
+		`define StatsContext		GameplayEventsWriter
+		`define ValidStatsContext	GameplayEventsWriter != None && GameplayEventsWriter.IsSessionInProgress()
+	`else
+		`define StatsContext		WorldInfo.Game.GameplayEventsWriter
+		`define ValidStatsContext	WorldInfo.Game != None && WorldInfo.Game.GameplayEventsWriter != None && WorldInfo.Game.GameplayEventsWriter.IsSessionInProgress()
+	`endif
+
+`endif
+
+// Macros for recording stats	
+`define RecordLoginChange(Id,Player,PlayerName,PlayerId,bSplitScreen) if(`ValidStatsContext){`StatsContext.LogPlayerLoginChange(`PlayerStatId(`Id),`Player,`PlayerName,`PlayerId,`bSplitScreen);}
+
+// Game stats
+`define RecordGameIntStat(Id,Value) if(`ValidStatsContext){`StatsContext.LogGameIntEvent(`StatId(`Id),`Value);}
+`define RecordGameStringStat(Id,Value) if(`ValidStatsContext){`StatsContext.LogGameStringEvent(`StatId(`Id),`Value);}
+`define RecordGameFloatStat(Id,Value) if(`ValidStatsContext){`StatsContext.LogGameFloatEvent(`StatId(`Id),`Value);}
+`define RecordGamePositionStat(Id,Position,Value) if(`ValidStatsContext){`StatsContext.LogGamePositionEvent(`StatId(`Id),`Position,`Value);}
+
+// Team stats
+`define RecordTeamStringStat(Id, TeamInfo, Value) if(`ValidStatsContext){`StatsContext.LogTeamStringEvent(`TeamStatId(`Id),`TeamInfo,`Value);}
+`define RecordTeamIntStat(Id, TeamInfo, Value) if(`ValidStatsContext){`StatsContext.LogTeamIntEvent(`TeamStatId(`Id),`TeamInfo,`Value);}
+`define RecordTeamFloatStat(Id, TeamInfo, Value) if(`ValidStatsContext){`StatsContext.LogTeamFloatEvent(`TeamStatId(`Id),`TeamInfo,`Value);}
+
+// Player stats
+`define RecordPlayerIntStat(Id,Player,Value) if(`ValidStatsContext){`StatsContext.LogPlayerIntEvent(`PlayerStatId(`Id),`Player,`Value);}
+`define RecordPlayerIntStatRaw(Id,Player,Value) if(`ValidStatsContext){`StatsContext.LogPlayerIntEvent(`Id,`Player,`Value);}
+`define RecordPlayerFloatStat(Id,Player,Value) if(`ValidStatsContext){`StatsContext.LogPlayerFloatEvent(`PlayerStatId(`Id),`Player,`Value);}
+`define RecordPlayerSpawn(Player,PawnClass,Team) if(`ValidStatsContext){`StatsContext.LogPlayerSpawnEvent(`PlayerStatId(SPAWN),`Player,`PawnClass,`Team);}
+`define RecordPlayerPlayerEvent(Id,Player,Target) if(`ValidStatsContext){`StatsContext.LogPlayerPlayerEvent(`PlayerStatId(`Id),`Player,`Target);}
+
+// Weapon stats
+`define RecordKillEvent(KillType,Killer,DamageType,Dead) if(`ValidStatsContext){`StatsContext.LogPlayerKillDeath(`PlayerStatId(KILL),`KillStatType(`KillType),`Killer,`DamageType,`Dead);}
+`define RecordDeathEvent(KillType,Killer,DamageType,Dead) if(`ValidStatsContext){`StatsContext.LogPlayerKillDeath(`PlayerStatId(DEATH),`KillStatType(`KillType),`Dead,`DamageType,`Killer);}
+
+`define RecordWeaponIntStat(Id,Player,Weapon,Value) if(`ValidStatsContext){`StatsContext.LogWeaponIntEvent(`StatId(`Id),`Player,`Weapon,`Value);}
+
+`define RecordProjectileIntStat(Id,Player,Proj,Value) if(`ValidStatsContext){`StatsContext.LogProjectileIntEvent(`StatId(`Id),`Player,`Proj,`Value);}
+
+`define RecordDamage(Id,Player,Damage,Target,Amount) if(`ValidStatsContext){`StatsContext.LogDamageEvent(`StatId(`Id),`Player,`Damage,`Target,`Amount);}
+
+`if(`notdefined(FINAL_RELEASE))
+`define RecordAIPathFailEvent(Bot,Reason,Dest) if(`ValidStatsContext){`StatsContext.RecordAIPathFail(`Bot,`Reason,`Dest);}
+`else
+`define RecordAIPathFailEvent(Bot,Reason,Dest)
+`endif

@@ -1,0 +1,123 @@
+/*=============================================================================
+	ModShadowProjectionPixelShader.usf: Pixel shader for projecting a shadow depth buffer onto the scene.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "ModShadowCommon.usf"
+#include "ShadowProjectionCommon.usf" 
+
+float4x4 ScreenToShadowMatrix;
+
+/**
+* Entry point for uniform manual PCF that supports lights using modulative shadows.
+*/
+EARLYDEPTHSTENCIL
+void Main(
+	in float4 ScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+#if SM5_PROFILE
+	OutColor = 1;
+
+	float2 UV = float2(ScreenPosition.xy / ScreenPosition.w * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz);
+	float PixelLightingChannel = GetPerPixelLightingChannelMask(UV);
+
+	BRANCH
+	// Only affect pixels specified by the lighting channel mask
+	if ((int)PixelLightingChannel & (int)(LightingChannelMask))
+#endif
+	{
+
+		half SceneW = PreviousDepthForShadows(ScreenPosition);
+
+		float4 ShadowPosition = MulMatrix(ScreenToShadowMatrix,float4(ScreenPosition.xy / ScreenPosition.w * SceneW,SceneW,1));
+		ShadowPosition.xy /= ShadowPosition.w;
+		ShadowPosition.z = min(ShadowPosition.z,0.999);
+
+		half Shadow = ManualPCF(ShadowPosition);
+		
+	#if MODSHADOW_LIGHTTYPE_DIRECTIONAL
+		// no attenuation necessary for directional lights
+		half ShadowAtt = 1;
+	#else
+		// attenuate between shadow color and white based on distance
+		half ShadowAtt = ShadowAttenuation(ScreenPosition,SceneW);
+	#endif
+
+		// add modulated/attenuated shadow color to shadow
+		float4 ShadowedColor = lerp(float4(1,1,1,1),ShadowModulateColor,ShadowAtt);
+		float4 UnshadowedColor = float4(1,1,1,1);
+
+		OutColor = lerp(ShadowedColor,UnshadowedColor,Square(Shadow));
+		// RETURN_COLOR not needed with modulative blending
+	}
+}
+
+
+/**
+* Entry point for uniform hardware PCF that supports lights using modulative shadows.
+*/
+EARLYDEPTHSTENCIL
+void HardwarePCFMain(
+	in float4 ScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	half SceneW = PreviousDepthForShadows(ScreenPosition);
+
+	float4 ShadowPosition = MulMatrix(ScreenToShadowMatrix,float4(ScreenPosition.xy / ScreenPosition.w * SceneW,SceneW,1));
+	ShadowPosition.xy /= ShadowPosition.w;
+	ShadowPosition.z = min(ShadowPosition.z,0.999);
+
+	half Shadow = HardwarePCF(ShadowPosition);
+	
+#if MODSHADOW_LIGHTTYPE_DIRECTIONAL
+	// no attenuation necessary for directional lights
+	half ShadowAtt = 1;
+#else
+	// attenuate between shadow color and white based on distance
+	half ShadowAtt = ShadowAttenuation(ScreenPosition,SceneW);
+#endif
+
+	// add modulated/attenuated shadow color to shadow
+	float4 ShadowedColor = lerp(float4(1,1,1,1),ShadowModulateColor,ShadowAtt);
+	float4 UnshadowedColor = float4(1,1,1,1);
+
+	OutColor = lerp(ShadowedColor,UnshadowedColor,Square(Shadow));
+	// RETURN_COLOR not needed with modulative blending
+}
+
+/**
+* Entry point for uniform Fetch4 PCF that supports lights using modulative shadows.
+*/
+EARLYDEPTHSTENCIL
+void Fetch4Main(
+	in float4 ScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	half SceneW = PreviousDepthForShadows(ScreenPosition);
+
+	float4 ShadowPosition = MulMatrix(ScreenToShadowMatrix,float4(ScreenPosition.xy / ScreenPosition.w * SceneW,SceneW,1));
+	ShadowPosition.xy /= ShadowPosition.w;
+	ShadowPosition.z = min(ShadowPosition.z,0.999);
+
+	half Shadow = Fetch4PCF(ShadowPosition);
+	
+#if MODSHADOW_LIGHTTYPE_DIRECTIONAL
+	// no attenuation necessary for directional lights
+	half ShadowAtt = 1;
+#else
+	// attenuate between shadow color and white based on distance
+	half ShadowAtt = ShadowAttenuation(ScreenPosition,SceneW);
+#endif
+
+	// add modulated/attenuated shadow color to shadow
+	float4 ShadowedColor = lerp(float4(1,1,1,1),ShadowModulateColor,ShadowAtt);
+	float4 UnshadowedColor = float4(1,1,1,1);
+
+	OutColor = lerp(ShadowedColor,UnshadowedColor,Square(Shadow));
+	// RETURN_COLOR not needed with modulative blending
+}

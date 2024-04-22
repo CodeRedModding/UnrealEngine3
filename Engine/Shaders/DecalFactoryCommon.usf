@@ -1,0 +1,127 @@
+/*=============================================================================
+	DecalFactoryCommon.usf: Common functionality for decal vertex factories
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#ifndef DECAL_FACTORY
+#define DECAL_FACTORY	0
+#endif
+
+#if DECAL_FACTORY
+
+/** Transform local/world point to projected space for decal */
+float4x4	DecalMatrix;
+/** Local/world position of the decal */
+float3		DecalLocation;
+/** Offset of decal in texture space */
+float2		DecalOffset;
+/** Binormal of decal frame */
+float3		DecalLocalBinormal;
+/** Tangent of decal frame */
+float3		DecalLocalTangent;
+/** Normal of decal frame */
+float3		DecalLocalNormal;
+/** Min and max threshold (represented as cosine of angle) for decal attenuation */
+float2		DecalBlendInterval;
+
+/**
+* Transform from local/world space to projected decal texture space
+*
+* @param Point - position we are projecting onto
+*/
+float2 ComputeDecalTexCoord(float4 Point)
+{
+	float2	OutPos = MulMatrix(DecalMatrix, Point-float4(DecalLocation,1)).xy;
+	return float2(-OutPos.x+0.5+DecalOffset.x, -OutPos.y+0.5+DecalOffset.y );
+}
+
+/** 
+* Project the decal tangent frame to the plane defined by the normal of this vertex
+*
+* @param TangentZ - original vertex normal vector
+*/
+float3x3 ProjectDecalTangents(float3 TangentZ)
+{
+	float3x3 Result=0;	
+	Result[0] = cross(TangentZ,normalize(cross(TangentZ,DecalLocalTangent)));
+	Result[1] = cross(TangentZ,normalize(cross(TangentZ,DecalLocalBinormal)));	
+	Result[2] = TangentZ;
+	return Result;
+}
+
+/**
+* Project decal tangents and then use those for the inverse tangent basis
+* Only the original vertex normal is needed for this case
+*
+* @param TangentZ - original vertex normal vector
+*/
+float3x3 CalcInvTangentBasisDecal(float3 TangentZ)
+{
+	float3x3 ProjectedDecalTangents = ProjectDecalTangents(TangentZ);
+	return transpose(ProjectedDecalTangents);
+}
+
+/**
+* Creates a 2x2 matrix (encoded in float4) for transforming vectors
+* from the decal tangent frame back to the vertex tangent basis.
+*
+* @param TangentX - original vertex tangent vector
+* @param TangentZ - original vertex normal vector
+* @param Det - original determinant sign of vertex tangent basis
+*/
+float4 CalcDecal2x2NormalTransform(float3 TangentX, float3 TangentZ, float Det)
+{
+	// original vertex basis binormal
+	float3 TangentY = normalize(cross(TangentZ,TangentX) * Det);
+
+	// project decal tangents to vertex normal plane
+	float3x3 ProjectedTangents = ProjectDecalTangents(TangentZ);
+
+	// Generate transform from mesh tangent basis to decal tangent basis.
+	// M is the upper 2x2 of the decal basis projected onto the mesh basis.
+	// M[0],m[1] first column, m[2],m[3] second column.
+	half MX = dot(TangentX,ProjectedTangents[0]);
+	half MY = dot(TangentX,ProjectedTangents[1]);
+	half MZ = dot(TangentY,ProjectedTangents[0]);
+	half MW = dot(TangentY,ProjectedTangents[1]);
+
+	// 2x2 where xy,zw are first,second row
+	return float4(MX,MY,MZ,MW);
+}
+
+/**
+* Calculate attenuation based on dot product of decal normal and vertex normal
+* Remapped to the Min,Max blend range specified
+*
+* @param TangentZ - original vertex normal vector
+* @return attenuation factor for decals
+*/
+float CalcDecalAttenuation(float3 TangentZ)
+{
+	const float MinAtten = DecalBlendInterval[0];
+	const float MaxAtten = DecalBlendInterval[1];
+	const float MaxMinDelta = MaxAtten - MinAtten;
+	const float MaxMinAvg = (MaxAtten + MinAtten) * 0.5;
+
+	// dot product of decal normal and vertex normal [-1,1] range
+	float Atten = dot(DecalLocalNormal,normalize(TangentZ));
+	// mapping [Max,Min] of dot product range to [0,1] range
+	Atten = saturate((Atten / MaxMinDelta) - (MaxMinAvg / MaxMinDelta) + 0.5);
+	return Atten;
+}
+
+/**
+* Calculate the distance from the vertex to the decal near plane
+*
+* @param VertexPos - original vertex position
+* @return distance to decal near plane
+*/
+float CalcDistanceToDecalOrigin(float3 VertexPos)
+{
+	float3 VecToDecalOrigin = DecalLocation - VertexPos;
+	float DistanceToOrigin = dot(VecToDecalOrigin,DecalLocalNormal);
+	return DistanceToOrigin;
+}
+
+#endif
+

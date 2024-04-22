@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="PlatformBuilds" targetNamespace="http://tempuri.org/PlatformBuilds.xsd" xmlns:mstns="http://tempuri.org/PlatformBuilds.xsd" xmlns="http://tempuri.org/PlatformBuilds.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:msprop="urn:schemas-microsoft-com:xml-msprop" attributeFormDefault="qualified" elementFormDefault="qualified">
+  <xs:annotation>
+    <xs:appinfo source="urn:schemas-microsoft-com:xml-msdatasource">
+      <DataSource DefaultConnectionIndex="0" FunctionsComponentName="QueriesTableAdapter" Modifier="AutoLayout, AnsiClass, Class, Public" SchemaSerializationMode="IncludeSchema" xmlns="urn:schemas-microsoft-com:xml-msdatasource">
+        <Connections>
+          <Connection AppSettingsObjectName="Settings" AppSettingsPropertyName="UPropConnectionString" ConnectionStringObject="" IsAppSettingsProperty="true" Modifier="Assembly" Name="UPropConnectionString (Settings)" ParameterPrefix="@" PropertyReference="ApplicationSettings.RemotableType.Properties.Settings.GlobalReference.Default.UPropConnectionString" Provider="System.Data.SqlClient" />
+        </Connections>
+        <Tables>
+          <TableAdapter BaseClass="System.ComponentModel.Component" DataAccessorModifier="AutoLayout, AnsiClass, Class, Public" DataAccessorName="PlatformBuildsTableAdapter" GeneratorDataComponentClassName="PlatformBuildsTableAdapter" Name="PlatformBuilds" UserDataComponentName="PlatformBuildsTableAdapter">
+            <MainSource>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectType="Unknown" FillMethodModifier="Public" FillMethodName="Fill" GenerateMethods="Both" GenerateShortCommands="false" GeneratorGetMethodName="GetData" GeneratorSourceName="Fill" GetMethodModifier="Public" GetMethodName="GetData" QueryType="Rowset" ScalarCallRetval="System.Object, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="false" UserGetMethodName="GetData" UserSourceName="Fill">
+                <SelectCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>SELECT PlatformBuilds.ID, PlatformBuilds.PlatformID, Platforms.Name AS Platform, UserNames.ID AS UserNameID, UserNames.Email AS Email, PlatformBuilds.Path, PlatformBuilds.Size, PlatformBuilds.DiscoveryTime, Projects.Title AS Project, PlatformBuilds.StatusID, PlatformBuildStatuses.Description AS Status, PlatformBuilds.Title
+FROM PlatformBuilds 
+INNER JOIN UserNames ON PlatformBuilds.UserNameID = UserNames.ID
+INNER JOIN Platforms ON PlatformBuilds.PlatformID = Platforms.ID 
+INNER JOIN Projects ON PlatformBuilds.ProjectID = Projects.ID 
+INNER JOIN PlatformBuildStatuses ON PlatformBuilds.StatusID = PlatformBuildStatuses.ID
+</CommandText>
+                    <Parameters />
+                  </DbCommand>
+                </SelectCommand>
+              </DbSource>
+            </MainSource>
+            <Mappings>
+              <Mapping SourceColumn="ID" DataSetColumn="ID" />
+              <Mapping SourceColumn="Path" DataSetColumn="Path" />
+              <Mapping SourceColumn="Size" DataSetColumn="Size" />
+              <Mapping SourceColumn="DiscoveryTime" DataSetColumn="DiscoveryTime" />
+              <Mapping SourceColumn="Project" DataSetColumn="Project" />
+              <Mapping SourceColumn="Status" DataSetColumn="Status" />
+              <Mapping SourceColumn="Title" DataSetColumn="Title" />
+              <Mapping SourceColumn="PlatformID" DataSetColumn="PlatformID" />
+              <Mapping SourceColumn="StatusID" DataSetColumn="StatusID" />
+              <Mapping SourceColumn="Platform" DataSetColumn="Platform" />
+              <Mapping SourceColumn="UserNameID" DataSetColumn="UserNameID" />
+              <Mapping SourceColumn="Email" DataSetColumn="Email" />
+            </Mappings>
+            <Sources>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectType="Unknown" FillMethodModifier="Public" FillMethodName="FillByBuildRO" GenerateMethods="Both" GenerateShortCommands="true" GeneratorGetMethodName="GetDataByBuildRO" GeneratorSourceName="FillByBuildRO" GetMethodModifier="Public" GetMethodName="GetDataByBuildRO" QueryType="Rowset" ScalarCallRetval="System.Object, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="true" UserGetMethodName="GetDataByBuildRO" UserSourceName="FillByBuildRO">
+                <SelectCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>SELECT PlatformBuilds.ID, PlatformBuilds.PlatformID, Platforms.Name AS Platform, UserNames.ID AS UserNameID, UserNames.Email AS Email, PlatformBuilds.Path, PlatformBuilds.Size, PlatformBuilds.DiscoveryTime, Projects.Title AS Project, PlatformBuilds.StatusID, PlatformBuildStatuses.Description AS Status, PlatformBuilds.Title
+FROM PlatformBuilds 
+INNER JOIN UserNames ON PlatformBuilds.UserNameID = UserNames.ID
+INNER JOIN Platforms ON PlatformBuilds.PlatformID = Platforms.ID 
+INNER JOIN Projects ON PlatformBuilds.ProjectID = Projects.ID 
+INNER JOIN PlatformBuildStatuses ON PlatformBuilds.StatusID = PlatformBuildStatuses.ID
+WHERE ( PlatformBuilds.StatusID = 3 ) AND ( PlatformBuilds.ID = @PlatformBuildID )
+                    </CommandText>
+                    <Parameters>
+                      <Parameter AllowDbNull="false" AutogeneratedName="PlatformBuildID" ColumnName="ID" DataSourceName="UnrealProp.dbo.PlatformBuilds" DataTypeServer="bigint" DbType="Int64" Direction="Input" ParameterName="@PlatformBuildID" Precision="0" ProviderType="BigInt" Scale="0" Size="8" SourceColumn="ID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                    </Parameters>
+                  </DbCommand>
+                </SelectCommand>
+              </DbSource>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectType="Unknown" FillMethodModifier="Public" FillMethodName="FillByProject" GenerateMethods="Both" GenerateShortCommands="true" GeneratorGetMethodName="GetDataByProject" GeneratorSourceName="FillByProject" GetMethodModifier="Public" GetMethodName="GetDataByProject" QueryType="Rowset" ScalarCallRetval="System.Object, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="true" UserGetMethodName="GetDataByProject" UserSourceName="FillByProject">
+                <SelectCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>SELECT PlatformBuilds.ID, PlatformBuilds.PlatformID, Platforms.Name AS Platform, UserNames.ID AS UserNameID, UserNames.Email AS Email, PlatformBuilds.Path, PlatformBuilds.Size, PlatformBuilds.DiscoveryTime, Projects.Title AS Project, PlatformBuilds.StatusID, PlatformBuildStatuses.Description AS Status, PlatformBuilds.Title
+FROM PlatformBuilds 
+INNER JOIN UserNames ON PlatformBuilds.UserNameID = UserNames.ID
+INNER JOIN Platforms ON PlatformBuilds.PlatformID = Platforms.ID 
+INNER JOIN Projects ON PlatformBuilds.ProjectID = Projects.ID 
+INNER JOIN PlatformBuildStatuses ON PlatformBuilds.StatusID = PlatformBuildStatuses.ID
+WHERE ( PlatformBuilds.ProjectID = @ProjectID )</CommandText>
+                    <Parameters>
+                      <Parameter AllowDbNull="false" AutogeneratedName="ProjectID" ColumnName="ProjectID" DataSourceName="UnrealProp.dbo.PlatformBuilds" DataTypeServer="smallint" DbType="Int16" Direction="Input" ParameterName="@ProjectID" Precision="0" ProviderType="SmallInt" Scale="0" Size="2" SourceColumn="ProjectID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                    </Parameters>
+                  </DbCommand>
+                </SelectCommand>
+              </DbSource>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectType="Unknown" FillMethodModifier="Public" FillMethodName="FillByProjectPlatformAndStatus" GenerateMethods="Both" GenerateShortCommands="true" GeneratorGetMethodName="GetDataByProjectPlatformAndStatus" GeneratorSourceName="FillByProjectPlatformAndStatus" GetMethodModifier="Public" GetMethodName="GetDataByProjectPlatformAndStatus" QueryType="Rowset" ScalarCallRetval="System.Object, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="true" UserGetMethodName="GetDataByProjectPlatformAndStatus" UserSourceName="FillByProjectPlatformAndStatus">
+                <SelectCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>SELECT PlatformBuilds.ID, PlatformBuilds.PlatformID, Platforms.Name AS Platform, UserNames.ID AS UserNameID, UserNames.Email AS Email, PlatformBuilds.Path, PlatformBuilds.Size, PlatformBuilds.DiscoveryTime, Projects.Title AS Project, PlatformBuilds.StatusID, PlatformBuildStatuses.Description AS Status, PlatformBuilds.Title
+FROM PlatformBuilds 
+INNER JOIN UserNames ON PlatformBuilds.UserNameID = UserNames.ID
+INNER JOIN Platforms ON PlatformBuilds.PlatformID = Platforms.ID 
+INNER JOIN Projects ON PlatformBuilds.ProjectID = Projects.ID 
+INNER JOIN PlatformBuildStatuses ON PlatformBuilds.StatusID = PlatformBuildStatuses.ID
+WHERE ( PlatformBuilds.ProjectID = @ProjectID OR @ProjectID = -1 )
+AND ( PlatformBuilds.PlatformID = @PlatformID OR @PlatformID = -1 )
+AND ( PlatformBuilds.StatusID = @StatusID OR @StatusID = -1 )
+AND ( UserNameID = @UserNameID OR @UserNameID = 1 )
+AND ( PlatformBuilds.Special = 0 )
+ORDER BY PlatformBuilds.DiscoveryTime DESC</CommandText>
+                    <Parameters>
+                      <Parameter AllowDbNull="false" AutogeneratedName="ProjectID" ColumnName="ProjectID" DataSourceName="UnrealProp.dbo.PlatformBuilds" DataTypeServer="smallint" DbType="Int16" Direction="Input" ParameterName="@ProjectID" Precision="0" ProviderType="SmallInt" Scale="0" Size="2" SourceColumn="ProjectID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="PlatformID" ColumnName="PlatformID" DataSourceName="UnrealProp.dbo.PlatformBuilds" DataTypeServer="smallint" DbType="Int16" Direction="Input" ParameterName="@PlatformID" Precision="0" ProviderType="SmallInt" Scale="0" Size="2" SourceColumn="PlatformID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="StatusID" ColumnName="StatusID" DataSourceName="UnrealProp.dbo.PlatformBuilds" DataTypeServer="smallint" DbType="Int16" Direction="Input" ParameterName="@StatusID" Precision="0" ProviderType="SmallInt" Scale="0" Size="2" SourceColumn="StatusID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="UserNameID" ColumnName="UserNameID" DataSourceName="UnrealProp.dbo.PlatformBuilds" DataTypeServer="int" DbType="Int32" Direction="Input" ParameterName="@UserNameID" Precision="0" ProviderType="Int" Scale="0" Size="4" SourceColumn="UserNameID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                    </Parameters>
+                  </DbCommand>
+                </SelectCommand>
+              </DbSource>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectType="Unknown" FillMethodModifier="Public" FillMethodName="FillRO" GenerateMethods="Both" GenerateShortCommands="true" GeneratorGetMethodName="GetDataRO" GeneratorSourceName="FillRO" GetMethodModifier="Public" GetMethodName="GetDataRO" QueryType="Rowset" ScalarCallRetval="System.Object, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="true" UserGetMethodName="GetDataRO" UserSourceName="FillRO">
+                <SelectCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>SELECT PlatformBuilds.ID, PlatformBuilds.PlatformID, Platforms.Name AS Platform, UserNames.ID AS UserNameID, UserNames.Email AS Email, PlatformBuilds.Path, PlatformBuilds.Size, PlatformBuilds.DiscoveryTime, Projects.Title AS Project, PlatformBuilds.StatusID, PlatformBuildStatuses.Description AS Status, PlatformBuilds.Title
+FROM PlatformBuilds 
+INNER JOIN UserNames ON PlatformBuilds.UserNameID = UserNames.ID
+INNER JOIN Platforms ON PlatformBuilds.PlatformID = Platforms.ID 
+INNER JOIN Projects ON PlatformBuilds.ProjectID = Projects.ID 
+INNER JOIN PlatformBuildStatuses ON PlatformBuilds.StatusID = PlatformBuildStatuses.ID
+WHERE ( PlatformBuilds.StatusID = 3 )</CommandText>
+                    <Parameters />
+                  </DbCommand>
+                </SelectCommand>
+              </DbSource>
+            </Sources>
+          </TableAdapter>
+        </Tables>
+        <Sources />
+      </DataSource>
+    </xs:appinfo>
+  </xs:annotation>
+  <xs:element name="PlatformBuilds" msdata:IsDataSet="true" msdata:UseCurrentLocale="true" msprop:Generator_UserDSName="PlatformBuilds" msprop:Generator_DataSetName="PlatformBuilds">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="PlatformBuilds" msprop:Generator_UserTableName="PlatformBuilds" msprop:Generator_RowDeletedName="PlatformBuildsRowDeleted" msprop:Generator_RowChangedName="PlatformBuildsRowChanged" msprop:Generator_RowClassName="PlatformBuildsRow" msprop:Generator_RowChangingName="PlatformBuildsRowChanging" msprop:Generator_RowEvArgName="PlatformBuildsRowChangeEvent" msprop:Generator_RowEvHandlerName="PlatformBuildsRowChangeEventHandler" msprop:Generator_TableClassName="PlatformBuildsDataTable" msprop:Generator_TableVarName="tablePlatformBuilds" msprop:Generator_RowDeletingName="PlatformBuildsRowDeleting" msprop:Generator_TablePropName="_PlatformBuilds">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="ID" msdata:ReadOnly="true" msdata:AutoIncrement="true" msprop:Generator_UserColumnName="ID" msprop:Generator_ColumnPropNameInRow="ID" msprop:Generator_ColumnVarNameInTable="columnID" msprop:Generator_ColumnPropNameInTable="IDColumn" type="xs:long" />
+              <xs:element name="Path" msprop:Generator_UserColumnName="Path" msprop:Generator_ColumnPropNameInRow="Path" msprop:Generator_ColumnVarNameInTable="columnPath" msprop:Generator_ColumnPropNameInTable="PathColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="1000" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="Size" msprop:Generator_UserColumnName="Size" msprop:Generator_ColumnPropNameInRow="Size" msprop:Generator_ColumnVarNameInTable="columnSize" msprop:Generator_ColumnPropNameInTable="SizeColumn" type="xs:long" />
+              <xs:element name="DiscoveryTime" msprop:Generator_UserColumnName="DiscoveryTime" msprop:Generator_ColumnVarNameInTable="columnDiscoveryTime" msprop:Generator_ColumnPropNameInRow="DiscoveryTime" msprop:Generator_ColumnPropNameInTable="DiscoveryTimeColumn" type="xs:dateTime" />
+              <xs:element name="Project" msprop:Generator_UserColumnName="Project" msprop:Generator_ColumnVarNameInTable="columnProject" msprop:Generator_ColumnPropNameInRow="Project" msprop:Generator_ColumnPropNameInTable="ProjectColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="32" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="Status" msprop:Generator_UserColumnName="Status" msprop:Generator_ColumnPropNameInRow="Status" msprop:Generator_ColumnVarNameInTable="columnStatus" msprop:Generator_ColumnPropNameInTable="StatusColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="64" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="Title" msprop:Generator_UserColumnName="Title" msprop:Generator_ColumnPropNameInRow="Title" msprop:Generator_ColumnVarNameInTable="columnTitle" msprop:Generator_ColumnPropNameInTable="TitleColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="256" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="PlatformID" msprop:Generator_UserColumnName="PlatformID" msprop:Generator_ColumnVarNameInTable="columnPlatformID" msprop:Generator_ColumnPropNameInRow="PlatformID" msprop:Generator_ColumnPropNameInTable="PlatformIDColumn" type="xs:short" />
+              <xs:element name="StatusID" msprop:Generator_UserColumnName="StatusID" msprop:Generator_ColumnVarNameInTable="columnStatusID" msprop:Generator_ColumnPropNameInRow="StatusID" msprop:Generator_ColumnPropNameInTable="StatusIDColumn" type="xs:short" />
+              <xs:element name="Platform" msprop:Generator_UserColumnName="Platform" msprop:Generator_ColumnPropNameInRow="Platform" msprop:Generator_ColumnVarNameInTable="columnPlatform" msprop:Generator_ColumnPropNameInTable="PlatformColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="16" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="UserNameID" msdata:ReadOnly="true" msdata:AutoIncrement="true" msprop:Generator_UserColumnName="UserNameID" msprop:Generator_ColumnPropNameInRow="UserNameID" msprop:Generator_ColumnVarNameInTable="columnUserNameID" msprop:Generator_ColumnPropNameInTable="UserNameIDColumn" type="xs:int" />
+              <xs:element name="Email" msprop:Generator_UserColumnName="Email" msprop:Generator_ColumnPropNameInRow="Email" msprop:Generator_ColumnVarNameInTable="columnEmail" msprop:Generator_ColumnPropNameInTable="EmailColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="64" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:complexType>
+    <xs:unique name="Constraint1" msdata:PrimaryKey="true">
+      <xs:selector xpath=".//mstns:PlatformBuilds" />
+      <xs:field xpath="mstns:ID" />
+    </xs:unique>
+  </xs:element>
+</xs:schema>

@@ -1,0 +1,146 @@
+/*=============================================================================
+	BasePassVertexShader.usf: Base pass vertex shader
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "BasePassVertexCommon.usf"
+
+/**
+ * Scale factors for the light-map coefficients.
+ * The light-map scale array is a set of float4s so it can be set as a contiguous chunk regardless of platform shader constant alignment.
+ */
+float4 LightMapScale[NUM_LIGHTMAP_COEFFICIENTS];
+
+/** Entry point for the base pass vertex shader. */
+void Main(
+	FVertexFactoryInput Input,
+#if STATICLIGHTING_VERTEXMASK
+	float LightMask : BLENDWEIGHT0,
+#endif
+	OPTIONAL_VertexID
+	out FBasePassVSOutput Output
+	)
+{
+	FVertexFactoryIntermediates VFIntermediates = GetVertexFactoryIntermediates(Input);
+	float4 WorldPosition = VertexFactoryGetWorldPosition(Input, VFIntermediates);
+
+#if TERRAIN_VERTEX_FACTORY
+	// Don't calculate TangentBasis here for terrain, as doing so causes self-z-fighting on xbox 360, regardless of any ISOLATE usage
+	FMaterialVertexParameters VertexParameters = GetMaterialVertexParameters(Input, VFIntermediates, WorldPosition.xyz, float3x3(float3(0,0,0),float3(0,0,0),float3(0,0,0)));
+#else
+	float3x3 TangentBasis = VertexFactoryGetTangentBasis(Input, VFIntermediates);	
+	FMaterialVertexParameters VertexParameters = GetMaterialVertexParameters(Input, VFIntermediates, WorldPosition.xyz, TangentBasis);
+#endif
+	// Isolate instructions used for world position offset on xbox 360, 
+	// As these cause the optimizer to generate different position calculating instructions in each pass, resulting in self-z-fighting.
+	// This is only necessary for shaders used in passes that have depth testing enabled.
+	ISOLATE
+	{
+		WorldPosition.xyz += GetMaterialWorldPositionOffset(VertexParameters);
+	}
+
+#if USING_SM5_TESSELLATION
+	// We let the Domain Shader convert to post projection when tessellating
+	Output.Position = WorldPosition;	
+#else
+#if WITH_REALD
+	FDepthAllocateOutput DBAResult;
+	ISOLATE
+	{
+		DBAResult = DepthAllocate(WorldPosition);
+		Output.Position = DBAResult.DBAPixelPosition;
+		Output.Position = ApplyTemporalAAJitter(Output.Position);
+	}
+#else
+	ISOLATE
+	{
+		Output.Position = MulMatrix(ViewProjectionMatrix,WorldPosition);
+		Output.Position = ApplyTemporalAAJitter(Output.Position);
+	}
+#endif
+
+	#if WORLD_POS
+		Output.BasePassInterpolants.PixelPosition = WorldPosition;
+	#else
+		#if WITH_REALD
+			Output.BasePassInterpolants.PixelPosition = DBAResult.DBAPixelPosition;
+		#else
+			Output.BasePassInterpolants.PixelPosition = Output.Position;
+		#endif
+	#endif
+
+#endif
+
+	Output.FactoryInterpolants = VertexFactoryGetInterpolants(Input, VFIntermediates);
+
+#if TERRAIN_VERTEX_FACTORY
+	float3x3 TangentBasis = VertexFactoryGetTangentBasis(Input, VFIntermediates);
+#endif
+
+	Output.BasePassInterpolants.CameraVectorOrVertexColor = 1;
+#if PER_PIXEL_CAMERA_VECTOR
+	Output.BasePassInterpolants.CameraVectorOrVertexColor = VertexFactoryGetVertexColor(Input, VFIntermediates);
+#elif !USING_SM5_TESSELLATION
+	// SM5 will calculate the camera vector off of the displaced world position in the domain shader
+	Output.BasePassInterpolants.CameraVectorOrVertexColor.xyz = VertexFactoryWorldToTangentSpace(Input,VFIntermediates,TangentBasis,CameraPositionVS.xyz - WorldPosition.xyz * CameraPositionVS.w);
+#endif
+
+#if TANGENT_LIGHT_VECTOR_DEFINED
+	Output.BasePassInterpolants.TangentLightVector = 0;
+#endif
+
+#if ENABLE_MULTITYPE_BASEPASS_LIGHT && XBOX
+	// Isolate instructions used for the base pass dynamic light on xbox, 
+	// As these cause the optimizer to generate different position calculating instructions for skinned meshes between the depth only and base passes.
+	ISOLATE
+#endif
+	{
+		#if ENABLE_DIRECTIONAL_LIGHT
+			Output.BasePassInterpolants.TangentLightVector.xyz = VertexFactoryWorldToTangentSpace(Input,VFIntermediates,TangentBasis,LightPositionAndInvRadius.xyz);
+		#elif ENABLE_MULTITYPE_BASEPASS_LIGHT
+			// Choose the vector from the vertex to the light for point and spot lights, and the passed in light direction for directional lights
+			float3 LightVectorOverRadius = LightPositionAndInvRadius.xyz - WorldPosition.xyz * LightPositionAndInvRadius.w;
+			Output.BasePassInterpolants.TangentLightVector.xyz = VertexFactoryWorldToTangentSpace(Input, VFIntermediates, TangentBasis, LightVectorOverRadius);
+			Output.BasePassInterpolants.WorldLightVector = LightVectorOverRadius;
+		#endif
+
+		#if STATICLIGHTING_VERTEXMASK && (ENABLE_DIRECTIONAL_LIGHT || ENABLE_MULTITYPE_BASEPASS_LIGHT)
+			Output.BasePassInterpolants.TangentLightVector.w = LightMask;
+		#endif
+	}
+
+#if !MATERIAL_LIGHTINGMODEL_UNLIT
+	// Calculate sky vector
+	Output.BasePassInterpolants.SkyVector.xyz = VertexFactoryWorldToTangentSpace(Input, VFIntermediates, TangentBasis,float3(0,0,1));
+#endif
+
+// Calculate DoF blur amount needed for translucency
+#if ENABLE_TRANSLUCENCY_DOF
+	Output.BasePassInterpolants.TranslucencyDoFBlur = 1.f - CalcUnfocusedPercent(Output.Position.z);
+#endif
+
+// Calculate the fog needed for translucency
+#if NEEDS_BASEPASS_FOGGING
+	float4 Fog = GetCombinedFog(
+		CalculateVertexHeightFog(WorldPosition.xyz, CameraPositionVS),
+		GetFogDensity(WorldPosition, CameraPositionVS)
+		);
+
+		Output.BasePassInterpolants.VertexFog = Fog;
+#endif
+
+#if NEEDS_VERTEX_LIGHTMAP
+	float4 InLightMapA;
+	float4 InLightMapB;
+	VertexFactoryGetVertexLightMap(Input,InLightMapA,InLightMapB);
+	Output.BasePassInterpolants.LightMapA = pow( InLightMapA FCOLOR_COMPONENT_SWIZZLE .rgb, 2.2 ) * LightMapScale[0].rgb;
+	Output.BasePassInterpolants.LightMapB = pow( InLightMapB FCOLOR_COMPONENT_SWIZZLE .rgb, 2.2 ) * LightMapScale[1].rgb;
+
+#elif SIMPLE_VERTEX_LIGHTMAP
+	float4 InLightMapA;
+	VertexFactoryGetSimpleVertexLightMap(Input,InLightMapA);
+	Output.BasePassInterpolants.LightMapA = pow( InLightMapA FCOLOR_COMPONENT_SWIZZLE .rgb, 2.2 ) * LightMapScale[0].rgb;
+#endif
+
+	OutputVertexID( Output );
+}

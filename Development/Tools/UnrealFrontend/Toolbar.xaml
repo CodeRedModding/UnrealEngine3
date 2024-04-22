@@ -1,0 +1,140 @@
+﻿<!--
+  Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+-->
+<UserControl x:Class="UnrealFrontend.Toolbar"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:ufe2="clr-namespace:UnrealFrontend"
+	x:Name="This">
+	
+	<UserControl.DataContext>
+		<Binding ElementName="This" />
+	</UserControl.DataContext>
+
+	<DockPanel SnapsToDevicePixels="True" Margin="4,0" IsEnabled="{Binding Source={x:Static ufe2:Session.Current}, Path=IsRefreshingTargets, Converter={StaticResource Negator}}">
+		<StackPanel Orientation="Horizontal" >
+
+			<StackPanel VerticalAlignment="Top"  >
+				<Button Style="{StaticResource UFE2ToolbarButton}" Click="OnStartProcess" Margin="3" >
+					<StackPanel>
+						<StackPanel Visibility="{Binding Path=IsWorking, Converter={StaticResource Negated_BoolToVis}}">
+							<Image Width="48" Height="48" Source="{StaticResource Play_png}" />
+						</StackPanel>
+						<StackPanel Visibility="{Binding Path=IsWorking, Converter={StaticResource BoolToVis}}">
+							<Image Width="48" Height="48" Source="{StaticResource Stop_png}" />
+							<TextBlock FontWeight="Bold" Text="Stop" HorizontalAlignment="Center" Margin="0,3,0,0" />
+						</StackPanel>
+					</StackPanel>
+				</Button>
+				
+				<StackPanel Visibility="{Binding Path=IsWorking, Converter={StaticResource Negated_BoolToVis}}" >
+					<!-- Makeshift horizontal separator -->
+					<Border Height="1" Width="48" Background="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"/>
+				</StackPanel>			
+				
+				<ufe2:ComboButton x:Name="mStartCombo" Visibility="{Binding Path=IsWorking, Converter={StaticResource Negated_BoolToVis}}" >
+					<ufe2:ComboButton.Header>
+						<StackPanel Orientation="Horizontal">
+							<TextBlock FontWeight="Bold" Text="Start" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+                            <Path Data="{StaticResource DownArrow_path}" Stretch="Fill" Width="8" Height="6" Margin="3,2,0,0" Fill="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+                            <!--<StaticResource ResourceKey="DownArrow"/>-->
+                        </StackPanel>						
+					</ufe2:ComboButton.Header>
+					<StackPanel>
+						<MenuItem  Click="OnStartProcess">
+							<MenuItem.Header>
+								<TextBlock Text="Start" FontWeight="Bold" />
+							</MenuItem.Header>
+							<MenuItem.Icon>
+								<Image Source="{StaticResource Play_png}" Width="16" Height="16" />
+							</MenuItem.Icon>
+						</MenuItem>
+						<MenuItem Header="Start: Rebuild script" Click="OnRebuildScript">
+							<MenuItem.Icon>
+								<Image Source="{StaticResource MakeScript_png}" Width="16" Height="16" />
+							</MenuItem.Icon>
+						</MenuItem>
+						<MenuItem Header="Start: Full recook" Click="OnFullRecook">
+							<MenuItem.Icon>
+								<Image Source="{StaticResource Cook_png}" Width="16" Height="16" />
+							</MenuItem.Icon>
+						</MenuItem>
+						<MenuItem Header="Start: Full rebuild and recook" Click="OnFullRebuildAndRecook">
+								<MenuItem.Icon>
+								<Image Source="{StaticResource Cook_png}" Width="16" Height="16" />
+							</MenuItem.Icon>
+						</MenuItem>
+						<MenuItem Click="OnCookINIsOnly" x:Name="CookINIsMenuItem">
+							<MenuItem.Icon>
+								<Image Source="{StaticResource Cook_png}" Width="16" Height="16"/>
+							</MenuItem.Icon>
+							<MenuItem.Header>
+								<StackPanel VerticalAlignment="Bottom">
+									<TextBlock>Start: Cook INIs only</TextBlock>
+									<Border BorderBrush="#800" BorderThickness="1" Margin="2" Visibility="{Binding ElementName=CookINIsMenuItem, Path=IsMouseOver, Converter={StaticResource BoolToVis}}">
+										<TextBlock Margin="2">
+											<Run Foreground="Red" FontWeight="Bold">WARNING</Run> <LineBreak/>
+											Only use this if you have modified <LineBreak/>
+											values in an INI file, but have not added/removed any. <LineBreak/>
+											Otherwise you will most likely crash.
+										</TextBlock>
+									</Border>
+								</StackPanel>								
+							</MenuItem.Header>
+						</MenuItem>						
+					</StackPanel>
+				</ufe2:ComboButton>
+			</StackPanel>
+
+			<ufe2:PipelineView VerticalAlignment="Top"  Margin="4" HorizontalAlignment="Center" IsEnabled="{Binding IsWorking, Converter={StaticResource Negator}}"
+							  Pipeline="{Binding ElementName=This, Path=CurrentProfile.Pipeline}"
+							  Profile="{Binding ElementName=This, Path=CurrentProfile}"
+							  IsWorking="{Binding Source={x:Static ufe2:Session.Current}, Path=IsWorking}"/>
+
+			<!-- Makeshift vertical separator -->
+			<StackPanel Orientation ="Horizontal" Margin="20,10" >
+				<Border Width="1" Background="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"/>
+				<Border Width="1" Background="{DynamicResource {x:Static SystemColors.ControlLightLightBrushKey}}" />
+			</StackPanel>
+
+			<Button VerticalAlignment="Top"  Style="{DynamicResource UFE2ToolbarButton}" Margin="4,0" Click="OnRebootTargets" IsEnabled="{Binding Path=IsWorking, Converter={StaticResource Negator}}"
+					ToolTip="Reboot Selected Targets">
+				<StackPanel>
+					<Image Source="{StaticResource Reset_png}" Width="48" Height="48" />
+					<TextBlock HorizontalAlignment="Center">Reboot</TextBlock>
+				</StackPanel>
+			</Button>
+
+			<Button VerticalAlignment="Top"  Style="{DynamicResource UFE2ToolbarButton}" Margin="4,0" Click="OnLaunchConsole" IsEnabled="{Binding Path=IsWorking, Converter={StaticResource Negator}}"
+					ToolTip="Launch Unreal Console">
+				<StackPanel>
+					<Image Source="{StaticResource Console_png}" Width="48" Height="48" />
+					<TextBlock HorizontalAlignment="Center">Unreal Console</TextBlock>
+				</StackPanel>
+			</Button>
+
+			<Button VerticalAlignment="Top" Style="{DynamicResource UFE2ToolbarButton}" Margin="4,0" Click="OnLaunchUnrealEd" IsEnabled="{Binding Path=IsWorking, Converter={StaticResource Negator}}"
+					ToolTip="Launch UnrealEd">
+				<StackPanel VerticalAlignment="Top">
+					<Image HorizontalAlignment="Left" Source="{StaticResource UnrealEd_png}" Width="48" Height="48"/>
+					<TextBlock HorizontalAlignment="Center">UnrealEd</TextBlock>
+				</StackPanel>
+			</Button>
+
+		</StackPanel>
+
+
+		<StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Top" HorizontalAlignment="Right">
+
+			<StackPanel>
+				<TextBlock DockPanel.Dock="Top" TextAlignment="Right" Text="{Binding Source={x:Static ufe2:Session.Current}, Path=VersionString, Mode=OneTime}" Opacity=".35" />
+				<ufe2:Throbber Visibility="{Binding Source={x:Static ufe2:Session.Current}, Path=IsWorking, Converter={StaticResource BoolToVis_Hide}}" DockPanel.Dock="Right" Margin="4,0" />				
+			</StackPanel>
+
+		</StackPanel>
+
+
+	</DockPanel>
+
+
+</UserControl>

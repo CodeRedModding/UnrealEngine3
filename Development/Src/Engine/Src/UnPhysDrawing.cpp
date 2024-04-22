@@ -1,3 +1,6 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 #include "EnginePrivate.h"
 #include "EnginePhysicsClasses.h"
 
@@ -22,21 +25,21 @@ static const FColor JointLockedColor(255,128,10);
 /////////////////////////////////////////////////////////////////////////////////////
 
 // NB: ElemTM is assumed to have no scaling in it!
-void FKSphereElem::DrawElemWire(FPrimitiveRenderInterface* PRI, const FMatrix& ElemTM, FLOAT Scale, const FColor Color)
+void FKSphereElem::DrawElemWire(FPrimitiveDrawInterface* PDI, const FMatrix& ElemTM, FLOAT Scale, const FColor Color)
 {
 	FVector Center = ElemTM.GetOrigin();
 	FVector X = ElemTM.GetAxis(0);
 	FVector Y = ElemTM.GetAxis(1);
 	FVector Z = ElemTM.GetAxis(2);
 
-	PRI->DrawCircle(Center, X, Y, Color, Scale*Radius, DrawCollisionSides);
-	PRI->DrawCircle(Center, X, Z, Color, Scale*Radius, DrawCollisionSides);
-	PRI->DrawCircle(Center, Y, Z, Color, Scale*Radius, DrawCollisionSides);
+	DrawCircle(PDI,Center, X, Y, Color, Scale*Radius, DrawCollisionSides, SDPG_World);
+	DrawCircle(PDI,Center, X, Z, Color, Scale*Radius, DrawCollisionSides, SDPG_World);
+	DrawCircle(PDI,Center, Y, Z, Color, Scale*Radius, DrawCollisionSides, SDPG_World);
 }
 
-void FKSphereElem::DrawElemSolid(struct FPrimitiveRenderInterface* PRI, const FMatrix& ElemTM, FLOAT Scale, FMaterial* Material, FMaterialInstance* MaterialInstance)
+void FKSphereElem::DrawElemSolid(class FPrimitiveDrawInterface* PDI, const FMatrix& ElemTM, FLOAT Scale, const FMaterialRenderProxy* MaterialRenderProxy)
 {
-	PRI->DrawSphere( ElemTM.GetOrigin(), FVector( this->Radius ), DrawCollisionSides, DrawCollisionSides/2, Material, MaterialInstance );
+	DrawSphere(PDI, ElemTM.GetOrigin(), FVector( this->Radius * Scale ), DrawCollisionSides, DrawCollisionSides/2, MaterialRenderProxy, SDPG_World );
 }
 
 
@@ -45,7 +48,7 @@ void FKSphereElem::DrawElemSolid(struct FPrimitiveRenderInterface* PRI, const FM
 /////////////////////////////////////////////////////////////////////////////////////
 
 // NB: ElemTM is assumed to have no scaling in it!
-void FKBoxElem::DrawElemWire(FPrimitiveRenderInterface* PRI, const FMatrix& ElemTM, FLOAT Scale, const FColor Color)
+void FKBoxElem::DrawElemWire(FPrimitiveDrawInterface* PDI, const FMatrix& ElemTM, FLOAT Scale, const FColor Color)
 {
 	FVector	B[2], P, Q, Radii;
 
@@ -64,32 +67,32 @@ void FKBoxElem::DrawElemWire(FPrimitiveRenderInterface* PRI, const FMatrix& Elem
 			P.X=B[i].X; Q.X=B[i].X;
 			P.Y=B[j].Y; Q.Y=B[j].Y;
 			P.Z=B[0].Z; Q.Z=B[1].Z;
-			PRI->DrawLine( ElemTM.TransformFVector(P), ElemTM.TransformFVector(Q), Color);
+			PDI->DrawLine( ElemTM.TransformFVector(P), ElemTM.TransformFVector(Q), Color, SDPG_World);
 
 			P.Y=B[i].Y; Q.Y=B[i].Y;
 			P.Z=B[j].Z; Q.Z=B[j].Z;
 			P.X=B[0].X; Q.X=B[1].X;
-			PRI->DrawLine( ElemTM.TransformFVector(P), ElemTM.TransformFVector(Q), Color);
+			PDI->DrawLine( ElemTM.TransformFVector(P), ElemTM.TransformFVector(Q), Color, SDPG_World);
 
 			P.Z=B[i].Z; Q.Z=B[i].Z;
 			P.X=B[j].X; Q.X=B[j].X;
 			P.Y=B[0].Y; Q.Y=B[1].Y;
-			PRI->DrawLine( ElemTM.TransformFVector(P), ElemTM.TransformFVector(Q), Color);
+			PDI->DrawLine( ElemTM.TransformFVector(P), ElemTM.TransformFVector(Q), Color, SDPG_World);
 		}
 	}
 
 }
 
-void FKBoxElem::DrawElemSolid(struct FPrimitiveRenderInterface* PRI, const FMatrix& ElemTM, FLOAT Scale, FMaterial* Material, FMaterialInstance* MaterialInstance)
+void FKBoxElem::DrawElemSolid(class FPrimitiveDrawInterface* PDI, const FMatrix& ElemTM, FLOAT Scale, const FMaterialRenderProxy* MaterialRenderProxy)
 {
-	PRI->DrawBox( ElemTM, 0.5f * FVector(X, Y, Z), Material, MaterialInstance );
+	DrawBox(PDI, ElemTM, 0.5f * FVector(X, Y, Z), MaterialRenderProxy, SDPG_World );
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
 // FKSphylElem
 /////////////////////////////////////////////////////////////////////////////////////
 
-static void DrawHalfCircle(FPrimitiveRenderInterface* PRI, const FVector& Base, const FVector& X, const FVector& Y, const FColor Color, FLOAT Radius)
+static void DrawHalfCircle(FPrimitiveDrawInterface* PDI, const FVector& Base, const FVector& X, const FVector& Y, const FColor Color, FLOAT Radius)
 {
 	FLOAT	AngleDelta = 2.0f * (FLOAT)PI / ((FLOAT)DrawCollisionSides);
 	FVector	LastVertex = Base + X * Radius;
@@ -97,13 +100,13 @@ static void DrawHalfCircle(FPrimitiveRenderInterface* PRI, const FVector& Base, 
 	for(INT SideIndex = 0; SideIndex < (DrawCollisionSides/2); SideIndex++)
 	{
 		FVector	Vertex = Base + (X * appCos(AngleDelta * (SideIndex + 1)) + Y * appSin(AngleDelta * (SideIndex + 1))) * Radius;
-		PRI->DrawLine(LastVertex, Vertex, Color);
+		PDI->DrawLine(LastVertex, Vertex, Color, SDPG_World);
 		LastVertex = Vertex;
 	}	
 }
 
 // NB: ElemTM is assumed to have no scaling in it!
-void FKSphylElem::DrawElemWire(FPrimitiveRenderInterface* PRI, const FMatrix& ElemTM, FLOAT Scale, const FColor Color)
+void FKSphylElem::DrawElemWire(FPrimitiveDrawInterface* PDI, const FMatrix& ElemTM, FLOAT Scale, const FColor Color)
 {
 	FVector Origin = ElemTM.GetOrigin();
 	FVector XAxis = ElemTM.GetAxis(0);
@@ -114,51 +117,51 @@ void FKSphylElem::DrawElemWire(FPrimitiveRenderInterface* PRI, const FMatrix& El
 	FVector TopEnd = Origin + Scale*0.5f*Length*ZAxis;
 	FVector BottomEnd = Origin - Scale*0.5f*Length*ZAxis;
 
-	PRI->DrawCircle(TopEnd, XAxis, YAxis, Color, Scale*Radius, DrawCollisionSides);
-	PRI->DrawCircle(BottomEnd, XAxis, YAxis, Color, Scale*Radius, DrawCollisionSides);
+	DrawCircle(PDI,TopEnd, XAxis, YAxis, Color, Scale*Radius, DrawCollisionSides, SDPG_World);
+	DrawCircle(PDI,BottomEnd, XAxis, YAxis, Color, Scale*Radius, DrawCollisionSides, SDPG_World);
 
 	// Draw domed caps
-	DrawHalfCircle(PRI, TopEnd, YAxis, ZAxis, Color,Scale* Radius);
-	DrawHalfCircle(PRI, TopEnd, XAxis, ZAxis, Color, Scale*Radius);
+	DrawHalfCircle(PDI, TopEnd, YAxis, ZAxis, Color,Scale* Radius);
+	DrawHalfCircle(PDI, TopEnd, XAxis, ZAxis, Color, Scale*Radius);
 
 	FVector NegZAxis = -ZAxis;
 
-	DrawHalfCircle(PRI, BottomEnd, YAxis, NegZAxis, Color, Scale*Radius);
-	DrawHalfCircle(PRI, BottomEnd, XAxis, NegZAxis, Color, Scale*Radius);
+	DrawHalfCircle(PDI, BottomEnd, YAxis, NegZAxis, Color, Scale*Radius);
+	DrawHalfCircle(PDI, BottomEnd, XAxis, NegZAxis, Color, Scale*Radius);
 
 	// Draw connecty lines
-	PRI->DrawLine(TopEnd + Scale*Radius*XAxis, BottomEnd + Scale*Radius*XAxis, Color);
-	PRI->DrawLine(TopEnd - Scale*Radius*XAxis, BottomEnd - Scale*Radius*XAxis, Color);
-	PRI->DrawLine(TopEnd + Scale*Radius*YAxis, BottomEnd + Scale*Radius*YAxis, Color);
-	PRI->DrawLine(TopEnd - Scale*Radius*YAxis, BottomEnd - Scale*Radius*YAxis, Color);
+	PDI->DrawLine(TopEnd + Scale*Radius*XAxis, BottomEnd + Scale*Radius*XAxis, Color, SDPG_World);
+	PDI->DrawLine(TopEnd - Scale*Radius*XAxis, BottomEnd - Scale*Radius*XAxis, Color, SDPG_World);
+	PDI->DrawLine(TopEnd + Scale*Radius*YAxis, BottomEnd + Scale*Radius*YAxis, Color, SDPG_World);
+	PDI->DrawLine(TopEnd - Scale*Radius*YAxis, BottomEnd - Scale*Radius*YAxis, Color, SDPG_World);
 }
 
-void FKSphylElem::DrawElemSolid(FPrimitiveRenderInterface* PRI, const FMatrix& ElemTM, FLOAT Scale, FMaterial* Material, FMaterialInstance* MaterialInstance)
+void FKSphylElem::DrawElemSolid(FPrimitiveDrawInterface* PDI, const FMatrix& ElemTM, FLOAT Scale, const FMaterialRenderProxy* MaterialRenderProxy)
 {
-	INT NumSides = DrawCollisionSides;
-	INT NumRings = (DrawCollisionSides/2) + 1;
+	const INT NumSides = DrawCollisionSides;
+	const INT NumRings = (DrawCollisionSides/2) + 1;
 
 	// The first/last arc are on top of each other.
-	INT NumVerts = (NumSides+1) * (NumRings+1);
-	FRawTriangleVertex* Verts = (FRawTriangleVertex*)appMalloc( NumVerts * sizeof(FRawTriangleVertex) );
+	const INT NumVerts = (NumSides+1) * (NumRings+1);
+	FDynamicMeshVertex* Verts = (FDynamicMeshVertex*)appMalloc( NumVerts * sizeof(FDynamicMeshVertex) );
 
 	// Calculate verts for one arc
-	FRawTriangleVertex* ArcVerts = (FRawTriangleVertex*)appMalloc( (NumRings+1) * sizeof(FRawTriangleVertex) );
+	FDynamicMeshVertex* ArcVerts = (FDynamicMeshVertex*)appMalloc( (NumRings+1) * sizeof(FDynamicMeshVertex) );
 
-	for(INT i=0; i<NumRings+1; i++)
+	for(INT RingIdx=0; RingIdx<NumRings+1; RingIdx++)
 	{
-		FRawTriangleVertex* ArcVert = &ArcVerts[i];
+		FDynamicMeshVertex* ArcVert = &ArcVerts[RingIdx];
 
 		FLOAT Angle;
 		FLOAT ZOffset;
-		if( i <= DrawCollisionSides/4 )
+		if( RingIdx <= DrawCollisionSides/4 )
 		{
-			Angle = ((FLOAT)i/(NumRings-1)) * PI;
+			Angle = ((FLOAT)RingIdx/(NumRings-1)) * PI;
 			ZOffset = 0.5 * Scale * Length;
 		}
 		else
 		{
-			Angle = ((FLOAT)(i-1)/(NumRings-1)) * PI;
+			Angle = ((FLOAT)(RingIdx-1)/(NumRings-1)) * PI;
 			ZOffset = -0.5 * Scale * Length;
 		}
 
@@ -170,80 +173,257 @@ void FKSphylElem::DrawElemSolid(FPrimitiveRenderInterface* PRI, const FMatrix& E
 
 		ArcVert->Position = SpherePos + FVector(0,0,ZOffset);
 
-		ArcVert->TangentX = FVector(1,0,0);
+		ArcVert->SetTangents(
+			FVector(1,0,0),
+			FVector(0.0f, -SpherePos.Z, SpherePos.Y),
+			SpherePos
+			);
 
-		ArcVert->TangentY.X = 0.0f;
-		ArcVert->TangentY.Y = -SpherePos.Z;
-		ArcVert->TangentY.Z = SpherePos.Y;
-
-		ArcVert->TangentZ = SpherePos; 
-
-		ArcVert->TexCoord.X = 0.0f;
-		ArcVert->TexCoord.Y = ((FLOAT)i/NumRings);
+		ArcVert->TextureCoordinate.X = 0.0f;
+		ArcVert->TextureCoordinate.Y = ((FLOAT)RingIdx/NumRings);
 	}
 
 	// Then rotate this arc NumSides+1 times.
-	for(INT s=0; s<NumSides+1; s++)
+	for(INT SideIdx=0; SideIdx<NumSides+1; SideIdx++)
 	{
-		FRotator ArcRotator(0, 65535 * ((FLOAT)s/NumSides), 0);
-		FRotationMatrix ArcRot( ArcRotator );
-		FLOAT XTexCoord = ((FLOAT)s/NumSides);
+		const FRotator ArcRotator(0, appTrunc(65535.f * ((FLOAT)SideIdx/NumSides)), 0);
+		const FRotationMatrix ArcRot( ArcRotator );
+		const FLOAT XTexCoord = ((FLOAT)SideIdx/NumSides);
 
-		for(INT v=0; v<NumRings+1; v++)
+		for(INT VertIdx=0; VertIdx<NumRings+1; VertIdx++)
 		{
-			INT VIx = (NumRings+1)*s + v;
+			INT VIx = (NumRings+1)*SideIdx + VertIdx;
 
-			Verts[VIx].Position = ArcRot.TransformFVector( ArcVerts[v].Position );
-			Verts[VIx].TangentX = ArcRot.TransformNormal( ArcVerts[v].TangentX );
-			Verts[VIx].TangentY = ArcRot.TransformNormal( ArcVerts[v].TangentY );
-			Verts[VIx].TangentZ = ArcRot.TransformNormal( ArcVerts[v].TangentZ );
-			Verts[VIx].TexCoord.X = XTexCoord;
-			Verts[VIx].TexCoord.Y = ArcVerts[v].TexCoord.Y;
+			Verts[VIx].Position = ArcRot.TransformFVector( ArcVerts[VertIdx].Position );
+
+			Verts[VIx].SetTangents(
+				ArcRot.TransformNormal( ArcVerts[VertIdx].TangentX ),
+				ArcRot.TransformNormal( ArcVerts[VertIdx].GetTangentY() ),
+				ArcRot.TransformNormal( ArcVerts[VertIdx].TangentZ )
+				);
+
+			Verts[VIx].TextureCoordinate.X = XTexCoord;
+			Verts[VIx].TextureCoordinate.Y = ArcVerts[VertIdx].TextureCoordinate.Y;
 		}
 	}
 
-	FTriangleRenderInterface* TRI = PRI->GetTRI(ElemTM, Material, MaterialInstance);
-
-	for(INT s=0; s<NumSides; s++)
+	FDynamicMeshBuilder MeshBuilder;
 	{
-		INT a0start = (s+0) * (NumRings+1);
-		INT a1start = (s+1) * (NumRings+1);
-
-		for(INT r=0; r<NumRings; r++)
+		// Add all of the vertices to the mesh.
+		for(INT VertIdx=0; VertIdx<NumVerts; VertIdx++)
 		{
-			TRI->DrawQuad( Verts[a0start + r + 0], Verts[a1start + r + 0], Verts[a1start + r + 1], Verts[a0start + r + 1] );
+			MeshBuilder.AddVertex(Verts[VertIdx]);
 		}
-	}
 
-	TRI->Finish();
+		// Add all of the triangles to the mesh.
+		for(INT SideIdx=0; SideIdx<NumSides; SideIdx++)
+		{
+			const INT a0start = (SideIdx+0) * (NumRings+1);
+			const INT a1start = (SideIdx+1) * (NumRings+1);
+
+			for(INT RingIdx=0; RingIdx<NumRings; RingIdx++)
+			{
+				MeshBuilder.AddTriangle(a0start + RingIdx + 0, a1start + RingIdx + 0, a0start + RingIdx + 1);
+				MeshBuilder.AddTriangle(a1start + RingIdx + 0, a1start + RingIdx + 1, a0start + RingIdx + 1);
+			}
+		}
+
+	}
+	MeshBuilder.Draw(PDI, ElemTM, MaterialRenderProxy, SDPG_World,0.f);
+
 
 	appFree(Verts);
 	appFree(ArcVerts);
-
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
 // FKConvexElem
 /////////////////////////////////////////////////////////////////////////////////////
 
+/** See if the supplied vector is parallel to one of the edge directions in the convex element. */
+UBOOL FKConvexElem::DirIsFaceEdge(const FVector& InDir) const
+{
+	FVector UnitDir = InDir.SafeNormal();
+
+	for(INT i=0; i<EdgeDirections.Num(); i++)
+	{
+		FLOAT EdgeDot = UnitDir | EdgeDirections(i);
+		if(Abs(1.f - Abs(EdgeDot)) < 0.01f)
+		{
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
 // NB: ElemTM is assumed to have no scaling in it!
-void FKConvexElem::DrawElemWire(FPrimitiveRenderInterface* PRI, const FMatrix& ElemTM, const FVector& Scale3D, const FColor Color)
+void FKConvexElem::DrawElemWire(FPrimitiveDrawInterface* PDI, const FMatrix& ElemTM, const FVector& Scale3D, const FColor Color)
 {
+	FMatrix LocalToWorld = FScaleMatrix(Scale3D) * ElemTM;
 
+	// Transform all convex verts into world space
+	TArray<FVector> TransformedVerts;
+	TransformedVerts.Add(VertexData.Num());
+	for(INT i=0; i<VertexData.Num(); i++)
+	{
+		TransformedVerts(i) = LocalToWorld.TransformFVector( VertexData(i) );
+	}
+
+	// Draw each triangle that makes up the convex hull
+	INT NumTris = FaceTriData.Num()/3;
+	for(INT i=0; i<NumTris; i++)
+	{
+		// Get the verts that make up this triangle.
+		const INT I0 = FaceTriData((i*3)+0);
+		const INT I1 = FaceTriData((i*3)+1);
+		const INT I2 = FaceTriData((i*3)+2);
+
+		// To try and keep things simpler, we only draw edges which are parallel to the convex edge directions.
+
+		if( DirIsFaceEdge(VertexData(I0)-VertexData(I1)) )
+			PDI->DrawLine( TransformedVerts(I0), TransformedVerts(I1), Color, SDPG_World );
+
+		if( DirIsFaceEdge(VertexData(I1)-VertexData(I2)) )
+			PDI->DrawLine( TransformedVerts(I1), TransformedVerts(I2), Color, SDPG_World );
+
+		if( DirIsFaceEdge(VertexData(I2)-VertexData(I0)) )
+			PDI->DrawLine( TransformedVerts(I2), TransformedVerts(I0), Color, SDPG_World );
+	}
+
+
+#if 0
+	// Draw edge directions
+	FMatrix LocalToWorldTA = LocalToWorld.TransposeAdjoint();
+	FLOAT Det = LocalToWorld.Determinant();
+	
+	for(INT i=0; i<EdgeDirections.Num(); i++)
+	{
+		FVector Dir = LocalToWorldTA.TransformNormal(EdgeDirections(i)).SafeNormal();
+		if(Det < 0.f)
+		{
+			Dir = -Dir;
+		}
+
+		PDI->DrawLine(LocalToWorld.GetOrigin(), LocalToWorld.GetOrigin() + (30.f * Dir), FColor(200,200,255), SDPG_World);
+	}
+#endif
+
+#if 0
+	// Draw planes.
+	FMatrix LocalToWorldTA = LocalToWorld.TransposeAdjoint();
+	FLOAT Det = LocalToWorld.Determinant();
+
+	for(INT i=0; i<FacePlaneData.Num(); i++)
+	{
+		const FPlane& LocalPlane = FacePlaneData(i);
+		FVector LocalPlanePoint = (LocalPlane * LocalPlane.W);
+		FVector WorldPlanePoint = LocalToWorld.TransformFVector(LocalPlanePoint);
+		FVector WorldPlaneNormal = LocalToWorldTA.TransformNormal(LocalPlane).SafeNormal();
+		FVector WorldNormalEnd = WorldPlanePoint + (30.f * WorldPlaneNormal);
+
+		PDI->DrawLine( WorldPlanePoint, WorldNormalEnd, FColor(255, 180, 0), SDPG_World );
+	}
+#endif
 }
 
-void FKConvexElem::DrawElemSolid(FPrimitiveRenderInterface* PRI, const FMatrix& ElemTM, const FVector& Scale3D, FMaterial* Material, FMaterialInstance* MaterialInstance)
+void FKConvexElem::AddCachedSolidConvexGeom(TArray<FDynamicMeshVertex>& VertexBuffer, TArray<INT>& IndexBuffer, const FColor VertexColor)
 {
+	INT StartVertOffset = VertexBuffer.Num();
 
+	// Draw each triangle that makes up the convex hull
+	INT NumTris = FaceTriData.Num()/3;
+	for(INT i=0; i<NumTris; i++)
+	{
+		// Get the verts that make up this triangle.
+		const INT I0 = FaceTriData((i*3)+0);
+		const INT I1 = FaceTriData((i*3)+1);
+		const INT I2 = FaceTriData((i*3)+2);
+
+		const FVector Edge0 = VertexData(I1)-VertexData(I0);
+		const FVector Edge1 = VertexData(I2)-VertexData(I1);
+		const FVector Normal = Edge1 ^ Edge0;
+
+		for(INT j=0; j<3; j++)
+		{
+			FDynamicMeshVertex Vert;
+			Vert.Position = VertexData( FaceTriData((i*3)+j) );
+			Vert.Color = VertexColor;
+			Vert.SetTangents(
+				Edge0.SafeNormal(),
+				(Normal ^ Edge0).SafeNormal(),
+				Normal.SafeNormal()
+				);
+			VertexBuffer.AddItem(Vert);
+		}
+
+		IndexBuffer.AddItem(StartVertOffset+(i*3)+0);
+		IndexBuffer.AddItem(StartVertOffset+(i*3)+1);
+		IndexBuffer.AddItem(StartVertOffset+(i*3)+2);
+	}
 }
-
 
 /////////////////////////////////////////////////////////////////////////////////////
 // FKAggregateGeom
 /////////////////////////////////////////////////////////////////////////////////////
 
+
+void FConvexCollisionVertexBuffer::InitRHI()
+{
+	VertexBufferRHI = RHICreateVertexBuffer(Vertices.Num() * sizeof(FDynamicMeshVertex),NULL,RUF_Static);
+
+	// Copy the vertex data into the vertex buffer.
+	void* VertexBufferData = RHILockVertexBuffer(VertexBufferRHI,0,Vertices.Num() * sizeof(FDynamicMeshVertex), FALSE);
+	appMemcpy(VertexBufferData,&Vertices(0),Vertices.Num() * sizeof(FDynamicMeshVertex));
+	RHIUnlockVertexBuffer(VertexBufferRHI);
+}
+
+void FConvexCollisionIndexBuffer::InitRHI()
+{
+	IndexBufferRHI = RHICreateIndexBuffer(sizeof(INT),Indices.Num() * sizeof(INT),NULL,RUF_Static);
+
+	// Write the indices to the index buffer.
+	void* Buffer = RHILockIndexBuffer(IndexBufferRHI,0,Indices.Num() * sizeof(INT));
+	appMemcpy(Buffer,&Indices(0),Indices.Num() * sizeof(INT));
+	RHIUnlockIndexBuffer(IndexBufferRHI);
+}
+
+void FConvexCollisionVertexFactory::InitConvexVertexFactory(const FConvexCollisionVertexBuffer* VertexBuffer)
+{
+	if(IsInRenderingThread())
+	{
+		// Initialize the vertex factory's stream components.
+		DataType NewData;
+		NewData.PositionComponent = STRUCTMEMBER_VERTEXSTREAMCOMPONENT(VertexBuffer,FDynamicMeshVertex,Position,VET_Float3);
+		NewData.TextureCoordinates.AddItem(
+			FVertexStreamComponent(VertexBuffer,STRUCT_OFFSET(FDynamicMeshVertex,TextureCoordinate),sizeof(FDynamicMeshVertex),VET_Float2)
+			);
+		NewData.TangentBasisComponents[0] = STRUCTMEMBER_VERTEXSTREAMCOMPONENT(VertexBuffer,FDynamicMeshVertex,TangentX,VET_PackedNormal);
+		NewData.TangentBasisComponents[1] = STRUCTMEMBER_VERTEXSTREAMCOMPONENT(VertexBuffer,FDynamicMeshVertex,TangentZ,VET_PackedNormal);
+		SetData(NewData);
+	}
+	else
+	{
+		ENQUEUE_UNIQUE_RENDER_COMMAND_TWOPARAMETER(
+			InitConvexCollisionVertexFactory,
+			FConvexCollisionVertexFactory*,VertexFactory,this,
+			const FConvexCollisionVertexBuffer*,VertexBuffer,VertexBuffer,
+			{
+				// Initialize the vertex factory's stream components.
+				DataType NewData;
+				NewData.PositionComponent = STRUCTMEMBER_VERTEXSTREAMCOMPONENT(VertexBuffer,FDynamicMeshVertex,Position,VET_Float3);
+				NewData.TextureCoordinates.AddItem(
+					FVertexStreamComponent(VertexBuffer,STRUCT_OFFSET(FDynamicMeshVertex,TextureCoordinate),sizeof(FDynamicMeshVertex),VET_Float2)
+					);
+				NewData.TangentBasisComponents[0] = STRUCTMEMBER_VERTEXSTREAMCOMPONENT(VertexBuffer,FDynamicMeshVertex,TangentX,VET_PackedNormal);
+				NewData.TangentBasisComponents[1] = STRUCTMEMBER_VERTEXSTREAMCOMPONENT(VertexBuffer,FDynamicMeshVertex,TangentZ,VET_PackedNormal);
+				VertexFactory->SetData(NewData);
+			});
+	}
+}
+
 // NB: ParentTM is assumed to have no scaling in it!
-void FKAggregateGeom::DrawAggGeom(FPrimitiveRenderInterface* PRI, const FMatrix& ParentTM, const FVector& Scale3D, const FColor Color, UBOOL bNoConvex)
+void FKAggregateGeom::DrawAggGeom(FPrimitiveDrawInterface* PDI, const FMatrix& ParentTM, const FVector& Scale3D, const FColor Color, const FMaterialRenderProxy* MatInst, UBOOL bPerHullColor, UBOOL bDrawSolid)
 {
 	if( Scale3D.IsUniform() )
 	{
@@ -252,7 +432,10 @@ void FKAggregateGeom::DrawAggGeom(FPrimitiveRenderInterface* PRI, const FMatrix&
 			FMatrix ElemTM = SphereElems(i).TM;
 			ElemTM.ScaleTranslation(Scale3D);
 			ElemTM *= ParentTM;
-			SphereElems(i).DrawElemWire(PRI, ElemTM, Scale3D.X, Color);
+			if(bDrawSolid)
+				SphereElems(i).DrawElemSolid(PDI, ElemTM, Scale3D.X, MatInst);
+			else
+				SphereElems(i).DrawElemWire(PDI, ElemTM, Scale3D.X, Color);
 		}
 
 		for(INT i=0; i<BoxElems.Num(); i++)
@@ -260,7 +443,10 @@ void FKAggregateGeom::DrawAggGeom(FPrimitiveRenderInterface* PRI, const FMatrix&
 			FMatrix ElemTM = BoxElems(i).TM;
 			ElemTM.ScaleTranslation(Scale3D);
 			ElemTM *= ParentTM;
-			BoxElems(i).DrawElemWire(PRI, ElemTM, Scale3D.X, Color);
+			if(bDrawSolid)
+				BoxElems(i).DrawElemSolid(PDI, ElemTM, Scale3D.X, MatInst);
+			else
+				BoxElems(i).DrawElemWire(PDI, ElemTM, Scale3D.X, Color);
 		}
 
 		for(INT i=0; i<SphylElems.Num(); i++)
@@ -268,41 +454,133 @@ void FKAggregateGeom::DrawAggGeom(FPrimitiveRenderInterface* PRI, const FMatrix&
 			FMatrix ElemTM = SphylElems(i).TM;
 			ElemTM.ScaleTranslation(Scale3D);
 			ElemTM *= ParentTM;
-			SphylElems(i).DrawElemWire(PRI, ElemTM, Scale3D.X, Color);
+			if(bDrawSolid)
+				SphylElems(i).DrawElemSolid(PDI, ElemTM, Scale3D.X, MatInst);
+			else
+				SphylElems(i).DrawElemWire(PDI, ElemTM, Scale3D.X, Color);
 		}
 	}
 
-	if(!bNoConvex)
+	if(ConvexElems.Num() > 0)
 	{
-		for(INT i=0; i<ConvexElems.Num(); i++)
+		if(bDrawSolid)
 		{
-			ConvexElems(i).DrawElemWire(PRI, ParentTM, Scale3D, Color);
+			// Cache collision vertex/index buffer
+			if(!RenderInfo)
+			{
+				RenderInfo = new FKConvexGeomRenderInfo();
+				RenderInfo->VertexBuffer = new FConvexCollisionVertexBuffer();
+				RenderInfo->IndexBuffer = new FConvexCollisionIndexBuffer();
+
+				for(INT i=0; i<ConvexElems.Num(); i++)
+				{
+					// Get vertices/triangles from this hull.
+					ConvexElems(i).AddCachedSolidConvexGeom(RenderInfo->VertexBuffer->Vertices, RenderInfo->IndexBuffer->Indices, FColor(255,255,255));
+				}
+
+				RenderInfo->VertexBuffer->InitResource();
+				RenderInfo->IndexBuffer->InitResource();
+                
+				RenderInfo->CollisionVertexFactory = new FConvexCollisionVertexFactory(RenderInfo->VertexBuffer);
+				RenderInfo->CollisionVertexFactory->InitResource();
+			}
+
+			// Calculate matrix
+			FMatrix LocalToWorld = FScaleMatrix(Scale3D) * ParentTM;
+
+			// Draw the mesh.
+			FMeshBatch Mesh;
+			FMeshBatchElement& BatchElement = Mesh.Elements(0);
+			BatchElement.IndexBuffer = RenderInfo->IndexBuffer;
+			Mesh.VertexFactory = RenderInfo->CollisionVertexFactory;
+			Mesh.MaterialRenderProxy = MatInst;
+			BatchElement.LocalToWorld = LocalToWorld;
+			BatchElement.WorldToLocal = LocalToWorld.Inverse();
+			// previous l2w not used so treat as static
+			BatchElement.FirstIndex = 0;
+			BatchElement.NumPrimitives = RenderInfo->IndexBuffer->Indices.Num() / 3;
+			BatchElement.MinVertexIndex = 0;
+			BatchElement.MaxVertexIndex = RenderInfo->VertexBuffer->Vertices.Num() - 1;
+			Mesh.ReverseCulling = LocalToWorld.Determinant() < 0.0f ? TRUE : FALSE;
+			Mesh.Type = PT_TriangleList;
+			Mesh.DepthPriorityGroup = SDPG_World;
+			Mesh.bUsePreVertexShaderCulling = FALSE;
+			Mesh.PlatformMeshData       = NULL;
+			PDI->DrawMesh(Mesh);
+		}
+		else
+		{
+			for(INT i=0; i<ConvexElems.Num(); i++)
+			{
+				FColor ConvexColor = bPerHullColor ? DebugUtilColor[i%NUM_DEBUG_UTIL_COLORS] : Color;
+				ConvexElems(i).DrawElemWire(PDI, ParentTM, Scale3D, ConvexColor);
+			}
 		}
 	}
+}
 
+/** Release the RenderInfo (if its there) and safely clean up any resources. Call on the game thread. */
+void FKAggregateGeom::FreeRenderInfo()
+{
+	// See if we have rendering resources to free
+	if(RenderInfo)
+	{
+		// Should always have these if RenderInfo exists
+		check(RenderInfo->VertexBuffer);
+		check(RenderInfo->IndexBuffer);
+		check(RenderInfo->CollisionVertexFactory);
+
+		// Fire off commands to free these resources
+		BeginReleaseResource(RenderInfo->VertexBuffer);
+		BeginReleaseResource(RenderInfo->IndexBuffer);
+		BeginReleaseResource(RenderInfo->CollisionVertexFactory);
+
+		// Wait until those commands have been processed
+		FRenderCommandFence Fence;
+		Fence.BeginFence();
+		Fence.Wait();
+
+		// Release memory.
+		delete RenderInfo->VertexBuffer;
+		delete RenderInfo->IndexBuffer;
+		delete RenderInfo->CollisionVertexFactory;
+		delete RenderInfo;
+		RenderInfo = NULL;
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
 // UPhysicsAsset
 /////////////////////////////////////////////////////////////////////////////////////
 
+FMatrix GetSkelBoneMatrix(INT BoneIndex, const TArray<FBoneAtom>& SpaceBases, const FMatrix& LocalToWorld)
+{
+	if(BoneIndex != INDEX_NONE && BoneIndex < SpaceBases.Num())
+	{
+		return SpaceBases(BoneIndex).ToMatrix() * LocalToWorld;
+	}
+	else
+	{
+		return FMatrix::Identity;
+	}
+}
 
-void UPhysicsAsset::DrawCollision(FPrimitiveRenderInterface* PRI, USkeletalMeshComponent* SkelComp, FLOAT Scale)
+void UPhysicsAsset::DrawCollision(FPrimitiveDrawInterface* PDI, const USkeletalMesh* SkelMesh, const TArray<FBoneAtom>& SpaceBases, const FMatrix& LocalToWorld, FLOAT Scale)
 {
 	for( INT i=0; i<BodySetup.Num(); i++)
 	{
-		INT BoneIndex = SkelComp->MatchRefBone( BodySetup(i)->BoneName );
+		INT BoneIndex = SkelMesh->MatchRefBone( BodySetup(i)->BoneName );
 		
 		FColor* BoneColor = (FColor*)( &BodySetup(i) );
-		FMatrix BoneMatrix = SkelComp->GetBoneMatrix(BoneIndex);
+
+		FMatrix BoneMatrix = GetSkelBoneMatrix(BoneIndex, SpaceBases, LocalToWorld);
 		BoneMatrix.RemoveScaling();
 
-		BodySetup(i)->AggGeom.DrawAggGeom( PRI, BoneMatrix, FVector(Scale, Scale, Scale), *BoneColor );
+		BodySetup(i)->AggGeom.DrawAggGeom( PDI, BoneMatrix, FVector(Scale, Scale, Scale), *BoneColor, NULL, FALSE, FALSE );
 	}
-
 }
 
-void UPhysicsAsset::DrawConstraints(FPrimitiveRenderInterface* PRI, USkeletalMeshComponent* SkelComp, FLOAT Scale)
+void UPhysicsAsset::DrawConstraints(FPrimitiveDrawInterface* PDI, const USkeletalMesh* SkelMesh, const TArray<FBoneAtom>& SpaceBases, const FMatrix& LocalToWorld, FLOAT Scale)
 {
 	for( INT i=0; i<ConstraintSetup.Num(); i++ )
 	{
@@ -310,44 +588,47 @@ void UPhysicsAsset::DrawConstraints(FPrimitiveRenderInterface* PRI, USkeletalMes
 
 		// Get each constraint frame in world space.
 		FMatrix Con1Frame = FMatrix::Identity;
-		INT Bone1Index = SkelComp->MatchRefBone(cs->ConstraintBone1);
+		INT Bone1Index = SkelMesh->MatchRefBone(cs->ConstraintBone1);
 		if(Bone1Index != INDEX_NONE)
 		{	
-			FMatrix Body1TM = SkelComp->GetBoneMatrix(Bone1Index);
+			FMatrix Body1TM = GetSkelBoneMatrix(Bone1Index, SpaceBases, LocalToWorld);
 			Body1TM.RemoveScaling();
 			Con1Frame = cs->GetRefFrameMatrix(0) * Body1TM;
 		}
 
 		FMatrix Con2Frame = FMatrix::Identity;
-		INT Bone2Index = SkelComp->MatchRefBone(cs->ConstraintBone2);
+		INT Bone2Index = SkelMesh->MatchRefBone(cs->ConstraintBone2);
 		if(Bone2Index != INDEX_NONE)
 		{	
-			FMatrix Body2TM = SkelComp->GetBoneMatrix(Bone2Index);
+			FMatrix Body2TM = GetSkelBoneMatrix(Bone2Index, SpaceBases, LocalToWorld);
 			Body2TM.RemoveScaling();
 			Con2Frame = cs->GetRefFrameMatrix(1) * Body2TM;
 		}
 
+#if GEMINI_TODO
 		if(!SkelComp->LimitMaterial)
-			SkelComp->LimitMaterial = LoadObject<UMaterialInstance>(NULL, TEXT("EditorMaterials.PhAT_JointLimitMaterial"), NULL, LOAD_NoFail, NULL);
+		{
+			SkelComp->LimitMaterial = LoadObject<UMaterialInterface>(NULL, TEXT("EditorMaterials.PhAT_JointLimitMaterial"), NULL, LOAD_None, NULL);
+		}
 
-		cs->DrawConstraint(PRI, Scale, true, true, SkelComp->LimitMaterial, Con1Frame, Con2Frame);
+		cs->DrawConstraint(PDI, Scale, true, true, SkelComp->LimitMaterial, Con1Frame, Con2Frame, FALSE);
+#endif
 	}
 }
-
 /////////////////////////////////////////////////////////////////////////////////////
 // URB_ConstraintSetup
 /////////////////////////////////////////////////////////////////////////////////////
 
-static void DrawOrientedStar(FPrimitiveRenderInterface* PRI, const FMatrix& Matrix, FLOAT Size, const FColor Color)
+static void DrawOrientedStar(FPrimitiveDrawInterface* PDI, const FMatrix& Matrix, FLOAT Size, const FColor Color)
 {
 	FVector Position = Matrix.GetOrigin();
 
-	PRI->DrawLine(Position + Size * Matrix.GetAxis(0), Position - Size * Matrix.GetAxis(0), Color);
-	PRI->DrawLine(Position + Size * Matrix.GetAxis(1), Position - Size * Matrix.GetAxis(1), Color);
-	PRI->DrawLine(Position + Size * Matrix.GetAxis(2), Position - Size * Matrix.GetAxis(2), Color);
+	PDI->DrawLine(Position + Size * Matrix.GetAxis(0), Position - Size * Matrix.GetAxis(0), Color, SDPG_World);
+	PDI->DrawLine(Position + Size * Matrix.GetAxis(1), Position - Size * Matrix.GetAxis(1), Color, SDPG_World);
+	PDI->DrawLine(Position + Size * Matrix.GetAxis(2), Position - Size * Matrix.GetAxis(2), Color, SDPG_World);
 }
 
-static void DrawArc(const FVector& Base, const FVector& X, const FVector& Y, FLOAT MinAngle, FLOAT MaxAngle, FLOAT Radius, INT Sections, const FColor Color, FPrimitiveRenderInterface* PRI)
+static void DrawArc(const FVector& Base, const FVector& X, const FVector& Y, FLOAT MinAngle, FLOAT MaxAngle, FLOAT Radius, INT Sections, const FColor Color, FPrimitiveDrawInterface* PDI)
 {
 	FLOAT AngleStep = (MaxAngle - MinAngle)/((FLOAT)(Sections));
 	FLOAT CurrentAngle = MinAngle;
@@ -358,58 +639,80 @@ static void DrawArc(const FVector& Base, const FVector& X, const FVector& Y, FLO
 	for(INT i=0; i<Sections; i++)
 	{
 		FVector ThisVertex = Base + Radius * ( appCos(CurrentAngle * (PI/180.0f)) * X + appSin(CurrentAngle * (PI/180.0f)) * Y );
-		PRI->DrawLine( LastVertex, ThisVertex, Color );
+		PDI->DrawLine( LastVertex, ThisVertex, Color, SDPG_World );
 		LastVertex = ThisVertex;
 		CurrentAngle += AngleStep;
 	}
 }
 
-static void DrawLinearLimit(FPrimitiveRenderInterface* PRI, const FVector& Origin, const FVector& Axis, const FVector& Orth, FLOAT LinearLimitRadius, UBOOL bLinearLimited)
+static void DrawLinearLimit(FPrimitiveDrawInterface* PDI, const FVector& Origin, const FVector& Axis, const FVector& Orth, FLOAT LinearLimitRadius, UBOOL bLinearLimited, FLOAT DrawScale)
 {
+	FLOAT ScaledLimitSize = LimitRenderSize * DrawScale;
+
 	if(bLinearLimited)
 	{
 		FVector Start = Origin - LinearLimitRadius * Axis;
 		FVector End = Origin + LinearLimitRadius * Axis;
 
-		PRI->DrawLine(  Start, End, JointLimitColor );
+		PDI->DrawLine(  Start, End, JointLimitColor, SDPG_World );
 
 		// Draw ends indicating limit.
-		PRI->DrawLine(  Start - (0.2f * LimitRenderSize * Orth), Start + (0.2f * LimitRenderSize * Orth), JointLimitColor );
-		PRI->DrawLine(  End - (0.2f * LimitRenderSize * Orth), End + (0.2f * LimitRenderSize * Orth), JointLimitColor );
+		PDI->DrawLine(  Start - (0.2f * ScaledLimitSize * Orth), Start + (0.2f * ScaledLimitSize * Orth), JointLimitColor, SDPG_World );
+		PDI->DrawLine(  End - (0.2f * ScaledLimitSize * Orth), End + (0.2f * ScaledLimitSize * Orth), JointLimitColor, SDPG_World );
 	}
 	else
 	{
-		FVector Start = Origin - 1.5f * LimitRenderSize * Axis;
-		FVector End = Origin + 1.5f * LimitRenderSize * Axis;
+		FVector Start = Origin - 1.5f * ScaledLimitSize * Axis;
+		FVector End = Origin + 1.5f * ScaledLimitSize * Axis;
 
-		PRI->DrawLine(  Start, End, JointRefColor );
+		PDI->DrawLine(  Start, End, JointRefColor, SDPG_World );
 
 		// Draw arrow heads.
-		PRI->DrawLine(  Start, Start + (0.2f * LimitRenderSize * Axis) + (0.2f * LimitRenderSize * Orth), JointLimitColor );
-		PRI->DrawLine(  Start, Start + (0.2f * LimitRenderSize * Axis) - (0.2f * LimitRenderSize * Orth), JointLimitColor );
+		PDI->DrawLine(  Start, Start + (0.2f * ScaledLimitSize * Axis) + (0.2f * ScaledLimitSize * Orth), JointLimitColor, SDPG_World );
+		PDI->DrawLine(  Start, Start + (0.2f * ScaledLimitSize * Axis) - (0.2f * ScaledLimitSize * Orth), JointLimitColor, SDPG_World );
 
-		PRI->DrawLine(  End, End - (0.2f * LimitRenderSize * Axis) + (0.2f * LimitRenderSize * Orth), JointLimitColor );
-		PRI->DrawLine(  End, End - (0.2f * LimitRenderSize * Axis) - (0.2f * LimitRenderSize * Orth), JointLimitColor );
+		PDI->DrawLine(  End, End - (0.2f * ScaledLimitSize * Axis) + (0.2f * ScaledLimitSize * Orth), JointLimitColor, SDPG_World );
+		PDI->DrawLine(  End, End - (0.2f * ScaledLimitSize * Axis) - (0.2f * ScaledLimitSize * Orth), JointLimitColor, SDPG_World );
 	}
 }
 
-void URB_ConstraintSetup::DrawConstraint(FPrimitiveRenderInterface* PRI, 
-										 FLOAT Scale, UBOOL bDrawLimits, UBOOL bDrawSelected, UMaterialInstance* LimitMaterial,
-										 const FMatrix& Con1Frame, const FMatrix& Con2Frame)
+void URB_ConstraintSetup::DrawConstraint(FPrimitiveDrawInterface* PDI, 
+										 FLOAT Scale, FLOAT LimitDrawScale, UBOOL bDrawLimits, UBOOL bDrawSelected, UMaterialInterface* LimitMaterial,
+										 const FMatrix& Con1Frame, const FMatrix& Con2Frame, UBOOL bDrawAsPoint)
 {
 
 	FVector Con1Pos = Con1Frame.GetOrigin();
 	FVector Con2Pos = Con2Frame.GetOrigin();
 
+	FLOAT ScaledLimitSize = LimitRenderSize * LimitDrawScale;
+
+	// Special mode for drawing joints just as points..
+	if(bDrawAsPoint)
+	{
+		if(bDrawSelected)
+		{
+			PDI->DrawPoint( Con1Frame.GetOrigin(), JointFrame1Color, 3.f, SDPG_World );
+			PDI->DrawPoint( Con2Frame.GetOrigin(), JointFrame2Color, 3.f, SDPG_World );
+		}
+		else
+		{
+			PDI->DrawPoint( Con1Frame.GetOrigin(), JointUnselectedColor, 3.f, SDPG_World );
+			PDI->DrawPoint( Con2Frame.GetOrigin(), JointUnselectedColor, 3.f, SDPG_World );
+		}
+
+		// do nothing else in this mode.
+		return;
+	}
+
 	if(bDrawSelected)
 	{
-		DrawOrientedStar( PRI, Con1Frame, JointRenderSize, JointFrame1Color );
-		DrawOrientedStar( PRI, Con2Frame, JointRenderSize, JointFrame2Color );
+		DrawOrientedStar( PDI, Con1Frame, LimitDrawScale * JointRenderSize, JointFrame1Color );
+		DrawOrientedStar( PDI, Con2Frame, LimitDrawScale * JointRenderSize, JointFrame2Color );
 	}
 	else
 	{
-		DrawOrientedStar( PRI, Con1Frame, JointRenderSize, JointUnselectedColor );
-		DrawOrientedStar( PRI, Con2Frame, JointRenderSize, JointUnselectedColor );
+		DrawOrientedStar( PDI, Con1Frame, LimitDrawScale * JointRenderSize, JointUnselectedColor );
+		DrawOrientedStar( PDI, Con2Frame, LimitDrawScale * JointRenderSize, JointUnselectedColor );
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -419,7 +722,7 @@ void URB_ConstraintSetup::DrawConstraint(FPrimitiveRenderInterface* PRI,
 	UBOOL bLinearYLocked = LinearYSetup.bLimited && (LinearYSetup.LimitSize < RB_MinSizeToLockDOF);
 	UBOOL bLinearZLocked = LinearZSetup.bLimited && (LinearZSetup.LimitSize < RB_MinSizeToLockDOF);
 
-	// APE_TODO: Change this once proper linear limits are done.
+	// Limit is max of all limit sizes.
 	FLOAT LinearLimitRadius = 0.f;
 	if( LinearXSetup.bLimited && (LinearXSetup.LimitSize > LinearLimitRadius) )
 		LinearLimitRadius = LinearXSetup.LimitSize;
@@ -433,13 +736,21 @@ void URB_ConstraintSetup::DrawConstraint(FPrimitiveRenderInterface* PRI,
 		bLinearLimited = true;
 
 	if(!bLinearXLocked)
-		DrawLinearLimit(PRI, Con2Frame.GetOrigin(), Con2Frame.GetAxis(0), Con2Frame.GetAxis(2), LinearLimitRadius, bLinearLimited);
+	{
+        DrawLinearLimit(PDI, Con2Frame.GetOrigin(), Con2Frame.GetAxis(0), Con2Frame.GetAxis(2), LinearXSetup.LimitSize, bLinearLimited, LimitDrawScale);
+	}
+
 
 	if(!bLinearYLocked)
-		DrawLinearLimit(PRI, Con2Frame.GetOrigin(), Con2Frame.GetAxis(1), Con2Frame.GetAxis(2), LinearLimitRadius, bLinearLimited);
+	{
+        DrawLinearLimit(PDI, Con2Frame.GetOrigin(), Con2Frame.GetAxis(1), Con2Frame.GetAxis(2), LinearYSetup.LimitSize, bLinearLimited, LimitDrawScale);
+	}
+
 
 	if(!bLinearZLocked)
-		DrawLinearLimit(PRI, Con2Frame.GetOrigin(), Con2Frame.GetAxis(2), Con2Frame.GetAxis(0), LinearLimitRadius, bLinearLimited);
+	{
+		DrawLinearLimit(PDI, Con2Frame.GetOrigin(), Con2Frame.GetAxis(2), Con2Frame.GetAxis(0), LinearZSetup.LimitSize, bLinearLimited, LimitDrawScale);
+	}
 
 
 	if(!bDrawLimits)
@@ -455,7 +766,7 @@ void URB_ConstraintSetup::DrawConstraint(FPrimitiveRenderInterface* PRI,
 	UBOOL bLockAllSwing = bLockSwing1 && bLockSwing2;
 
 	UBOOL bDrawnAxisLine = false;
-	FVector RefLineEnd = Con1Frame.GetOrigin() + (1.2f * LimitRenderSize * Con1Frame.GetAxis(0));
+	FVector RefLineEnd = Con1Frame.GetOrigin() + (1.2f * ScaledLimitSize * Con1Frame.GetAxis(0));
 
 	// If swing is limited (but not locked) - draw the limit cone.
 	if(bSwingLimited)
@@ -467,8 +778,8 @@ void URB_ConstraintSetup::DrawConstraint(FPrimitiveRenderInterface* PRI,
 		if(bLockAllSwing)
 		{
 			// Draw little red 'V' to indicate locked swing.
-			PRI->DrawLine( ConeLimitTM.GetOrigin(), ConeLimitTM.TransformFVector( 0.3f * LimitRenderSize * FVector(1,1,0) ), JointLockedColor);
-			PRI->DrawLine( ConeLimitTM.GetOrigin(), ConeLimitTM.TransformFVector( 0.3f * LimitRenderSize * FVector(1,-1,0) ), JointLockedColor);
+			PDI->DrawLine( ConeLimitTM.GetOrigin(), ConeLimitTM.TransformFVector( 0.3f * ScaledLimitSize * FVector(1,1,0) ), JointLockedColor, SDPG_World);
+			PDI->DrawLine( ConeLimitTM.GetOrigin(), ConeLimitTM.TransformFVector( 0.3f * ScaledLimitSize * FVector(1,-1,0) ), JointLockedColor, SDPG_World);
 		}
 		else
 		{
@@ -484,87 +795,11 @@ void URB_ConstraintSetup::DrawConstraint(FPrimitiveRenderInterface* PRI,
 			else
 				ang2 *= ((FLOAT)PI/180.f);
 
-			ang1 = Clamp<FLOAT>(ang1, 0.01f, (FLOAT)PI - 0.01f);
-			ang2 = Clamp<FLOAT>(ang2, 0.01f, (FLOAT)PI - 0.01f);
-
-			FLOAT sinX_2 = appSin(0.5f * ang1);
-			FLOAT sinY_2 = appSin(0.5f * ang2);
-
-			FLOAT sinSqX_2 = sinX_2 * sinX_2;
-			FLOAT sinSqY_2 = sinY_2 * sinY_2;
-
-			FLOAT tanX_2 = appTan(0.5f * ang1);
-			FLOAT tanY_2 = appTan(0.5f * ang2);
-
-			TArray<FVector> ConeVerts(DrawConeLimitSides);
-
-			for(INT i = 0; i < DrawConeLimitSides; i++)
-			{
-				FLOAT Fraction = (FLOAT)i/(FLOAT)(DrawConeLimitSides);
-				FLOAT thi = 2.f*PI*Fraction;
-				FLOAT phi = appAtan2(appSin(thi)*sinY_2, appCos(thi)*sinX_2);
-				FLOAT sinPhi = appSin(phi);
-				FLOAT cosPhi = appCos(phi);
-				FLOAT sinSqPhi = sinPhi*sinPhi;
-				FLOAT cosSqPhi = cosPhi*cosPhi;
-
-				FLOAT rSq, r, Sqr, alpha, beta;
-
-				rSq = sinSqX_2*sinSqY_2/(sinSqX_2*sinSqPhi + sinSqY_2*cosSqPhi);
-				r = appSqrt(rSq);
-				Sqr = appSqrt(1-rSq);
-				alpha = r*cosPhi;
-				beta  = r*sinPhi;
-
-				ConeVerts(i).X = (1-2*rSq);
-				ConeVerts(i).Y = 2*Sqr*alpha;
-				ConeVerts(i).Z = 2*Sqr*beta;
-			}
-
-			FTriangleRenderInterface* TRI = PRI->GetTRI( FScaleMatrix( FVector(LimitRenderSize) ) * ConeLimitTM, LimitMaterial->GetMaterialInterface(0), LimitMaterial->GetInstanceInterface() );
-
-			for(INT i=0; i < DrawConeLimitSides; i++)
-			{
-				FRawTriangleVertex V0, V1, V2;
-
-				FVector TriTangentZ = ConeVerts((i+1)%DrawConeLimitSides) ^ ConeVerts( i ); // aka triangle normal
-				FVector TriTangentY = ConeVerts(i);
-				FVector TriTangentX = TriTangentZ ^ TriTangentY;
-
-				V0.Position = FVector(0);
-				V0.TexCoord.X = 0.0f;
-				V0.TexCoord.Y = (FLOAT)i/DrawConeLimitSides;
-				V0.TangentX = TriTangentX;
-				V0.TangentY = TriTangentY;
-				V0.TangentZ = TriTangentZ;	
-
-				V1.Position = ConeVerts(i);
-				V1.TexCoord.X = 1.0f;
-				V1.TexCoord.Y = (FLOAT)i/DrawConeLimitSides;
-				V1.TangentX = TriTangentX;
-				V1.TangentY = TriTangentY;
-				V1.TangentZ = TriTangentZ;	
-
-				V2.Position = ConeVerts((i+1)%DrawConeLimitSides);
-				V2.TexCoord.X = 1.0f;
-				V2.TexCoord.Y = (FLOAT)((i+1)%DrawConeLimitSides)/DrawConeLimitSides;
-				V2.TangentX = TriTangentX;
-				V2.TangentY = TriTangentY;
-				V2.TangentZ = TriTangentZ;	
-
-				TRI->DrawTriangle(V0, V1, V2);
-			}
-
-			TRI->Finish();
-
-			// Draw lines down major directions
-			for(INT i=0; i<4; i++)
-			{
-				PRI->DrawLine( ConeLimitTM.GetOrigin(), ConeLimitTM.TransformFVector( LimitRenderSize * ConeVerts( (i*DrawConeLimitSides/4)%DrawConeLimitSides ) ), JointLimitColor );
-			}
+			FMatrix ConeToWorld = FScaleMatrix( FVector(ScaledLimitSize) ) * ConeLimitTM;
+			DrawCone(PDI, ConeToWorld, ang1, ang2, DrawConeLimitSides, true, JointLimitColor, LimitMaterial->GetRenderProxy(false), SDPG_World );
 
 			// Draw reference line
-			PRI->DrawLine( Con1Frame.GetOrigin(), RefLineEnd, JointRefColor );
+			PDI->DrawLine( Con1Frame.GetOrigin(), RefLineEnd, JointRefColor, SDPG_World );
 			bDrawnAxisLine = true;
 		}
 	}
@@ -576,24 +811,24 @@ void URB_ConstraintSetup::DrawConstraint(FPrimitiveRenderInterface* PRI,
 		{
 			// If there is no axis line draw already - add a little one now to sit the 'twist locked' cross on
 			if(!bDrawnAxisLine)
-				PRI->DrawLine( Con1Frame.GetOrigin(), RefLineEnd, JointLockedColor );
+				PDI->DrawLine( Con1Frame.GetOrigin(), RefLineEnd, JointLockedColor, SDPG_World );
 
-			PRI->DrawLine(  RefLineEnd + Con1Frame.TransformNormal( 0.3f * LimitRenderSize * FVector(0.f,-0.5f,-0.5f) ), 
-							RefLineEnd + Con1Frame.TransformNormal( 0.3f * LimitRenderSize * FVector(0.f, 0.5f, 0.5f) ), JointLockedColor);
+			PDI->DrawLine(  RefLineEnd + Con1Frame.TransformNormal( 0.3f * ScaledLimitSize * FVector(0.f,-0.5f,-0.5f) ), 
+							RefLineEnd + Con1Frame.TransformNormal( 0.3f * ScaledLimitSize * FVector(0.f, 0.5f, 0.5f) ), JointLockedColor, SDPG_World);
 
-			PRI->DrawLine(  RefLineEnd + Con1Frame.TransformNormal( 0.3f * LimitRenderSize * FVector(0.f, 0.5f,-0.5f) ), 
-							RefLineEnd + Con1Frame.TransformNormal( 0.3f * LimitRenderSize * FVector(0.f,-0.5f, 0.5f) ), JointLockedColor);
+			PDI->DrawLine(  RefLineEnd + Con1Frame.TransformNormal( 0.3f * ScaledLimitSize * FVector(0.f, 0.5f,-0.5f) ), 
+							RefLineEnd + Con1Frame.TransformNormal( 0.3f * ScaledLimitSize * FVector(0.f,-0.5f, 0.5f) ), JointLockedColor, SDPG_World);
 		}
 		else
 		{
 			// If no axis yet drawn - do it now
 			if(!bDrawnAxisLine)
-				PRI->DrawLine( Con1Frame.GetOrigin(), RefLineEnd, JointRefColor );
+				PDI->DrawLine( Con1Frame.GetOrigin(), RefLineEnd, JointRefColor, SDPG_World );
 
 			// Draw twist limit.
 			FVector ChildTwistRef = Con1Frame.GetAxis(1);
 			FVector ParentTwistRef = Con2Frame.GetAxis(1);
-			PRI->DrawLine( RefLineEnd, RefLineEnd + ChildTwistRef * LimitRenderSize, JointRefColor );
+			PDI->DrawLine( RefLineEnd, RefLineEnd + ChildTwistRef * ScaledLimitSize, JointRefColor, SDPG_World );
 
 			// Rotate parent twist ref axis
 			FQuat ParentToChildRot = FQuatFindBetween( Con2Frame.GetAxis(0), Con1Frame.GetAxis(0) );
@@ -601,21 +836,21 @@ void URB_ConstraintSetup::DrawConstraint(FPrimitiveRenderInterface* PRI,
 
 			FQuat RotateLimit = FQuat( Con1Frame.GetAxis(0), TwistLimitAngle * (PI/180.0f) );
 			FVector WLimit = RotateLimit.RotateVector(ChildTwistLimit);
-			PRI->DrawLine( RefLineEnd, RefLineEnd + WLimit * LimitRenderSize, JointLimitColor );
+			PDI->DrawLine( RefLineEnd, RefLineEnd + WLimit * ScaledLimitSize, JointLimitColor, SDPG_World );
 
 			RotateLimit = FQuat( Con1Frame.GetAxis(0), -TwistLimitAngle * (PI/180.0f) );
 			WLimit = RotateLimit.RotateVector(ChildTwistLimit);
-			PRI->DrawLine( RefLineEnd, RefLineEnd + WLimit * LimitRenderSize, JointLimitColor );
+			PDI->DrawLine( RefLineEnd, RefLineEnd + WLimit * ScaledLimitSize, JointLimitColor, SDPG_World );
 
-			DrawArc(RefLineEnd, ChildTwistLimit, -ChildTwistLimit ^ Con1Frame.GetAxis(0), -TwistLimitAngle, TwistLimitAngle, 0.8f * LimitRenderSize, 8, JointLimitColor, PRI);
+			DrawArc(RefLineEnd, ChildTwistLimit, -ChildTwistLimit ^ Con1Frame.GetAxis(0), -TwistLimitAngle, TwistLimitAngle, 0.8f * ScaledLimitSize, 8, JointLimitColor, PDI);
 		}
 	}
 	else
 	{
 		// For convenience, in the hinge case where swing is locked and twist is unlimited, draw the twist axis.
 		if(bLockAllSwing)
-			PRI->DrawLine(  Con2Frame.GetOrigin() - LimitRenderSize * Con2Frame.GetAxis(0), 
-							Con2Frame.GetOrigin() + LimitRenderSize * Con2Frame.GetAxis(0), JointLimitColor );
+			PDI->DrawLine(  Con2Frame.GetOrigin() - ScaledLimitSize * Con2Frame.GetAxis(0), 
+							Con2Frame.GetOrigin() + ScaledLimitSize * Con2Frame.GetAxis(0), JointLimitColor, SDPG_World );
 	}
 
 
@@ -625,48 +860,122 @@ void URB_ConstraintSetup::DrawConstraint(FPrimitiveRenderInterface* PRI,
 // URB_ConstraintDrawComponent
 /////////////////////////////////////////////////////////////////////////////////////
 
-UBOOL URB_ConstraintDrawComponent::Visible(FSceneView* View)
+/** Represents a constraint to draw in the rendering thread. */
+class FConstraintDrawSceneProxy : public FPrimitiveSceneProxy
 {
-	if(View->ShowFlags & SHOW_Constraints)
-		return true;
+public:
+	/** RB_ConstraintSetup to draw */
+	URB_ConstraintSetup* Setup;
 
-	return Super::Visible(View);
-}
+	/** Frame one of the constraint in the world ref frame. */
+	FMatrix Con1Frame;
 
-void URB_ConstraintDrawComponent::Render(const FSceneContext& Context, struct FPrimitiveRenderInterface* PRI)
-{
-	Super::Render(Context, PRI);
+	/** Frame two of the constraint in the world ref frame. */
+	FMatrix Con2Frame;
 
-	ARB_ConstraintActor* CA = Cast<ARB_ConstraintActor>(Owner);
-	if(!CA)
-		return;
+	/** Material to use for drawing joint limit surface. */
+	UMaterialInterface* LimitMaterial;
 
-	FMatrix Con1Frame = CA->ConstraintSetup->GetRefFrameMatrix(0) * FindBodyMatrix(CA->ConstraintActor1, CA->ConstraintSetup->ConstraintBone1);
-	FMatrix Con2Frame = CA->ConstraintSetup->GetRefFrameMatrix(1) * FindBodyMatrix(CA->ConstraintActor2, CA->ConstraintSetup->ConstraintBone2);
+	/** Bounding box of body1 */
+	FBox Body1Box;
 
-	if(!LimitMaterial)
-		LimitMaterial = LoadObject<UMaterialInstance>(NULL, TEXT("EditorMaterials.PhAT_JointLimitMaterial"), NULL, LOAD_NoFail, NULL);
-
-	// Draw full limits if in game or if selected in editor.
-	UBOOL bDrawLimits = !GIsEditor || GSelectionTools.IsSelected( Owner );
-
-	CA->ConstraintSetup->DrawConstraint(PRI, 1.f, bDrawLimits, true, LimitMaterial, Con1Frame, Con2Frame);
-
-
-	if(bDrawLimits)
+	/** Bounding box of body2 */
+	FBox Body2Box;
+	
+	/** Constructor copies important information into scene proxy. */
+	FConstraintDrawSceneProxy(const URB_ConstraintDrawComponent* InComponent):
+		FPrimitiveSceneProxy(InComponent)
 	{
-		FBox Body1Box = FindBodyBox(CA->ConstraintActor1, CA->ConstraintSetup->ConstraintBone1);
+		ARB_ConstraintActor* CA = Cast<ARB_ConstraintActor>(InComponent->GetOwner());
+		check(CA);
+		check(CA->ConstraintSetup);
+
+		Setup = CA->ConstraintSetup;
+		Con1Frame = Setup->GetRefFrameMatrix(0) * FindBodyMatrix(CA->ConstraintActor1, Setup->ConstraintBone1);
+		Con2Frame = Setup->GetRefFrameMatrix(1) * FindBodyMatrix(CA->ConstraintActor2, Setup->ConstraintBone2);
+
+		LimitMaterial = InComponent->LimitMaterial;
+		if(!LimitMaterial)
+		{
+			LimitMaterial = LoadObject<UMaterialInterface>(NULL, TEXT("EditorMaterials.PhAT_JointLimitMaterial"), NULL, LOAD_None, NULL);
+		}
+
+		Body1Box = FindBodyBox(CA->ConstraintActor1, Setup->ConstraintBone1);
+		Body2Box = FindBodyBox(CA->ConstraintActor2, Setup->ConstraintBone2);
+	}
+
+
+	/** 
+	* Draw the scene proxy as a dynamic element
+	*
+	* @param	PDI - draw interface to render to
+	* @param	View - current view
+	* @param	DPGIndex - current depth priority 
+	* @param	Flags - optional set of flags from EDrawDynamicElementFlags
+	*/
+	virtual void DrawDynamicElements(FPrimitiveDrawInterface* PDI,const FSceneView* View,UINT DPGIndex,DWORD Flags)
+	{
+		// Draw constraint information
+		Setup->DrawConstraint(PDI, 1.f, 1.f, TRUE, TRUE, LimitMaterial, Con1Frame, Con2Frame, FALSE);
+
+		// Draw boxes to indicate bodies connected by joint.
 		if(Body1Box.IsValid)
 		{
-			PRI->DrawLine( Con1Frame.GetOrigin(), Body1Box.GetCenter(), JointFrame1Color );
-			PRI->DrawWireBox( Body1Box, JointFrame1Color );
+			PDI->DrawLine( Con1Frame.GetOrigin(), Body1Box.GetCenter(), JointFrame1Color, SDPG_World );
+			DrawWireBox(PDI, Body1Box, JointFrame1Color, SDPG_World );
 		}
 
-		FBox Body2Box = FindBodyBox(CA->ConstraintActor2, CA->ConstraintSetup->ConstraintBone2);
 		if(Body2Box.IsValid)
 		{
-			PRI->DrawLine( Con2Frame.GetOrigin(), Body2Box.GetCenter(), JointFrame2Color );
-			PRI->DrawWireBox( Body2Box, JointFrame2Color );
+			PDI->DrawLine( Con2Frame.GetOrigin(), Body2Box.GetCenter(), JointFrame2Color, SDPG_World );
+			DrawWireBox(PDI, Body2Box, JointFrame2Color, SDPG_World );
 		}
 	}
+
+	/** Function that determines if this scene proxy should be drawn in this scene. */
+	virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View)
+	{
+		const UBOOL bVisible = (View->Family->ShowFlags & SHOW_Constraints) ? TRUE : FALSE;
+		const UBOOL bRelevant = IsShown(View) && bVisible;
+		FPrimitiveViewRelevance Result;
+		Result.bDynamicRelevance = bRelevant;
+		Result.bTranslucentRelevance = bRelevant;
+		Result.SetDPG(SDPG_World,TRUE);
+		if (IsShadowCast(View))
+		{
+			Result.bShadowRelevance = TRUE;
+		}
+		return Result;
+	}
+
+	virtual DWORD GetMemoryFootprint( void ) const { return( sizeof( *this ) + GetAllocatedSize() ); }
+	DWORD GetAllocatedSize( void ) const { return( FPrimitiveSceneProxy::GetAllocatedSize() ); }
+};
+
+/** Create a constraint drawing proxy. */
+FPrimitiveSceneProxy* URB_ConstraintDrawComponent::CreateSceneProxy()
+{
+	return new FConstraintDrawSceneProxy(this);
 }
+
+ /**
+  * Update the bounds of the component.
+  */
+ void URB_ConstraintDrawComponent::UpdateBounds()
+ {
+	 // The component doesn't really have a legitimate bounds, so just set it to zero
+	Bounds.Origin = LocalToWorld.GetOrigin();
+	Bounds.SphereRadius = 0.0f;
+	Bounds.BoxExtent.X = Bounds.BoxExtent.Y = Bounds.BoxExtent.Z = 0.0f;
+ }
+
+/** 
+ * Retrieves the materials used in this component 
+ *  
+ * @param OutMaterials	The list of used materials.
+ */
+ void URB_ConstraintDrawComponent::GetUsedMaterials( TArray<UMaterialInterface*>& OutMaterials ) const
+ {
+	 OutMaterials.AddItem( LimitMaterial );
+ }
+

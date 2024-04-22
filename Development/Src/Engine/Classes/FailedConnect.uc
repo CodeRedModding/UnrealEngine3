@@ -1,3 +1,6 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class FailedConnect extends LocalMessage
 	abstract;
 
@@ -35,9 +38,4 @@ defaultproperties
 
 	DrawColor=(R=255,G=0,B=128,A=255)
 	FontSize=1
-	
-	FailMessage(0)="FAILED TO JOIN GAME.  NEED PASSWORD."
-	FailMessage(1)="FAILED TO JOIN GAME.  WRONG PASSWORD."
-	FailMessage(2)="FAILED TO JOIN GAME.  GAME HAS STARTED."
-	FailMessage(3)="FAILED TO JOIN GAME."
 }

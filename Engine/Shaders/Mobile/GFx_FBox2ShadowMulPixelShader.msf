@@ -1,0 +1,35 @@
+#define RETURN_COLOR(Color) Color
+UNIFORM( vec4, OverlayColor );
+UNIFORM( vec4, ColorScale );
+UNIFORM( vec4, fsize );
+UNIFORM( vec2, DecalOffset );
+UNIFORM( vec4, scolor );
+UNIFORM( vec4, scolor2 );
+UNIFORM_SAMPLER2D( TextureDetail, TEXUNIT0 );
+UNIFORM( vec2, srctexscale );
+UNIFORM_SAMPLER2D( tex, TEXUNIT1 );
+UNIFORM( vec2, texscale );
+IN_VARYING_DEFAULT( vec2, tc, TEXCOORD0 );
+OUT_BUILTIN( vec4, gl_FragColor, COLOR )
+PIXEL_MAIN 
+{
+// E Box2
+  vec4 color = vec4(0.0);
+  vec2 i = vec2(0.0);
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color += texture2D(tex, tc + (DecalOffset + i) * texscale);
+      }  gl_FragColor = color * fsize.w;
+  gl_FragColor.a = gl_FragColor.a * fsize.z;
+// E Shadow
+  vec4 base = texture2D(TextureDetail, tc * srctexscale);
+
+      gl_FragColor = scolor * gl_FragColor.a * (1.0-base.a) + base;
+  // E cxformac
+  gl_FragColor = (gl_FragColor * vec4(ColorScale.rgb,1.0)) * ColorScale.a + OverlayColor * gl_FragColor.a;
+// E Mul
+  gl_FragColor = mix(vec4(1.0), gl_FragColor, vec4(gl_FragColor.a));
+
+}
+

@@ -2,160 +2,25 @@
  * UnThreadingBase.h -- Contains all base level interfaces for threading
  * support in the Unreal engine.
  *
- * Copyright 2004 Epic Games, Inc. All Rights Reserved.
- *
- * Revision history:
- *		Created by Joe Graf.
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
  */
 
 #ifndef _UNTHREADING_H
 #define _UNTHREADING_H
 
-/** Thread safe counter */
-class FThreadSafeCounter
+#ifndef INFINITE
+#define INFINITE ((DWORD)-1)
+#endif
+
+// Forward declaration for a platform specific implementation
+class FCriticalSection;
+/** Simple base class for polymorphic cleanup */
+struct FSynchronize
 {
-public:
-	/** Default constructor, initializing Value to 0 */
-	FThreadSafeCounter();
-	/**
-	 * Constructor, initializing counter to passed in value.
-	 *
-	 * @param InValue	Value to initialize counter to
-	 */
-	FThreadSafeCounter( LONG InValue );
-
-	/**
-	 * Increment and return new value.	
-	 *
-	 * @return the incremented value
-	 */
-	LONG Increment();
-
-	/**
-	 * Decrement and return new value.
-	 *
-	 * @return the decremented value
-	 */
-	LONG Decrement();
-
-	/**
-	 * Return the current value.
-	 *
-	 * @return the current value
-	 */
-	LONG GetValue();
-
-private:
-	// Hidden on purpose as usage wouldn't be thread safe.
-	FThreadSafeCounter( const FThreadSafeCounter& Other ){}
-	void operator=(const FThreadSafeCounter& Other){}
-
-	/** Value of counter */
-	LONG Value;
-};
-
-
-/**
- * This is the base interface all synchronization objects must inherit from.
- * It is an abstract base class that allows synchronizations objects to passed
- * by interface without having to know the implementation details or the type
- * of object involved. NOTE: This requires the ability for a thread to lock
- * a resource multiple times without deadlock; it also requires that unlocking
- * of a resource matches the number of locks or a deadlock with occur.
- */
-class FSynchronize : public FSystemAllocatorNewDelete
-{
-public:
-	/**
-	 * Virtual destructor so that child implementations are guaranteed a chance
-	 * to clean up any resources they allocated.
-	 */
-	virtual ~FSynchronize(void) {}
-
-	/**
-	 * Tells the synchronization object to acquire a lock.
-	 */
-	virtual void Lock(void) = 0;
-
-	/**
-	 * Tells the synchronization object to release the lock.
-	 */
-	virtual void Unlock(void) = 0;
-};
-
-/**
- * This is a utility class that handles scope level locking. It's very useful
- * to keep from causing deadlocks due to exceptions being caught and knowing
- * about the number of locks a given thread has on a resource. Example:
- *
- * <code>
- *	{
- *		// Syncronize thread access to the following data
- *		FScopeLock ScopeLock(SynchObject);
- *		// Access data that is shared among multiple threads
- *		...
- *		// When ScopeLock goes out of scope, other threads can access data
- *	}
- * </code>
- */
-class FScopeLock
-{
-	/**
-	 * The synchronization object to aggregate and scope manage
-	 */
-	FSynchronize* SynchObject;
-
-	/**
-	 * Default constructor hidden on purpose
-	 */
-	FScopeLock(void);
-
-	/**
-	 * Copy constructor hidden on purpose
-	 *
-	 * @param InScopeLock ignored
-	 */
-	FScopeLock(FScopeLock* InScopeLock);
-
-	/**
-	 * Assignment operator hidden on purpose
-	 *
-	 * @param InScopeLock ignored
-	 */
-	FScopeLock& operator=(FScopeLock& InScopeLock) { return *this; }
-
-public:
-	/**
-	 * Constructor that performs a lock on the synchronization object
-	 *
-	 * @param InSynchObject The synchronization object to manage
-	 */
-	FScopeLock(FSynchronize* InSynchObject) :
-		SynchObject(InSynchObject)
+	/** Simple destructor */
+	virtual ~FSynchronize(void)
 	{
-		check(SynchObject);
-		SynchObject->Lock();
 	}
-
-	/**
-	 * Destructor that performs a release on the synchronization object
-	 */
-	~FScopeLock(void)
-	{
-		check(SynchObject);
-		SynchObject->Unlock();
-	}
-};
-
-/**
- * This is the lightest weight syncronization object and is very useful for
- * multiple CPUs. It will only enter the kernel after attempting to spin lock
- * first. This should be used for most state syncronization. This interface is
- * just a named version of the FSynchronize interface and has no specialization.
- */
-class FCriticalSection : public FSynchronize
-{
-public:
 };
 
 /**
@@ -205,49 +70,6 @@ public:
 };
 
 /**
- * This is a mutual excelusive lock. It is a heavier weight verison of
- * synchronization than a critical section. It does require kernel mode
- * so should not be used for high access object synchronization. It can
- * be named which is useful for sharing synchronizaiton objects by name.
- */
-class FMutex : public FSynchronize
-{
-public:
-	/**
-	 * Creates the mutex. If a name is supplied, that name is used to find
-	 * a shared mutex instance.
-	 *
-	 * @param InName Whether to use a commonly shared mutex or not. If so this
-	 * is the name of the mutex to share.
-	 *
-	 * @return Returns TRUE if the mutex was created, FALSE otherwise
-	 */
-	virtual UBOOL Create(const TCHAR* InName = NULL) = 0;
-};
-
-/**
- * This is a multiple lock synchronization object. It is useful for items that
- * can be locked multiple times before needing to wait. Resources that are
- * finite and cannot fail to create are great objects to synchronize access to
- * using this interface.
- */
-class FSemaphore : public FSynchronize
-{
-public:
-	/**
-	 * Creates the semaphore with the specified number of locks. Named
-	 * semaphores share instances the same way events and mutexes do.
-	 *
-	 * @param InNumLocks The number of locks this semaphore will support
-	 * @param InName Whether to use a commonly shared semaphore or not. If so
-	 * this is the name of the semaphore to share.
-	 *
-	 * @return Returns TRUE if the semaphore was created, FALSE otherwise
-	 */
-	virtual UBOOL Create(DWORD InNumLocks,const TCHAR* InName = NULL) = 0;
-};
-
-/**
  * This is the factory interface for creating various synchronization objects.
  * It is overloaded on a per platform basis to hide how each platform creates
  * the various synchronization objects. NOTE: The malloc used by it must be 
@@ -273,27 +95,6 @@ public:
 	 * @return Returns the new event object if successful, NULL otherwise
 	 */
 	virtual FEvent* CreateSynchEvent(UBOOL bIsManualReset = FALSE,const TCHAR* InName = NULL) = 0;
-
-	/**
-	 * Creates a new semaphore
-	 *
-	 * @param InNumLocks The number of locks this semaphore will support
-	 * @param InName Whether to use a commonly shared semaphore or not. If so
-	 * this is the name of the semaphore to share.
-	 *
-	 * @return The new semaphore object or NULL if creation fails
-	 */
-	virtual FSemaphore* CreateSemaphore(DWORD InNumLocks,const TCHAR* InName = NULL) = 0;
-
-	/**
-	 * Creates a new mutex
-	 *
-	 * @param InName Whether to use a commonly shared mutex or not. If so this
-	 * is the name of the mutex to share.
-	 *
-	 * @return The new mutex object or NULL if creation fails
-	 */
-	virtual FMutex* CreateMutex(const TCHAR* InName = NULL) = 0;
 
 	/**
 	 * Cleans up the specified synchronization object using the correct heap
@@ -348,10 +149,15 @@ public:
 	 * Called in the context of the aggregating thread to perform any cleanup.
 	 */
 	virtual void Exit(void) = 0;
+
+	/**
+	 * Destructor
+	 */
+	virtual ~FRunnable(){}
 };
 
 /**
- * The list of enumerated thread priorties we support
+ * The list of enumerated thread priorities we support
  */
 enum EThreadPriority
 {
@@ -367,6 +173,11 @@ enum EThreadPriority
 class FRunnableThread
 {
 public:
+	/**
+	 * Destructor
+	 */
+	virtual ~FRunnableThread(){}
+
 	/**
 	 * Changes the thread priority of the currently running thread
 	 *
@@ -390,7 +201,7 @@ public:
 	 *
 	 * @param bShouldPause Whether to pause the thread (true) or resume (false)
 	 */
-	virtual void Suspend(UBOOL bShouldPause = 1) = 0;
+	virtual void Suspend(UBOOL bShouldPause = TRUE) = 0;
 
 	/**
 	 * Tells the thread to exit. If the caller needs to know when the thread
@@ -400,17 +211,22 @@ public:
 	 * NOTE: having a thread forcibly destroyed can cause leaks in TLS, etc.
 	 *
 	 * @param bShouldWait If true, the call will wait for the thread to exit
-	 * @param MaxWaitTime The amount of time to wait before killing it.
-	 * Defaults to inifinite.
 	 *
-	 * @return True if the thread exited gracefull, false otherwise
+	 * @return True if the thread exited graceful, false otherwise
 	 */
-	virtual UBOOL Kill(UBOOL bShouldWait = 0,DWORD MaxWaitTime = 0) = 0;
+	virtual UBOOL Kill(UBOOL bShouldWait = FALSE) = 0;
 
 	/**
 	 * Halts the caller until this thread is has completed its work.
 	 */
 	virtual void WaitForCompletion(void) = 0;
+
+	/**
+	 * Thread ID for this thread 
+	 *
+	 * @return ID that was set by CreateThread
+	 */
+	virtual DWORD GetThreadID(void) = 0;
 };
 
 /**
@@ -424,6 +240,7 @@ public:
 	 * Creates the thread with the specified stack size and thread priority.
 	 *
 	 * @param InRunnable The runnable object to execute
+	 * @param ThreadName Name of the thread
 	 * @param bAutoDeleteSelf Whether to delete this object on exit
 	 * @param bAutoDeleteRunnable Whether to delete the runnable object on exit
 	 * @param InStackSize The size of the stack to create. 0 means use the
@@ -433,7 +250,7 @@ public:
 	 *
 	 * @return The newly created thread or NULL if it failed
 	 */
-	virtual FRunnableThread* CreateThread(FRunnable* InRunnable,
+	virtual FRunnableThread* CreateThread(FRunnable* InRunnable, const TCHAR* ThreadName,
 		UBOOL bAutoDeleteSelf = 0,UBOOL bAutoDeleteRunnable = 0,
 		DWORD InStackSize = 0,EThreadPriority InThreadPri = TPri_Normal) = 0;
 
@@ -450,6 +267,22 @@ public:
  */
 extern FThreadFactory* GThreadFactory;
 
+/**
+ * Some standard IDs for special queued work types
+ * These are just setup for future use, these aren't supported yet
+ */
+enum EWorkID
+{
+	WORK_None,
+	WORK_DMARequest,
+	WORK_Skin,
+	WORK_ShadowExtrusion,
+	WORK_Decompress,
+	WORK_Stream,
+	WORK_GenerateParticles,
+
+	WORK_MAX
+};
 /**
  * This interface is a type of runnable object that requires no per thread
  * initialization. It is meant to be used with pools of threads in an
@@ -470,7 +303,7 @@ public:
 	 * This is where the real thread work is done. All work that is done for
 	 * this queued object should be done from within the call to this function.
 	 */
-	virtual void DoWork(void) = 0;
+	virtual void DoThreadedWork(void) = 0;
 
 	/**
 	 * Tells the queued work that it is being abandoned so that it can do
@@ -480,11 +313,32 @@ public:
 	 */
 	virtual void Abandon(void) = 0;
 
+
+#if PLATFORM_NEEDS_SPECIAL_QUEUED_WORK
 	/**
-	 * This method is also used to tell the object to cleanup but not before
-	 * the object has finished it's work.
-	 */ 
-	virtual void Dispose(void) = 0;
+	 * Return a special (possibly platform specific name for this type of work 
+	 * in case the  platform needs to handle it specially. Most likely this 
+	 * function does not need to be overridden.
+	 * @return One of the EWorkID enums or another platform specific integer
+	 */
+	virtual DWORD GetSpecialID(void) { return WORK_None; }
+
+	/**
+	 * Return the size of the data that needs to be specially handled (copied 
+	 * elsewhere, etc)
+	 * NOTE: On the PS3, the size will need to be known before a Work object
+	 * is created, so this function is just used to validate.
+	 * @return Size of data payload that will need to be copied in GetData
+	 */
+	virtual DWORD GetDataSize(void) { return 0; }
+
+	/**
+	 * Fill out a buffer with the special data payload needed for this work
+	 * @param Data A pointer to the data that will received the work's data
+	 * @param True if successful
+	 */
+	virtual UBOOL GetData(void* Data) { appErrorf(TEXT("This function should be overridden if GetSpecialID doesn't return WORK_None")); return FALSE; }
+#endif
 };
 
 /**
@@ -509,12 +363,15 @@ public:
 	 *
 	 * @param InPool The thread pool interface used to place this thread
 	 * back into the pool of available threads when its work is done
+	 * @param ProcessorMask The processor set to run the thread on
 	 * @param InStackSize The size of the stack to create. 0 means use the
 	 * current thread's stack size
+	 * @param ThreadPriority priority of new thread
 	 *
 	 * @return True if the thread and all of its initialization was successful, false otherwise
 	 */
-	virtual UBOOL Create(class FQueuedThreadPool* InPool,DWORD InStackSize = 0) = 0;
+	virtual UBOOL Create(class FQueuedThreadPool* InPool,DWORD ProcessorMask,
+		DWORD InStackSize = 0,EThreadPriority ThreadPriority=TPri_Normal) = 0;
 	
 	/**
 	 * Tells the thread to exit. If the caller needs to know when the thread
@@ -523,13 +380,11 @@ public:
 	 * NOTE: having a thread forcibly destroyed can cause leaks in TLS, etc.
 	 *
 	 * @param bShouldWait If true, the call will wait for the thread to exit
-	 * @param MaxWaitTime The amount of time to wait before killing it. It
-	 * defaults to inifinite.
 	 * @param bShouldDeleteSelf Whether to delete ourselves upon completion
 	 *
-	 * @return True if the thread exited gracefull, false otherwise
+	 * @return True if the thread exited graceful, false otherwise
 	 */
-	virtual UBOOL Kill(UBOOL bShouldWait = FALSE,DWORD MaxWaitTime = INFINITE,UBOOL bShouldDeleteSelf = FALSE) = 0;
+	virtual UBOOL Kill(UBOOL bShouldWait = FALSE, UBOOL bShouldDeleteSelf = FALSE) = 0;
 
 	/**
 	 * Tells the thread there is work to be done. Upon completion, the thread
@@ -538,6 +393,7 @@ public:
 	 * @param InQueuedWork The queued work to perform
 	 */
 	virtual void DoWork(FQueuedWork* InQueuedWork) = 0;
+
 };
 
 /**
@@ -557,9 +413,14 @@ public:
 	 * Creates the thread pool with the specified number of threads
 	 *
 	 * @param InNumQueuedThreads Specifies the number of threads to use in the pool
+	 * @param ProcessorMask Specifies which processors should be used by the pool
 	 * @param StackSize The size of stack the threads in the pool need (32K default)
+	 * @param ThreadPriority priority of new pool thread
+	 *
+	 * @return Whether the pool creation was successful or not
 	 */
-	virtual UBOOL Create(DWORD InNumQueuedThreads,DWORD StackSize = (32 * 1024)) = 0;
+	virtual UBOOL Create(DWORD InNumQueuedThreads,DWORD ProcessorMask = 0,
+		DWORD StackSize = (32 * 1024),EThreadPriority ThreadPriority=TPri_Normal) = 0;
 
 	/**
 	 * Tells the pool to clean up all background threads
@@ -575,12 +436,39 @@ public:
 	virtual void AddQueuedWork(FQueuedWork* InQueuedWork) = 0;
 
 	/**
+	 * Attempts to retract a previously queued task.
+	 *
+	 * @param InQueuedWork The work to try to retract
+	 * @return TRUE if the work was retracted
+	 */
+	virtual UBOOL RetractQueuedWork(FQueuedWork* InQueuedWork) = 0;
+
+	/**
 	 * Places a thread back into the available pool
 	 *
 	 * @param InQueuedThread The thread that is ready to be pooled
+	 * @return next job or null if there is no job available now
 	 */
-	virtual void ReturnToPool(FQueuedThread* InQueuedThread) = 0;
+	virtual FQueuedWork* ReturnToPoolOrGetNextJob(FQueuedThread* InQueuedThread) = 0;
+
 };
+
+/*
+ *  Global thread pool for shared async operations
+ */
+extern FQueuedThreadPool* GThreadPool;
+
+
+/** The global hi priority thread pool */
+extern FQueuedThreadPool*	GHiPriThreadPool;
+/** The number of threads in the hi priority thread pool 
+*	zero on platforms that don't have the CPU resources to gain any benefits
+*/
+extern INT					GHiPriThreadPoolNumThreads;
+/** Debug setting for ToggleHiPriThreadPool */
+extern UBOOL				GHiPriThreadPoolForceOff;
+/** Determines if high precision threading is enabled */
+extern UBOOL				GIsHighPrecisionThreadingEnabled;
 
 /**
  * A base implementation of a queued thread pool. It provides the common
@@ -602,46 +490,39 @@ protected:
 	/**
 	 * The synchronization object used to protect access to the queued work
 	 */
-	FSynchronize* SynchWorkQueue;
+	FCriticalSection* SynchQueue;
 
 	/**
-	 * The synchronization object used to protect access to the thread pool
+	 * If true, indicates the destruction process has taken place
 	 */
-	FSynchronize* SynchThreadQueue;
+	UBOOL TimeToDie;
 
 	/**
 	 * Constructor that creates the zeroes the critical sections
 	 */
 	FQueuedThreadPoolBase(void)
+		: SynchQueue(NULL),
+		TimeToDie(FALSE)
 	{
-		SynchWorkQueue = SynchThreadQueue = NULL;
 	}
 
 public:
 	/**
+	 * Clean up the synch objects
+	 */
+	virtual ~FQueuedThreadPoolBase(void);
+
+	/**
+	 * Creates the synchronization object for locking the queues
+	 *
+	 * @return Whether the pool creation was successful or not
+	 */
+	UBOOL CreateSynchObjects(void);
+
+	/**
 	 * Tells the pool to clean up all background threads
 	 */
-	virtual void Destroy(void)
-	{
-		FScopeLock LockThreads(SynchThreadQueue);
-		FScopeLock LockWork(SynchWorkQueue);
-		// Clean up all queued objects
-		for (INT Index = 0; Index < QueuedWork.Num(); Index++)
-		{
-			QueuedWork(Index)->Abandon();
-		}
-		// Empty out the invalid pointers
-		QueuedWork.Empty();
-		// Now tell each thread to die and delete those
-		for (INT Index = 0; Index < QueuedThreads.Num(); Index++)
-		{
-			// Wait for the thread to die and have it delete itself using
-			// whatever malloc it should
-			QueuedThreads(Index)->Kill(TRUE,INFINITE,TRUE);
-		}
-		// All the pointers are invalid so clean up
-		QueuedThreads.Empty();
-	}
+	virtual void Destroy(void);
 
 	/**
 	 * Checks to see if there is a thread available to perform the task. If not,
@@ -649,42 +530,15 @@ public:
 	 *
 	 * @param InQueuedWork The work that needs to be done asynchronously
 	 */
-	void AddQueuedWork(FQueuedWork* InQueuedWork)
-	{
-		check(InQueuedWork != NULL);
-		FQueuedThread* Thread = NULL;
-		// Check to see if a thread is available. Make sure no other threads
-		// can manipulate the thread pool while we do this. NOTE: This is done
-		// in a two step approach to keep each array locked as little time as
-		// possible
-		{
-			check(SynchThreadQueue && "Did you forget to call Create()?");
-			FScopeLock sl(SynchThreadQueue);
-			if (QueuedThreads.Num() > 0)
-			{
-				// Figure out which thread is available
-				INT Index = QueuedThreads.Num();
-				// Grab that thread to use
-				Thread = QueuedThreads(Index);
-				// Remove it from the list so no one else grabs it
-				QueuedThreads.Remove(Index);
-			}
-		}
-		// Was there a thread ready?
-		if (Thread != NULL)
-		{
-			// We have a thread, so tell it to do the work
-			Thread->DoWork(InQueuedWork);
-		}
-		else
-		{
-			check(SynchWorkQueue && "Did you forget to call Create()?");
-			// There were no threads available, queue the work to be done
-			// as soon as one does become available
-			FScopeLock sl(SynchWorkQueue);
-			QueuedWork.AddItem(InQueuedWork);
-		}
-	}
+	void AddQueuedWork(FQueuedWork* InQueuedWork);
+
+	/**
+	 * Attempts to retract a previously queued task.
+	 *
+	 * @param InQueuedWork The work to try to retract
+	 * @return TRUE if the work was retracted
+	 */
+	virtual UBOOL RetractQueuedWork(FQueuedWork* InQueuedWork);
 
 	/**
 	 * Places a thread back into the available pool if there is no pending work
@@ -692,39 +546,248 @@ public:
 	 * reaching the queue.
 	 *
 	 * @param InQueuedThread The thread that is ready to be pooled
+	 * @return next job to process or NULL if there are no jobs left to process
 	 */
-	void ReturnToPool(FQueuedThread* InQueuedThread)
+	FQueuedWork* ReturnToPoolOrGetNextJob(FQueuedThread* InQueuedThread);
+};
+
+
+#if STATS
+/**
+ * Helper class that implementations of FQueuedThread can use to manage stat updates
+ * the basic idea is to call this before and after each DoWork call
+ */
+class FCheckForStatsUpdate
+{
+public:
+	DWORD StatsFrameLastUpdate;
+/**
+ * Constructor for FCheckForStatsUpdate, saves the current value of the frame counter
+ */
+	FCheckForStatsUpdate();
+	/**
+	 * See if we are due for a stats advance call, if so do it
+	 */
+	void ConditionalUpdate();
+};
+#endif
+
+// Include the platform specific versions
+#if PS3
+	#include "PS3CoreThreading.h"
+#elif NGP
+	#include "NGPCoreThreading.h"
+#elif IPHONE
+	#include "IPhoneThreading.h"
+#elif PLATFORM_MACOSX
+	#include "MacThreading.h"
+#elif ANDROID
+	#include "AndroidThreading.h"
+#elif FLASH
+ 	#include "ThreadingFlash.h"
+#elif WIIU
+	#include "ThreadingWiiU.h"
+#else
+	#include "UnThreadingWindows.h"
+#endif
+
+
+/** Thread safe counter */
+class FThreadSafeCounter
+{
+public:
+	/** Default constructor, initializing Value to 0 */
+	FThreadSafeCounter()
 	{
-		check(InQueuedThread != NULL);
-		FQueuedWork* Work = NULL;
-		// Check to see if there is any work to be done. NOTE: This is done
-		// in a two step approach to keep each array locked as little time as
-		// possible
-		{
-			FScopeLock sl(SynchWorkQueue);
-			if (QueuedWork.Num() > 0)
-			{
-				// Grab the oldest work in the queue. This is slower than
-				// getting the most recent but prevents work from being
-				// queued and never done
-				Work = QueuedWork(0);
-				// Remove it from the list so no one else grabs it
-				QueuedWork.Remove(0);
-			}
-		}
-		// Was there any work to be done?
-		if (Work != NULL)
-		{
-			// Rather than returning this thread to the pool, tell it to do
-			// the work instead
-			InQueuedThread->DoWork(Work);
-		}
-		else
-		{
-			// There was no work to be done, so add the thread to the pool
-			FScopeLock sl(SynchThreadQueue);
-			QueuedThreads.AddItem(InQueuedThread);
-		}
+		Counter = 0;
+	}
+	/**
+	 * Copy Constructor, 
+	 *
+	 * @param Other the other thread safe counter to copy
+	 * if other is changing from other threads, there are no guarantees as to which values you will get
+	 * up to the caller to not care, synchronize or other way to make those guarantees.
+	 */
+	FThreadSafeCounter( const FThreadSafeCounter& Other )
+	{
+		Counter = Other.GetValue();
+	}
+	/**
+	 * Constructor, initializing counter to passed in value.
+	 *
+	 * @param Value	Value to initialize counter to
+	 */
+	FThreadSafeCounter( INT Value )
+	{
+		Counter = Value;
+	}
+
+	/**
+	 * Increment and return new value.	
+	 *
+	 * @return the new, incremented value
+	 */
+	INT Increment()
+	{
+		return appInterlockedIncrement(&Counter);
+	}
+
+	/**
+	 * Adds an amount and returns the old value.	
+	 *
+	 * @param Amount Amount to increase the counter by
+	 * @return the old value
+	 */
+	INT Add( INT Amount )
+	{
+		return appInterlockedAdd(&Counter, Amount);
+	}
+
+	/**
+	 * Decrement and return new value.
+	 *
+	 * @return the new, decremented value
+	 */
+	INT Decrement()
+	{
+		return appInterlockedDecrement(&Counter);
+	}
+
+	/**
+	 * Subtracts an amount and returns the old value.	
+	 *
+	 * @param Amount Amount to decrease the counter by
+	 * @return the old value
+	 */
+	INT Subtract( INT Amount )
+	{
+		return appInterlockedAdd(&Counter, -Amount);
+	}
+
+	/**
+	 * Sets the counter to a specific value and returns the old value.
+	 *
+	 * @param Value	Value to set the counter to
+	 * @return The old value
+	 */
+	INT Set( INT Value )
+	{
+		return appInterlockedExchange(&Counter, Value);
+	}
+
+	/**
+	 * Resets the counter's value to zero.
+	 *
+	 * @return the old value.
+	 */
+	INT Reset()
+	{
+		return appInterlockedExchange(&Counter, 0);
+	}
+
+	/**
+	 * Return the current value.
+	 *
+	 * @return the current value
+	 */
+	INT GetValue() const
+	{
+		return Counter;
+	}
+
+private:
+	// Hidden on purpose as usage wouldn't be thread safe.
+	void operator=(const FThreadSafeCounter& Other){}
+
+	/** Thread-safe counter */
+	volatile INT Counter;
+};
+
+
+/**
+ * This is a utility class that handles scope level locking. It's very useful
+ * to keep from causing deadlocks due to exceptions being caught and knowing
+ * about the number of locks a given thread has on a resource. Example:
+ *
+ * <code>
+ *	{
+ *		// Syncronize thread access to the following data
+ *		FScopeLock ScopeLock(SynchObject);
+ *		// Access data that is shared among multiple threads
+ *		...
+ *		// When ScopeLock goes out of scope, other threads can access data
+ *	}
+ * </code>
+ */
+class FScopeLock
+{
+	/**
+	 * The synchronization object to aggregate and scope manage
+	 */
+	FCriticalSection* SynchObject;
+
+	/**
+	 * Default constructor hidden on purpose
+	 */
+	FScopeLock(void);
+
+	/**
+	 * Copy constructor hidden on purpose
+	 *
+	 * @param InScopeLock ignored
+	 */
+	FScopeLock(FScopeLock* InScopeLock);
+
+	/**
+	 * Assignment operator hidden on purpose
+	 *
+	 * @param InScopeLock ignored
+	 */
+	FScopeLock& operator=(FScopeLock& InScopeLock) { return *this; }
+
+public:
+	/**
+	 * Constructor that performs a lock on the synchronization object
+	 *
+	 * @param InSynchObject The synchronization object to manage
+	 */
+	FScopeLock(FCriticalSection* InSynchObject) :
+		SynchObject(InSynchObject)
+	{
+// @todo flash - make dummy synchobjects maybe instead of handling NULL synchobjects?
+#if !FLASH
+		check(SynchObject);
+#endif
+		SynchObject->Lock();
+	}
+
+	/**
+	 * Destructor that performs a release on the synchronization object
+	 */
+	~FScopeLock(void)
+	{
+// @todo flash - make dummy synchobjects maybe instead of handling NULL synchobjects?
+#if !FLASH
+		check(SynchObject);
+#endif
+		SynchObject->Unlock();
 	}
 };
+
+#define SCOPE_LOCK_REF(X) FScopeLock ScopeLock(&X);
+#define SCOPE_LOCK_PTR(X) FScopeLock ScopeLock(X);
+
+
+/** @return True if called from the rendering thread. */
+extern UBOOL IsInRenderingThread();
+
+/** @return True if called from the game thread. */
+extern UBOOL IsInGameThread();
+
+/** the stats system increments this and when pool threads notice it has been 
+*   incremented, they call GStatManager.AdvanceFrameForThread() to advance any
+*   stats that have been collected on a pool thread.
+*/
+STAT(extern FThreadSafeCounter GStatsFrameForPoolThreads);
+
 #endif

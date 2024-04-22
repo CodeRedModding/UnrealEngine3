@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    >
+  
+    <SurfaceView
+         android:id="@+id/movie_view"
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+         android:layout_centerInParent="true"
+         />
+
+  <TextView
+        android:id="@+id/overlay_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10px"
+        android:layout_centerHorizontal="true"
+        android:layout_alignBottom="@+id/movie_view"
+        android:text=""
+        android:textSize="40px"
+        android:textColor="#FFFFFF"
+        />
+  
+</RelativeLayout>

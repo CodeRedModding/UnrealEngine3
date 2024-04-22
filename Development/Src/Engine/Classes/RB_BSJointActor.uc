@@ -1,5 +1,6 @@
 //=============================================================================
 // The Ball-and-Socket joint class.
+// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 //=============================================================================
 
 class RB_BSJointActor extends RB_ConstraintActor
@@ -8,7 +9,7 @@ class RB_BSJointActor extends RB_ConstraintActor
 defaultproperties
 {
 	Begin Object NAME=Sprite
-		Sprite=Texture2D'EngineResources.S_KBSJoint'
+		Sprite=Texture2D'EditorResources.S_KBSJoint'
 	End Object
 
 	Begin Object Class=RB_BSJointSetup Name=MyBSJointSetup

@@ -1,0 +1,96 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Sources">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="BlockDecomposer.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="CodePreprocessor.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="ExpressionCache.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="FileSystem.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="OutputDevice.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="RuleTable.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleParser.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="SourceFile.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="StringParser.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="SyntaxNode.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Tokenizer.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BlockDecomposer.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="ExpressionCache.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="ExpressionValue.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="FileSystem.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="FuzzyBool.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="OutputDevice.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="RuleTable.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleParser.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="SourceFile.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="StringParser.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="Stuff.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="SyntaxNode.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="Tokenizer.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TestRules.txt">
+      <Filter>Sources</Filter>
+    </None>
+  </ItemGroup>
+</Project>

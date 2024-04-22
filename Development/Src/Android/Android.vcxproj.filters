@@ -1,0 +1,179 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Inc">
+      <UniqueIdentifier>{edc79a2b-b012-44cf-8199-57a832ebbcce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src">
+      <UniqueIdentifier>{6eab82dc-80f6-4c03-b2ca-87e9f128cd08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Ini">
+      <UniqueIdentifier>{3a3fa6a2-fcd9-411a-b1d6-d3be2e6c131f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Java">
+      <UniqueIdentifier>{90eaf2eb-96d8-431b-a227-b62ba9cf4b04}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\Android.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\AndroidAudioDevice.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\AndroidClient.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\AndroidInput.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\AndroidThreading.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\AndroidViewport.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\AsyncLoadingAndroid.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\FFileManagerAndroid.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\LaunchPrivate.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnSocketBSD.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\AndroidFullScreenMovie.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\OpenSLAudio.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\OpenSLAudioDevice.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\OpenSLAudioPrivate.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\AndroidJNI.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\AndroidApsalar.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\Android.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\AndroidAudioDevice.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\AndroidClient.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\AndroidLaunch.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\AndroidThreading.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\AndroidViewport.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\AsyncLoadingAndroid.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\FFileManagerAndroid.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnSocketBSD.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\AndroidFullScreenMovie.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\AndroidJNI.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\OpenSLAudio.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\OpenSLAudioDevice.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\AndroidApsalar.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\Engine\Config\Android\AndroidEngine.ini">
+      <Filter>Ini</Filter>
+    </None>
+    <None Include="..\..\..\Engine\Config\Android\AndroidGame.ini">
+      <Filter>Ini</Filter>
+    </None>
+    <None Include="..\..\..\Engine\Config\Android\AndroidInput.ini">
+      <Filter>Ini</Filter>
+    </None>
+    <None Include="java\AndroidManifest.xml">
+      <Filter>Ini</Filter>
+    </None>
+    <None Include="..\..\..\Engine\Config\Android\AndroidUI.ini">
+      <Filter>Ini</Filter>
+    </None>
+    <None Include="java\default.properties">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\res\layout\main.xml">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\res\values\messages.xml">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\proguard.cfg">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\res\values\strings.xml">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\AndroidManifest.xml">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\build.properties">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\res\xml\preferences.xml">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\res\values\arrays.xml">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\res\layout\preferencelayout.xml">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaApp.java">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaApplicationInfo.java">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaApsalar.java">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaDownloaderAlarmReceiver.java">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaFileDownloader.java">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaPhoneHome.java">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="java\src\com\epicgames\EpicCitadel\UE3JavaPreferences.java">
+      <Filter>Java</Filter>
+    </None>
+  </ItemGroup>
+</Project>

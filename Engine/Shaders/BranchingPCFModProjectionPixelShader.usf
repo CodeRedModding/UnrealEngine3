@@ -1,0 +1,133 @@
+/*=============================================================================
+	BranchingPCFModProjectionPixelShader.usf: Contains pixel shaders that project a shadow depth buffer onto the scene
+		using modulative lighting, and then take advantage of dynamic branching to do efficient PCF.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "BranchingPCFCommon.usf"
+#include "ModShadowCommon.usf" 
+
+/**
+* Entry point for branching manual PCF that supports lights using modulative shadows.
+*/
+void Main(
+	in float4 ScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	half SceneW;
+	float4 ShadowPosition;
+	CalculateShadowPosition(ScreenPosition, ShadowPosition, SceneW);
+
+	half ShadowCoverage = EdgeSamplesManualPCF(ScreenPosition, ShadowPosition);
+	
+	//if we're not totally in shadow or totally out, then we are in the penumbra. 
+	//take more samples to refine the coverage.
+	if (ShadowCoverage > .0001 && ShadowCoverage < .9999) {
+	
+		half RefinedShadowCoverage = RefiningSamplesManualPCF(ShadowPosition);
+		
+		//weight the edge coverage with the refined coverage
+		ShadowCoverage = lerp(ShadowCoverage, RefinedShadowCoverage, .7);
+	}
+	
+#if MODSHADOW_LIGHTTYPE_DIRECTIONAL
+	// no attenuation necessary for directional lights
+	half ShadowAtt = 1;
+#else
+	// attenuate between shadow color and white based on distance
+	half ShadowAtt = ShadowAttenuation(ScreenPosition,SceneW);
+#endif
+
+	// add modulated/attenuated shadow color to shadow
+	half4 ShadowedColor = lerp(half4(1,1,1,1),ShadowModulateColor,ShadowAtt);
+	half4 UnshadowedColor = half4(1,1,1,1);
+
+	// RETURN_COLOR not needed unless writing to SceneColor;
+	// ShadowCoverage raised to the 3rd power helps the penumbra edges blend into the surrounding shadow
+	OutColor = lerp(ShadowedColor,UnshadowedColor,ShadowCoverage * ShadowCoverage * ShadowCoverage);
+}
+
+/**
+* Entry point for branching hardware PCF that supports lights using modulative shadows.
+*/
+void HardwarePCFMain(
+	in float4 ScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	half SceneW;
+	float4 ShadowPosition;
+	CalculateShadowPosition(ScreenPosition, ShadowPosition, SceneW);
+
+	half ShadowCoverage = EdgeSamplesHardwarePCF(ScreenPosition, ShadowPosition);
+
+	//if we're not totally in shadow or totally out, then we are in the penumbra. 
+	//take more samples to refine the coverage.
+	if (ShadowCoverage > .0001 && ShadowCoverage < .9999) {
+	
+		half RefinedShadowCoverage = RefiningSamplesHardwarePCF(ShadowPosition);
+		
+		//weight the edge coverage with the refined coverage
+		ShadowCoverage = lerp(ShadowCoverage, RefinedShadowCoverage, .7);
+	}
+
+#if MODSHADOW_LIGHTTYPE_DIRECTIONAL
+	// no attenuation necessary for directional lights
+	half ShadowAtt = 1;
+#else
+	// attenuate between shadow color and white based on distance
+	half ShadowAtt = ShadowAttenuation(ScreenPosition,SceneW);
+#endif
+
+	// add modulated/attenuated shadow color to shadow
+	half4 ShadowedColor = lerp(half4(1,1,1,1),ShadowModulateColor,ShadowAtt);
+	half4 UnshadowedColor = half4(1,1,1,1);
+
+	// RETURN_COLOR not needed unless writing to SceneColor;
+	// ShadowCoverage raised to the 3rd power helps the penumbra edges blend into the surrounding shadow
+	OutColor = lerp(ShadowedColor,UnshadowedColor,ShadowCoverage * ShadowCoverage * ShadowCoverage);
+}
+
+
+/**
+* Entry point for branching Fetch4 PCF that supports lights using modulative shadows.
+*/
+void Fetch4Main(
+	in float4 ScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	half SceneW;
+	float4 ShadowPosition;
+	CalculateShadowPosition(ScreenPosition, ShadowPosition, SceneW);
+
+	half ShadowCoverage = EdgeSamplesFetch4(ScreenPosition, ShadowPosition);
+
+	//if we're not totally in shadow or totally out, then we are in the penumbra. 
+	//take more samples to refine the coverage.
+	if (ShadowCoverage > .0001 && ShadowCoverage < .9999) {
+	
+		half RefinedShadowCoverage = RefiningSamplesFetch4(ShadowPosition);
+		
+		//weight the edge coverage with the refined coverage
+		ShadowCoverage = lerp(ShadowCoverage, RefinedShadowCoverage, .7);
+	}
+
+#if MODSHADOW_LIGHTTYPE_DIRECTIONAL
+	// no attenuation necessary for directional lights
+	half ShadowAtt = 1;
+#else
+	// attenuate between shadow color and white based on distance
+	half ShadowAtt = ShadowAttenuation(ScreenPosition,SceneW);
+#endif
+
+	// add modulated/attenuated shadow color to shadow
+	half4 ShadowedColor = lerp(half4(1,1,1,1),ShadowModulateColor,ShadowAtt);
+	half4 UnshadowedColor = half4(1,1,1,1);
+
+	// RETURN_COLOR not needed unless writing to SceneColor;
+	// ShadowCoverage raised to the 3rd power helps the penumbra edges blend into the surrounding shadow
+	OutColor = lerp(ShadowedColor,UnshadowedColor,ShadowCoverage * ShadowCoverage * ShadowCoverage);
+}
+

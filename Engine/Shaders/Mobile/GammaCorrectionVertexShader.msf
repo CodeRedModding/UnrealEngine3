@@ -1,0 +1,16 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+ATTRIBUTE(vec4, Position, POSITION);
+ATTRIBUTE(vec2, TexCoords0, TEXCOORD0);
+
+OUT_VARYING_DEFAULT( vec2, UVBase, TEXCOORD0 );
+
+void main( )
+{
+	gl_Position = Position;
+	UVBase = BASE_TEX_COORD_XFORM(TexCoords0);
+}

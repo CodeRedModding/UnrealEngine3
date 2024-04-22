@@ -1,0 +1,18 @@
+// Rules for filtering out XBOX/PS3 specific code
+#define XBOX 0
+#define _XBOX 0
+#define PS3 0
+#define CONSOLE 0
+#define PLATFORM_UNIX 0
+#define PS3_SNC
+#define __PPC__ 0
+#define __GNUC__ 0
+
+// Middleware defines
+//#define WITH_PANORAMA 0
+//#define WITH_GAMESPY 0
+
+// Weak defines
+#weak UNICODE
+#weak _MSC_VER
+#weak WIN32

@@ -1,3 +1,6 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class TerrainMaterial extends Object
 	native(Terrain)
 	hidecategories(Object);
@@ -12,41 +15,24 @@ enum ETerrainMappingType
 	TMT_YZ
 };
 
+/** Determines the mapping place to use on the terrain. */
 var(Material) ETerrainMappingType	MappingType;
+/** Uniform scale to apply to the mapping. */
 var(Material) float					MappingScale;
+/** Rotation to apply to the mapping. */
 var(Material) float					MappingRotation;
-var(Material) float					MappingPanU,
-									MappingPanV;
+/** Offset to apply to the mapping along U. */
+var(Material) float					MappingPanU;
+/** Offset to apply to the mapping along V. */
+var(Material) float					MappingPanV;
 
-var(Material) MaterialInstance		Material;
+/** The Material to apply to the terrain. */
+var(Material) MaterialInterface		Material;
 
+/** Grayscale image to move vertices of the terrain along the surface normal. */
 var(Displacement) Texture2D			DisplacementMap;
+/** The amount to sacle the displacement texture by. */
 var(Displacement) float				DisplacementScale;
-
-struct native TerrainFoliageMesh
-{
-	var() StaticMesh		StaticMesh;
-	var() MaterialInstance	Material;
-	var() int				Density;
-	var() float				MaxDrawRadius,
-							MinTransitionRadius,
-							MinScale,
-							MaxScale;
-	var() int				Seed;
-	var() float				SwayScale;
-	var() bool				StaticLighting;
-
-	structdefaults
-	{
-		MaxDrawRadius=1024.0
-		MinScale=1.0
-		MaxScale=1.0
-		SwayScale=1.0
-		StaticLighting=True
-	}
-};
-
-var(Foliage) array<TerrainFoliageMesh>	FoliageMeshes;
 
 cpptext
 {
@@ -54,16 +40,10 @@ cpptext
 
 	void UpdateMappingTransform();
 
-	// Displacement sampler.
-
-	FLOAT GetDisplacement(FLOAT U,FLOAT V) const;
-
 	// UObject interface.
-
-	virtual void PostEditChange(UProperty* PropertyThatChanged);
-	virtual void DrawThumbnail(EThumbnailPrimType PrimType,INT X,INT Y,struct FChildViewport* Viewport,struct FRenderInterface* RI,FLOAT Zoom,UBOOL ShowBackground,FLOAT ZoomPct,INT InFixedSz);
-	virtual FThumbnailDesc GetThumbnailDesc(FRenderInterface* RI, FLOAT Zoom, INT InFixedSz);
-	virtual INT GetThumbnailLabels(TArray<FString>* Labels);
+	virtual void PreEditChange(UProperty* PropertyAboutToChange);
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent);
+	virtual void PostLoad();
 }
 
 defaultproperties

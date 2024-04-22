@@ -1,0 +1,32 @@
+/*=============================================================================
+	SimplePixelShader_F32.usf:  pixel shader source.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+
+////////////////////////
+// Variables
+////////////////////////
+
+UNIFORM_SAMPLER2D(SourceTexture, TEXUNIT0);
+
+IN_VARYING_DEFAULT(vec2, UV, TEXCOORD0);
+
+
+////////////////////////
+// Implementation
+////////////////////////
+
+#if NGP
+	void main( out __regformat float gl_FragColor : COLOR0 )
+	{
+		float Result = tex2D<float>( SourceTexture, UV ).r;
+#else
+	void main()
+	{
+		float Result = texture2D( SourceTexture, UV ).r;
+#endif
+		gl_FragColor = vec4(Result);
+	}

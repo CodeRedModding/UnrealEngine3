@@ -1,0 +1,44 @@
+/*=============================================================================
+	FogVolumeApplyVertexShader.usf
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+void Main(
+	FVertexFactoryInput Input,
+	out FVertexFactoryInterpolantsVSToPS FactoryInterpolants,
+	out float4	PixelPosition	: TEXCOORD5,
+	out float4	CameraVectorOrVertexColor : TEXCOORD6,
+	out float4	Position		: POSITION
+	)
+{
+	FVertexFactoryIntermediates VFIntermediates = GetVertexFactoryIntermediates(Input);
+	float4 WorldPosition = VertexFactoryGetWorldPosition(Input, VFIntermediates);
+	float3x3 TangentBasis = VertexFactoryGetTangentBasis(Input, VFIntermediates);
+
+	FMaterialVertexParameters VertexParameters = GetMaterialVertexParameters(Input, VFIntermediates, WorldPosition.xyz, TangentBasis);
+	WorldPosition.xyz += GetMaterialWorldPositionOffset(VertexParameters);
+
+#if WITH_REALD
+	FDepthAllocateOutput DBAResult = DepthAllocate(WorldPosition);
+	Position = DBAResult.DBAPixelPosition;
+#else
+	Position = MulMatrix(ViewProjectionMatrix,WorldPosition);
+#endif
+	FactoryInterpolants = VertexFactoryGetInterpolantsVSToPS(Input, VFIntermediates);
+#if WORLD_POS
+	PixelPosition = WorldPosition;
+#else
+	PixelPosition = Position;
+#endif
+	
+	CameraVectorOrVertexColor = 1;
+#if PER_PIXEL_CAMERA_VECTOR
+	CameraVectorOrVertexColor = VertexFactoryGetVertexColor(Input, VFIntermediates);
+#else
+	CameraVectorOrVertexColor.xyz = VertexFactoryWorldToTangentSpace(Input,VFIntermediates,TangentBasis,CameraPositionVS.xyz - WorldPosition.xyz * CameraPositionVS.w);
+#endif
+}

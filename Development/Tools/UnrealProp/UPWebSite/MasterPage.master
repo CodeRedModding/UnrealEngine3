@@ -1,0 +1,88 @@
+<%@ Master Language="C#" %>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<script runat="server">
+    protected void TreeViewMainMenu_TreeNodeDataBound( object sender, TreeNodeEventArgs e )
+    {
+        // Reference the underlying SiteMapNode object...
+        SiteMapNode NodeFromSiteMap = ( SiteMapNode )e.Node.DataItem;
+
+        // If we have an imageUrl value, assign it to the TreeView node's ImageUrl property
+        if( NodeFromSiteMap["imageUrl"] != null )
+        {
+            e.Node.ImageUrl = System.IO.Path.Combine( "~/Images/", NodeFromSiteMap["imageUrl"] );
+        }
+    }
+</script>
+
+<html xmlns="http://www.w3.org/1999/xhtml" >
+<head runat="server">
+    <title>UnrealProp - Build Distribution System</title>
+    <link href="default.css" rel="stylesheet" type="text/css" />
+</head>
+<body >
+    <form id="form1" runat="server">
+        <div style="padding-top: 14px; text-align: center;">
+            <center>
+                <table style="background-color: #f6f1dd;" cellpadding="0" cellspacing="0" width="90%">
+                    <tr>
+                        <td class="logo">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="right" class="backdrop">
+                            <table cellpadding="1" cellspacing="4" width="100%">
+                                <tr>
+                                    <td align="left">
+                                        <asp:SiteMapPath ID="SiteMapPath1" runat="server" Font-Names="Verdana" Font-Size="0.8em" PathSeparator=" : " >
+                                            <PathSeparatorStyle Font-Bold="True" ForeColor="#999999" />
+                                            <CurrentNodeStyle ForeColor="#eeeeee" />
+                                            <NodeStyle Font-Bold="True" ForeColor="#bbbbbb" />
+                                            <RootNodeStyle Font-Bold="True" ForeColor="#999999" />
+                                        </asp:SiteMapPath>
+                                    </td>
+                                    <td align="right" style="font-weight: bold; color: darkorange;" >
+                                        <asp:LoginView ID="LoginView1" runat="server" >
+                                            <LoggedInTemplate>
+                                                <asp:LoginName ID="LoginName1" runat="server" FormatString="Welcome to UnrealProp, {0}!" />
+                                            </LoggedInTemplate>
+                                            <AnonymousTemplate>
+                                                You are not logged in.
+                                                <br />
+                                            </AnonymousTemplate>
+                                        </asp:LoginView>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td valign="top">
+                            <table cellspacing="5" width="100%" >
+                                <tr>
+                                    <td style="width: 15%; height: 600px; text-align:left;" valign="top" class="leftmenu" >
+                                        <asp:TreeView ID="TreeViewMainMenu" runat="server" DataSourceID="TreeViewSiteMapDataSource" ImageSet="XPFileExplorer" NodeIndent="15" OnTreeNodeDataBound="TreeViewMainMenu_TreeNodeDataBound">
+                                            <ParentNodeStyle Font-Bold="False" />
+                                            <HoverNodeStyle Font-Underline="True" ForeColor="#333333" />
+                                            <SelectedNodeStyle BackColor="#AFADA0" Font-Underline="False" HorizontalPadding="0px" VerticalPadding="0px" />
+                                            <NodeStyle Font-Names="Tahoma" Font-Size="10pt" ForeColor="Black" NodeSpacing="0px" HorizontalPadding="2px" VerticalPadding="2px" />
+                                        </asp:TreeView>
+                                    </td>
+                                    <td style="height: 600px; padding-left: 10px; text-align: left;" rowspan="2" valign="top">
+                                        <asp:contentplaceholder id="ContentPlaceHolder1" runat="server">
+                                        </asp:contentplaceholder>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+                
+                <br />
+                <asp:SiteMapDataSource ID="TreeViewSiteMapDataSource" runat="server" />
+            </center>
+        </div>
+    </form>
+</body>
+</html>

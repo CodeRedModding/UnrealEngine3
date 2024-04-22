@@ -1,0 +1,50 @@
+/*=============================================================================
+	LightShaftApplyVertexShader.usf: Shaders for rendering light shafts
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+UNIFORM_MEDIUM(vec2, TextureSpaceBlurOrigin);
+UNIFORM_MEDIUM(vec4, AspectRatioAndInvAspectRatio);
+UNIFORM_MEDIUM(vec4, UVMinMax);
+UNIFORM_MEDIUM(vec4, LightShaftParameters);
+
+UNIFORM_MEDIUM(vec4, LightShaftBlurParameters); // X: BlurVectorScale, Y: BlurVectorOffset
+
+#define BlurVectorScale			LightShaftBlurParameters.x
+#define BlurVectorOffset		LightShaftBlurParameters.y
+
+UNIFORM_HIGH(vec4, SourceTextureScaleBias);
+UNIFORM_HIGH(vec4, SceneColorScaleBias);
+
+ATTRIBUTE(vec2, Position, POSITION);
+
+OUT_VARYING_DEFAULT(vec2, SceneColorUV, TEXCOORD0);
+OUT_VARYING_DEFAULT(vec2, SourceUV0, TEXCOORD1);
+OUT_VARYING_DEFAULT(vec2, SourceUV1, TEXCOORD2);
+OUT_VARYING_DEFAULT(vec2, SourceUV2, TEXCOORD3);
+OUT_VARYING_DEFAULT(vec2, SourceUV3, TEXCOORD4);
+
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+void main()
+{	
+	gl_Position = vec4(Position, 0, 1);
+	SceneColorUV = Position * SceneColorScaleBias.xy + SceneColorScaleBias.wz;
+
+	// Scale the UVs so that the blur will be the same pixel distance in x and y
+	vec2 AspectCorrectedUV = SceneColorUV * AspectRatioAndInvAspectRatio.zw;
+	vec2 BlurVector = TextureSpaceBlurOrigin - AspectCorrectedUV;
+
+	BlurVector *= LightShaftParameters.z;
+
+	vec2 SampleUVs = AspectCorrectedUV + BlurVector * BlurVectorOffset;
+	vec2 SampleUVsDelta = BlurVector * BlurVectorScale / 8.0;
+	
+	SampleUVs *= AspectRatioAndInvAspectRatio.xy;
+	SampleUVsDelta *= AspectRatioAndInvAspectRatio.xy;
+
+	SourceUV0 = clamp(SampleUVs + 0.0 * SampleUVsDelta, UVMinMax.xy, UVMinMax.zw);
+	SourceUV1 = clamp(SampleUVs + 1.0 * SampleUVsDelta, UVMinMax.xy, UVMinMax.zw);
+	SourceUV2 = clamp(SampleUVs + 2.0 * SampleUVsDelta, UVMinMax.xy, UVMinMax.zw);
+	SourceUV3 = clamp(SampleUVs + 3.0 * SampleUVsDelta, UVMinMax.xy, UVMinMax.zw);
+}

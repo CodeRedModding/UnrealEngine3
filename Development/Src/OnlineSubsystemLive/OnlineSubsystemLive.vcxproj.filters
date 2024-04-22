@@ -1,0 +1,95 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Classes">
+      <UniqueIdentifier>{9ae93eb8-4f7b-42bb-918e-c2349add8279}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Inc">
+      <UniqueIdentifier>{6f55ceb6-3e04-408e-82b5-59c36041f6d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src">
+      <UniqueIdentifier>{5a6a0e34-03f7-47cb-9207-0cf0f8d97e1e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Classes\ClientBeaconAddressResolverLive.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\DownloadableContentEnumeratorLive.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\LivePartyChat.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineEventsInterfaceMcpLive.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineSubsystemLive.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineTitleFileDownloadMcpLive.uc">
+      <Filter>Classes</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\OnlineSubsystemLive.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\OnlineSubsystemLiveClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\OnlineSubsystemLiveNames.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnNetLive.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnSocketLive.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnSocketWinLive.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UOnlineSubsystemLive.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\ClientBeaconAddressResolverLive.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\LivePartyChat.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\OnlineSubsystemLive.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\OnlineSubsystemLivePackage.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\PanoramaHooks.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UDownloadableContentEnumeratorLive.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnNetLive.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnSocketLive.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnSocketWinLive.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UOnlineEventsInterfaceMcpLive.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UOnlineTitleFileDownloadMcpLive.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\VoiceInterfaceLive.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

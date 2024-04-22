@@ -1,0 +1,25 @@
+/*=============================================================================
+	PositionOnlyDepthOnlyVertexShader.hlsl: Depth-only vertex shader.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+void Main(
+	FPositionOnlyVertexFactoryInput Input,
+	out float4 OutPosition : POSITION)
+{
+	float4 WorldPos = VertexFactoryGetWorldPosition(Input);
+	ISOLATE
+	{
+#if WITH_REALD
+		FDepthAllocateOutput DBAResult = DepthAllocate(WorldPos);
+		OutPosition = DBAResult.DBAPixelPosition;
+#else
+		OutPosition = MulMatrix(ViewProjectionMatrix,WorldPos);
+#endif
+		OutPosition = ApplyTemporalAAJitter(OutPosition);
+	}
+}

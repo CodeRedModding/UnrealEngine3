@@ -1,0 +1,91 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="BuiltWithUnrealBuildTool|Win32">
+      <Configuration>BuiltWithUnrealBuildTool</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{77D547F4-1691-42B3-99D3-FB4429DE2ADB}</ProjectGuid>
+    <RootNamespace>D3D9Drv</RootNamespace>
+    <SccProjectName>
+    </SccProjectName>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+    <Keyword>MakeFileProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</IntDir>
+    <NMakeBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeReBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeCleanCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeOutput Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\BaseDevice.h" />
+    <ClInclude Include="Inc\D3D9Drv.h" />
+    <ClInclude Include="Inc\D3D9HardwareSurvey.h" />
+    <ClInclude Include="Inc\D3D9MeshUtils.h" />
+    <ClInclude Include="Inc\D3D9RenderTarget.h" />
+    <ClInclude Include="Inc\D3D9Resources.h" />
+    <ClInclude Include="Inc\D3D9State.h" />
+    <ClInclude Include="Inc\D3D9Util.h" />
+    <ClInclude Include="Inc\D3D9Viewport.h" />
+    <ClInclude Include="Inc\HardwareID.h" />
+    <ClInclude Include="Inc\NvApiError.h" />
+    <ClInclude Include="Inc\NvCpl.h" />
+    <ClInclude Include="Inc\NvPanelApi.h" />
+    <ClInclude Include="Inc\VideoDevice.h" />
+    <ClInclude Include="Src\D3D9DrvPrivate.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\BaseDevice.cpp" />
+    <ClCompile Include="Src\CompatibilityEvaluator.cpp" />
+    <ClCompile Include="Src\D3D9Commands.cpp" />
+    <ClCompile Include="Src\D3D9Device.cpp" />
+    <ClCompile Include="Src\D3D9Drv.cpp" />
+    <ClCompile Include="Src\D3D9HardwareSurvey.cpp" />
+    <ClCompile Include="Src\D3D9IndexBuffer.cpp" />
+    <ClCompile Include="Src\D3D9MeshUtils.cpp" />
+    <ClCompile Include="Src\D3D9Query.cpp" />
+    <ClCompile Include="Src\D3D9RenderTarget.cpp" />
+    <ClCompile Include="Src\D3D9ShaderCompiler.cpp" />
+    <ClCompile Include="Src\D3D9Shaders.cpp" />
+    <ClCompile Include="Src\D3D9State.cpp" />
+    <ClCompile Include="Src\D3D9Texture.cpp" />
+    <ClCompile Include="Src\D3D9Util.cpp" />
+    <ClCompile Include="Src\D3D9VertexBuffer.cpp" />
+    <ClCompile Include="Src\D3D9VertexDeclaration.cpp" />
+    <ClCompile Include="Src\D3D9Viewport.cpp" />
+    <ClCompile Include="Src\HardwareID.cpp" />
+    <ClCompile Include="Src\VideoDevice.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

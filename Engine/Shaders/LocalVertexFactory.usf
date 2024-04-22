@@ -1,0 +1,990 @@
+/*=============================================================================
+	LocalVertexFactory.hlsl: Local vertex factory shader code.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "DecalFactoryCommon.usf"
+
+// In SM5, Vertex color can coexist with TANGENTTOWORLD0 and TANGENTTOWORLD2
+// Other platforms don't have enough interpolators
+#define ALLOW_VERTEX_COLOR (!WORLD_COORDS || SM5_PROFILE)
+
+float4x4 PreviousLocalToWorld;
+float LocalToWorldRotDeterminantFlip;
+float3x3 WorldToLocal;
+float4 LightmapCoordinateScaleBias;
+float4 ShadowmapCoordinateScaleBias;
+#if USE_INSTANCING
+float4 InstancedViewTranslation;
+float4 InstancingFadeOutParams;
+#endif
+
+#if USE_SPLINEDEFORM
+float4 SplineStartPos;
+float4 SplineStartTangent;
+float SplineStartRoll;
+float2 SplineStartScale;
+float2 SplineStartOffset;
+
+float4 SplineEndPos;
+float4 SplineEndTangent;
+float SplineEndRoll;
+float2 SplineEndScale;
+float2 SplineEndOffset;
+
+float4 SplineXDir;
+float SmoothInterpRollScale; // Should be a bool, but bool params don't work in vertex shaders yet (TTP 125134)
+
+float MeshMinZ;
+float MeshRangeZ;
+#endif
+
+
+#if XBOXINSTANCING
+	// Instanced rendering parameters (x=NumVerticesPerInstance, y=1/NumVerticesPerInstance, z=undefined, w=undefined)
+	float4		InstancingParameters;
+#endif
+
+
+struct FVertexFactoryInput
+{
+#if XBOXINSTANCING
+	int		VertexIndex	: INDEX;
+#else
+	float4	Position	: POSITION;
+	half3	TangentX	: TANGENT;
+	// TangentZ.w contains sign of tangent basis determinant
+	half4	TangentZ	: NORMAL;
+
+#if USE_INSTANCING
+	// Normally COLOR1 is used to store user-defined per-vertex color and alpha
+	// When instancing is enabled, we use COLOR1 for InstanceShadowMapBias (see below.)
+	half4	Color		: COLOR0;
+#else
+	half4	Color		: COLOR1;
+#endif
+
+#if NUM_MATERIAL_TEXCOORDS && !(DECAL_FACTORY && MATERIAL_DECAL)
+	float2	TexCoords[NUM_MATERIAL_TEXCOORDS] : TEXCOORD0;
+#endif
+
+#if USE_INSTANCING
+	#if NEEDS_LIGHTMAP_COORDINATE
+		float2	LightMapCoordinate : TEXCOORD3;
+	#endif
+	float4 InstanceShadowMapBias : COLOR1;
+	float4 InstanceTransform1 : TEXCOORD4;
+	float4 InstanceTransform2 : TEXCOORD5;
+	float4 InstanceTransform3 : TEXCOORD6;
+	float4 InstanceInverseTransform1 : TEXCOORD7;
+	float4 InstanceInverseTransform2 : BLENDINDICES0;
+	float4 InstanceInverseTransform3 : BINORMAL;
+	// note, the per-instance lightmap bias is stored in the W of InverseTransform1 and 2 and per-instance random in 3.
+#else
+
+	#if NEEDS_VERTEX_LIGHTMAP
+	float4 LightMapA : TEXCOORD5;
+	float4 LightMapB : TEXCOORD6;
+#elif NEEDS_SIMPLE_VERTEX_LIGHTMAP
+	float4 LightMapA : TEXCOORD5;
+#endif
+
+#if NEEDS_LIGHTMAP_COORDINATE
+	float2	LightMapCoordinate : COLOR;
+#endif
+#endif
+
+#endif
+};
+
+struct FPositionOnlyVertexFactoryInput
+{
+#if XBOXINSTANCING
+	int		VertexIndex	: INDEX;
+#else
+	float4	Position	: POSITION;
+	
+#if USE_INSTANCING
+	float4 InstanceTransform1 : TEXCOORD4;
+	float4 InstanceTransform2 : TEXCOORD5;
+	float4 InstanceTransform3 : TEXCOORD6;
+#endif
+#endif
+};
+
+struct FVertexFactoryInterpolantsVSToPS
+{
+#if WORLD_COORDS
+	TANGENTTOWORLD_INTERPOLATOR_BLOCK
+#endif
+
+#if ALLOW_VERTEX_COLOR
+	// NOTE: When USE_INSTANCING is 1, the Color.a interpolant is filled with the per-instance fade factor instead of VertexColor alpha
+	float4	Color : COLOR0;
+	#if USE_INSTANCING
+		// x = per-instance random, y = per-instance selection mask
+		float2  PerInstanceParams : COLOR1;
+	#endif
+#endif
+
+#if NEEDS_LIGHTMAP_COORDINATE
+#if ( USE_INSTANCING && NEEDS_SHADOWMAP_COORDINATE )
+	float4	LightMapCoordinate					: TEXCOORD0;
+#else
+	float2	LightMapCoordinate					: TEXCOORD0;
+#endif
+#if NUM_MATERIAL_TEXCOORDS
+	float4	TexCoords[(NUM_MATERIAL_TEXCOORDS+1)/2]	: TEXCOORD1;
+#endif
+#else
+#if NUM_MATERIAL_TEXCOORDS
+	float4	TexCoords[(NUM_MATERIAL_TEXCOORDS+1)/2]	: TEXCOORD0;
+#endif
+#endif
+
+#if !COMPILER_SUPPORTS_EMPTY_STRUCTS && !WORLD_COORDS && !NEEDS_LIGHTMAP_COORDINATE && !NUM_MATERIAL_TEXCOORDS
+	float4 Dummy : TEXCOORD0;
+#endif
+};
+
+struct FVertexFactoryInterpolantsVSToDS
+{
+	FVertexFactoryInterpolantsVSToPS InterpolantsVSToPS;
+	
+	// If the PS does not call for world coords, provide our own for use in the DS
+#if !WORLD_COORDS
+	// First row of the tangent to world matrix
+	float3	TangentToWorld0	: VS_To_DS_TangentToWorld0;
+	// Last row of the tangent to world matrix in xyz
+	float4	TangentToWorld2	: VS_To_DS_TangentToWorld2;
+#endif
+};
+
+#if USING_SM5_TESSELLATION
+float2 VertexFactoryGetTextureCoordinateDS( FVertexFactoryInterpolantsVSToDS Interpolants )
+{
+#if NUM_MATERIAL_TEXCOORDS
+	return Interpolants.InterpolantsVSToPS.TexCoords[0].xy;
+#else // #if NUM_MATERIAL_TEXCOORDS
+	return float2(0,0);
+#endif // #if NUM_MATERIAL_TEXCOORDS
+}
+
+float4 VertexFactoryGetWorldNormalDS( FVertexFactoryInterpolantsVSToDS Interpolants )
+{
+#if WORLD_COORDS
+	return Interpolants.InterpolantsVSToPS.TangentToWorld2;
+#else
+	return Interpolants.TangentToWorld2;
+#endif
+}
+
+float3 VertexFactoryGetWorldTangentDS( FVertexFactoryInterpolantsVSToDS Interpolants )
+{
+#if WORLD_COORDS
+	return Interpolants.InterpolantsVSToPS.TangentToWorld0;
+#else
+	return Interpolants.TangentToWorld0;
+#endif
+}
+#endif // #if USING_SM5_TESSELLATION
+
+FVertexFactoryInterpolantsVSToPS VertexFactoryAssignInterpolants(FVertexFactoryInterpolantsVSToDS Input)
+{
+	return Input.InterpolantsVSToPS;
+}
+
+struct FVertexFactoryIntermediates
+{
+#if XBOXINSTANCING
+	float4	Position;
+	half3	TangentX;
+	// TangentZ.w contains sign of tangent basis determinant
+	half4	TangentZ;
+	half4   Color;
+
+#if NUM_MATERIAL_TEXCOORDS && !(DECAL_FACTORY && MATERIAL_DECAL)
+	float2	TexCoords[NUM_MATERIAL_TEXCOORDS];
+#endif
+
+	float4 InstanceShadowMapBias;
+	float4 InstanceTransform1;
+	float4 InstanceTransform2;
+	float4 InstanceTransform3;
+	float4 InstanceInverseTransform1;
+	float4 InstanceInverseTransform2;
+	float4 InstanceInverseTransform3;
+	// note, the per-instance lightmap bias is stored in the W of InverseTransform1 and 2 and per-instance random in 3.
+
+#if NEEDS_LIGHTMAP_COORDINATE
+	float2	LightMapCoordinate;
+#endif
+#elif !USE_INSTANCING
+	float	Dummy;
+#endif
+
+#if USE_INSTANCING
+	float CullFadeAlpha;
+#endif
+};
+
+/** Converts from vertex factory specific interpolants to a FMaterialTessellationParameters, which is used by material inputs. */
+FMaterialTessellationParameters GetMaterialTessellationParameters(FVertexFactoryInterpolantsVSToDS Interpolants, float3 CameraLocalWorldPosition)
+{
+	FMaterialTessellationParameters	Result;
+#if NUM_MATERIAL_TEXCOORDS
+	UNROLL
+	for(int CoordinateIndex = 0;CoordinateIndex < NUM_MATERIAL_TEXCOORDS;CoordinateIndex += 2)
+	{
+		Result.TexCoords[CoordinateIndex] = Interpolants.InterpolantsVSToPS.TexCoords[CoordinateIndex/2].xy;
+		if(CoordinateIndex + 1 < NUM_MATERIAL_TEXCOORDS)
+		{
+			Result.TexCoords[CoordinateIndex + 1] = Interpolants.InterpolantsVSToPS.TexCoords[CoordinateIndex/2].wz;
+		}
+	}
+#endif
+
+#if !WORLD_COORDS
+	half3 TangentToWorld0 = UnpackColor3( Interpolants.TangentToWorld0.xyz );
+	half4 TangentToWorld2 = UnpackColor4( Interpolants.TangentToWorld2 );
+#else
+	half3 TangentToWorld0 = UnpackColor3( Interpolants.InterpolantsVSToPS.TangentToWorld0.xyz );
+	half4 TangentToWorld2 = UnpackColor4( Interpolants.InterpolantsVSToPS.TangentToWorld2 );
+#endif
+
+#if ALLOW_VERTEX_COLOR
+	// NOTE: When USE_INSTANCING is 1, the Color.a interpolant is filled with the per-instance fade factor instead of VertexColor alpha
+	Result.VertexColor = Interpolants.InterpolantsVSToPS.Color;
+#else
+	Result.VertexColor = 1;	
+#endif
+
+	Result.TangentToWorldPreScale = 1;
+
+	// $ These get set with a call to CalcMaterialTessellationParameters() utility in the material later on if necessary
+	Result.TangentReflectionVector = 0;
+
+#if DECAL_FACTORY
+	Result.TangentToWorld = CalcInvTangentBasisDecal( TangentToWorld0 );
+#else
+	Result.TangentToWorld = CalcTangentToWorld( TangentToWorld0, TangentToWorld2 );
+#endif
+
+	Result.WorldPosition = CameraLocalWorldPosition + CameraWorldPos.xyz;
+
+#if DOMAINSHADER
+	Result.TangentCameraVector = TransformWorldVectorToTangent(Result.TangentToWorld,CameraPositionDS.xyz - CameraLocalWorldPosition.xyz * CameraPositionDS.w);
+#endif // #if DOMAINSHADER
+
+	return Result;
+}
+
+/** Converts from vertex factory specific interpolants to a FMaterialPixelParameters, which is used by material inputs. */
+FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	FMaterialPixelParameters	Result;
+#if NUM_MATERIAL_TEXCOORDS
+	UNROLL
+	for(int CoordinateIndex = 0;CoordinateIndex < NUM_MATERIAL_TEXCOORDS;CoordinateIndex += 2)
+	{
+		Result.TexCoords[CoordinateIndex] = Interpolants.TexCoords[CoordinateIndex/2].xy;
+		UNROLL
+		for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+		{
+			Result.SampleTexCoords[SampleIndex][CoordinateIndex] = EvaluateAttributeAtSample(Interpolants.TexCoords[CoordinateIndex/2].xy,SampleIndex);
+		}
+		if(CoordinateIndex + 1 < NUM_MATERIAL_TEXCOORDS)
+		{
+			Result.TexCoords[CoordinateIndex + 1] = Interpolants.TexCoords[CoordinateIndex/2].wz;
+			UNROLL
+			for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+			{
+				Result.SampleTexCoords[SampleIndex][CoordinateIndex + 1] = EvaluateAttributeAtSample(Interpolants.TexCoords[CoordinateIndex/2].wz,SampleIndex);
+			}
+		}
+	}
+#endif
+#if WORLD_COORDS
+	half3 TangentToWorld0 = UnpackColor3( Interpolants.TangentToWorld0.xyz );
+	half4 TangentToWorld2 = UnpackColor4( Interpolants.TangentToWorld2 );
+	Result.UnMirrored = TangentToWorld2.w;
+#endif
+
+#if ALLOW_VERTEX_COLOR
+	// NOTE: When USE_INSTANCING is 1, the Color.a interpolant is filled with the per-instance fade factor instead of VertexColor alpha
+	Result.VertexColor = Interpolants.Color;
+	#if USE_INSTANCING
+		Result.PerInstanceParams = Interpolants.PerInstanceParams;
+	#endif
+#else
+	Result.VertexColor = 1;
+	#if USE_INSTANCING
+		Result.PerInstanceParams = float2(0.f,1.f);
+	#endif
+#endif
+
+	Result.TangentNormal = 0;
+	Result.TangentCameraVector = 0;
+	Result.TangentReflectionVector = 0;
+	Result.ScreenPosition = 0;
+	Result.TangentLightVector = 0;
+#if WORLD_COORDS	
+	#if DECAL_FACTORY
+		Result.TangentToWorld = CalcInvTangentBasisDecal( TangentToWorld0 );
+	#else
+		Result.TangentToWorld = CalcTangentToWorld( TangentToWorld0, TangentToWorld2 );
+	#endif
+#endif
+#if MATERIAL_DECAL
+	#if DECAL_FACTORY && NUM_MATERIAL_TEXCOORDS > 1
+		Result.DecalAttenuation = Interpolants.TexCoords[0].z;
+		Result.DecalPlaneDistance = Interpolants.TexCoords[0].w;
+	#else
+		Result.DecalAttenuation = 1;
+		Result.DecalPlaneDistance = 0;
+	#endif
+#endif
+
+#if LIGHTMAP_UV_ACCESS
+#if NEEDS_LIGHTMAP_COORDINATE	//TEXTURE_LIGHTMAP || SIMPLE_TEXTURE_LIGHTMAP
+	Result.LightmapUVs = Interpolants.LightMapCoordinate.xy;
+#else
+	Result.LightmapUVs = float2(0, 0);
+#endif
+#endif
+
+	Result.TwoSidedSign = 1;
+	return Result;
+}
+
+// When we're using instancing on Xbox, the vertex attributes are in the FVertexFactoryIntermediates, rather than the VertexFactoryInput struct.
+#if XBOXINSTANCING
+	#define VertexAttributes	Intermediates
+#else
+	#define VertexAttributes	Input
+#endif
+
+
+float4 VertexFactoryGetVertexColor(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	float4 Color = VertexAttributes.Color FCOLOR_COMPONENT_SWIZZLE;
+#if USE_INSTANCING
+	return float4(Color.xyz, Intermediates.CullFadeAlpha);
+#else
+	return Color;
+#endif
+}
+
+/** Converts from vertex factory specific input to a FMaterialVertexParameters, which is used by vertex shader material inputs. */
+FMaterialVertexParameters GetMaterialVertexParameters( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentBasis )
+{
+	FMaterialVertexParameters Result;
+	Result.WorldPosition = WorldPosition - PreViewTranslation.xyz;
+	Result.VertexColor = VertexFactoryGetVertexColor(Input, Intermediates);
+
+	float3x3 TangentToLocal = transpose(TangentBasis);
+
+	#if ROW_MAJOR
+		// does not handle instancing!
+		float3x3 TangentToWorld = mul((float3x3)LocalToWorld, TangentToLocal); 
+	#else
+		float3x3 TangentToWorld = mul(transpose((float3x3)LocalToWorld), TangentToLocal); 
+	#endif
+
+	Result.TangentToWorld = TangentToWorld;
+
+#if USE_INSTANCING
+	Result.InstanceLocalToWorld = float4x4(VertexAttributes.InstanceTransform1, VertexAttributes.InstanceTransform2, VertexAttributes.InstanceTransform3, float4(0, 0, 0, 1));
+#endif
+
+#if NUM_MATERIAL_TEXCOORDS && !(DECAL_FACTORY && MATERIAL_DECAL)
+	for(int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS; CoordinateIndex++)
+	{
+#if XBOXINSTANCING
+		// TexCoords for the vertex shader instanced meshes on XBox360 are not implemented.
+		Result.TexCoords[CoordinateIndex] = 0.0f;
+#else
+		Result.TexCoords[CoordinateIndex] = Input.TexCoords[CoordinateIndex];
+#endif
+	}
+#endif
+	return Result;
+}
+
+#if NEEDS_LIGHTMAP_COORDINATE
+float2 GetLightMapCoordinate(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	return Interpolants.LightMapCoordinate.xy;
+}
+
+#if NEEDS_SHADOWMAP_COORDINATE
+float2 GetShadowMapCoordinate(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+#if USE_INSTANCING
+	// When using instancing and rendering a shadow map along with a light map in a single pass, the shadow
+	// map coordinate is stored in the .zw components of the LightMapCoordinate interpolator
+ 	return Interpolants.LightMapCoordinate.zw;
+#else
+	return Interpolants.LightMapCoordinate.xy * ShadowmapCoordinateScaleBias.xy + ShadowmapCoordinateScaleBias.zw;
+#endif
+}
+#endif
+#endif
+
+#if NEEDS_VERTEX_LIGHTMAP
+void VertexFactoryGetVertexLightMap(FVertexFactoryInput Input,out float4 LightMapA,out float4 LightMapB)
+{
+	LightMapA = Input.LightMapA;
+	LightMapB = Input.LightMapB;
+}
+#elif NEEDS_SIMPLE_VERTEX_LIGHTMAP
+void VertexFactoryGetSimpleVertexLightMap(FVertexFactoryInput Input,out float4 LightMapA)
+{
+	LightMapA = Input.LightMapA;
+}
+#endif
+
+
+#if USE_SPLINEDEFORM
+float3 SplineEvalPos(float3 StartPos, float3 StartTangent, float3 EndPos, float3 EndTangent, float A)
+{
+	float A2 = A  * A;
+	float A3 = A2 * A;
+
+	return (((2*A3)-(3*A2)+1) * StartPos) + ((A3-(2*A2)+A) * StartTangent) + ((A3-A2) * EndTangent) + (((-2*A3)+(3*A2)) * EndPos);
+}
+
+float3 SplineEvalDir(float3 StartPos, float3 StartTangent, float3 EndPos, float3 EndTangent, float A)
+{
+	float3 C = (6*StartPos) + (3*StartTangent) + (3*EndTangent) - (6*EndPos);
+	float3 D = (-6*StartPos) - (4*StartTangent) - (2*EndTangent) + (6*EndPos);
+	float3 E = StartTangent;
+
+	float A2 = A  * A;
+
+	return normalize((C * A2) + (D * A) + E);
+}
+#endif
+
+#if USE_SPLINEDEFORM
+/** Calculate full transform that defines frame along spline, given the Z of a vertex. */
+float4x4 CalcSliceTransform(float ZPos)
+{
+	// Find how far 'along' mesh we are
+	float Alpha = (ZPos - MeshMinZ)/MeshRangeZ;
+
+	// Apply hermite interp to Alpha if desired
+	float HermiteAlpha = lerp(Alpha, smoothstep(0.0, 1.0, Alpha), SmoothInterpRollScale);
+
+	// Then find the point and direction of the spline at this point along
+	float3 SplinePos = SplineEvalPos( SplineStartPos.xyz, SplineStartTangent.xyz, SplineEndPos.xyz, SplineEndTangent.xyz, Alpha );	
+	float3 SplineDir = SplineEvalDir( SplineStartPos.xyz, SplineStartTangent.xyz, SplineEndPos.xyz, SplineEndTangent.xyz, Alpha );
+	
+	// Find base frenet frame
+	float3 BaseYVec = normalize( cross(SplineDir, SplineXDir.xyz) );
+	float3 BaseXVec = normalize( cross(BaseYVec, SplineDir) );
+	
+	// Offset from the spline, using the frenet frame
+ 	float2 SliceOffset = lerp(SplineStartOffset, SplineEndOffset, HermiteAlpha);
+	SplinePos += SliceOffset.x * BaseXVec;
+	SplinePos += SliceOffset.y * BaseYVec;
+	
+	// Apply roll to frame around spline	
+	float UseRoll = lerp(SplineStartRoll, SplineEndRoll, HermiteAlpha);
+	float CosAng = cos(UseRoll);
+	float SinAng = sin(UseRoll);
+	float3 XVec = (CosAng * BaseXVec) - (SinAng * BaseYVec);
+	float3 YVec = (CosAng * BaseYVec) + (SinAng * BaseXVec);
+
+	// Find scale at this point along spline
+	float2 UseScale = lerp(SplineStartScale, SplineEndScale, HermiteAlpha);
+
+	// Build overall transform
+	float4x4 SliceTransform = float4x4(UseScale.x*float4(XVec,0), UseScale.y*float4(YVec,0), float4(SplineDir,0), float4(SplinePos,1));
+	
+	return SliceTransform;
+}
+
+/** Calculate rotation matrix that defines frame along spline, given the Z of a vertex. */
+float3x3 CalcSliceRot(float ZPos)
+{
+	// Find how far 'along' mesh we are
+	float Alpha = (ZPos - MeshMinZ)/MeshRangeZ;
+
+	// Apply hermite interp to Alpha if desired
+	float HermiteAlpha = lerp(Alpha, smoothstep(0.0, 1.0, Alpha), SmoothInterpRollScale);
+
+	// Then find the point and direction of the spline at this point along
+	float3 SplineDir = SplineEvalDir( SplineStartPos.xyz, SplineStartTangent.xyz, SplineEndPos.xyz, SplineEndTangent.xyz, Alpha );
+	
+	// Find base frenet frame
+	float3 BaseYVec = normalize( cross(SplineDir, SplineXDir.xyz) );
+	float3 BaseXVec = normalize( cross(BaseYVec, SplineDir) );	
+	
+	// Apply roll to frame around spline
+	float UseRoll = lerp(SplineStartRoll, SplineEndRoll, HermiteAlpha);
+	float CosAng = cos(UseRoll);
+	float SinAng = sin(UseRoll);
+	float3 XVec = (CosAng * BaseXVec) - (SinAng * BaseYVec);
+	float3 YVec = (CosAng * BaseYVec) + (SinAng * BaseXVec);
+
+	// Build rotation transform
+	float3x3 SliceTransform = float3x3(XVec, YVec, SplineDir);
+	
+	return SliceTransform;
+}
+
+#endif
+
+#if USE_INSTANCING
+float4 CalcWorldPosition(float4 Position, float4 InstanceTransform1, float4 InstanceTransform2, float4 InstanceTransform3)
+#else
+float4 CalcWorldPosition(float4 Position)
+#endif
+{
+#if USE_INSTANCING
+	float4x4 InstanceTransform = float4x4(InstanceTransform1, InstanceTransform2, InstanceTransform3, float4(0, 0, 0, 1));
+	return mul(InstanceTransform, Position) + InstancedViewTranslation;
+#elif USE_SPLINEDEFORM
+	// Make transform for this point along spline
+	float4x4 SliceTransform = CalcSliceTransform(Position.z);
+	
+	// Remove Z (transform will move us along spline)
+	float4 SlicePos = Position;
+	SlicePos.z = 0;
+	
+	// Transform into mesh space
+	float4 LocalPos = mul(SlicePos, SliceTransform);
+
+	// Transform from mesh to world space
+	return MulMatrix(LocalToWorld, LocalPos);
+#else
+	return MulMatrix(LocalToWorld,Position);
+#endif
+}
+
+#define VFETCH_TEXCOORD( Index )						\
+	asm													\
+	{													\
+		vfetch TexCoord, VertexIndex, texcoord##Index	\
+	};													\
+	Intermediates.TexCoords[##Index] = TexCoord.xy;
+
+FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
+{
+	FVertexFactoryIntermediates Intermediates;
+
+#if XBOXINSTANCING
+	// Add 0.5 to the vertex index to avoid rounding errors.
+    int InstanceIndex = (Input.VertexIndex + 0.5f) * InstancingParameters.y;
+    int VertexIndex = Input.VertexIndex - InstancingParameters.x * InstanceIndex;
+
+	float4	Pos, TangentX, TangentZ, Color;
+	float4 InstanceShadowMapBias;
+	float4	InstanceTransform1, InstanceTransform2, InstanceTransform3;
+	float4	InstanceInverseTransform1, InstanceInverseTransform2, InstanceInverseTransform3;
+	asm
+	{
+		vfetch Pos, VertexIndex, position
+		vfetch TangentX, VertexIndex, tangent
+		vfetch TangentZ, VertexIndex, normal
+		vfetch Color, VertexIndex, color0
+		vfetch InstanceShadowMapBias, InstanceIndex, color1
+		vfetch InstanceTransform1, InstanceIndex, texcoord4
+		vfetch InstanceTransform2, InstanceIndex, texcoord5
+		vfetch InstanceTransform3, InstanceIndex, texcoord6
+		vfetch InstanceInverseTransform1, InstanceIndex, texcoord7
+		vfetch InstanceInverseTransform2, InstanceIndex, blendindices0
+		vfetch InstanceInverseTransform3, InstanceIndex, binormal
+	};
+
+#if NEEDS_LIGHTMAP_COORDINATE
+	float4	LightMapCoordinate;
+	asm
+	{
+		vfetch LightMapCoordinate, VertexIndex, texcoord3
+	};
+	Intermediates.LightMapCoordinate = LightMapCoordinate.xy;
+#endif
+
+	float4 TexCoord;
+#if !(DECAL_FACTORY && MATERIAL_DECAL) && NUM_MATERIAL_TEXCOORDS > 0
+	VFETCH_TEXCOORD( 0 )
+#endif
+#if !(DECAL_FACTORY && MATERIAL_DECAL) && NUM_MATERIAL_TEXCOORDS > 1
+	VFETCH_TEXCOORD( 1 )
+#endif
+#if !(DECAL_FACTORY && MATERIAL_DECAL) && NUM_MATERIAL_TEXCOORDS > 2
+	VFETCH_TEXCOORD( 2 )
+#endif
+
+	Intermediates.Position = Pos;
+	Intermediates.Color = Color;
+	Intermediates.TangentX = TangentX;
+	Intermediates.TangentZ = TangentZ;
+	Intermediates.InstanceShadowMapBias = InstanceShadowMapBias;
+	Intermediates.InstanceTransform1 = InstanceTransform1;
+	Intermediates.InstanceTransform2 = InstanceTransform2;
+	Intermediates.InstanceTransform3 = InstanceTransform3;
+	Intermediates.InstanceInverseTransform1 = InstanceInverseTransform1;
+	Intermediates.InstanceInverseTransform2 = InstanceInverseTransform2;
+	Intermediates.InstanceInverseTransform3 = InstanceInverseTransform3;
+#elif !USE_INSTANCING
+	Intermediates.Dummy = 0;
+#endif
+
+#if USE_INSTANCING
+	// Calculate distance-based fade amount
+	float3 InstanceLocation = float3(VertexAttributes.InstanceTransform1.w, VertexAttributes.InstanceTransform2.w, VertexAttributes.InstanceTransform3.w) + InstancedViewTranslation.xyz;
+	Intermediates.CullFadeAlpha = 1.0 - saturate( (length(InstanceLocation) - InstancingFadeOutParams.x) * InstancingFadeOutParams.y );
+#endif
+
+	return Intermediates;
+}
+
+/**
+* Get the 3x3 tangent basis vectors for this vertex factory
+* this vertex factory will calculate the binormal on-the-fly
+*
+* @param Input - vertex input stream structure
+* @return 3x3 matrix
+*/
+float3x3 VertexFactoryGetTangentBasis( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates )
+{
+	float3x3 Result=0;	
+	float4 TangentZ = TangentBias(VertexAttributes.TangentZ);
+
+#if DECAL_FACTORY	
+	Result = ProjectDecalTangents(float3(TangentZ.x,TangentZ.y,TangentZ.z));
+#else	
+
+#if USE_SPLINEDEFORM
+	// Make slice rotation matrix, and use that to transform tangents
+	float3x3 SliceRot = CalcSliceRot(Input.Position.z);
+	
+	Result[0] = mul(TangentBias(Input.TangentX), SliceRot);	
+	Result[2] = mul(float3(TangentZ.x,TangentZ.y,TangentZ.z), SliceRot);
+#else
+	// pass-thru the tangent
+	Result[0] = TangentBias(VertexAttributes.TangentX);
+	// pass-thru the normal
+	Result[2] = float3(TangentZ.x,TangentZ.y,TangentZ.z);	
+#endif
+	
+	// derive the binormal by getting the cross product of the normal and tangent
+	Result[1] = cross(Result[2], Result[0]) * TangentZ.w;	
+	// Recalculate TangentX off of the other two vectors
+	// This corrects quantization error since TangentX was passed in as a quantized vertex input
+	// The error shows up most in specular off of a mesh with a smoothed UV seam (normal is smooth, but tangents vary across the seam)
+	Result[0] = cross(Result[1], Result[2]) * TangentZ.w;
+#endif
+
+	return Result;
+}
+
+float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+#if USE_INSTANCING
+	return CalcWorldPosition(VertexAttributes.Position, VertexAttributes.InstanceTransform1, VertexAttributes.InstanceTransform2, VertexAttributes.InstanceTransform3);
+#else
+	return CalcWorldPosition(Input.Position);
+#endif
+}
+
+void CalcTangentToWorld(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, out float3 TangentToWorld0, out float4 TangentToWorld2)
+{
+	#if DECAL_FACTORY
+		// pass 2x2 matrix for transforming normals as interpolant
+		float3 TangentXBiased = TangentBias(VertexAttributes.TangentX);
+		float4 TangentZBiased = TangentBias(VertexAttributes.TangentZ);
+		// pass through the vertex normal (note the misnomer)
+		TangentToWorld0 = TangentZBiased.xyz;
+		TangentToWorld2 = CalcDecal2x2NormalTransform(TangentXBiased, TangentZBiased.xyz, TangentZBiased.w);
+	#else
+		float3x3 LocalToTangent = VertexFactoryGetTangentBasis(Input, Intermediates);
+		// The inverse of LocalToTangent is just the transpose because it is an orthonormal basis
+		float3x3 TangentToLocal = transpose(LocalToTangent);
+
+		#if ROW_MAJOR
+			#if USE_INSTANCING
+				float3x3 InstanceTransform = transpose(float3x3(VertexAttributes.InstanceInverseTransform1.xyz, VertexAttributes.InstanceInverseTransform2.xyz, VertexAttributes.InstanceInverseTransform3.xyz));
+				float3x3 TangentToWorld = mul(InstanceTransform, TangentToLocal);
+			#else
+				float3x3 TangentToWorld = mul((float3x3)LocalToWorld, TangentToLocal); 
+			#endif
+		#else
+			float3x3 TangentToWorld = mul(transpose((float3x3)LocalToWorld), TangentToLocal); 
+		#endif
+
+		TangentToWorld0 = TangentToWorld[0];
+		TangentToWorld2 = float4(TangentToWorld[2], TangentBias(VertexAttributes.TangentZ.w) * LocalToWorldRotDeterminantFlip);
+	#endif
+	TangentToWorld0 = PackColor3( TangentToWorld0 );
+	TangentToWorld2 = PackColor4( TangentToWorld2 );
+}
+
+FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	FVertexFactoryInterpolantsVSToPS Interpolants;
+#if NUM_MATERIAL_TEXCOORDS
+	// Ensure the unused components of the last packed texture coordinate are initialized.
+	Interpolants.TexCoords[(NUM_MATERIAL_TEXCOORDS + 1) / 2 - 1] = 0;
+
+#if MATERIAL_DECAL
+	#if DECAL_FACTORY
+		// first uv pair are the projected decal coords
+		Interpolants.TexCoords[0].xy = ComputeDecalTexCoord(VertexAttributes.Position);
+		// next uv pair stores: z=decal attenutation w=distance of vertex to decal origin
+		Interpolants.TexCoords[0].z = CalcDecalAttenuation(TangentBias(Input.TangentZ).xyz);
+		Interpolants.TexCoords[0].w = CalcDistanceToDecalOrigin(VertexAttributes.Position.xyz);
+	#else
+		Interpolants.TexCoords[0].xy = VertexAttributes.TexCoords[0];
+	#endif
+#else
+	UNROLL
+	for(int CoordinateIndex = 0;CoordinateIndex < NUM_MATERIAL_TEXCOORDS;CoordinateIndex += 2)
+	{
+		Interpolants.TexCoords[CoordinateIndex / 2].xy = VertexAttributes.TexCoords[CoordinateIndex];
+		if(CoordinateIndex + 1 < NUM_MATERIAL_TEXCOORDS)
+		{
+			Interpolants.TexCoords[CoordinateIndex / 2].wz = VertexAttributes.TexCoords[CoordinateIndex + 1];
+		}
+	}
+#endif
+#endif
+
+#if NEEDS_LIGHTMAP_COORDINATE
+#if USE_INSTANCING
+	float2 InstanceLightMapBias = float2(VertexAttributes.InstanceInverseTransform1.w, VertexAttributes.InstanceInverseTransform2.w);
+
+	// Are we using shadow maps?
+	#if STATICLIGHTING_TEXTUREMASK
+
+		// Drawing light+shadow in a single pass? (bass pass)
+		#if NEEDS_SHADOWMAP_COORDINATE
+
+			// The vertex shader copies this instance's shadow map coordinate bias into the zw component of LightMapCoordinate.
+			// We can't use the ShadowmapCoordinateScaleBias parameter's shadow map bias as this isn't instance-aware.
+
+			// Single-pass shadow mapping needs both light map and shadow map coordinates
+			float2 InstanceShadowMapBias = VertexAttributes.InstanceShadowMapBias.xy;
+			Interpolants.LightMapCoordinate.xy = VertexAttributes.LightMapCoordinate * LightmapCoordinateScaleBias.xy + InstanceLightMapBias;
+			Interpolants.LightMapCoordinate.zw = VertexAttributes.LightMapCoordinate * ShadowmapCoordinateScaleBias.xy + InstanceShadowMapBias;
+
+		// Drawing a lighting pass only?
+		#else
+			// Shadowed lighting passes pass shadow map scale/bias in the light map coordinate and parameters, but we still need
+			// the per-instance shadow map bias from the vertex
+			float2 InstanceShadowMapBias = VertexAttributes.InstanceShadowMapBias.xy;
+			Interpolants.LightMapCoordinate.xy = VertexAttributes.LightMapCoordinate * LightmapCoordinateScaleBias.xy + InstanceShadowMapBias;
+		#endif
+
+	#else
+		// Regular light map pass
+		Interpolants.LightMapCoordinate.xy = VertexAttributes.LightMapCoordinate * LightmapCoordinateScaleBias.xy + InstanceLightMapBias;
+	#endif
+#else
+	Interpolants.LightMapCoordinate.xy = VertexAttributes.LightMapCoordinate * LightmapCoordinateScaleBias.xy + LightmapCoordinateScaleBias.wz;
+#endif
+#endif
+
+#if WORLD_COORDS
+	CalcTangentToWorld(Input, Intermediates, Interpolants.TangentToWorld0.xyz, Interpolants.TangentToWorld2);
+#endif
+
+#if ALLOW_VERTEX_COLOR
+	Interpolants.Color = VertexFactoryGetVertexColor(Input, Intermediates);
+	#if USE_INSTANCING
+		// x = per-instance random, y = per-instance selection mask
+		Interpolants.PerInstanceParams = float2( VertexAttributes.InstanceInverseTransform3.w, trunc(VertexAttributes.InstanceShadowMapBias.z * (1.f/256.f)) );
+	#endif
+#endif
+
+	#if !COMPILER_SUPPORTS_EMPTY_STRUCTS && !WORLD_COORDS && !NEEDS_LIGHTMAP_COORDINATE && !NUM_MATERIAL_TEXCOORDS
+		Interpolants.Dummy = float4(0,0,0,0);
+	#endif
+
+	return Interpolants;
+}
+
+FVertexFactoryInterpolantsVSToDS VertexFactoryGetInterpolantsVSToDS(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	FVertexFactoryInterpolantsVSToDS Interpolants;
+	
+	Interpolants.InterpolantsVSToPS = VertexFactoryGetInterpolantsVSToPS(Input, Intermediates);
+	
+#if !WORLD_COORDS
+	// If the PS does not call for world coords, provide our own for use in the DS
+	CalcTangentToWorld(Input, Intermediates, Interpolants.TangentToWorld0, Interpolants.TangentToWorld2);
+#endif
+	
+	return Interpolants;
+}
+
+/** for depth-only pass */
+float4 VertexFactoryGetWorldPosition(FPositionOnlyVertexFactoryInput Input)
+{
+#if XBOXINSTANCING
+	// Add 0.5 to the vertex index to avoid rounding errors.
+    int InstanceIndex = (Input.VertexIndex + 0.5f) * InstancingParameters.y;
+    int VertexIndex = Input.VertexIndex - InstancingParameters.x * InstanceIndex;
+
+	float4	Pos;
+	float4	InstanceTransform1, InstanceTransform2, InstanceTransform3;
+	asm
+	{
+		vfetch Pos, VertexIndex, position
+		vfetch InstanceTransform1, InstanceIndex, texcoord4
+		vfetch InstanceTransform2, InstanceIndex, texcoord5
+		vfetch InstanceTransform3, InstanceIndex, texcoord6
+	};
+	return CalcWorldPosition( Pos, InstanceTransform1, InstanceTransform2, InstanceTransform3 );
+#elif USE_INSTANCING
+	return CalcWorldPosition(Input.Position, Input.InstanceTransform1, Input.InstanceTransform2, Input.InstanceTransform3);
+#else
+	return CalcWorldPosition(Input.Position);
+#endif
+}
+
+float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+#if USE_INSTANCING
+	// @todo: THIS IS SO VERY WRONG, WE DON'T HAVE PRECALCED PreviousLocalToWorld for instance sigh
+	float4x4 InstanceTransform = float4x4(VertexAttributes.InstanceTransform1, VertexAttributes.InstanceTransform2, VertexAttributes.InstanceTransform3, float4(0, 0, 0, 1));
+	return mul(InstanceTransform, VertexAttributes.Position);
+#elif USE_SPLINEDEFORM
+	// Just like CalcWorldPosition...
+	float4x4 SliceTransform = CalcSliceTransform(Input.Position.z);
+	
+	float4 SlicePos = Input.Position;
+	SlicePos.z = 0;
+	
+	float4 LocalPos = mul(SlicePos, SliceTransform);
+
+	return MulMatrix(PreviousLocalToWorld, LocalPos);
+#else
+	return MulMatrix(PreviousLocalToWorld,Input.Position);
+#endif
+}
+
+/**
+* Transform a vector from world space to tangent space
+*
+* @param Input - vertex input stream structure
+* @param TangentBasis - 3x3 matrix to transform to tangent space
+* @param WorldVector - vector in world space to transform 
+* @return vector in tangent space
+*/
+float3 VertexFactoryWorldToTangentSpace( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3x3 TangentBasis, float3 WorldVector )
+{
+	// we use a straight mul here because we are generating the matrix, so we don't worry about column major vs row major (which is what MulMatrix manages per-platform)
+#if USE_INSTANCING
+	float3x3 InverseTransform = float3x3(VertexAttributes.InstanceInverseTransform1.xyz, VertexAttributes.InstanceInverseTransform2.xyz, VertexAttributes.InstanceInverseTransform3.xyz);
+	return mul(TangentBasis, mul(InverseTransform, WorldVector));
+	
+#else
+	return mul(TangentBasis, MulMatrix(WorldToLocal,WorldVector));
+#endif
+}
+
+half3 VertexFactoryGetWorldNormal(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	half4 Normal = TangentBias(VertexAttributes.TangentZ);
+	Normal.w = 0;
+
+#if USE_INSTANCING
+	float4x4 InstanceTransform = float4x4(VertexAttributes.InstanceTransform1, VertexAttributes.InstanceTransform2, VertexAttributes.InstanceTransform3, float4(0, 0, 0, 1));
+	half4 WorldNormal = mul(InstanceTransform, Normal);
+#elif USE_SPLINEDEFORM
+	// Make slice rotation matrix, and use that to transform the normal
+	float3x3 SliceRot = CalcSliceRot(Input.Position.z);
+	float3 LocalNormal = mul(Normal.xyz, SliceRot);
+	
+	half4 WorldNormal = MulMatrix( LocalToWorld, float4(LocalNormal,0) );
+#else
+	half4 WorldNormal = MulMatrix( LocalToWorld, Normal );
+#endif
+	return WorldNormal.xyz;
+}
+
+FVertexFactoryInterpolantsVSToDS VertexFactoryInterpolate(FVertexFactoryInterpolantsVSToDS a, float aInterp, FVertexFactoryInterpolantsVSToDS b, float bInterp)
+{
+	FVertexFactoryInterpolantsVSToDS O;
+	
+	// Do we really need to interpolate TangentToWorld2 here? It should be replaced by the
+	// interpolated normal from 'whatever' interpolation scheme we're using
+	
+#if WORLD_COORDS
+	TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.TangentToWorld0.xyz);
+	TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.TangentToWorld2);
+#else
+	TESSELLATION_INTERPOLATE_MEMBER(TangentToWorld0);
+	TESSELLATION_INTERPOLATE_MEMBER(TangentToWorld2);
+#endif
+
+#if ALLOW_VERTEX_COLOR
+	TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.Color);
+	#if USE_INSTANCING
+		TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.PerInstanceParams);
+	#endif
+#endif
+
+#if NEEDS_LIGHTMAP_COORDINATE
+	TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.LightMapCoordinate);
+#endif
+
+#if NUM_MATERIAL_TEXCOORDS
+	UNROLL
+	for(int tc = 0; tc < (NUM_MATERIAL_TEXCOORDS+1)/2; ++tc)
+	{
+		TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.TexCoords[tc]);
+	}
+#endif
+
+	return O;
+}
+
+float3x3 VertexFactoryGetTangentBasis(FVertexFactoryInterpolantsVSToDS Interpolants)
+{
+	// This duplicates stuff already going on in GetMaterialTessellationParameters(), so
+	// maybe the hull shader could leverage that instead?
+#if !WORLD_COORDS
+	half3 TangentToWorld0 = UnpackColor3( Interpolants.TangentToWorld0.xyz );
+	half4 TangentToWorld2 = UnpackColor4( Interpolants.TangentToWorld2 );
+#else
+	half3 TangentToWorld0 = UnpackColor3( Interpolants.InterpolantsVSToPS.TangentToWorld0.xyz );
+	half4 TangentToWorld2 = UnpackColor4( Interpolants.InterpolantsVSToPS.TangentToWorld2 );
+#endif
+
+#if DECAL_FACTORY
+	float3x3 TangentToWorld = CalcInvTangentBasisDecal( TangentToWorld0 );
+#else
+	float3x3 TangentToWorld = CalcTangentToWorld( TangentToWorld0, TangentToWorld2 );
+#endif
+
+	return TangentToWorld;
+}
+
+float4 VertexFactoryGetWorldNormal(float3x3 TangentToWorld)
+{
+	return float4(mul(TangentToWorld, float3(0,0,1)), 0);
+}
+
+float4 VertexFactoryGetWorldNormal(FVertexFactoryInterpolantsVSToDS Interpolants)
+{
+	float3x3 TangentToWorld = VertexFactoryGetTangentBasis(Interpolants);
+	return VertexFactoryGetWorldNormal(TangentToWorld);
+}
+
+#if USE_INSTANCING
+float4 VertexFactoryGetInstanceHitProxyId(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	// Unpack HitProxy from InstanceShadowMapBias z/w
+	float SelectedMask = trunc(VertexAttributes.InstanceShadowMapBias.z * (1.f/256.f));
+	float R = VertexAttributes.InstanceShadowMapBias.z - 256.f * SelectedMask;
+	float G = trunc(VertexAttributes.InstanceShadowMapBias.w * (1.f/256.f));
+	float B = VertexAttributes.InstanceShadowMapBias.w - 256.f * G;
+
+	return float4(R/255.f, G/255.f, B/255.f, 0);
+}
+#endif

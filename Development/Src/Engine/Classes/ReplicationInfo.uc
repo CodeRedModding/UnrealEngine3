@@ -1,9 +1,10 @@
 //=============================================================================
 // ReplicationInfo.
+// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 //=============================================================================
 class ReplicationInfo extends Info
 	abstract
-	native;
+	native(ReplicationInfo);
 
 cpptext
 {
@@ -13,7 +14,9 @@ cpptext
 defaultproperties
 {
 	RemoteRole=ROLE_SimulatedProxy
-	 bAlwaysRelevant=True
-     bStatic=False
-     bNoDelete=False
+	bAlwaysRelevant=True
+	bStatic=False
+	bNoDelete=False
+
+	Components.Remove(Sprite)
 }

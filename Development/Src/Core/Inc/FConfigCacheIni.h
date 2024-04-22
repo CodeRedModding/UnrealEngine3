@@ -1,18 +1,25 @@
 /*=============================================================================
 	FConfigCacheIni.h: Unreal config file reading/writing.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 /*-----------------------------------------------------------------------------
 	Config cache.
 -----------------------------------------------------------------------------*/
 
+#ifndef INC_CONFIGCACHEINI
+#define INC_CONFIGCACHEINI
+
+typedef TMultiMap<FName,FString> FConfigSectionMap;
+
 // One section in a config file.
-class FConfigSection : public TMultiMap<FString,FString>
-{};
+class FConfigSection : public FConfigSectionMap
+{
+public:
+	UBOOL HasQuotes( const FString& Test ) const;
+	UBOOL operator==( const FConfigSection& Other ) const;
+	UBOOL operator!=( const FConfigSection& Other ) const;
+};
 
 // One config file.
 class FConfigFile : public TMap<FString,FConfigSection>
@@ -20,395 +27,352 @@ class FConfigFile : public TMap<FString,FConfigSection>
 public:
 	UBOOL Dirty, NoSave, Quotes;
 	
-	FConfigFile()
-	: Dirty( 0 )
-	, NoSave( 0 )
-	, Quotes( 0 )
-	{}
+	FConfigFile();
 	
-	void Combine( const TCHAR* Filename)
-	{
-		FString Text;
-		if( appLoadFileToString( Text, Filename ) )
-		{
-			// Replace %GAME% with game name.
-			Text = Text.Replace( TEXT("%GAME%"), GGameName );
+	UBOOL operator==( const FConfigFile& Other ) const;
+	UBOOL operator!=( const FConfigFile& Other ) const;
 
-			TCHAR* Ptr = const_cast<TCHAR*>( *Text );
-			FConfigSection* CurrentSection = NULL;
-			UBOOL Done = 0;
-			while( !Done )
-			{
-				while( *Ptr=='\r' || *Ptr=='\n' )
-					Ptr++;
-				TCHAR* Start = Ptr;
-				while( *Ptr && *Ptr!='\r' && *Ptr!='\n' )
-					Ptr++;				
-				if( *Ptr==0 )
-					Done = 1;
-				*Ptr++ = 0;
-				if( *Start=='[' && Start[appStrlen(Start)-1]==']' )
-				{
-					Start++;
-					Start[appStrlen(Start)-1] = 0;
-					CurrentSection = Find( Start );
-					if( !CurrentSection )
-						CurrentSection = &Set( Start, FConfigSection() );
-				}
-				else if( CurrentSection && *Start )
-				{
-					TCHAR* Value = appStrstr(Start,TEXT("="));
-					if( Value )
-					{
-						TCHAR Cmd = Start[0];
-						if ( Cmd=='+' || Cmd=='-' || Cmd=='.' )
-							Start++;
-						else
-							Cmd=' ';
+	UBOOL Combine( const TCHAR* Filename);
+	void CombineFromBuffer(const TCHAR* Filename,const FString& Buffer);
+	void Read( const TCHAR* Filename );
+	UBOOL Write( const TCHAR* Filename );
+	void Dump(FOutputDevice& Ar);
 
-						*Value++ = 0;
+	UBOOL GetString( const TCHAR* Section, const TCHAR* Key, FString& Value );
+	UBOOL GetDouble( const TCHAR* Section, const TCHAR* Key, DOUBLE& Value );
 
-						// Strip trailing spaces.
-						while( *Value && Value[appStrlen(Value)-1]==' ' )
-							Value[appStrlen(Value)-1] = 0;
+	void SetString( const TCHAR* Section, const TCHAR* Key, const TCHAR* Value );
+	void SetDouble( const TCHAR* Section, const TCHAR* Key, const DOUBLE Value );
+	
+	/**
+	 * Process the contents of an .ini file that has been read into an FString
+	 * 
+	 * @param Filename Name of the .ini file the contents came from
+	 * @param Contents Contents of the .ini file
+	 */
+	void ProcessInputFileContents(const TCHAR* Filename, FString& Contents);
 
-						// Decode quotes if they're present.
-						if( *Value=='\"' && Value[appStrlen(Value)-1]=='\"' )
-						{
-							Value++;
-							Value[appStrlen(Value)-1]=0;
-						}
 
-						if( Cmd=='+' ) 
-						{
-							// Add if not already present.
-							CurrentSection->AddUnique( Start, Value );
-						}
-						else if( Cmd=='-' )	
-						{
-							// Remove if present.
-							CurrentSection->RemovePair( Start, Value );
-						}
-						else if ( Cmd=='.' )
-						{
-							CurrentSection->Add( Start, Value );
-						}
-						else
-						{
-							// Add if not present and replace if present.
-							FString* Str = CurrentSection->Find( Start );
-							if( !Str )
-								CurrentSection->Add( Start, Value );
-							else
-								*Str = Value;
-						}
+	/** Adds any properties that exist in InSourceFile that this config file is missing */
+	void AddMissingProperties( const FConfigFile& InSourceFile );
 
-						// Mark as dirty so "Write" will actually save the changes.
-						Dirty = 1;
-					}
-				}
-			}
-		}
-	}
-	void Read( const TCHAR* Filename )
-	{
-		Empty();
-		FString Text;
-		if( appLoadFileToString( Text, Filename ) )
-		{
-			// Replace %GAME% with game name.
-			Text = Text.Replace( TEXT("%GAME%"), GGameName );
-
-			TCHAR* Ptr = const_cast<TCHAR*>( *Text );
-			FConfigSection* CurrentSection = NULL;
-			UBOOL Done = 0;
-			while( !Done )
-			{
-				while( *Ptr=='\r' || *Ptr=='\n' )
-					Ptr++;
-				TCHAR* Start = Ptr;
-				while( *Ptr && *Ptr!='\r' && *Ptr!='\n' )
-					Ptr++;				
-				if( *Ptr==0 )
-					Done = 1;
-				*Ptr++ = 0;
-				if( *Start=='[' && Start[appStrlen(Start)-1]==']' )
-				{
-					Start++;
-					Start[appStrlen(Start)-1] = 0;
-					CurrentSection = Find( Start );
-					if( !CurrentSection )
-						CurrentSection = &Set( Start, FConfigSection() );
-				}
-				else if( CurrentSection && *Start )
-				{
-					TCHAR* Value = appStrstr(Start,TEXT("="));
-					if( Value )
-					{
-						*Value++ = 0;
-						if( *Value=='\"' && Value[appStrlen(Value)-1]=='\"' )
-						{
-							Value++;
-							Value[appStrlen(Value)-1]=0;
-						}
-						CurrentSection->Add( Start, Value );
-					}
-				}
-			}
-		}
-	}
-	UBOOL Write( const TCHAR* Filename )
-	{
-		if( !Dirty || NoSave )
-			return 1;
-		Dirty = 0;
-		FString Text;
-		for( TIterator It(*this); It; ++It )
-		{
-			Text += FString::Printf( TEXT("[%s]%s"), *It.Key(), LINE_TERMINATOR );
-			for( FConfigSection::TIterator It2(It.Value()); It2; ++It2 )
-				Text += FString::Printf( TEXT("%s=%s%s%s%s"), *It2.Key(), Quotes ? TEXT("\"") : TEXT(""), *It2.Value(), Quotes ? TEXT("\"") : TEXT(""), LINE_TERMINATOR );
-			Text += FString::Printf( LINE_TERMINATOR );
-		}
-		return appSaveStringToFile( Text, Filename );
-	}
+	/**
+	 * Looks for any overrides on the commandline for this file
+	 * 
+	 * @param Filename Name of the .ini file to look for overrides
+	 */
+	void OverrideFromCommandline(const FFilename& Filename);
 };
 
+
 // Set of all cached config files.
-class FConfigCacheIni : public FConfigCache, public TMap<FString,FConfigFile>
+class FConfigCacheIni : public TMap<FFilename,FConfigFile>
 {
 public:
 	// Basic functions.
-	FConfigCacheIni()
-	{}
-	~FConfigCacheIni()
-	{
-		Flush( 1 );
-	}
-	FConfigFile* Find( const TCHAR* InFilename, UBOOL CreateIfNotFound )
-	{
-		FFilename Filename( InFilename  );
-			
-		// Get file.
-		FConfigFile* Result = TMap<FString,FConfigFile>::Find( *Filename );
-		if( !Result && (CreateIfNotFound || GFileManager->FileSize(*Filename)>=0)  )
-		{
-			Result = &Set( *Filename, FConfigFile() );
-			Result->Read( *Filename );
-		}
-		return Result;
-	}
-	void Flush( UBOOL Read, const TCHAR* Filename=NULL )
-	{
-		for( TIterator It(*this); It; ++It )
-			if( !Filename || It.Key()==Filename )
-				It.Value().Write( *It.Key() );
-		if( Read )
-		{
-			if( Filename )
-				Remove(Filename);
-			else
-				Empty();
-		}
-	}
-	void UnloadFile( const TCHAR* Filename )
-	{
-		FConfigFile* File = Find( Filename, 1 );
-		if( File )
-			Remove( Filename );
-	}
-	void Detach( const TCHAR* Filename )
-	{
-		FConfigFile* File = Find( Filename, 1 );
-		if( File )
-			File->NoSave = 1;
-	}
-	UBOOL GetString( const TCHAR* Section, const TCHAR* Key, FString& Value, const TCHAR* Filename )
-	{
-		Value = TEXT("");
-		FConfigFile* File = Find( Filename, 0 );
-		if( !File )
-			return 0;
-		FConfigSection* Sec = File->Find( Section );
-		if( !Sec )
-			return 0;
-		FString* PairString = Sec->Find( Key );
-		if( !PairString )
-			return 0;
-		Value = **PairString;
-		return 1;
-	}
-	UBOOL GetSection( const TCHAR* Section, TArray<FString>& Result, const TCHAR* Filename )
-	{
-		Result.Empty();
-		FConfigFile* File = Find( Filename, 0 );
-		if( !File )
-			return 0;
-		FConfigSection* Sec = File->Find( Section );
-		if( !Sec )
-			return 0;
-		for( FConfigSection::TIterator It(*Sec); It; ++It )
-			new(Result) FString(FString::Printf( TEXT("%s=%s"), *It.Key(), *It.Value() ));
-		return 1;
-	}
-	TMultiMap<FString,FString>* GetSectionPrivate( const TCHAR* Section, UBOOL Force, UBOOL Const, const TCHAR* Filename )
-	{
-		FConfigFile* File = Find( Filename, Force );
-		if( !File )
-			return NULL;
-		FConfigSection* Sec = File->Find( Section );
-		if( !Sec && Force )
-			Sec = &File->Set( Section, FConfigSection() );
-		if( Sec && (Force || !Const) )
-			File->Dirty = 1;
-		return Sec;
-	}
-	void SetString( const TCHAR* Section, const TCHAR* Key, const TCHAR* Value, const TCHAR* Filename )
-	{
-		FConfigFile* File = Find( Filename, 1 );
-		FConfigSection* Sec  = File->Find( Section );
-		if( !Sec )
-			Sec = &File->Set( Section, FConfigSection() );
-		FString* Str = Sec->Find( Key );
-		if( !Str )
-		{
-			Sec->Add( Key, Value );
-			File->Dirty = 1;
-		}
-		else if( appStricmp(**Str,Value)!=0 )
-		{
-			File->Dirty = (appStrcmp(**Str,Value)!=0);
-			*Str = Value;
-		}
-	}
-	void EmptySection( const TCHAR* Section, const TCHAR* Filename )
-	{
-		FConfigFile* File = Find( Filename, 0 );
-		if( File )
-		{
-			FConfigSection* Sec = File->Find( Section );
-			if( Sec && FConfigSection::TIterator(*Sec) )
-			{
-				Sec->Empty();
-				File->Dirty = 1;
-			}
-		}
-	}
-	void Exit()
-	{
-		Flush( 1 );
-	}
-	void Dump( FOutputDevice& Ar )
-	{
-		Ar.Log( TEXT("Files map:") );
-		TMap<FString,FConfigFile>::Dump( Ar );
-	}
+	FConfigCacheIni();
+	~FConfigCacheIni();
+
+	/**
+	* Disables any file IO by the config cache system
+	*/
+	virtual void DisableFileOperations();
+
+	/**
+	* Re-enables file IO by the config cache system
+	*/
+	virtual void EnableFileOperations();
+
+	/**
+	 * Returns whether or not file operations are disabled
+	 */
+	virtual UBOOL AreFileOperationsDisabled();
+
+	/**
+	 * Coalesces .ini and localization files into single files.
+	 * DOES NOT use the config cache in memory, rather it reads all files from disk,
+	 * so it would be a static function if it wasn't virtual
+	 *
+	 * @param ConfigDir				The base directory to search for .ini files
+	 * @param OutputDirectory		The directory to save the output file in
+	 * @param bNeedsByteSwapping	TRUE if the output file is destined for a platform that expects byte swapped data
+	 * @param IniFileWithFilters	Name of ini file to look in for the list of files to filter out
+	 * @param GlobalLanguageCaches	If supplied, the function should fill in the language-specific caches here...
+	 * @param PlatformString		The string of the console being cooked for.
+	 * @param bCurrentLanguageOnly	If TRUE, only generate the coalesced files for the current INI
+	 * @param LanguageMask			if non-zero only languages with corresponding bits set will be generated
+	 */
+	virtual void CoalesceFilesFromDisk(const TCHAR* ConfigDir, const TCHAR* OutputDirectory, UBOOL bNeedsByteSwapping, 
+		const TCHAR* IniFileWithFilters, const TCHAR* PlatformString, UBOOL bCurrentLanguageOnly,DWORD LanguageMask);
+
+	/**
+	 * Reads a coalesced file, breaks it up, and adds the contents to the config cache. Can
+	 * load .ini or locailzation file (see ConfigDir description)
+	 *
+	 * @param ConfigDir If loading ini a file, then this is the path to load from, otherwise if loading a localizaton file, 
+	 *                  this MUST be NULL, and the current language is loaded
+	 */
+	virtual void LoadCoalescedFile(const TCHAR* CoalescedFilename);
+
+	/**
+	* Prases apart an ini section that contains a list of 1-to-N mappings of strings in the following format
+	*	 [PerMapPackages]
+	*	 MapName=Map1
+	*	 Package=PackageA
+	*	 Package=PackageB
+	*	 MapName=Map2
+	*	 Package=PackageC
+	*	 Package=PackageD
+	* 
+	* @param Section Name of section to look in
+	* @param KeyOne Key to use for the 1 in the 1-to-N (MapName in the above example)
+	* @param KeyN Key to use for the N in the 1-to-N (Package in the above example)
+	* @param OutMap Map containing parsed results
+	* @param Filename Filename to use to find the section
+	*
+	* NOTE: The function naming is weird because you can't apparently have an overridden function differnt only by template type params
+	*/
+	virtual void Parse1ToNSectionOfStrings(const TCHAR* Section, const TCHAR* KeyOne, const TCHAR* KeyN, TMap<FString, TArray<FString> >& OutMap, const TCHAR* Filename);
+
+	/**
+	* Prases apart an ini section that contains a list of 1-to-N mappings of names in the following format
+	*	 [PerMapPackages]
+	*	 MapName=Map1
+	*	 Package=PackageA
+	*	 Package=PackageB
+	*	 MapName=Map2
+	*	 Package=PackageC
+	*	 Package=PackageD
+	* 
+	* @param Section Name of section to look in
+	* @param KeyOne Key to use for the 1 in the 1-to-N (MapName in the above example)
+	* @param KeyN Key to use for the N in the 1-to-N (Package in the above example)
+	* @param OutMap Map containing parsed results
+	* @param Filename Filename to use to find the section
+	*
+	* NOTE: The function naming is weird because you can't apparently have an overridden function differnt only by template type params
+	*/
+	virtual void Parse1ToNSectionOfNames(const TCHAR* Section, const TCHAR* KeyOne, const TCHAR* KeyN, TMap<FName, TArray<FName> >& OutMap, const TCHAR* Filename);
+
+	FConfigFile* FindConfigFile( const TCHAR* Filename );
+	FConfigFile* Find( const TCHAR* InFilename, UBOOL CreateIfNotFound );
+	void Flush( UBOOL Read, const TCHAR* Filename=NULL );
+
+	void LoadFile( const TCHAR* InFilename, const FConfigFile* Fallback = NULL, const TCHAR* PlatformString = NULL );
+	void SetFile( const TCHAR* InFilename, const FConfigFile* NewConfigFile );
+	void UnloadFile( const TCHAR* Filename );
+	void Detach( const TCHAR* Filename );
+
+	UBOOL GetString( const TCHAR* Section, const TCHAR* Key, FString& Value, const TCHAR* Filename );
+	UBOOL GetSection( const TCHAR* Section, TArray<FString>& Result, const TCHAR* Filename );
+	FConfigSection* GetSectionPrivate( const TCHAR* Section, UBOOL Force, UBOOL Const, const TCHAR* Filename );
+	void SetString( const TCHAR* Section, const TCHAR* Key, const TCHAR* Value, const TCHAR* Filename );
+	void EmptySection( const TCHAR* Section, const TCHAR* Filename );
+	void EmptySectionsMatchingString( const TCHAR* SectionString, const TCHAR* Filename );
+
+	/**
+	 * Retrieve a list of all of the config files stored in the cache
+	 *
+	 * @param ConfigFilenames Out array to receive the list of filenames
+	 */
+	void GetConfigFilenames(TArray<FFilename>& ConfigFilenames);
+
+	/**
+	 * Retrieve the names for all sections contained in the file specified by Filename
+	 *
+	 * @param	Filename			the file to retrieve section names from
+	 * @param	out_SectionNames	will receive the list of section names
+	 *
+	 * @return	TRUE if the file specified was successfully found;
+	 */
+	UBOOL GetSectionNames( const TCHAR* Filename, TArray<FString>& out_SectionNames );
+
+	/**
+	 * Retrieve the names of sections which contain data for the specified PerObjectConfig class.
+	 *
+	 * @param	Filename			the file to retrieve section names from
+	 * @param	SearchClass			the name of the PerObjectConfig class to retrieve sections for.
+	 * @param	out_SectionNames	will receive the list of section names that correspond to PerObjectConfig sections of the specified class
+	 * @param	MaxResults			the maximum number of section names to retrieve
+	 *
+	 * @return	TRUE if the file specified was found and it contained at least 1 section for the specified class
+	 */
+	UBOOL GetPerObjectConfigSections( const TCHAR* Filename, const FString& SearchClass, TArray<FString>& out_SectionNames, INT MaxResults=1024 );
+
+	void Exit();
+	void Dump( FOutputDevice& Ar );
+
+	/**
+	 * Dumps memory stats for each file in the config cache to the specified archive.
+	 *
+	 * @param	Ar	the output device to dump the results to
+	 */
+	virtual void ShowMemoryUsage( FOutputDevice& Ar );
+
+	/**
+	 * USed to get the max memory usage for the FConfigCacheIni
+	 *
+	 * @return the amount of memory in byes
+	 */
+	virtual SIZE_T GetMaxMemoryUsage();
+
 
 	// Derived functions.
-	FString GetStr( const TCHAR* Section, const TCHAR* Key, const TCHAR* Filename )
-	{
-		FString Result;
-		GetString( Section, Key, Result, Filename );
-		return Result;
-	}
+	FString GetStr
+	(
+		const TCHAR* Section, 
+		const TCHAR* Key, 
+		const TCHAR* Filename 
+	);
 	UBOOL GetInt
 	(
 		const TCHAR*	Section,
 		const TCHAR*	Key,
 		INT&			Value,
 		const TCHAR*	Filename
-	)
-	{
-		FString Text; 
-		if( GetString( Section, Key, Text, Filename ) )
-		{
-			Value = appAtoi(*Text);
-			return 1;
-		}
-		return 0;
-	}
+	);
 	UBOOL GetFloat
 	(
 		const TCHAR*	Section,
 		const TCHAR*	Key,
 		FLOAT&			Value,
 		const TCHAR*	Filename
-	)
-	{
-		FString Text; 
-		if( GetString( Section, Key, Text, Filename ) )
-		{
-			Value = appAtof(*Text);
-			return 1;
-		}
-		return 0;
-	}
+	);
+	UBOOL GetDouble
+	(
+		const TCHAR*	Section,
+		const TCHAR*	Key,
+		DOUBLE&			Value,
+		const TCHAR*	Filename
+	);
 	UBOOL GetBool
 	(
 		const TCHAR*	Section,
 		const TCHAR*	Key,
 		UBOOL&			Value,
 		const TCHAR*	Filename
-	)
-	{
-		FString Text; 
-		if( GetString( Section, Key, Text, Filename ) )
-		{
-			if( appStricmp(*Text,TEXT("True"))==0 )
-			{
-				Value = 1;
-			}
-			else
-			{
-				Value = appAtoi(*Text)==1;
-			}
-			return 1;
-		}
-		return 0;
-	}
+	);
+	INT GetArray
+	(
+		const TCHAR* Section,
+		const TCHAR* Key,
+		TArray<FString>& out_Arr,
+		const TCHAR* Filename/* =NULL  */
+	);
+	/** Loads a "delimited" list of strings
+	 * @param Section - Section of the ini file to load from
+	 * @param Key - The key in the section of the ini file to load
+	 * @param out_Arr - Array to load into
+	 * @param Filename - Ini file to load from
+	 */
+	INT GetSingleLineArray
+	(
+		const TCHAR* Section,
+		const TCHAR* Key,
+		TArray<FString>& out_Arr,
+		const TCHAR* Filename
+	);
+	UBOOL GetColor
+	(
+		const TCHAR*	Section,
+		const TCHAR*	Key,
+		FColor&			Value,
+		const TCHAR*	Filename
+	);
+	UBOOL GetVector
+	(
+		const TCHAR*	Section,
+		const TCHAR*	Key,
+		FVector&			Value,
+		const TCHAR*	Filename
+	);
+	UBOOL GetRotator
+	(
+		const TCHAR*	Section,
+		const TCHAR*	Key,
+		FRotator&			Value,
+		const TCHAR*	Filename
+	);
+
 	void SetInt
 	(
 		const TCHAR* Section,
 		const TCHAR* Key,
 		INT			 Value,
 		const TCHAR* Filename
-	)
-	{
-		TCHAR Text[30];
-		appSprintf( Text, TEXT("%i"), Value );
-		SetString( Section, Key, Text, Filename );
-	}
+	);
 	void SetFloat
 	(
 		const TCHAR*	Section,
 		const TCHAR*	Key,
 		FLOAT			Value,
 		const TCHAR*	Filename
-	)
-	{
-		TCHAR Text[30];
-		appSprintf( Text, TEXT("%f"), Value );
-		SetString( Section, Key, Text, Filename );
-	}
+	);
+	void SetDouble
+	(
+		const TCHAR*	Section,
+		const TCHAR*	Key,
+		DOUBLE			Value,
+		const TCHAR*	Filename
+	);
 	void SetBool
 	(
 		const TCHAR* Section,
 		const TCHAR* Key,
 		UBOOL		 Value,
 		const TCHAR* Filename
-	)
-	{
-		SetString( Section, Key, Value ? TEXT("True") : TEXT("False"), Filename );
-	}
+	);
+	void SetArray
+	(
+		const TCHAR* Section,
+		const TCHAR* Key,
+		const TArray<FString>& Value,
+		const TCHAR* Filename /* = NULL  */
+	);
+	/** Saves a "delimited" list of strings
+	 * @param Section - Section of the ini file to save to
+	 * @param Key - The key in the section of the ini file to save
+	 * @param out_Arr - Array to save from
+	 * @param Filename - Ini file to save to
+	 */
+	void SetSingleLineArray
+	(
+		const TCHAR* Section,
+		const TCHAR* Key,
+		const TArray<FString>& In_Arr,
+		const TCHAR* Filename/* =NULL  */
+	);
+	void SetColor
+	(
+		const TCHAR*	Section,
+		const TCHAR*	Key,
+		FColor			Value,
+		const TCHAR*	Filename
+	);
+	void SetVector
+	(
+		const TCHAR*	Section,
+		const TCHAR*	Key,
+		FVector			Value,
+		const TCHAR*	Filename
+	);
+	void SetRotator
+	(
+		const TCHAR*	Section,
+		const TCHAR*	Key,
+		FRotator			Value,
+		const TCHAR*	Filename
+	);
 
 	// Static allocator.
-	static FConfigCache* Factory()
-	{
-		return new FConfigCacheIni();
-	}
+	static FConfigCacheIni* Factory();
+
+private:
+	/** TRUE if file operations should not be performed */
+	UBOOL bAreFileOperationsDisabled;
 };
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
+#endif
+
+
 

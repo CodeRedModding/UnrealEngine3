@@ -1,0 +1,49 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+
+<UserControl
+	x:Class="ContentBrowser.TagFilterTier"
+	x:Name="This"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:cc="clr-namespace:CustomControls"
+	xmlns:cb="clr-namespace:ContentBrowser">
+	<UserControl.Resources>
+
+		<!-- Filter options have some text and an asset count: e.g. Water      25 -->
+		<DataTemplate DataType="{x:Type cb:FilterOption}">
+			<DockPanel>
+				<TextBlock Text="{Binding Path=AssetCount, StringFormat={}{0:#,0}}" DockPanel.Dock="Right" HorizontalAlignment="Right" Margin="4,0"/>
+				<TextBlock Text="{Binding Path=FormattedText}" />
+			</DockPanel>
+		</DataTemplate>
+
+		<!-- Special filter option should not show a number of assets -->
+		<DataTemplate DataType="{x:Type cc:SpecialFilterOption}">
+			<TextBlock Text="{Binding Path=FormattedText}" />
+		</DataTemplate>
+
+	</UserControl.Resources>
+
+	<!-- A single column in a filter panel (e.g. Tags column, Object Types column) -->
+	<Border Style="{StaticResource FilterSubpanel}" >
+		<DockPanel>
+			<!-- Border around the header; lights up when the filter is active -->
+			<cc:SlateBorder x:Name="mFilterBorder" DockPanel.Dock="Top" Padding="2" BorderStyle="FilterHeader" >
+				<DockPanel LastChildFill="False">
+					<!-- Header Label -->
+					<Label DockPanel.Dock="Left"  Content="{Binding ElementName=This, Path=Title}" Target="{Binding ElementName=mFilterListView}" Padding="0"/>
+				</DockPanel>
+			</cc:SlateBorder>
+			<Grid>
+				<!-- List showing the filter possibilities -->
+				<cb:TagFilterListView DockPanel.Dock="Top" x:Name="mFilterListView" />
+
+				<!-- A glyph to signify this filter node is disabled -->
+				<Border x:Name="mDisabledGlyph" Background="{DynamicResource Slate_FilterList_DisabledOverlay}" Visibility="Hidden" >
+					<TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Text="{DynamicResource ContentBrowser_FilterPanel_FilterListDisabledBlurb}" />
+				</Border>
+			</Grid>
+		</DockPanel>
+	</Border>
+
+</UserControl>

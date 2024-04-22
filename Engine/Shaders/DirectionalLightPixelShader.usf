@@ -1,0 +1,113 @@
+/*=============================================================================
+	DirectionalLightPixelShader.hlsl: Directional light pixel shader.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#define NEEDS_LIGHTMAP_COORDINATE STATICLIGHTING_TEXTUREMASK
+
+#if ENABLE_DISTANCE_SHADOW_FADING
+	// World position is needed when fading based on distance between dynamic and precomputed shadows
+	#undef WORLD_POS
+	#define WORLD_POS 1
+#endif
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+#include "DynamicLightingCommon.usf"
+#include "SubsurfaceScatteringCommon.usf"
+
+void Main(
+	in FVertexFactoryInterpolantsVSToPS FactoryInterpolants,
+	in float3 TangentLightVector : TEXCOORD4,
+	in float4 WorldLightVector : TEXCOORD5,
+	in float4 CameraVectorOrVertexColor : TEXCOORD6,
+	in float4 PixelPosition : TEXCOORD7,
+	OPTIONAL_PixelShaderScreenPosition
+	OPTIONAL_FacingSign
+	OPTIONAL_PixelShaderCoverageInputOutput
+	out float4 OutColor : COLOR0
+#if SM5_PROFILE && MATERIAL_ENABLE_SUBSURFACE_SCATTERING
+	,out float4 OutSubsurfaceInscattering : COLOR1
+#endif
+	)
+{
+#if PER_PIXEL_TANGENT_BASIS
+	float3x3 TangentBasis = VertexFactoryGetPerPixelTangentBasis(FactoryInterpolants);
+	TangentLightVector = mul(TangentBasis, normalize(TangentLightVector));
+#if !PER_PIXEL_CAMERA_VECTOR
+	CameraVectorOrVertexColor.xyz = mul(TangentBasis, normalize(CameraVectorOrVertexColor.xyz));
+#endif
+#endif
+
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(FactoryInterpolants);
+	CalcMaterialParameters(MaterialParameters,FacingSign,CameraVectorOrVertexColor,PixelPosition,TangentLightVector);
+
+#if STATICLIGHTING_TEXTUREMASK
+	#if STATICLIGHTING_SIGNEDDISTANCEFIELD
+		half TransitionDistance = tex2D(ShadowTexture,GetLightMapCoordinate(FactoryInterpolants)).x;
+		half ShadowFactor = (TransitionDistance + DistanceFieldParameters.x) * DistanceFieldParameters.y;
+		half LightMask = pow(saturate(ShadowFactor), DistanceFieldParameters.z); 
+	#else
+		half LightMask = tex2D(ShadowTexture,GetLightMapCoordinate(FactoryInterpolants)).r; 
+	#endif
+#elif STATICLIGHTING_VERTEXMASK
+	half	LightMask = WorldLightVector.w;
+#else
+	half	LightMask = 1;
+#endif
+
+	GetMaterialCoverageAndClipping(MaterialParameters,PixelShaderScreenPosition.xy,InCoverage,OutCoverage);
+
+	half3 CombinedShadowFactor = LightMask;
+	if (bReceiveDynamicShadows)
+	{
+		#if MATERIALBLENDING_SOLID || MATERIALBLENDING_MASKED || TRANSLUCENCY_INHERIT_DOMINANT_SHADOWS_FROM_OPAQUE
+			// .rgb contains accumulated per-object normal shadow factors * light function output
+			// .a contains the dominant whole scene shadow, if one was rendered
+			half4 AccumulatedShadowFactors = GetLightAttenuation(MaterialParameters.ScreenPosition);
+			#if ENABLE_DISTANCE_SHADOW_FADING
+				// Static branching to only calculate the distance fade when enabled
+				if (bEnableDistanceShadowFading)
+				{
+					half DynamicShadowFraction = DistanceFromCameraFade(MaterialParameters.WorldPosition, CameraWorldPos);
+					// Replace the precomputed dominant shadow with the whole scene dynamic shadow based on distance
+					CombinedShadowFactor = lerp(CombinedShadowFactor, AccumulatedShadowFactors.aaa, DynamicShadowFraction);
+				}
+			#endif
+			// Combine the whole scene dominant light shadow with per-object shadows and the light function if one was rendered
+			CombinedShadowFactor *= AccumulatedShadowFactors.rgb;
+		#elif TRANSLUCENCY_RECEIVE_DYNAMIC_SHADOWS_FROM_STATIC
+			float DynamicShadowFactor = CalculateForwardDynamicShadowing(MaterialParameters.ScreenPosition);
+			CombinedShadowFactor *= DynamicShadowFactor;
+		#endif
+	}
+
+	half3 SpecularColor = GetMaterialSpecularColor(MaterialParameters);
+
+	OutColor.rgb = 
+		GetMaterialPointLightTransfer(GetMaterialDiffuseColor(MaterialParameters),SpecularColor,MaterialParameters,0,CombinedShadowFactor) *
+		LightColor;
+
+	half Opacity = GetMaterialOpacity(MaterialParameters);
+
+#if MATERIALBLENDING_TRANSLUCENT
+	OutColor.a = Opacity;
+#elif MATERIALBLENDING_ADDITIVE || MATERIALBLENDING_SOFTMASKED
+	OutColor.rgb = OutColor.rgb * Opacity;
+	OutColor.a = 0.0f;
+#else
+	OutColor.a = 0.0f;
+#endif
+		
+#if SM5_PROFILE && MATERIAL_ENABLE_SUBSURFACE_SCATTERING
+	float3 IncidentLighting =
+		  LightColor
+		* CombinedShadowFactor
+		* saturate(dot(MaterialParameters.TangentLightVector,MaterialParameters.TangentNormal));
+
+	OutSubsurfaceInscattering = EncodeSubsurfaceInscattering(IncidentLighting * GetMaterialSubsurfaceInscatteringColor(MaterialParameters));
+#endif
+		
+	OutColor = RETURN_COLOR(OutColor);
+}

@@ -1,34 +1,32 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+ 
+/** 
+ * Defines how a sound loops; either indefinitely, or for a set number of times
+ */
+  
 class SoundNodeLooping extends SoundNode
-	native(Sound)
-	collapsecategories
-	hidecategories(Object)
+	native( Sound )
+	hidecategories( Object )
 	editinlinenew;
 
+var( Looping )			bool					bLoopIndefinitely;
+var( Looping )			float					LoopCountMin<ToolTip=The lower bound of number of times to loop>;
+var( Looping )			float					LoopCountMax<ToolTip=The upper bound of number of times to loop>;
 
-var()	editinlinenotify export noclear	distributionfloat	LoopCount;
-
-cpptext
-{
-	// USoundNode interface.
-
-	virtual UBOOL Finished(  class UAudioComponent* AudioComponent );
-
-	/**
-	 * Returns whether this sound node will potentially loop leaf nodes.
-	 *
-	 * @return TRUE
-	 */
-	virtual UBOOL IsPotentiallyLooping() { return TRUE; }
-
-	virtual void ParseNodes( class UAudioComponent* AudioComponent, TArray<FWaveInstance*>& WaveInstances );
-}
-
+var			deprecated	rawdistributionfloat	LoopCount;
 
 defaultproperties
 {
+	bLoopIndefinitely=TRUE
+	LoopCountMin=1000000
+	LoopCountMax=1000000
+	
+	// deprecated defaults
 	Begin Object Class=DistributionFloatUniform Name=DistributionLoopCount
-		Min=0
-		Max=0
+		Min=1000000
+		Max=1000000
 	End Object
-	LoopCount=DistributionLoopCount
+	LoopCount=(Distribution=DistributionLoopCount)
 }

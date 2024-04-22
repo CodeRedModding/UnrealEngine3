@@ -1,15 +1,16 @@
 /*=============================================================================
 	UnConstraint.cpp: Physics Constraints - rigid-body constraint (joint) related classes.
-	Copyright 2000 Epic Games, Inc. All Rights Reserved.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/ 
 
 #include "EnginePrivate.h"
 #include "EnginePhysicsClasses.h"
 
-#ifdef WITH_NOVODEX
+#if WITH_NOVODEX
 #include "UnNovodexSupport.h"
 #endif // WITH_NOVODEX
 
+IMPLEMENT_CLASS(ARigidBodyBase);
 IMPLEMENT_CLASS(ARB_ConstraintActor);
 
 IMPLEMENT_CLASS(URB_ConstraintSetup);
@@ -17,15 +18,13 @@ IMPLEMENT_CLASS(URB_BSJointSetup);
 IMPLEMENT_CLASS(URB_HingeSetup);
 IMPLEMENT_CLASS(URB_PrismaticSetup);
 IMPLEMENT_CLASS(URB_SkelJointSetup);
+IMPLEMENT_CLASS(URB_PulleyJointSetup);
+IMPLEMENT_CLASS(URB_StayUprightSetup);
+IMPLEMENT_CLASS(URB_DistanceJointSetup);
 
 IMPLEMENT_CLASS(URB_ConstraintInstance);
 
 IMPLEMENT_CLASS(URB_ConstraintDrawComponent);
-
-#define MIN_LIN_ERP (0.2f)
-#define MIN_ANG_ERP (0.2f)
-#define MIN_LIN_CFM (0.0007f)
-#define MIN_ANG_CFM (0.0007f)
 
 //////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// UTILS ///////////////////////////////////////////////
@@ -34,28 +33,54 @@ IMPLEMENT_CLASS(URB_ConstraintDrawComponent);
 FMatrix FindBodyMatrix(AActor* Actor, FName BoneName)
 {
 	if(!Actor)
-		return FMatrix::Identity;
-
-	if(BoneName == NAME_None)
 	{
-		FMatrix BodyTM = Actor->LocalToWorld();
-		BodyTM.RemoveScaling();
-		return BodyTM;
+		return FMatrix::Identity;
 	}
 
+	// Jointing to a skeletal mesh component (which isn't using single body physics) - find the bone.
 	USkeletalMeshComponent* SkelComp = Cast<USkeletalMeshComponent>(Actor->CollisionComponent);
-	if(SkelComp)
+	if(SkelComp && !SkelComp->bUseSingleBodyPhysics)
 	{
-		INT BoneIndex = SkelComp->MatchRefBone(BoneName);
-		if(BoneIndex != INDEX_NONE)
-		{	
-			FMatrix BodyTM = SkelComp->GetBoneMatrix(BoneIndex);
+		if(BoneName != NAME_None)
+		{
+			INT BoneIndex = 0;
+
+			if (BoneName != NAME_None)
+				BoneIndex = SkelComp->MatchRefBone(BoneName);
+
+			if(BoneIndex != INDEX_NONE)
+			{	
+				FMatrix BodyTM = SkelComp->GetBoneMatrix(BoneIndex);
+				BodyTM.RemoveScaling();
+				return BodyTM;
+			}
+			else
+			{
+				debugf( TEXT("FindBodyMatrix : Could not find bone '%s'"), *BoneName.ToString() );
+				return FMatrix::Identity;
+			}
+		}
+		else
+		{
+			debugf( TEXT("FindBodyMatrix : Connecting to SkeletalMesh of Actor '%s', but no BoneName specified"), *Actor->GetName() );
+			return FMatrix::Identity;
+		}
+	}
+	// Non skeletal (ie single body) case.
+	else
+	{
+		if(Actor->CollisionComponent)
+		{
+			FMatrix BodyTM = Actor->CollisionComponent->LocalToWorld;
 			BodyTM.RemoveScaling();
 			return BodyTM;
 		}
+		else
+		{
+			debugf( TEXT("FindBodyMatrix : No CollisionComponent for Actor '%s'."), *Actor->GetName() );
+			return FMatrix::Identity;
+		}
 	}
-
-	return FMatrix::Identity;
 }
 
 
@@ -71,12 +96,12 @@ FBox FindBodyBox(AActor* Actor, FName BoneName)
 		INT BodyIndex = SkelComp->PhysicsAsset->FindBodyIndex(BoneName);
 		if(BoneIndex != INDEX_NONE && BodyIndex != INDEX_NONE)
 		{	
-			FVector TotalScale = Actor->DrawScale * Actor->DrawScale3D.X;
+			FVector TotalScale(SkelComp->Scale * SkelComp->Scale3D.X * Actor->DrawScale * Actor->DrawScale3D.X);
 
 			FMatrix BoneTM = SkelComp->GetBoneMatrix(BoneIndex);
 			BoneTM.RemoveScaling();
 
-			return SkelComp->PhysicsAsset->BodySetup(BoneIndex)->AggGeom.CalcAABB(BoneTM, TotalScale.X);
+			return SkelComp->PhysicsAsset->BodySetup(BodyIndex)->AggGeom.CalcAABB(BoneTM, TotalScale);
 		}
 	}
 	else
@@ -91,89 +116,219 @@ FBox FindBodyBox(AActor* Actor, FName BoneName)
 //////////////////////////////// CONSTRAINT ACTOR ////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
 
-// When we move a constraint - we need to update the position/axis held in
-// local space (ie. relative to each connected actor)
-void ARB_ConstraintActor::PostEditMove()
+/** InitConstraint()
+ * - Spawn an RB_ConstraintActor
+ * - Fill in the ConstraintActor1 and ConstraintActor2, as well as ConstraintBone1/ConstraintBone2 in the ConstraintSetup if you attaching to bones of a skeletal mesh.
+ * - Once everything is in correct locations, call ARB_ConstraintActor::PostEditMove to update the relative reference frame (Pos1, PriAxis1 etc).
+ * - Then call InitRBPhys on the ConstraintActor, to start the joint up.
+ * - If you want to make it breakable, set bLinearBreakable/ LinearBreakThreshold before calling InitRBPhys.
+ */
+void ARB_ConstraintActor::InitConstraint( AActor* Actor1, AActor* Actor2, FName Actor1Bone, FName Actor2Bone, FLOAT BreakThreshold)
 {
-	Super::PostEditMove();
+	if (ConstraintSetup != NULL)
+	{
+		ConstraintActor1 = Actor1;
+		ConstraintActor2 = Actor2;
+		ConstraintSetup->ConstraintBone1 = Actor1Bone;
+		ConstraintSetup->ConstraintBone2 = Actor2Bone;
+		if ( BreakThreshold > 0.f )
+		{
+			ConstraintSetup->bLinearBreakable = true;
+			ConstraintSetup->LinearBreakThreshold = BreakThreshold;
+		}
+		UpdateConstraintFramesFromActor();
+		InitRBPhys();
+	}
+	else
+	{
+		debugf(NAME_Warning, TEXT("Cannot initialize '%s' because it has no ConstraintSetup"), *GetName());
+	}
+}
 
+/** Shut down the constraint - breaking it. */
+void ARB_ConstraintActor::TermConstraint()
+{
+	TermRBPhys(NULL);
+}
+
+/** 
+ *	Update the reference frames held inside the ConstraintSetup that indicate the joint location in the reference frame 
+ *	of the two connected Actors. You should call this whenever the constraint or either actor moves, or if you change
+ *	the connected actors. THis function does nothing though once the joint has bee initialised (InitRBPhys).
+ */
+void ARB_ConstraintActor::UpdateConstraintFramesFromActor()
+{
 	check(ConstraintSetup);
 	check(ConstraintInstance);
 
 	FMatrix a1TM = FindBodyMatrix(ConstraintActor1, ConstraintSetup->ConstraintBone1);
-	a1TM.ScaleTranslation( FVector(U2PScale) );
+	a1TM.ScaleTranslation( FVector(U2PScale,U2PScale,U2PScale) );
 
 	FMatrix a2TM = FindBodyMatrix(ConstraintActor2, ConstraintSetup->ConstraintBone2);
-	a2TM.ScaleTranslation( FVector(U2PScale) );
+	a2TM.ScaleTranslation( FVector(U2PScale,U2PScale,U2PScale) );
 
 	// Calculate position/axis from constraint actor.
-	FRotationMatrix ConMatrix = FRotationMatrix(Rotation);
+	const FRotationMatrix ConMatrix = FRotationMatrix(Rotation);
 
 	// World ref frame
-	FVector wPos, wPri, wOrth;
+	const FVector wPos = Location * U2PScale;
+	const FVector wPri = ConMatrix.GetAxis(0);
+	const FVector wOrth = ConMatrix.GetAxis(1);
 
-	wPos = Location * U2PScale;
-	wPri = ConMatrix.GetAxis(0);
-	wOrth = ConMatrix.GetAxis(1);
+	if(bUpdateActor1RefFrame)
+	{
+		const FMatrix a1TMInv = a1TM.Inverse();
+		ConstraintSetup->Pos1 = a1TMInv.TransformFVector(wPos);
+		ConstraintSetup->PriAxis1 = a1TMInv.TransformNormal(wPri);
+		ConstraintSetup->SecAxis1 = a1TMInv.TransformNormal(wOrth);
+	}
 
-	FVector lPos, lPri, lOrth;
+	if(bUpdateActor2RefFrame)
+	{
+		const FMatrix a2TMInv = a2TM.Inverse();
+		ConstraintSetup->Pos2 = a2TMInv.TransformFVector(wPos);
+		ConstraintSetup->PriAxis2 = a2TMInv.TransformNormal(wPri);
+		ConstraintSetup->SecAxis2 = a2TMInv.TransformNormal(wOrth);
+	}
 
-	FMatrix a1TMInv = a1TM.Inverse();
-	FMatrix a2TMInv = a2TM.Inverse();
+	if(PulleyPivotActor1)
+	{
+		ConstraintSetup->PulleyPivot1 = PulleyPivotActor1->Location;
+	}
 
-	ConstraintSetup->Pos1 = a1TMInv.TransformFVector(wPos);
-	ConstraintSetup->PriAxis1 = a1TMInv.TransformNormal(wPri);
-	ConstraintSetup->SecAxis1 = a1TMInv.TransformNormal(wOrth);
+	if(PulleyPivotActor2)
+	{
+		ConstraintSetup->PulleyPivot2 = PulleyPivotActor2->Location;
+	}
 
-	ConstraintSetup->Pos2 = a2TMInv.TransformFVector(wPos);
-	ConstraintSetup->PriAxis2 = a2TMInv.TransformNormal(wPri);
-	ConstraintSetup->SecAxis2 = a2TMInv.TransformNormal(wOrth);
-
+	// Update draw component (and hence scene proxy) to reflect new information
+	ForceUpdateComponents(FALSE,FALSE);
 }
 
-void ARB_ConstraintActor::PostEditChange(UProperty* PropertyThatChanged)
+/** 
+ *	Called when we move a constraint to update the position/axis held in local space (ie. relative to each connected actor)
+ */
+void ARB_ConstraintActor::PostEditMove(UBOOL bFinished)
 {
-	Super::PostEditChange(PropertyThatChanged);
-
-	if(GIsEditor)
-		this->PostEditMove();
-
+	UpdateConstraintFramesFromActor();
+	Super::PostEditMove(bFinished);
 }
 
+void ARB_ConstraintActor::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	if(GIsEditor)
+	{
+		PostEditMove( TRUE );
+	}
+
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+}
+
+#if WITH_EDITOR
 void ARB_ConstraintActor::CheckForErrors()
 {
 	Super::CheckForErrors();
+	if( ConstraintSetup == NULL )
+	{
+		GWarn->MapCheck_Add( MCTYPE_WARNING, this, *FString::Printf( LocalizeSecure( LocalizeUnrealEd( "MapCheck_Message_ConstraintSetupNull" ), *GetName() ) ), TEXT( "ConstraintSetupNull" ) );
+	}
+	if( ConstraintInstance == NULL )
+	{
+		GWarn->MapCheck_Add( MCTYPE_WARNING, this, *FString::Printf( LocalizeSecure( LocalizeUnrealEd( "MapCheck_Message_ConstraintInstanceNull" ), *GetName() ) ), TEXT( "ConstraintInstanceNull" ) );
+	}
 
-
-
+	// Make sure constraint actors are not both NULL.
+	if ( ConstraintActor1 == NULL && ConstraintActor2 == NULL )
+	{
+		GWarn->MapCheck_Add( MCTYPE_WARNING, this, *FString::Printf( LocalizeSecure( LocalizeUnrealEd( "MapCheck_Message_BothConstraintsNull" ), *GetName() ) ), TEXT( "BothConstraintsNull" ) );
+	}
+	else
+	{
+		// Make sure constraint actors are not both static.
+		if ( ConstraintActor1 != NULL && ConstraintActor2 != NULL )
+		{
+			if ( ConstraintActor1->IsStatic() && ConstraintActor2->IsStatic() )
+			{
+				GWarn->MapCheck_Add( MCTYPE_WARNING, this, *FString::Printf( LocalizeSecure( LocalizeUnrealEd( "MapCheck_Message_BothConstraintsStatic" ), *GetName() ) ), TEXT( "BothConstraintsStatic" ) );
+			}
+		}
+		else
+		{
+			// At this point, we know one constraint actor is NULL and the other is non-NULL.
+			// Check that the non-NULL constraint actor is not static.
+			if ( ( ConstraintActor1 == NULL && ConstraintActor2->IsStatic() ) ||
+				 ( ConstraintActor2 == NULL && ConstraintActor1->IsStatic() ) )
+			{
+				GWarn->MapCheck_Add( MCTYPE_WARNING, this, *FString::Printf( LocalizeSecure( LocalizeUnrealEd( "MapCheck_Message_SingleStaticActor" ), *GetName() ) ), TEXT( "SingleStaticActor" ) );
+			}
+		}
+	}
 }
+#endif
 
 void ARB_ConstraintActor::InitRBPhys()
 {
+	// Make sure not setting one of the ConstraintActors to point to myself.
+	// If you do that, it goes into an infinite InitRBPhys call loop.
+	if(ConstraintActor1 == this)
+	{
+		ConstraintActor1 = NULL;
+	}
+
+	if(ConstraintActor2 == this)
+	{
+		ConstraintActor2 = NULL;
+	}
+
 	// Ensure connected actors have their physics started up.
+	UPrimitiveComponent* PrimComp1 = NULL;
 	if(ConstraintActor1)
+	{
 		ConstraintActor1->InitRBPhys();
+		PrimComp1 = ConstraintActor1->CollisionComponent;
+	}
 
+	UPrimitiveComponent* PrimComp2 = NULL;
 	if(ConstraintActor2)
+	{
 		ConstraintActor2->InitRBPhys();
+		PrimComp2 = ConstraintActor2->CollisionComponent;
+	}
 
-	ConstraintInstance->InitConstraint( ConstraintActor1, ConstraintActor2, ConstraintSetup, 1.0f, this );
-
-	SetDisableCollision(bDisableCollision);
+	if (ConstraintSetup != NULL && (PrimComp1 != NULL || PrimComp2 != NULL))
+	{
+		ConstraintInstance->InitConstraint(PrimComp1, PrimComp2, ConstraintSetup, 1.0f, this, NULL, FALSE);
+		SetDisableCollision(bDisableCollision);
+	}
 }
 
-void ARB_ConstraintActor::TermRBPhys()
+/**
+ *	Shut down physics for this constraint.
+ *	If Scene is NULL, it will always shut down physics. If an RBPhysScene is passed in, it will only shut down physics it the constraint is in that scene.
+ */
+void ARB_ConstraintActor::TermRBPhys(FRBPhysScene* Scene)
 {
-	ConstraintInstance->TermConstraint();
-
+	ConstraintInstance->TermConstraint(Scene, FALSE);
 }
 
-#ifdef WITH_NOVODEX
+#if WITH_NOVODEX
 
-static NxActor* GetConstraintActor(AActor* Actor, FName BoneName)
+static NxActor* GetNxActorFromActor(AActor* Actor, FName BoneName)
 {
-	if (Actor)
-		return Actor->GetNxActor(BoneName);
+	if (Actor && Actor->CollisionComponent)
+	{
+		return Actor->CollisionComponent->GetNxActor(BoneName);
+	}
+
+	return NULL;
+}
+
+static NxActor* GetNxActorFromComponent(UPrimitiveComponent* PrimComp, FName BoneName)
+{
+	if (PrimComp)
+	{
+		return PrimComp->GetNxActor(BoneName);
+	}
 
 	return NULL;
 }
@@ -182,61 +337,48 @@ static NxActor* GetConstraintActor(AActor* Actor, FName BoneName)
 
 void ARB_ConstraintActor::SetDisableCollision(UBOOL NewDisableCollision)
 {
-#ifdef WITH_NOVODEX
-	NxActor* FirstActor = GetConstraintActor(ConstraintActor1, ConstraintSetup->ConstraintBone1);
-	NxActor* SecondActor = GetConstraintActor(ConstraintActor2, ConstraintSetup->ConstraintBone2);
+#if WITH_NOVODEX
+	NxActor* FirstActor = GetNxActorFromActor(ConstraintActor1, ConstraintSetup->ConstraintBone1);
+	NxActor* SecondActor = GetNxActorFromActor(ConstraintActor2, ConstraintSetup->ConstraintBone2);
 	
 	if (!FirstActor || !SecondActor)
 		return;
 	
-	check(GetLevel());
-	check(GetLevel()->NovodexScene);
+	// Get the scene actors are in.
+	NxScene* NovodexScene = &(FirstActor->getScene());
 
-	NxU32 CurrentFlags = GetLevel()->NovodexScene->getActorPairFlags(*FirstActor, *SecondActor);
-
+	// Flip the NX_IGNORE_PAIR flag (without changing anything else).
+	NxU32 CurrentFlags = NovodexScene->getActorPairFlags(*FirstActor, *SecondActor);
 	if (bDisableCollision)
 	{
-		GetLevel()->NovodexScene->setActorPairFlags(*FirstActor, *SecondActor, CurrentFlags | NX_IGNORE_PAIR);
+		NovodexScene->setActorPairFlags(*FirstActor, *SecondActor, CurrentFlags | NX_IGNORE_PAIR);
 	}
 	else
 	{
-		GetLevel()->NovodexScene->setActorPairFlags(*FirstActor, *SecondActor, CurrentFlags & ~NX_IGNORE_PAIR);
+		NovodexScene->setActorPairFlags(*FirstActor, *SecondActor, CurrentFlags & ~NX_IGNORE_PAIR);
 	}
 #endif
 
 	bDisableCollision = NewDisableCollision;
 }
 
-void ARB_ConstraintActor::execSetDisableCollision( FFrame& Stack, RESULT_DECL )
-{
-	P_GET_UBOOL(NewDisableCollision);
-	P_FINISH;
-
-	SetDisableCollision(NewDisableCollision);
-
-}
-
 //////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////// CONSTRAINT SETUP ///////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
 
-void URB_ConstraintSetup::PostEditChange(UProperty* PropertyThatChanged)
+void URB_ConstraintSetup::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	// This is pretty vile, but can't find another way to get and ConstraintActor that may contain this ConstraintSetup
-	ULevel* Level = GEngine->GetLevel();
-
-	if(Level)
+	for( FActorIterator It; It; ++ It )
 	{
-		for(INT i=0; i<Level->Actors.Num(); i++)
+		ARB_ConstraintActor* ConActor = Cast<ARB_ConstraintActor>(*It);
+		if(ConActor && ConActor->ConstraintSetup == this)
 		{
-			ARB_ConstraintActor* ConActor = Cast<ARB_ConstraintActor>(Level->Actors(i));
-			if(ConActor && ConActor->ConstraintSetup == this)
-			{
-				ConActor->PostEditChange(NULL);
-				return;
-			}
+			ConActor->PostEditChange();
+			return;
 		}
 	}
+	Super::PostEditChangeProperty(PropertyChangedEvent);
 }
 
 // Gives it to you in Unreal space.
@@ -308,22 +450,36 @@ void URB_ConstraintSetup::CopyConstraintParamsFrom(class URB_ConstraintSetup* fr
 	LinearYSetup = fromSetup->LinearYSetup;
 	LinearZSetup = fromSetup->LinearZSetup;
 
-	LinearStiffness = fromSetup->LinearStiffness;
-	LinearDamping = fromSetup->LinearDamping;
+	bLinearLimitSoft = fromSetup->bLinearLimitSoft;
+
+	LinearLimitStiffness = fromSetup->LinearLimitStiffness;
+	LinearLimitDamping = fromSetup->LinearLimitDamping;
+
 	bLinearBreakable = fromSetup->bLinearBreakable;
 	LinearBreakThreshold = fromSetup->LinearBreakThreshold;
 
 	bSwingLimited = fromSetup->bSwingLimited;
 	bTwistLimited = fromSetup->bTwistLimited;
 
+	bSwingLimitSoft = fromSetup->bSwingLimitSoft;
+	bTwistLimitSoft = fromSetup->bTwistLimitSoft;
+
 	Swing1LimitAngle = fromSetup->Swing1LimitAngle;
 	Swing2LimitAngle = fromSetup->Swing2LimitAngle;
 	TwistLimitAngle = fromSetup->TwistLimitAngle;
 
-	AngularStiffness = fromSetup->AngularStiffness;
-	AngularDamping = fromSetup->AngularDamping;
+	SwingLimitStiffness = fromSetup->SwingLimitStiffness;
+	SwingLimitDamping = fromSetup->SwingLimitDamping;
+
+	TwistLimitStiffness = fromSetup->TwistLimitStiffness;
+	TwistLimitDamping = fromSetup->TwistLimitDamping;
+
 	bAngularBreakable = fromSetup->bAngularBreakable;
 	AngularBreakThreshold = fromSetup->AngularBreakThreshold;
+
+	bIsPulley = fromSetup->bIsPulley;
+	bMaintainMinDistance = fromSetup->bMaintainMinDistance;
+	PulleyRatio = fromSetup->PulleyRatio;
 }
 
 
@@ -332,16 +488,16 @@ static FString ConstructJointBodyName(AActor* Actor, FName ConstraintBone)
 	if( Actor )
 	{
 		if(ConstraintBone == NAME_None)
-			return FString( Actor->GetName() );
+			return Actor->GetName();
 		else
-			return FString::Printf(TEXT("%s.%s"), Actor->GetName(), *ConstraintBone);
+			return FString::Printf(TEXT("%s.%s"), *Actor->GetName(), *ConstraintBone.ToString());
 	}
 	else
 	{
 		if(ConstraintBone == NAME_None)
 			return FString(TEXT("@World"));
 		else
-			return FString(*ConstraintBone);
+			return ConstraintBone.ToString();
 	}
 }
 
@@ -350,10 +506,14 @@ static FString ConstructJointBodyName(AActor* Actor, FName ConstraintBone)
 ///////////////////////////// CONSTRAINT INSTANCE ////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////
 
-#ifdef WITH_NOVODEX
+#if WITH_NOVODEX
+
 static void InitJointDesc(NxJointDesc& Desc, NxActor* FirstActor, NxActor* SecondActor, URB_ConstraintSetup* Setup, FLOAT Scale)
 {
 	Desc.jointFlags = NX_JF_COLLISION_ENABLED;
+	#if !FINAL_RELEASE
+	Desc.jointFlags |= NX_JF_VISUALIZATION;
+	#endif
 
 	NxVec3 FirstAnchor = U2NVectorCopy(Setup->Pos1 * Scale);
 	NxVec3 FirstAxis = U2NVectorCopy(Setup->PriAxis1);
@@ -391,17 +551,19 @@ static void InitJointDesc(NxJointDesc& Desc, NxActor* FirstActor, NxActor* Secon
 		SecondActor = NULL;
 	}
 
-	Desc.localAnchor[0] = FirstAnchor;
-	Desc.localAnchor[1] = SecondAnchor;
+	// Because Novodex keeps limits/axes locked in the first body reference frame, whereas Unreal keeps them in the second body reference frame,
+	// we have to flip the bodies here.
+	Desc.localAnchor[1] = FirstAnchor;
+	Desc.localAnchor[0] = SecondAnchor;
 
-	Desc.localAxis[0] = FirstAxis;
-	Desc.localAxis[1] = SecondAxis;
+	Desc.localAxis[1] = FirstAxis;
+	Desc.localAxis[0] = SecondAxis;
 
-	Desc.localNormal[0] = FirstNormal;
-	Desc.localNormal[1] = SecondNormal;
+	Desc.localNormal[1] = FirstNormal;
+	Desc.localNormal[0] = SecondNormal;
 
-	Desc.actor[0] = FirstActor;
-	Desc.actor[1] = SecondActor;
+	Desc.actor[1] = FirstActor;
+	Desc.actor[0] = SecondActor;
 }
 #endif // WITH_NOVODEX
 
@@ -422,176 +584,247 @@ template<typename JointDescType> void SetupBreakableJoint(JointDescType& JointDe
 	}
 }
 
-void URB_ConstraintInstance::InitConstraint(AActor* actor1, AActor* actor2, URB_ConstraintSetup* setup, FLOAT Scale, AActor* inOwner)
+/** Handy macro for setting BIT of VAR based on the UBOOL CONDITION */
+#define SET_DRIVE_PARAM(VAR, CONDITION, BIT)   (VAR) = (CONDITION) ? ((VAR) | (BIT)) : ((VAR) & ~(BIT))
+
+
+/** 
+ *	Create physics engine constraint.
+ */
+void URB_ConstraintInstance::InitConstraint(UPrimitiveComponent* PrimComp1, UPrimitiveComponent* PrimComp2, class URB_ConstraintSetup* Setup, FLOAT Scale, AActor* InOwner, UPrimitiveComponent* InPrimComp, UBOOL bMakeKinForBody1)
 {
-	Owner = inOwner;
-
-#ifdef WITH_NOVODEX
-	check(Owner->GetLevel());
-	NxScene* Scene = Owner->GetLevel()->NovodexScene;
-	
-	if (!Scene)
-		return;
-
-	NxActor* FirstActor = GetConstraintActor(actor1, setup->ConstraintBone1);
-	NxActor* SecondActor = GetConstraintActor(actor2, setup->ConstraintBone2);
-
-	UBOOL bLockTwist = setup->bTwistLimited && (setup->TwistLimitAngle < RB_MinAngleToLockDOF);
-	UBOOL bLockSwing1 = setup->bSwingLimited && (setup->Swing1LimitAngle < RB_MinAngleToLockDOF);
-	UBOOL bLockSwing2 = setup->bSwingLimited && (setup->Swing2LimitAngle < RB_MinAngleToLockDOF);
-	UBOOL bLockAllSwing = bLockSwing1 && bLockSwing2;
-	UBOOL bLinearXLocked = setup->LinearXSetup.bLimited && (setup->LinearXSetup.LimitSize < RB_MinSizeToLockDOF);
-	UBOOL bLinearYLocked = setup->LinearYSetup.bLimited && (setup->LinearYSetup.LimitSize < RB_MinSizeToLockDOF);
-	UBOOL bLinearZLocked = setup->LinearZSetup.bLimited && (setup->LinearZSetup.LimitSize < RB_MinSizeToLockDOF);
-
-	UBOOL bPrismatic = false;
-	NxVec3 PrismaticAxis;
-	FLOAT PrismaticLimit = 0.0f;
-	if (bLockAllSwing && bLockTwist)
+	// if there's already a constraint, get rid of it first
+	if (ConstraintData != NULL)
 	{
-		if (bLinearYLocked && bLinearZLocked)
-		{
-			PrismaticAxis = NxVec3(1, 0, 0);
-			PrismaticLimit = setup->LinearXSetup.LimitSize;
-			bPrismatic = true;
-		}
-		else if (bLinearXLocked && bLinearZLocked)
-		{
-			PrismaticAxis = NxVec3(0, 1, 0);
-			PrismaticLimit = setup->LinearYSetup.LimitSize;
-			bPrismatic = true;
-		}
-		else if (bLinearXLocked && bLinearYLocked)
-		{
-			PrismaticAxis = NxVec3(0, 0, 1);
-			PrismaticLimit = setup->LinearZSetup.LimitSize;
-			bPrismatic = true;
-		}
+		TermConstraint(NULL, FALSE);
 	}
 
-	NxJoint* Joint = NULL;
-	ConstraintData = (Fpointer) NULL;
+	Owner = InOwner;
+	OwnerComponent = InPrimComp;
 
-	if (bLinearXLocked && bLinearYLocked && bLinearZLocked)
+#if WITH_NOVODEX
+	NxActor* FirstActor = GetNxActorFromComponent(PrimComp1, Setup->ConstraintBone1);
+	NxActor* SecondActor = GetNxActorFromComponent(PrimComp2, Setup->ConstraintBone2);
+
+	// Do not create joint if there are no actors to connect.
+	if(!FirstActor && !SecondActor)
 	{
-		if (bLockAllSwing)
+		return;
+	}
+
+	// Create kinematic proxy at location of first actor, and use that instead.
+	if(bMakeKinForBody1)
+	{
+		FMatrix KinActorTM;
+		NxScene* KinActorScene;
+		// If we have an actor, use its transform
+		if(FirstActor)
 		{
-			NxRevoluteJointDesc Desc;
-			InitJointDesc(Desc, FirstActor, SecondActor, setup, Scale);
-
-			Desc.flags = 0;
-			Desc.projectionMode = NX_JPM_POINT_MINDIST;
-			Desc.projectionDistance = 0.1f;
-
-			if (setup->bTwistLimited)
-			{
-				FLOAT TwistLimit = 0.0001f;
-				Desc.flags = NX_RJF_LIMIT_ENABLED;
-
-				if (!bLockTwist)
-				{
-					TwistLimit = setup->TwistLimitAngle * (PI/180.0f);
-				}
-
-				Desc.limit.low.value = -TwistLimit;
-				Desc.limit.high.value = TwistLimit;
-			}
-
-			SetupBreakableJoint(Desc, setup);
-
-			if (!Desc.isValid())
-			{
-				debugf(TEXT("URB_ConstraintInstance::InitConstraint - Invalid revolute joint description, %s"), Owner->GetName());
-				debugf(TEXT("URB_ConstraintInstance::InitConstraint - Low twist limit: %f"), Desc.limit.low.value);
-				debugf(TEXT("URB_ConstraintInstance::InitConstraint - High twist limit: %f"), Desc.limit.high.value);
-				return;
-			}
-
-			Joint = Scene->createJoint(Desc);
-			check(Joint);
+			KinActorTM = N2UTransform(FirstActor->getGlobalPose());
+			KinActorScene = &(FirstActor->getScene());
 		}
+		// Otherwise, create with identity
 		else
 		{
-			NxSphericalJointDesc Desc;
-			InitJointDesc(Desc, FirstActor, SecondActor, setup, Scale);
-
-			Desc.flags = 0;
-			Desc.projectionMode = NX_JPM_POINT_MINDIST;
-			Desc.projectionDistance = 0.1f;
-
-			if (setup->bTwistLimited)
-			{
-				FLOAT TwistLimit = Max<FLOAT>(setup->TwistLimitAngle * (PI/180.0f), 0.0001f);
-				Desc.twistLimit.low.value = -TwistLimit;
-				Desc.twistLimit.high.value = TwistLimit;
-				Desc.flags |= NX_SJF_TWIST_LIMIT_ENABLED;
-			}
-
-			if (setup->bSwingLimited)
-			{
-				// NX_TODO: Change this once Novodex supports 'anisotropic' swing limits
-                Desc.swingLimit.value = Max<FLOAT>(setup->Swing1LimitAngle, setup->Swing2LimitAngle) * (PI/180.0f);
-				Desc.flags |= NX_SJF_SWING_LIMIT_ENABLED;
-			}
-
-			SetupBreakableJoint(Desc, setup);
-
-			if (!Desc.isValid())
-			{
-				debugf(TEXT("URB_ConstraintInstance::InitConstraint - Invalid spherical joint description, %s"), Owner->GetName());
-				debugf(TEXT("URB_ConstraintInstance::InitConstraint - Low twist limit: %f"), Desc.twistLimit.low.value);
-				debugf(TEXT("URB_ConstraintInstance::InitConstraint - High twist limit: %f"), Desc.twistLimit.high.value);
-				debugf(TEXT("URB_ConstraintInstance::InitConstraint - Swing limit: %f"), Desc.swingLimit.value);
-				return;
-			}
-
-			Joint = Scene->createJoint(Desc);
-			check(Joint);
+			KinActorTM = FMatrix::Identity;
+			KinActorScene = &(SecondActor->getScene());
 		}
-	}
-// NX_TODO: Make prismatic joints not suck. Currently joint offsetting is not working correctly and
-// limit planes also seem to interact less than favorably with other constraints, such as mouse constraints.
-#if 0
-	else if (bLinearYLocked && bLinearZLocked)
-	{
-		NxPrismaticJointDesc Desc;
-		InitJointDesc(Desc, FirstActor, SecondActor, setup, Scale);
 
+		FirstActor = CreateDummyKinActor(KinActorScene, KinActorTM);
+
+		// Keep pointer to this kinematic actor.
+		DummyKinActor = FirstActor;
+	}
+
+	// Get scene from the actors we want to connect.
+	NxScene* Scene = NULL;
+
+	// make sure actors are in same scene
+	NxScene* Scene1 = NULL;
+	NxScene* Scene2 = NULL;
+
+	if(FirstActor)
+	{
+		Scene1 = &(FirstActor->getScene());
+	}
+
+	if(SecondActor)
+	{
+		Scene2 = &(SecondActor->getScene());
+	}
+
+	// make sure actors are in same scene
+	if(Scene1 && Scene2 && Scene1 != Scene2)
+	{
+		debugf( TEXT("Attempting to create a joint between actors in two different scenes.  No joint created.") );
+		return;
+	}
+
+	Scene = Scene1 ? Scene1 : Scene2;
+
+	check(Scene);
+
+	NxJoint* Joint = NULL;
+	ConstraintData = NULL;
+
+	if(Setup->bIsPulley)
+	{
+		NxPulleyJointDesc Desc;
+		InitJointDesc(Desc, FirstActor, SecondActor, Setup, Scale);
+		
+		// Copy properties from setup.
+		Desc.flags = 0;
+		if(Setup->bMaintainMinDistance)
+		{
+			Desc.flags = NX_PJF_IS_RIGID;
+		}
+
+		// Because Novodex bodies are opposite order to Unreal bodies, need to flip this here.
+		Desc.pulley[1] = U2NPosition(Setup->PulleyPivot1);
+		Desc.pulley[0] = U2NPosition(Setup->PulleyPivot2);
+
+		Desc.ratio = Setup->PulleyRatio;
+
+		// Calculate the distance so the current state is the rest state.
+		NxReal CurrentDistance = 0.f;
+
+		if(FirstActor)
+		{
+			NxVec3 FirstAnchor = U2NVectorCopy(Setup->Pos1 * Scale);
+			NxMat34 FirstActorPose = FirstActor->getGlobalPose();
+			NxVec3 WorldAnchor = FirstActorPose * FirstAnchor;
+			CurrentDistance += (WorldAnchor - Desc.pulley[1]).magnitude();
+		}
+
+		if(SecondActor)
+		{
+			NxVec3 SecondAnchor = U2NVectorCopy(Setup->Pos2 * Scale);
+			NxMat34 SecondActorPose = SecondActor->getGlobalPose();
+			NxVec3 WorldAnchor = SecondActorPose * SecondAnchor;
+			CurrentDistance += (WorldAnchor - Desc.pulley[0]).magnitude() * Setup->PulleyRatio;
+		}
+
+		Desc.distance = CurrentDistance;
+		//Desc.distance = 0.f;
+
+		SetupBreakableJoint(Desc, Setup);
+
+		// Finally actually create the joint
+		Joint = Scene->createJoint(Desc);
+		check(Joint);
+	}
+	else
+	{
+		NxD6JointDesc Desc;
+		InitJointDesc(Desc, FirstActor, SecondActor, Setup, Scale);
+
+		Desc.flags = 0;
+
+		if( Setup->bEnableProjection )
+		{
+			Desc.projectionMode = NX_JPM_POINT_MINDIST;
+			Desc.projectionDistance = 0.1f; // Linear projection when error > 0.1
+			Desc.projectionAngle = 10.f * ((FLOAT)PI/180.0f); // Angular projection when error > 10 degrees
+		}
+
+		/////////////// TWIST LIMIT
+		if(Setup->bTwistLimited)
+		{
+			Desc.twistMotion = (Setup->TwistLimitAngle < RB_MinAngleToLockDOF) ? NX_D6JOINT_MOTION_LOCKED : NX_D6JOINT_MOTION_LIMITED;
+
+			FLOAT TwistLimitRad = Setup->TwistLimitAngle * (PI/180.0f);
+			Desc.twistLimit.high.value = TwistLimitRad;
+			Desc.twistLimit.low.value = -TwistLimitRad;
+
+			if(Setup->bTwistLimitSoft)
+			{
+				Desc.twistLimit.high.spring = Setup->TwistLimitStiffness;
+				Desc.twistLimit.low.spring = Setup->TwistLimitStiffness;
+
+				Desc.twistLimit.high.damping = Setup->TwistLimitDamping;
+				Desc.twistLimit.low.damping = Setup->TwistLimitDamping;
+			}
+		}
+
+		/////////////// SWING LIMIT
+		if(Setup->bSwingLimited)
+		{
+			// Novodex swing directions are different from Unreal's - so change here.
+			Desc.swing2Motion = (Setup->Swing1LimitAngle < RB_MinAngleToLockDOF) ? NX_D6JOINT_MOTION_LOCKED : NX_D6JOINT_MOTION_LIMITED;
+			Desc.swing1Motion = (Setup->Swing2LimitAngle < RB_MinAngleToLockDOF) ? NX_D6JOINT_MOTION_LOCKED : NX_D6JOINT_MOTION_LIMITED;
+
+			Desc.swing2Limit.value = Setup->Swing1LimitAngle * (PI/180.0f);
+			Desc.swing1Limit.value = Setup->Swing2LimitAngle * (PI/180.0f);
+
+			if(Setup->bSwingLimitSoft)
+			{
+				Desc.swing2Limit.spring = Setup->SwingLimitStiffness;
+				Desc.swing1Limit.spring = Setup->SwingLimitStiffness;
+				Desc.swing2Limit.damping = Setup->SwingLimitDamping;
+				Desc.swing1Limit.damping = Setup->SwingLimitDamping;
+			}
+		}
+
+		/////////////// LINEAR LIMIT
+		FLOAT MaxLinearLimit = 0.f;
+		if(Setup->LinearXSetup.bLimited)
+		{
+			Desc.xMotion = (Setup->LinearXSetup.LimitSize < RB_MinSizeToLockDOF) ? NX_D6JOINT_MOTION_LOCKED : NX_D6JOINT_MOTION_LIMITED;
+			MaxLinearLimit = ::Max(MaxLinearLimit, Setup->LinearXSetup.LimitSize);
+		}
+
+		if(Setup->LinearYSetup.bLimited)
+		{
+			Desc.yMotion = (Setup->LinearYSetup.LimitSize < RB_MinSizeToLockDOF) ? NX_D6JOINT_MOTION_LOCKED : NX_D6JOINT_MOTION_LIMITED;
+			MaxLinearLimit = ::Max(MaxLinearLimit, Setup->LinearYSetup.LimitSize);
+		}
+
+		if(Setup->LinearZSetup.bLimited)
+		{
+			Desc.zMotion = (Setup->LinearZSetup.LimitSize < RB_MinSizeToLockDOF) ? NX_D6JOINT_MOTION_LOCKED : NX_D6JOINT_MOTION_LIMITED;
+			MaxLinearLimit = ::Max(MaxLinearLimit, Setup->LinearZSetup.LimitSize);
+		}
+
+		Desc.linearLimit.value = MaxLinearLimit * U2PScale;
+
+		if(Setup->bLinearLimitSoft)
+		{
+			Desc.linearLimit.spring = Setup->LinearLimitStiffness;
+			Desc.linearLimit.damping = Setup->LinearLimitDamping;
+		}
+
+		///////// DRIVE
+
+#if 1
+		// Turn on 'slerp drive' if desired.
+		// Can't use slerp drive if any angular axis is locked.
+		if( bAngularSlerpDrive &&
+			Desc.swing1Motion != NX_D6JOINT_MOTION_LOCKED &&
+			Desc.swing2Motion != NX_D6JOINT_MOTION_LOCKED &&
+			Desc.twistMotion != NX_D6JOINT_MOTION_LOCKED )
+		{
+			Desc.flags = Desc.flags | NX_D6JOINT_SLERP_DRIVE;
+		}
+#endif
+
+		// Setup for breakable
+		SetupBreakableJoint(Desc, Setup);
+
+		// Check description is ok.
 		if (!Desc.isValid())
 		{
-			debugf(TEXT("URB_ConstraintInstance::InitConstraint - Invalid prismatic joint description, %s"), Owner->GetName());
+			FName OwnerName = NAME_None;
+			if(Owner)
+			{
+				OwnerName = Owner->GetFName();
+			}
+
+			debugf(TEXT("URB_ConstraintInstance::InitConstraint - Invalid 6DOF joint description (%s - %s)"), *OwnerName.ToString(), *Setup->JointName.ToString());
 			return;
 		}
 
 		Joint = Scene->createJoint(Desc);
 		check(Joint);
-
-		NxVec3 LimitBasePoint;
-		SecondActor->localToGlobalSpace(Desc.localAnchor[1], LimitBasePoint);
-
-		Joint->setLimitPoint(LimitBasePoint);
-
-		NxVec3 LimitPlaneNormal;
-		SecondActor->localToGlobalSpaceDirection(Desc.localAxis[1], LimitPlaneNormal);
-
-		NxVec3 FirstAnchor;
-		FirstActor->localToGlobalSpace(Desc.localAnchor[0], FirstAnchor);
-
-		NxVec3 SecondAnchor;
-		SecondActor->localToGlobalSpace(Desc.localAnchor[1], SecondAnchor);
-
-		NxVec3 LimitOffset = setup->LinearXSetup.LimitSize * U2PScale * Scale * LimitPlaneNormal;
-
-		if (!Joint->addLimitPlane(LimitPlaneNormal, LimitBasePoint - LimitOffset))
-			debugf(TEXT("URB_ConstraintInstance::InitConstraint - Failed to add first limit plane to prismatic joint, %s"), Owner->GetName());
-		if (!Joint->addLimitPlane(-LimitPlaneNormal, LimitBasePoint + LimitOffset))
-			debugf(TEXT("URB_ConstraintInstance::InitConstraint - Failed to add second limit plane to prismatic joint, %s"), Owner->GetName());
-	}
-#endif
-	else
-	{
-		debugf(TEXT("URB_ConstraintInstance::InitConstraint - Unsupported joint type, %s"), Owner->GetName());
-		return;
 	}
 
 	NxReal MaxForce, MaxTorque;
@@ -600,24 +833,597 @@ void URB_ConstraintInstance::InitConstraint(AActor* actor1, AActor* actor2, URB_
 	//debugf(TEXT("InitConstraint -- Simulation method: %c"), Joint->getMethod() == NxJoint::JM_LAGRANGE ? 'L' : 'R');
 
 	Joint->userData = this;
-	ConstraintData = (Fpointer) Joint;
+
+	// Remember reference to scene index.
+	FRBPhysScene* RBScene = (FRBPhysScene*)Scene->userData;
+	SceneIndex = RBScene->NovodexSceneIndex;
+
+	ConstraintData = Joint;
+
+	// Make initial calls to constraint motor stuff.
+	SetLinearPositionTarget(LinearPositionTarget);
+	SetLinearVelocityTarget(LinearVelocityTarget);
+
+	SetAngularPositionTarget(AngularPositionTarget);
+	SetAngularVelocityTarget(AngularVelocityTarget);
+
+
+	NxD6Joint* D6Joint = Joint->isD6Joint();
+	if(D6Joint)
+	{
+		NxD6JointDesc Desc;
+		D6Joint->saveToDesc(Desc);
+
+		SET_DRIVE_PARAM(Desc.xDrive.driveType, bLinearXPositionDrive, NX_D6JOINT_DRIVE_POSITION);
+		SET_DRIVE_PARAM(Desc.yDrive.driveType, bLinearYPositionDrive, NX_D6JOINT_DRIVE_POSITION);
+		SET_DRIVE_PARAM(Desc.zDrive.driveType, bLinearZPositionDrive, NX_D6JOINT_DRIVE_POSITION);
+
+		SET_DRIVE_PARAM(Desc.xDrive.driveType, bLinearXVelocityDrive, NX_D6JOINT_DRIVE_VELOCITY);
+		SET_DRIVE_PARAM(Desc.yDrive.driveType, bLinearYVelocityDrive, NX_D6JOINT_DRIVE_VELOCITY);
+		SET_DRIVE_PARAM(Desc.zDrive.driveType, bLinearZVelocityDrive, NX_D6JOINT_DRIVE_VELOCITY);
+
+		SET_DRIVE_PARAM(Desc.swingDrive.driveType, bSwingPositionDrive, NX_D6JOINT_DRIVE_POSITION);
+		SET_DRIVE_PARAM(Desc.twistDrive.driveType, bTwistPositionDrive, NX_D6JOINT_DRIVE_POSITION);
+		SET_DRIVE_PARAM(Desc.slerpDrive.driveType, bSwingPositionDrive && bTwistPositionDrive, NX_D6JOINT_DRIVE_POSITION);
+
+		SET_DRIVE_PARAM(Desc.swingDrive.driveType, bSwingVelocityDrive, NX_D6JOINT_DRIVE_VELOCITY);
+		SET_DRIVE_PARAM(Desc.twistDrive.driveType, bTwistVelocityDrive, NX_D6JOINT_DRIVE_VELOCITY);
+		SET_DRIVE_PARAM(Desc.slerpDrive.driveType, bSwingVelocityDrive && bTwistVelocityDrive, NX_D6JOINT_DRIVE_VELOCITY);
+
+		// If the Outer of this constraint instance is a physics asset instance, we take into account the overall motor scaling from there.
+		UPhysicsAssetInstance* Inst = GetPhysicsAssetInstance();
+		FLOAT SpringScale = 1.f;
+		FLOAT DampScale = 1.f;
+		FLOAT ForceScale = 1.f;
+		if(Inst)
+		{
+			SpringScale = Inst->LinearSpringScale;
+			DampScale = Inst->LinearDampingScale;
+			ForceScale = Inst->LinearForceLimitScale;
+		}
+
+		Desc.xDrive.spring		= Desc.yDrive.spring		= Desc.zDrive.spring		= LinearDriveSpring * SpringScale;
+		Desc.xDrive.damping		= Desc.yDrive.damping		= Desc.zDrive.damping		= LinearDriveDamping * DampScale;
+		FLOAT LinearForceLimit = LinearDriveForceLimit * ForceScale;
+		Desc.xDrive.forceLimit	= Desc.yDrive.forceLimit	= Desc.zDrive.forceLimit	= LinearForceLimit > 0.f ? LinearForceLimit : FLT_MAX;
+
+		// Grab angular scaling
+		SpringScale = 1.f;
+		DampScale = 1.f;
+		ForceScale = 1.f;
+		if(Inst)
+		{
+			SpringScale = Inst->AngularSpringScale;
+			DampScale = Inst->AngularDampingScale;
+			ForceScale = Inst->AngularForceLimitScale;
+		}
+
+		Desc.swingDrive.spring		= Desc.twistDrive.spring		= Desc.slerpDrive.spring		= AngularDriveSpring * SpringScale;
+		Desc.swingDrive.damping		= Desc.twistDrive.damping		= Desc.slerpDrive.damping		= AngularDriveDamping * DampScale;
+		FLOAT AngularForceLimit = AngularDriveForceLimit * ForceScale;
+		Desc.swingDrive.forceLimit	= Desc.twistDrive.forceLimit	= Desc.slerpDrive.forceLimit	= AngularForceLimit > 0.f ? AngularForceLimit : FLT_MAX;
+
+		D6Joint->loadFromDesc(Desc);
+	}
 #endif // WITH_NOVODEX
 }
 
 
-// This should destroy any constraint
-void URB_ConstraintInstance::TermConstraint()
+/**
+ *	Clean up the physics engine info for this instance.
+ *	If Scene is NULL, it will always shut down physics. If an RBPhysScene is passed in, it will only shut down physics if the constraint is in that scene. 
+ *	Returns TRUE if physics was shut down, and FALSE otherwise.
+ */
+UBOOL URB_ConstraintInstance::TermConstraint(FRBPhysScene* Scene, UBOOL bFireBrokenEvent)
 {
-#ifdef WITH_NOVODEX
+#if WITH_NOVODEX
 	NxJoint* Joint = (NxJoint*)	ConstraintData;
 	if (!Joint)
-		return;
+	{
+		return TRUE;
+	}
 
-	check(Owner);
-	NxScene* Scene = Owner->GetLevel()->NovodexScene;
-	if (Scene)
-		Scene->releaseJoint(*Joint);
+	// If this joint is in the scene we want (or we passed in NULL), kill it.
+	if(Scene == NULL || SceneIndex == Scene->NovodexSceneIndex)
+	{
+		// use correct scene
+		NxScenePair* nPair = GetNovodexScenePairFromIndex(SceneIndex);
+		if(nPair)
+		{
+			NxScene* nScene = nPair->PrimaryScene;
+			if(nScene)
+			{
+				// If desired, fire the 'constraint has broken' event. This should only really happen when calling TermConstraint from script.
+				if(bFireBrokenEvent)
+				{
+					URB_ConstraintInstance* Inst = (URB_ConstraintInstance*)(Joint->userData);
+					if(Inst)
+					{
+						USkeletalMeshComponent* SkelComp = Cast<USkeletalMeshComponent>(Inst->OwnerComponent);
+						if(SkelComp)
+						{	
+							check(SkelComp->PhysicsAssetInstance);
+							check(SkelComp->PhysicsAsset);
+							check(SkelComp->PhysicsAssetInstance->Constraints.Num() == SkelComp->PhysicsAsset->ConstraintSetup.Num());
+							check(Inst->ConstraintIndex < SkelComp->PhysicsAsset->ConstraintSetup.Num());
 
-	ConstraintData = NULL;
+							if( Inst->Owner && !Inst->Owner->bPendingDelete && !Inst->Owner->IsPendingKill() )
+							{
+								URB_ConstraintSetup* Setup = SkelComp->PhysicsAsset->ConstraintSetup(Inst->ConstraintIndex);
+								// maybe the constraint name  (add to TTP)
+								const FVector& ConstrainLocation = Inst->GetConstraintLocation();
+								Inst->Owner->eventConstraintBrokenNotify( Inst->Owner, Setup, Inst );
+							}
+						}
+					}
+				}
+
+				if (!GIsEditor)
+				{
+					DeferredReleaseNxJoint(Joint, TRUE);
+				}
+				else
+				{
+					nScene->releaseJoint(*Joint);
+				}
+				NxActor* KinActor = (NxActor*)DummyKinActor;
+				if(KinActor)
+				{
+					DestroyDummyKinActor(KinActor);
+					KinActor = NULL;
+				}
+			}
+		}
+
+		ConstraintData = NULL;
+
+		bTerminated = TRUE;
+
+		// Indicate joint was terminated.
+		return TRUE;
+	}
 #endif // WITH_NOVODEX
+
+	return FALSE;
 }
+
+void URB_ConstraintInstance::FinishDestroy()
+{
+	// Clean up physics-engine constrint stuff when instance is GC'd
+	TermConstraint(NULL, FALSE);
+
+	Super::FinishDestroy();
+}
+
+void URB_ConstraintInstance::execTermConstraint( FFrame& Stack, RESULT_DECL )
+{
+	P_FINISH;
+
+	TermConstraint(NULL, TRUE);
+}
+
+void URB_ConstraintInstance::CopyInstanceParamsFrom(class URB_ConstraintInstance* fromInstance)
+{
+	bLinearXPositionDrive = fromInstance->bLinearXPositionDrive;
+	bLinearXVelocityDrive = fromInstance->bLinearXVelocityDrive;
+
+	bLinearYPositionDrive = fromInstance->bLinearYPositionDrive;
+	bLinearYVelocityDrive = fromInstance->bLinearYVelocityDrive;
+
+	bLinearZPositionDrive = fromInstance->bLinearZPositionDrive;
+	bLinearZVelocityDrive = fromInstance->bLinearZVelocityDrive;
+
+	LinearPositionTarget = fromInstance->LinearPositionTarget;
+	LinearVelocityTarget = fromInstance->LinearVelocityTarget;
+	LinearDriveSpring = fromInstance->LinearDriveSpring;
+	LinearDriveDamping = fromInstance->LinearDriveDamping;
+	LinearDriveForceLimit = fromInstance->LinearDriveForceLimit;
+
+	bSwingPositionDrive = fromInstance->bSwingPositionDrive;
+	bSwingVelocityDrive = fromInstance->bSwingVelocityDrive;
+
+	bTwistPositionDrive = fromInstance->bTwistPositionDrive;
+	bTwistVelocityDrive = fromInstance->bTwistVelocityDrive;
+
+	bAngularSlerpDrive = fromInstance->bAngularSlerpDrive;
+
+	AngularPositionTarget = fromInstance->AngularPositionTarget;
+	AngularVelocityTarget = fromInstance->AngularVelocityTarget;
+	AngularDriveSpring = fromInstance->AngularDriveSpring;
+	AngularDriveDamping = fromInstance->AngularDriveDamping;
+	AngularDriveForceLimit = fromInstance->AngularDriveForceLimit;
+}
+
+/** Returns the PhysicsAssetInstance that owns this RB_ConstraintInstance (if there is one) */
+UPhysicsAssetInstance* URB_ConstraintInstance::GetPhysicsAssetInstance()
+{
+	USkeletalMeshComponent* SkelComp = Cast<USkeletalMeshComponent>(OwnerComponent);
+	if(SkelComp)
+	{
+		return SkelComp->PhysicsAssetInstance;
+	}
+
+	return NULL;
+}
+
+/** Get the position of this constraint in world space. */
+FVector URB_ConstraintInstance::GetConstraintLocation()
+{
+#if WITH_NOVODEX
+	NxJoint* Joint = (NxJoint*)	ConstraintData;
+	if (!Joint)
+	{
+		return FVector(0,0,0);
+	}
+
+	NxVec3 nJointPos = Joint->getGlobalAnchor();
+
+	return N2UPosition(nJointPos);
+#else
+	return FVector(0,0,0);
+#endif
+}
+
+/** Function for turning linear position drive on and off. */
+void URB_ConstraintInstance::SetLinearPositionDrive(UBOOL bEnableXDrive, UBOOL bEnableYDrive, UBOOL bEnableZDrive)
+{
+#if WITH_NOVODEX
+	NxJoint* Joint = (NxJoint*)ConstraintData;
+	if (Joint && Joint->getState() != NX_JS_BROKEN)
+	{
+		NxD6Joint* D6Joint = Joint->isD6Joint();
+		if(D6Joint)
+		{
+			NxD6JointDesc Desc;
+			D6Joint->saveToDesc(Desc);
+
+			SET_DRIVE_PARAM(Desc.xDrive.driveType, bEnableXDrive, NX_D6JOINT_DRIVE_POSITION);
+			SET_DRIVE_PARAM(Desc.yDrive.driveType, bEnableYDrive, NX_D6JOINT_DRIVE_POSITION);
+			SET_DRIVE_PARAM(Desc.zDrive.driveType, bEnableZDrive, NX_D6JOINT_DRIVE_POSITION);
+
+			D6Joint->loadFromDesc(Desc);
+		}
+	}
+#endif
+
+	bLinearXPositionDrive = bEnableXDrive;
+	bLinearYPositionDrive = bEnableYDrive;
+	bLinearZPositionDrive = bEnableZDrive;
+}
+
+
+/** Function for turning linear velocity drive on and off. */
+void URB_ConstraintInstance::SetLinearVelocityDrive(UBOOL bEnableXDrive, UBOOL bEnableYDrive, UBOOL bEnableZDrive)
+{
+#if WITH_NOVODEX
+	NxJoint* Joint = (NxJoint*)ConstraintData;
+	if (Joint && Joint->getState() != NX_JS_BROKEN)
+	{
+		NxD6Joint* D6Joint = Joint->isD6Joint();
+		if(D6Joint)
+		{
+			NxD6JointDesc Desc;
+			D6Joint->saveToDesc(Desc);
+
+			SET_DRIVE_PARAM(Desc.xDrive.driveType, bEnableXDrive, NX_D6JOINT_DRIVE_VELOCITY);
+			SET_DRIVE_PARAM(Desc.yDrive.driveType, bEnableYDrive, NX_D6JOINT_DRIVE_VELOCITY);
+			SET_DRIVE_PARAM(Desc.zDrive.driveType, bEnableZDrive, NX_D6JOINT_DRIVE_VELOCITY);
+
+			D6Joint->loadFromDesc(Desc);
+		}
+	}
+#endif
+
+	bLinearXVelocityDrive = bEnableXDrive;
+	bLinearYVelocityDrive = bEnableYDrive;
+	bLinearZVelocityDrive = bEnableZDrive;
+}
+
+
+/** Function for turning angular position drive on and off. */
+void URB_ConstraintInstance::SetAngularPositionDrive(UBOOL bEnableSwingDrive, UBOOL bEnableTwistDrive)
+{
+#if WITH_NOVODEX
+	NxJoint* Joint = (NxJoint*)ConstraintData;
+	if (Joint && Joint->getState() != NX_JS_BROKEN)
+	{
+		NxD6Joint* D6Joint = Joint->isD6Joint();
+		if(D6Joint)
+		{
+			NxD6JointDesc Desc;
+			D6Joint->saveToDesc(Desc);
+
+			SET_DRIVE_PARAM(Desc.swingDrive.driveType, bEnableSwingDrive, NX_D6JOINT_DRIVE_POSITION);
+			SET_DRIVE_PARAM(Desc.twistDrive.driveType, bEnableTwistDrive, NX_D6JOINT_DRIVE_POSITION);
+
+			// If both drives are on, turn slerp drive on (in case its being used)
+			// It's ok to have both drives on - it will only use one type of drive, based on the NX_D6JOINT_SLERP_DRIVE flag.
+			SET_DRIVE_PARAM(Desc.slerpDrive.driveType, bEnableSwingDrive && bEnableTwistDrive, NX_D6JOINT_DRIVE_POSITION);
+
+			D6Joint->loadFromDesc(Desc);
+		}
+	}
+#endif
+
+	bSwingPositionDrive = bEnableSwingDrive;
+	bTwistPositionDrive = bEnableTwistDrive;
+}
+
+/** Function for turning angular velocity drive on and off. */
+void URB_ConstraintInstance::SetAngularVelocityDrive(UBOOL bEnableSwingDrive, UBOOL bEnableTwistDrive)
+{
+#if WITH_NOVODEX
+	NxJoint* Joint = (NxJoint*)ConstraintData;
+	if (Joint && Joint->getState() != NX_JS_BROKEN)
+	{
+		NxD6Joint* D6Joint = Joint->isD6Joint();
+		if(D6Joint)
+		{
+			NxD6JointDesc Desc;
+			D6Joint->saveToDesc(Desc);
+
+			SET_DRIVE_PARAM(Desc.swingDrive.driveType, bEnableSwingDrive, NX_D6JOINT_DRIVE_VELOCITY);
+			SET_DRIVE_PARAM(Desc.twistDrive.driveType, bEnableTwistDrive, NX_D6JOINT_DRIVE_VELOCITY);
+
+			// If both drives are on, turn slerp drive on (in case its being used)
+			SET_DRIVE_PARAM(Desc.slerpDrive.driveType, bEnableSwingDrive && bEnableTwistDrive, NX_D6JOINT_DRIVE_VELOCITY);
+
+			D6Joint->loadFromDesc(Desc);
+		}
+	}
+#endif
+
+	bSwingVelocityDrive = bEnableSwingDrive;
+	bTwistVelocityDrive = bEnableTwistDrive;
+}
+
+/** Function for setting linear position target. */
+void URB_ConstraintInstance::SetLinearPositionTarget(FVector InPosTarget)
+{
+#if WITH_NOVODEX
+	NxJoint* Joint = (NxJoint*)ConstraintData;
+	if (Joint)
+	{
+		NxD6Joint* D6Joint = Joint->isD6Joint();
+		if(D6Joint)
+		{
+			NxVec3 nPos = U2NPosition(InPosTarget);
+			D6Joint->setDrivePosition(nPos);
+		}
+	}
+#endif
+
+	LinearPositionTarget = InPosTarget;
+}
+
+/** Function for setting linear velocity target. */
+void URB_ConstraintInstance::SetLinearVelocityTarget(FVector InVelTarget)
+{
+#if WITH_NOVODEX
+	NxJoint* Joint = (NxJoint*)ConstraintData;
+	if (Joint)
+	{
+		NxD6Joint* D6Joint = Joint->isD6Joint();
+		if(D6Joint)
+		{
+			NxVec3 nVel = U2NPosition(InVelTarget);
+			D6Joint->setDriveLinearVelocity(nVel);
+		}
+	}
+#endif
+
+	LinearVelocityTarget = InVelTarget;
+}
+
+/** Function for setting angular motor parameters. */
+void URB_ConstraintInstance::SetLinearDriveParams(FLOAT InSpring, FLOAT InDamping, FLOAT InForceLimit)
+{
+#if WITH_NOVODEX
+	NxJoint* Joint = (NxJoint*)ConstraintData;
+	if (Joint && Joint->getState() != NX_JS_BROKEN)
+	{
+		NxD6Joint* D6Joint = Joint->isD6Joint();
+		if(D6Joint)
+		{
+			// If the Outer of this constraint instance is a physics asset instance, we take into account the
+			// overall motor scaling from there.
+			UPhysicsAssetInstance* Inst = GetPhysicsAssetInstance();
+			FLOAT SpringScale = 1.f;
+			FLOAT DampScale = 1.f;
+			FLOAT ForceScale = 1.f;
+			if(Inst)
+			{
+				SpringScale = Inst->LinearSpringScale;
+				DampScale = Inst->LinearDampingScale;
+				ForceScale = Inst->LinearForceLimitScale;
+			}
+
+			NxD6JointDesc Desc;
+			D6Joint->saveToDesc(Desc);
+
+			Desc.xDrive.spring		= Desc.yDrive.spring		= Desc.zDrive.spring		= InSpring * SpringScale;
+			Desc.xDrive.damping		= Desc.yDrive.damping		= Desc.zDrive.damping		= InDamping * DampScale;
+			FLOAT LinearForceLimit = InForceLimit * ForceScale;
+			Desc.xDrive.forceLimit	= Desc.yDrive.forceLimit	= Desc.zDrive.forceLimit	= LinearForceLimit > 0.f ? LinearForceLimit : FLT_MAX;
+
+			D6Joint->loadFromDesc(Desc);
+		}
+	}
+#endif
+
+	LinearDriveSpring = InSpring;
+	LinearDriveDamping = InDamping;
+	LinearDriveForceLimit = InForceLimit;
+}
+
+/** Function for setting target angular position. */
+void URB_ConstraintInstance::SetAngularPositionTarget(const FQuat& InPosTarget)
+{
+#if WITH_NOVODEX
+	NxJoint* Joint = (NxJoint*)ConstraintData;
+	if (Joint)
+	{
+		NxD6Joint* D6Joint = Joint->isD6Joint();
+		if(D6Joint)
+		{
+			NxQuat nQuat = U2NQuaternion(InPosTarget);
+			D6Joint->setDriveOrientation(nQuat);
+		}
+	}
+#endif
+
+	AngularPositionTarget = InPosTarget;
+}
+
+
+/** Function for setting target angular velocity. */
+void URB_ConstraintInstance::SetAngularVelocityTarget(FVector InVelTarget)
+{
+	// If settings are the same, don't do anything.
+	if( AngularVelocityTarget == InVelTarget )
+	{
+		return;
+	}
+
+#if WITH_NOVODEX
+	NxJoint* Joint = (NxJoint*)ConstraintData;
+	if (Joint)
+	{
+		NxD6Joint* D6Joint = Joint->isD6Joint();
+		if(D6Joint)
+		{
+			NxVec3 nAngVel = U2NVectorCopy(InVelTarget * 2 * (FLOAT)PI); // Convert from revs per second to radians
+			D6Joint->setDriveAngularVelocity(nAngVel);
+		}
+	}
+#endif
+
+	AngularVelocityTarget = InVelTarget;
+}
+
+/** Function for setting angular motor parameters. */
+void URB_ConstraintInstance::SetAngularDriveParams(FLOAT InSpring, FLOAT InDamping, FLOAT InForceLimit)
+{
+#if WITH_NOVODEX
+	NxJoint* Joint = (NxJoint*)ConstraintData;
+	if (Joint && Joint->getState() != NX_JS_BROKEN)
+	{
+		NxD6Joint* D6Joint = Joint->isD6Joint();
+		if(D6Joint)
+		{
+			// If the Outer of this constraint instance is a physics asset instance, we take into account the
+			// overall motor scaling from there.
+			UPhysicsAssetInstance* Inst = GetPhysicsAssetInstance();
+			FLOAT SpringScale = 1.f;
+			FLOAT DampScale = 1.f;
+			FLOAT ForceScale = 1.f;
+			if(Inst)
+			{
+				SpringScale = Inst->AngularSpringScale;
+				DampScale = Inst->AngularDampingScale;
+				ForceScale = Inst->AngularForceLimitScale;
+			}
+
+			NxD6JointDesc Desc;
+			D6Joint->saveToDesc(Desc);
+
+			Desc.swingDrive.spring		= Desc.twistDrive.spring		= Desc.slerpDrive.spring		= InSpring * SpringScale;
+			Desc.swingDrive.damping		= Desc.twistDrive.damping		= Desc.slerpDrive.damping		= InDamping * DampScale;
+			FLOAT AngularForceLimit = InForceLimit * ForceScale;
+			Desc.swingDrive.forceLimit	= Desc.twistDrive.forceLimit	= Desc.slerpDrive.forceLimit	= AngularForceLimit > 0.f ? AngularForceLimit : FLT_MAX;
+
+			D6Joint->loadFromDesc(Desc);
+		}
+	}
+#endif
+
+	AngularDriveSpring = InSpring;
+	AngularDriveDamping = InDamping;
+	AngularDriveForceLimit = InForceLimit;
+}
+
+
+/** Scale Angular Limit Constraints (as defined in RB_ConstraintSetup) */
+void URB_ConstraintInstance::SetAngularDOFLimitScale(FLOAT InSwing1LimitScale, FLOAT InSwing2LimitScale, FLOAT InTwistLimitScale, class URB_ConstraintSetup* InSetup)
+{
+	if( !InSetup )
+	{
+		debugf(TEXT("SetAngularDOFLimitScale, No RB_ConstraintSetup!"));
+		return;
+	}
+
+#if WITH_NOVODEX
+	NxJoint* Joint = (NxJoint*)ConstraintData;
+	if( Joint && Joint->getState() != NX_JS_BROKEN )
+	{
+		NxD6Joint* D6Joint = Joint->isD6Joint();
+		if( D6Joint )
+		{
+			NxD6JointDesc Desc;
+			D6Joint->saveToDesc(Desc);
+
+			if ( InSetup->bSwingLimited )
+			{
+				// Novodex swing directions are different from Unreal's - so change here.
+				Desc.swing2Motion		= (InSetup->Swing1LimitAngle * InSwing1LimitScale < RB_MinAngleToLockDOF) ? NX_D6JOINT_MOTION_LOCKED : NX_D6JOINT_MOTION_LIMITED;
+				Desc.swing1Motion		= (InSetup->Swing2LimitAngle * InSwing2LimitScale< RB_MinAngleToLockDOF) ? NX_D6JOINT_MOTION_LOCKED : NX_D6JOINT_MOTION_LIMITED;
+
+				Desc.swing2Limit.value	= InSetup->Swing1LimitAngle * InSwing1LimitScale * (PI/180.0f);
+				Desc.swing1Limit.value	= InSetup->Swing2LimitAngle * InSwing2LimitScale * (PI/180.0f);
+			}
+
+			if ( InSetup->bTwistLimited )
+			{
+				Desc.twistMotion			= (InSetup->TwistLimitAngle * InTwistLimitScale < RB_MinAngleToLockDOF) ? NX_D6JOINT_MOTION_LOCKED : NX_D6JOINT_MOTION_LIMITED;
+				const FLOAT TwistLimitRad	= InSetup->TwistLimitAngle * InTwistLimitScale * (PI/180.0f);
+				Desc.twistLimit.high.value	= TwistLimitRad;
+				Desc.twistLimit.low.value	= -TwistLimitRad;
+			}
+			D6Joint->loadFromDesc(Desc);
+		}
+	}
+#endif
+}
+
+/** Allows you to dynamically change the size of the linear limit 'sphere'. */
+void URB_ConstraintInstance::SetLinearLimitSize(float NewLimitSize)
+{
+#if WITH_NOVODEX
+	NxJoint* Joint = (NxJoint*)ConstraintData;
+	if( Joint && Joint->getState() != NX_JS_BROKEN )
+	{
+		NxD6Joint* D6Joint = Joint->isD6Joint();
+		if( D6Joint )
+		{
+			NxD6JointDesc Desc;
+			D6Joint->saveToDesc(Desc);
+			Desc.linearLimit.value = NewLimitSize * U2PScale;
+			D6Joint->loadFromDesc(Desc);
+		}
+	}
+#endif
+}
+
+/** If bMakeKinForBody1 was used, this function allows the kinematic body to be moved. */
+void URB_ConstraintInstance::MoveKinActorTransform(FMatrix& NewTM)
+{
+#if WITH_NOVODEX
+	if(DummyKinActor)
+	{
+		NxActor* nActor = (NxActor*)DummyKinActor;
+		NewTM.RemoveScaling();
+		check(!NewTM.ContainsNaN());
+		NxMat34 nNewPose = U2NTransform(NewTM);
+
+		// Don't call moveGlobalPose if we are already in the correct pose. 
+		// Also check matrix we are passing in is valid.
+		NxMat34 nCurrentPose = nActor->getGlobalPose();
+		if( nNewPose.M.determinant() > (FLOAT)KINDA_SMALL_NUMBER && 
+			!MatricesAreEqual(nNewPose, nCurrentPose, (FLOAT)KINDA_SMALL_NUMBER) )
+		{
+			nActor->moveGlobalPose(nNewPose);
+		}
+	}
+#endif
+}
+

@@ -1,0 +1,194 @@
+<html>
+
+<head>
+<title>FaceFX for XSI</title>
+<meta name="GENERATOR" content="Microsoft FrontPage 3.0">
+</head>
+
+<body>
+
+<h1>FaceFX for XSI</h1>
+
+<p>This plugin allows you to import/export data in XSI from OC3 FaceFX .FXA file format
+and its distributed in an XSI Addon called FxXSI.xsiaddon.&nbsp; The addon contains 2
+self-installed plugin FxXSI and FxXSIUI. FxXSI contains the XSI commmands which interacts
+with the FaceFX SDK. FxXSIUI contains the custom menu entries File | Import | FXA... ,File
+| Export | FXA... and the FaceFX cusom property which is used to exposed interaction to
+the XSI user.</p>
+
+<h3>Dictionary</h3>
+
+<p>&nbsp;&nbsp;&nbsp; Import: Import in the context of this plugin means bringing content
+from the FaceFX SDK into the scene.<br>
+&nbsp;&nbsp;&nbsp; Export: Export in the context of this plugin means bringing content
+from an XSI scene into the FaceFX SDK. This doesn't automatically persist the content on
+disk, if you want to do that you will need to do a Save in the FXA.<br>
+&nbsp;&nbsp;&nbsp; RefPose: RefPose are the list of bones/nulls that are going to be used
+to import/export data from/to the FaceFX SDK.&nbsp; This is equivalent to XSI
+StaticKinematicState.<br>
+&nbsp;&nbsp;&nbsp; BonePose: A given pose of the bones specified in the RefPose.</p>
+
+<h2>FxXSIUI</h2>
+
+<h4>Creating a new .FXA File</h4>
+
+<p>To create a new .FXA file you can go in File | Import | FXA...<br>
+This will create a custom property called FaceFX under the scene root. You can lock the
+property page of that custom property.<br>
+You can then specify which bones to be used within your FXA file by selecting in the scene
+the bones that you want to use and clicking on the Export button of the Reference Pose
+tab.<br>
+You can then create some poses for those bones by moving them and then clicking the Export
+button of the Bone Poses tab. This will prompt you for the name of the Pose.<br>
+Then if you go to the FXA tab you can specify a path and file name in the File text box. <br>
+Finally pressing Save will persist that FXA file on disk.</p>
+
+<h4>Importing animation into a scene from an existing&nbsp; .FXA File</h4>
+
+<p>To load&nbsp; an existing .FXA file you can go in File | Import | FXA...<br>
+This will create a custom property called FaceFX under the scene root. You can lock the
+property page of that custom property.<br>
+You can load an exsisting file by specifying a valid file path or browsing to it using the
+browse button on the FXA tab of the custom property.<br>
+Pressing the Open button will load that file in memory and populate the other tab of the
+custom property.<br>
+If you then go to the Animation tab of the FaceFX custom property you can select the
+animation group from which you want to import an animation. <br>
+This will automatically populate the Animation list.<br>
+Once you've selecte an animation from the animation list you can press the Import button
+which will import the data in the scene.</p>
+
+<h2>FxXSI</h2>
+
+<p>This plugin gives you access to the commands which serves as a link between XSI and the
+FaceFX SDK.</p>
+
+<h3>FXA File </h3>
+
+<blockquote>
+  <font SIZE="2" COLOR="#010001"><h4></font><font color="#010001">FaceFXOpenFXA</font></h4>
+  <p><font color="#010001">&nbsp;&nbsp;&nbsp; </font><font color="#808080">Input Argument:
+  FileName (String)</font></p>
+  <p><font color="#010001">&nbsp;&nbsp;&nbsp; Description: Takes the complete file path to a
+  .FXA file and load it in the FaceFX SDK for later access by the FxXSI plugin.</font></p>
+  <font SIZE="2" COLOR="#010001"><h4></font><font color="#010001">FaceFXNewFXA</font></h4>
+  <p><font color="#808080">&nbsp;&nbsp;&nbsp; Input Argument: ActorName(String)</font></p>
+  <p><font color="#010001">&nbsp;&nbsp;&nbsp; Description: Create a new actor representation
+  in the FaceFX sdk using the actor name. Note that this will flush previously loaded actor.</font></p>
+  <h4><font color="#010001">FaceFXSaveFXA</font></h4>
+  <p><font color="#808080">&nbsp;&nbsp;&nbsp;&nbsp; Input Argument: FileName (String)</font></p>
+  <p><font color="#010001">&nbsp;&nbsp;&nbsp; Description: Saves the current actor to the
+  FXA specified by the filename argument.</font></p>
+</blockquote>
+<font SIZE="2" COLOR="#010001">
+
+<h3></font>RefPose </h3>
+
+<blockquote>
+  <font SIZE="2" COLOR="#010001"><h4></font><font color="#010001">FaceFXImportRefBonePose
+  &nbsp;&nbsp;&nbsp; </font></h4>
+  <p><font color="#808080">&nbsp;&nbsp; Input Argument: Frame (int) </font></p>
+  <p><font color="#010001">&nbsp;&nbsp; Description: Resets the bone pose to their neutral
+  pose at the specified frame.</font></p>
+</blockquote>
+
+<blockquote>
+  <font SIZE="2" COLOR="#010001"><h4></font><font color="#010001">FaceFXExportRefBonePose</font></h4>
+  <p><font color="#808080">&nbsp;&nbsp;&nbsp; Input Argument: Frame (int)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  Bones (Collection)</font></p>
+  <p><font color="#010001">&nbsp;&nbsp; Description: Uses the value at the specified frame
+  as the reference pose for the bones specified.</font></p>
+</blockquote>
+<font SIZE="2" COLOR="#010001">
+
+<h4></font><font color="#010001">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+FaceFXListRefBonePoses</font></h4>
+
+<p><font color="#010001">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Description: Returns an array with the name of the bones that are in usage by the current
+actor.</font></p>
+<font SIZE="2" COLOR="#010001">
+
+<h3></font>BonePose</h3>
+
+<blockquote>
+  <font SIZE="2" COLOR="#010001"><h4></font><font color="#010001">FaceFXImportBonePose</font></h4>
+  <p><font color="#808080">&nbsp;&nbsp;&nbsp; Input Argument: PoseName (string) <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  Frame (int)</font></p>
+  <p><font color="#010001">&nbsp;&nbsp; Description: Import the given pose by setting the
+  local transform for the bones in the RefPose list. If the bones are already animated it
+  will overwrite the key for the specified frame.</font></p>
+  <h4><font color="#010001">FaceFXExportBonePose</font></h4>
+  <p><font color="#808080">&nbsp;&nbsp;&nbsp; Input Argument: Frame (int)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  PoseName (string)</font></p>
+  <p><font color="#010001">&nbsp;&nbsp; Description: Export the transform at the specified
+  frame to the specified pose name</font></p>
+  <h4><font color="#010001">FaceFXListBonePoses</font></h4>
+  <p><font color="#010001">&nbsp;&nbsp; Description: Returns an array with the pose name.</font></p>
+  <font SIZE="2" COLOR="#010001"><h4></font><font color="#010001">FaceFXBatchImportBonePoses</font></h4>
+  <p><font color="#010001">&nbsp;&nbsp; </font><font color="#808080">Input Argument:
+  BatchFileName</font></p>
+  <p><font color="#010001">&nbsp;&nbsp;&nbsp; Description: Given a text file containing pose
+  name at frame sequence it will import the appropriate pose in the scene. Please refer to
+  the FaceFX help for more details.</font></p>
+  <h4><font color="#010001">FaceFXBatchExportBonePoses</font></h4>
+  <p><font color="#808080">&nbsp;&nbsp; Input Argument: BatchFileName</font></p>
+  <p><font color="#010001">&nbsp;&nbsp;&nbsp; Description: Given a text file containing pose
+  name at frame sequence it will import the appropriate pose in the scene. Please refer to
+  the FaceFX help for more details.</font></p>
+</blockquote>
+<font SIZE="2" COLOR="#010001">
+
+<h3></font><font color="#010001">Animation</font><font SIZE="2" COLOR="#010001"></h3>
+
+<blockquote>
+  <h4></font><font color="#010001">FaceFXImportAnimation</font></h4>
+  <p><font color="#808080">&nbsp;&nbsp;&nbsp; Input Argument: AnimationGroupName (string)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  AnimationName (string)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  FrameRate (float)</font></p>
+  <p><font color="#010001">&nbsp;&nbsp; Description: Import the given animation animation in
+  the scene. It will get rid of existing animation.</font></p>
+  <h4><font color="#010001">FaceFXListAnimationGroups</font></h4>
+  <p><font color="#010001">&nbsp;&nbsp; Description: Returns an array containing the names
+  of the existing animation groups.</font></p>
+  <h4><font color="#010001">FaceFXListAnimationsFromGroup</font></h4>
+  <p><font color="#808080">&nbsp;&nbsp;&nbsp; Input Argument: AnimationGroupName (string)</font></p>
+  <p><font color="#010001">&nbsp;&nbsp;&nbsp; Description: Returns an array containing the
+  names of&nbsp; the animation for a given animation group.</font></p>
+  <p><font SIZE="2" COLOR="#010001">&nbsp;</p>
+</blockquote>
+</font>
+
+<p><font SIZE="2" COLOR="#010001">&nbsp;</p>
+</font>
+
+<p><font SIZE="2" COLOR="#010001">&nbsp;</p>
+
+<p></font>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+</body>
+</html>

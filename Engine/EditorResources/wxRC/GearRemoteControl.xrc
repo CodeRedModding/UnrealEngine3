@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="windows-1252"?>
+<resource version="2.3.0.1" xmlns="http://www.wxwidgets.org/wxxrc">
+    <object class="wxPanel" name="ID_WARFARE_FLAGS_PAGE" subclass="MyDialog">
+        <style>wxNO_BORDER|wxCLIP_CHILDREN |wxTAB_TRAVERSAL</style>
+        <size>320,290</size>
+        <object class="wxBoxSizer">
+            <orient>wxVERTICAL</orient>
+            <object class="sizeritem">
+                <flag>wxGROW</flag>
+                <border>5</border>
+                <object class="wxStaticBoxSizer" name="ID_CONTROLS_SIZER">
+                    <orient>wxVERTICAL</orient>
+                    <label>Warfare Flags</label>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_LEFT|wxALL</flag>
+                        <border>5</border>
+                        <object class="wxGridSizer">
+                            <cols>2</cols>
+                            <rows>2</rows>
+                            <vgap>0</vgap>
+                            <hgap>0</hgap>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxCheckBox" name="ID_SHOW_ACCURACY">
+                                    <style>wxCHK_2STATE</style>
+                                    <label>Visualize Accuracy</label>
+                                    <checked>0</checked>
+                                </object>
+                            </object>
+                            <object class="spacer">
+                                <flag>wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <size>5,5</size>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxCheckBox" name="ID_SHOW_COVER">
+                                    <style>wxCHK_2STATE</style>
+                                    <label>Visualize Cover</label>
+                                    <checked>0</checked>
+                                </object>
+                            </object>
+                            <object class="spacer">
+                                <flag>wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <size>5,5</size>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxCheckBox" name="ID_SHOW_DEBUGAI">
+                                    <style>wxCHK_2STATE</style>
+                                    <label>Show DebugAI</label>
+                                    <checked>0</checked>
+                                </object>
+                            </object>
+                        </object>
+                    </object>
+                </object>
+            </object>
+        </object>
+    </object>
+</resource>

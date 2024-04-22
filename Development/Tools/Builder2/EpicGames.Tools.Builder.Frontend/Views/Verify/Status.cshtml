@@ -1,0 +1,115 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.VerifyStatusModel
+
+@{
+    ViewBag.Title = "Verification System";
+    ViewBag.Description = "Current Verification Status for All Branches";
+}
+
+
+<script type="text/javascript">
+    function UpdateCommands() {
+        var query = $.ajax({
+            url: "@Url.RouteUrl(new { action = "StatusCommands", controller = "Verify" })",
+            async: false
+        });
+            
+        query.success(
+            function () {
+                setTimeout(function () {
+                    UpdateCommands();
+                },
+                5000);
+            });
+
+        $('#commands').html(query.responseText);
+    }
+
+    $(document).ready(function () {
+        UpdateCommands();
+    });
+</script>
+
+
+<section>
+    <div class="grid6">
+        <span class="linkBack">
+            @Html.ActionLink("Dashboard", "Dashboard", "Home")
+        </span>
+
+        <span class="fr">
+            <a href="#failing">Latest Verification Failures</a> |
+            <a href="#verifying">Currently Verifying</a> |
+            <a href="#pending">Pending Verifications</a> |
+            <a href="#active">Active Branches</a> |
+            <a href="#inactive">Inactive Branches</a>
+        </span>
+    </div>
+</section>
+
+<section id="commands"></section>
+
+<section>
+    <div class="grid3">
+        <a name="active"></a><h2>Active Branches</h2>
+
+        @if (Model.Branches.Count(b => (b.NumCommands.HasValue && (b.NumCommands.Value > 0))) > 0)
+        {
+            <p>The following branches are configured for automatic verification:</p>
+
+            <table>
+                <thead>
+                    <th>Branch Name</th>
+                    <th class="numeric">Verifications</th>
+                </thead>
+                <tbody>
+                    @foreach (var b in Model.Branches)
+                    {
+                        if (b.NumCommands.HasValue && (b.NumCommands > 0))
+                        {
+                            <tr>
+                                <td>@Html.ActionLink(b.Branch, "Branch", "Verify", new { id = b.Branch }, null )</td>
+                                <td class="numeric">@b.NumCommands.Value.ToString()</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <text>There are currently no active branches.</text>
+        }
+    </div>
+
+    <div class="grid3">
+        <a name="inactive"></a><h2>Inactive Branches</h2>
+
+        @if (Model.Branches.Count(b => (!b.NumCommands.HasValue || (b.NumCommands.Value == 0))) > 0)
+        {
+            <p>The following branches do not use automatic verification:</p>
+            
+            <table>
+                <thead>
+                    <th>Branch Name</th>
+                </thead>
+                <tbody>
+                    @foreach (var b in Model.Branches)
+                    {
+                        if (!b.NumCommands.HasValue || (b.NumCommands.Value == 0))
+                        {
+                            <tr>
+                                <td>@Html.ActionLink(b.Branch, "Branch", "Verify", new { id = b.Branch }, null )</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <text>There are currently no inactive branches.</text>
+        }
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>

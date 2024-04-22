@@ -1,266 +1,279 @@
 /*=============================================================================
 	UnSkeletalRender.cpp: Skeletal mesh skinning/rendering code.
-	Copyright 2003 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Andrew Scheidecker
-		* Vectorized versions of CacheVertices by Daniel Vogel
-		* Optimizations by Bruce Dawson
-		* Split into own file by James Golding
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "EnginePrivate.h"
 #include "EngineAnimClasses.h"
+#include "EnginePhysicsClasses.h"
 #include "UnSkeletalRender.h"
 
+/*-----------------------------------------------------------------------------
+Globals
+-----------------------------------------------------------------------------*/
 
-//
-//	FFinalSkinVertexBuffer::GetData
-//
+// smallest blend weight for morph targets
+const FLOAT MinMorphBlendWeight = 0.01f;
+// largest blend weight for morph targets
+const FLOAT MaxMorphBlendWeight = 5.0f;
 
-void FFinalSkinVertexBuffer::GetData(void* Buffer)
+/*-----------------------------------------------------------------------------
+FSkeletalMeshObject
+-----------------------------------------------------------------------------*/
+
+/** 
+*	Given a set of views, update the MinDesiredLODLevel member to indicate the minimum (ie best) LOD we would like to use to render this mesh. 
+*	This is called from the rendering thread (PreRender) so be very careful what you read/write to.
+*	If this is the first render for the frame, will just set MinDesiredLODLevel - otherwise will set it to min of current MinDesiredLODLevel and calculated value.
+*/
+void FSkeletalMeshObject::UpdateMinDesiredLODLevel(const FSceneView* View, const FBoxSphereBounds& Bounds, INT FrameNumber)
 {
-	if(SkeletalMeshComponent->MeshObject->CachedVertexLOD != LOD)
-		SkeletalMeshComponent->MeshObject->CacheVertices(LOD);
+	const FVector4 ScreenPosition( View->WorldToScreen(Bounds.Origin) );
+	const FLOAT ScreenRadius = Max((FLOAT)View->SizeX / 2.0f * View->ProjectionMatrix.M[0][0],
+		(FLOAT)View->SizeY / 2.0f * View->ProjectionMatrix.M[1][1]) * Bounds.SphereRadius / Max(ScreenPosition.W,1.0f);
+	const FLOAT LODFactor = ScreenRadius / 320.0f;
 
-	appMemcpy(Buffer,&SkeletalMeshComponent->MeshObject->CachedFinalVertices(0),Size);
+	check( SkeletalMesh->LODInfo.Num() == SkeletalMesh->LODModels.Num() );
 
-}
+	// Need the current LOD
+	const INT CurrentLODLevel = GetLOD();
+	const FLOAT HysteresisOffset = 0.f;
 
-//
-//	FSkinShadowVertexBuffer::GetData
-//
-
-void FSkinShadowVertexBuffer::GetData(void* Buffer)
-{
-	if(SkeletalMeshComponent->MeshObject->CachedVertexLOD != LOD)
-		SkeletalMeshComponent->MeshObject->CacheVertices(LOD);
-
-	FSkinShadowVertex*				DestVertex = (FSkinShadowVertex*)Buffer;
-	const TArray<FFinalSkinVertex>&	SrcVertices = SkeletalMeshComponent->MeshObject->CachedFinalVertices;
-
-	for(UINT VertexIndex = 0;VertexIndex < (UINT)SrcVertices.Num();VertexIndex++)
-		*DestVertex++ = FSkinShadowVertex(SrcVertices(VertexIndex).Position,0);
-
-	for(UINT VertexIndex = 0;VertexIndex < (UINT)SrcVertices.Num();VertexIndex++)
-		*DestVertex++ = FSkinShadowVertex(SrcVertices(VertexIndex).Position,1);
-
-}
-
-
-//
-//	USkeletalMeshComponent::Render
-//
-
-void USkeletalMeshComponent::Render(const FSceneContext& Context,struct FPrimitiveRenderInterface* PRI)
-{
-	if(MeshObject && !bHideSkin)
+	INT NewLODLevel = 0;
+	// Iterate from worst to best LOD
+	for(INT LODLevel = SkeletalMesh->LODModels.Num()-1; LODLevel > 0; LODLevel--) 
 	{
-		INT	LODLevel = GetLODLevel(Context);
+		// Get DistanceFactor for this LOD
+		FLOAT LODDistanceFactor = SkeletalMesh->LODInfo(LODLevel).DisplayFactor;
 
-		if(Context.View->ViewMode & SVM_WireframeMask)
-		{			
-			for(UINT SectionIndex = 0;SectionIndex < (UINT)SkeletalMesh->LODModels(LODLevel).Sections.Num();SectionIndex++)
-			{
-				FSkelMeshSection&	Section = SkeletalMesh->LODModels(LODLevel).Sections(SectionIndex);
-				PRI->DrawWireframe(
-					&MeshObject->LODs(LODLevel).VertexFactory,
-					&SkeletalMesh->LODModels(LODLevel).IndexBuffer,
-					WT_TriList,
-					SelectedColor(Context,GEngine->C_AnimMesh),
-					Section.FirstIndex,
-					Section.TotalFaces,
-					Section.MinIndex,
-					Section.MaxIndex
-					);
-			}
+		// If we are considering shifting to a better (lower) LOD, bias with hysteresis.
+		if(LODLevel  <= CurrentLODLevel)
+		{
+			LODDistanceFactor += SkeletalMesh->LODInfo(LODLevel).LODHysteresis;
 		}
-		else
-		{	
-			for(UINT SectionIndex = 0;SectionIndex < (UINT)SkeletalMesh->LODModels(LODLevel).Sections.Num();SectionIndex++)
-			{
-				FSkelMeshSection&	Section = SkeletalMesh->LODModels(LODLevel).Sections(SectionIndex);
-				GEngineStats.SkeletalMeshTriangles.Value += Section.TotalFaces;
-				PRI->DrawMesh(
-					&MeshObject->LODs(LODLevel).VertexFactory,
-					&SkeletalMesh->LODModels(LODLevel).IndexBuffer,
-					SelectedMaterial(Context,GetMaterial(Section.MaterialIndex)),
-					GetMaterial(Section.MaterialIndex)->GetInstanceInterface(),
-					Section.FirstIndex,
-					Section.TotalFaces,
-					Section.MinIndex,
-					Section.MaxIndex
-					);
-			}
+
+		// If have passed this boundary, use this LOD
+		if(LODDistanceFactor > LODFactor)
+		{
+			NewLODLevel = LODLevel;
+			break;
 		}
 	}
 
-	// Debug drawing for assets.
-
-	if( PhysicsAsset )
+	// Different path for first-time vs subsequent-times in this function (ie splitscreen)
+	if(FrameNumber != LastFrameNumber)
 	{
-		FVector TotalScale;
-		if(Owner)
-			TotalScale = Owner->DrawScale * Owner->DrawScale3D;
-		else
-			TotalScale = FVector(1.f);
+		// Copy last frames value to the version that will be read by game thread
+		MaxDistanceFactor = WorkingMaxDistanceFactor;
+		MinDesiredLODLevel = WorkingMinDesiredLODLevel;
+		LastFrameNumber = FrameNumber;
 
-		// Only valid if scaling if uniform.
-		if( TotalScale.IsUniform() )
-		{
-			if(Context.View->ShowFlags & SHOW_Collision)
-				PhysicsAsset->DrawCollision(PRI, this, TotalScale.X);
-
-			if(Context.View->ShowFlags & SHOW_Constraints)
-				PhysicsAsset->DrawConstraints(PRI, this, TotalScale.X);
-		}
+		WorkingMaxDistanceFactor = LODFactor;
+		WorkingMinDesiredLODLevel = NewLODLevel;
+	}
+	else
+	{
+		WorkingMaxDistanceFactor = ::Max(WorkingMaxDistanceFactor, LODFactor);
+		WorkingMinDesiredLODLevel = ::Min(WorkingMinDesiredLODLevel, NewLODLevel);
 	}
 }
 
-//
-//	USkeletalMeshComponent::RenderForeground
-//
-
-void USkeletalMeshComponent::RenderForeground(const FSceneContext& Context,FPrimitiveRenderInterface* PRI)
+/**
+ * List of chunks to be rendered based on instance weight usage. Full swap of weights will render with its own chunks.
+ * @return Chunks to iterate over for rendering
+ */
+const TArray<FSkelMeshChunk>& FSkeletalMeshObject::GetRenderChunks(INT InLODIndex) const
 {
-	// Debug drawing of wire skeleton.
-	if( bDisplayBones )
+	const FStaticLODModel& LOD = SkeletalMesh->LODModels(InLODIndex);
+	const FSkelMeshObjectLODInfo& MeshLODInfo = LODInfo(InLODIndex);
+	const UBOOL bUseInstance = MeshLODInfo.bUseInstancedVertexInfluences && 
+		MeshLODInfo.InstanceWeightUsage == IWU_FullSwap && 
+		LOD.VertexInfluences.IsValidIndex(MeshLODInfo.InstanceWeightIdx) &&
+		LOD.VertexInfluences(MeshLODInfo.InstanceWeightIdx).Chunks.Num() > 0;
+	return bUseInstance ? LOD.VertexInfluences(MeshLODInfo.InstanceWeightIdx).Chunks : LOD.Chunks;
+}
+
+/**
+ * Update the hidden material section flags for an LOD entry
+ *
+ * @param InLODIndex - LOD entry to update hidden material flags for
+ * @param HiddenMaterials - array of hidden material sections
+ */
+void FSkeletalMeshObject::SetHiddenMaterials(INT InLODIndex,const TArray<UBOOL>& HiddenMaterials)
+{
+	check(LODInfo.IsValidIndex(InLODIndex));
+	LODInfo(InLODIndex).HiddenMaterials = HiddenMaterials;		
+}
+
+/**
+ * Determine if the material section entry for an LOD is hidden or not
+ *
+ * @param InLODIndex - LOD entry to get hidden material flags for
+ * @param MaterialIdx - index of the material section to check
+ */
+UBOOL FSkeletalMeshObject::IsMaterialHidden(INT InLODIndex,INT MaterialIdx) const
+{
+	check(LODInfo.IsValidIndex(InLODIndex));
+	return LODInfo(InLODIndex).HiddenMaterials.IsValidIndex(MaterialIdx) && LODInfo(InLODIndex).HiddenMaterials(MaterialIdx);
+}
+/**
+ * Initialize the array of LODInfo based on the settings of the current skel mesh component
+ */
+void FSkeletalMeshObject::InitLODInfos(const USkeletalMeshComponent* SkelComponent)
+{
+	LODInfo.Empty(SkeletalMesh->LODInfo.Num());
+	for (INT Idx=0; Idx < SkeletalMesh->LODInfo.Num(); Idx++)
 	{
-		TArray<FMatrix> WorldBases;
-		WorldBases.Add( SpaceBases.Num() );
-
-		WorldBases(0) = SpaceBases(0) * LocalToWorld;
-
-		for(INT i=0; i<SpaceBases.Num(); i++)
+		FSkelMeshObjectLODInfo& MeshLODInfo = *new(LODInfo) FSkelMeshObjectLODInfo();
+		if (SkelComponent->LODInfo.IsValidIndex(Idx))
 		{
-			WorldBases(i) = SpaceBases(i) * LocalToWorld;
+			const FSkelMeshComponentLODInfo &Info = SkelComponent->LODInfo(Idx);
 
-			if(i == 0)
+			MeshLODInfo.HiddenMaterials = Info.HiddenMaterials;
+			MeshLODInfo.InstanceWeightIdx = Info.InstanceWeightIdx;
+			MeshLODInfo.InstanceWeightUsage = (EInstanceWeightUsage)Info.InstanceWeightUsage;
+
+			// force toggle instance weight usage before skeletal mesh gets reinitialized
+			MeshLODInfo.bUseInstancedVertexInfluences = Info.bAlwaysUseInstanceWeights && !GSystemSettings.bDisableSkeletalInstanceWeights;
+		}		
+	}
+}
+
+/*-----------------------------------------------------------------------------
+Global functions
+-----------------------------------------------------------------------------*/
+
+/**
+ * Utility function that fills in the array of ref-pose to local-space matrices using 
+ * the mesh component's updated space bases
+ * @param	ReferenceToLocal - matrices to update
+ * @param	SkeletalMeshComponent - mesh primitive with updated bone matrices
+ * @param	LODIndex - each LOD has its own mapping of bones to update
+ * @param	ExtraRequiredBoneIndices - any extra bones apart from those active in the LOD that we'd like to update
+ */
+void UpdateRefToLocalMatrices( TArray<FBoneAtom>& ReferenceToLocal, const USkeletalMeshComponent* SkeletalMeshComponent, INT LODIndex, const TArray<WORD>* ExtraRequiredBoneIndices )
+{
+	const USkeletalMesh* const ThisMesh = SkeletalMeshComponent->SkeletalMesh;
+	const USkeletalMeshComponent* const ParentComp = SkeletalMeshComponent->ParentAnimComponent;
+	const FStaticLODModel& LOD = ThisMesh->LODModels(LODIndex);
+
+	if(ReferenceToLocal.Num() != ThisMesh->RefBasesInvMatrix.Num())
+	{
+		ReferenceToLocal.Empty(ThisMesh->RefBasesInvMatrix.Num());
+		ReferenceToLocal.Add(ThisMesh->RefBasesInvMatrix.Num());
+	}
+
+	const UBOOL bIsParentValid = ParentComp && SkeletalMeshComponent->ParentBoneMap.Num() == ThisMesh->RefSkeleton.Num();
+	const TArray<WORD>* RequiredBoneSets[3] = { &LOD.ActiveBoneIndices, ExtraRequiredBoneIndices, NULL };
+
+	// Handle case of using ParentAnimComponent for SpaceBases.
+	for( INT RequiredBoneSetIndex = 0; RequiredBoneSets[RequiredBoneSetIndex]!=NULL; RequiredBoneSetIndex++ )
+	{
+		const TArray<WORD>& RequiredBoneIndices = *RequiredBoneSets[RequiredBoneSetIndex];
+
+		// Get the index of the bone in this skeleton, and loop up in table to find index in parent component mesh.
+		for(INT BoneIndex = 0;BoneIndex < RequiredBoneIndices.Num();BoneIndex++)
+		{
+			const INT ThisBoneIndex = RequiredBoneIndices(BoneIndex);
+
+			if ( ThisMesh->RefBasesInvMatrix.IsValidIndex(ThisBoneIndex) )
 			{
-				PRI->DrawLine(WorldBases(i).GetOrigin(), LocalToWorld.GetOrigin(), FColor(255, 0, 255));
+				FBoneAtom const *ParentMatrix = NULL;
+
+				if( bIsParentValid)
+				{
+					// If valid, use matrix from parent component.
+					const INT ParentBoneIndex = SkeletalMeshComponent->ParentBoneMap(ThisBoneIndex);
+					if ( ParentComp->SpaceBases.IsValidIndex(ParentBoneIndex) )
+					{
+						ParentMatrix = &ParentComp->SpaceBases(ParentBoneIndex);
+					}
+				}
+				else
+				{
+					// If we can't find this bone in the parent, we just use the reference pose.
+					ParentMatrix = &SkeletalMeshComponent->SpaceBases(ThisBoneIndex);
+				}
+
+				if ( ParentMatrix )
+				{
+					ReferenceToLocal(ThisBoneIndex) = ThisMesh->RefBasesInvMatrix(ThisBoneIndex) * *ParentMatrix;
+					checkSlow( ParentMatrix->IsRotationNormalized() );
+					checkSlow( ThisMesh->RefBasesInvMatrix(ThisBoneIndex).IsRotationNormalized() );
+					checkSlow( ReferenceToLocal(ThisBoneIndex).IsRotationNormalized() );
+				}
+				else
+				{
+					// On the off chance the parent matrix isn't valid, revert to identity.
+					ReferenceToLocal(ThisBoneIndex) = FBoneAtom::Identity;
+				}
 			}
 			else
 			{
-				INT ParentIdx = SkeletalMesh->RefSkeleton(i).ParentIndex;
-				PRI->DrawLine(WorldBases(i).GetOrigin(), WorldBases(ParentIdx).GetOrigin(), FColor(230, 230, 255));
+				// In this case we basically want Reference->Reference ie identity.
+				ReferenceToLocal(ThisBoneIndex) = FBoneAtom::Identity;
 			}
-
-			// Display colored coordinate system axes for each joint.
-			FVector XAxis =  WorldBases(i).TransformNormal( FVector(1.0f,0.0f,0.0f));
-			XAxis.Normalize();
-			PRI->DrawLine(  WorldBases(i).GetOrigin(),  WorldBases(i).GetOrigin() + XAxis * 3.75f, FColor( 255, 80, 80) ); // Red = X			
-			FVector YAxis =  WorldBases(i).TransformNormal( FVector(0.0f,1.0f,0.0f));
-			YAxis.Normalize();
-			PRI->DrawLine(  WorldBases(i).GetOrigin(),  WorldBases(i).GetOrigin() + YAxis * 3.75f, FColor( 80, 255, 80) ); // Green = Y
-			FVector ZAxis =  WorldBases(i).TransformNormal( FVector(0.0f,0.0f,1.0f));
-			ZAxis.Normalize();
-			PRI->DrawLine(  WorldBases(i).GetOrigin(),  WorldBases(i).GetOrigin() + ZAxis * 3.75f, FColor( 80, 80, 255) ); // Blue = Z
-		}		
-	}
-
-	// Debug drawing of bounding primitives.
-	if( (Context.View->ShowFlags & SHOW_Bounds) && (!GIsEditor || !Owner || GSelectionTools.IsSelected( Owner ) ) )
-	{
-		// Draw bounding wireframe box.
-		PRI->DrawWireBox( Bounds.GetBox(), FColor(72,72,255));
-
-		PRI->DrawCircle(Bounds.Origin,FVector(1,0,0),FVector(0,1,0),FColor(255,255,0),Bounds.SphereRadius,32);
-		PRI->DrawCircle(Bounds.Origin,FVector(1,0,0),FVector(0,0,1),FColor(255,255,0),Bounds.SphereRadius,32);
-		PRI->DrawCircle(Bounds.Origin,FVector(0,1,0),FVector(0,0,1),FColor(255,255,0),Bounds.SphereRadius,32);
+		}
 	}
 }
 
-//
-//	USkeletalMeshComponent::RenderShadowVolume
-//
-
-void USkeletalMeshComponent::RenderShadowVolume(const FSceneContext& Context,struct FShadowRenderInterface* SRI,ULightComponent* Light)
+/**
+ * Utility function that calculates the local-space origin and bone direction vectors for the
+ * current pose for any TRISORT_CustomLeftRight sections.
+ * @param	OutVectors - origin and direction vectors to update
+ * @param	SkeletalMeshComponent - mesh primitive with updated bone matrices
+ * @param	LODIndex - current LOD
+ */
+void UpdateCustomLeftRightVectors( TArray<FTwoVectors>& OutVectors, const USkeletalMeshComponent* SkeletalMeshComponent, INT LODIndex )
 {
-	FCycleCounterSection	CycleCounter(GEngineStats.ShadowTime);
-	EShadowStencilMode		Mode = SSM_ZFail;
+	const USkeletalMesh* const ThisMesh = SkeletalMeshComponent->SkeletalMesh;
+	const USkeletalMeshComponent* const ParentComp = SkeletalMeshComponent->ParentAnimComponent;
+	const FStaticLODModel& LOD = ThisMesh->LODModels(LODIndex);
+	const FSkeletalMeshLODInfo& LODInfo = ThisMesh->LODInfo(LODIndex);
 
-	INT	LODLevel = GetLODLevel(Context);
-
-	if(SkeletalMesh && SkeletalMesh->LODModels(LODLevel).ShadowIndices.Num() && MeshObject)
+	if(OutVectors.Num() != LODInfo.TriangleSortSettings.Num())
 	{
-		// Find the homogenous light position in local space.
-
-		FPlane	LightPosition = LocalToWorld.Inverse().TransformFPlane(Light->GetPosition());
-
-		FStaticLODModel&	LODModel = SkeletalMesh->LODModels(LODLevel);
-
-		if(MeshObject->CachedVertexLOD != LODLevel)
-			MeshObject->CacheVertices(LODLevel);
-
-		// Find the orientation of the triangles relative to the light position.
-
-		FLOAT*	PlaneDots = new FLOAT[LODModel.ShadowIndices.Num() / 3];
-		for(UINT TriangleIndex = 0;TriangleIndex < (UINT)LODModel.ShadowIndices.Num() / 3;TriangleIndex++)
-		{
-			const FVector&	V1 = MeshObject->CachedFinalVertices(LODModel.ShadowIndices(TriangleIndex * 3 + 0)).Position,
-							V2 = MeshObject->CachedFinalVertices(LODModel.ShadowIndices(TriangleIndex * 3 + 1)).Position,
-							V3 = MeshObject->CachedFinalVertices(LODModel.ShadowIndices(TriangleIndex * 3 + 2)).Position;
-			PlaneDots[TriangleIndex] = ((V2-V3) ^ (V1-V3)) | (FVector(LightPosition) - V1 * LightPosition.W);
-		}
-
-		// Extrude a shadow volume.
-
-		FShadowIndexBuffer	IndexBuffer;
-		_WORD				FirstExtrudedVertex = (LODModel.RigidVertices.Num() + LODModel.SoftVertices.Num());
-
-		IndexBuffer.Indices.Empty(LODModel.ShadowIndices.Num() * 2);
-
-		for(UINT TriangleIndex = 0;TriangleIndex < (UINT)LODModel.ShadowIndices.Num() / 3;TriangleIndex++)
-		{
-			_WORD*	TriangleIndices = &LODModel.ShadowIndices(TriangleIndex * 3);
-			_WORD	Offset = IsNegativeFloat(PlaneDots[TriangleIndex]) ? FirstExtrudedVertex : 0;
-			if(Mode == SSM_ZFail || IsNegativeFloat(PlaneDots[TriangleIndex]))
-				IndexBuffer.AddFace(
-					Offset + TriangleIndices[0],
-					Offset + TriangleIndices[1],
-					Offset + TriangleIndices[2]
-					);
-			if(LODModel.ShadowTriangleDoubleSided(TriangleIndex) && (Mode == SSM_ZFail || !IsNegativeFloat(PlaneDots[TriangleIndex])))
-				IndexBuffer.AddFace(
-					(FirstExtrudedVertex - Offset) + TriangleIndices[2],
-					(FirstExtrudedVertex - Offset) + TriangleIndices[1],
-					(FirstExtrudedVertex - Offset) + TriangleIndices[0]
-					);
-		}
-
-		for(UINT EdgeIndex = 0;EdgeIndex < (UINT)LODModel.Edges.Num();EdgeIndex++)
-		{
-			FMeshEdge&	Edge = LODModel.Edges(EdgeIndex);
-			if(Edge.Faces[1] == INDEX_NONE || IsNegativeFloat(PlaneDots[Edge.Faces[0]]) != IsNegativeFloat(PlaneDots[Edge.Faces[1]]))
-			{
-				IndexBuffer.AddEdge(
-					Edge.Vertices[IsNegativeFloat(PlaneDots[Edge.Faces[0]]) ? 1 : 0],
-					Edge.Vertices[IsNegativeFloat(PlaneDots[Edge.Faces[0]]) ? 0 : 1],
-					FirstExtrudedVertex
-					);
-				if(LODModel.ShadowTriangleDoubleSided(Edge.Faces[0]) && Edge.Faces[1] != INDEX_NONE)
-					IndexBuffer.AddEdge(
-						Edge.Vertices[IsNegativeFloat(PlaneDots[Edge.Faces[0]]) ? 1 : 0],
-						Edge.Vertices[IsNegativeFloat(PlaneDots[Edge.Faces[0]]) ? 0 : 1],
-						FirstExtrudedVertex
-						);
-			}
-		}
-
-		IndexBuffer.CalcSize();
-
-		delete [] PlaneDots;
-
-		GEngineStats.ShadowTriangles.Value += IndexBuffer.Indices.Num() / 3;
-		SRI->DrawShadowVolume(
-			&MeshObject->LODs(LODLevel).ShadowVertexFactory,
-			&IndexBuffer,
-			0,
-			IndexBuffer.Indices.Num() / 3,
-			0,
-			(LODModel.RigidVertices.Num() + LODModel.SoftVertices.Num()) * 2 -1,
-			Mode
-			);
+		OutVectors.Empty(LODInfo.TriangleSortSettings.Num());
+		OutVectors.Add(LODInfo.TriangleSortSettings.Num());
 	}
 
+	const FVector AxisDirections[] = { FVector(1.f,0.f,0.f), FVector(0.f,1.f,0.f), FVector(0.f,0.f,1.f) };
+
+	for ( INT SectionIndex = 0 ; SectionIndex < LOD.Sections.Num() ; ++SectionIndex )
+	{
+		if( LOD.Sections(SectionIndex).TriangleSorting == TRISORT_CustomLeftRight )
+		{
+			FName CustomLeftRightBoneName = LODInfo.TriangleSortSettings(SectionIndex).CustomLeftRightBoneName;
+			if( CustomLeftRightBoneName == NAME_None )
+			{
+				OutVectors(SectionIndex).v1 = FVector(0,0,0);
+				OutVectors(SectionIndex).v2 = AxisDirections[LODInfo.TriangleSortSettings(SectionIndex).CustomLeftRightAxis];
+			}
+			else
+			{
+				INT SpaceBasesBoneIndex = ThisMesh->MatchRefBone(CustomLeftRightBoneName);
+				const USkeletalMeshComponent* SpaceBasesComp = SkeletalMeshComponent;
+				
+				// Handle case of using ParentAnimComponent for SpaceBases.
+				if( ParentComp && SkeletalMeshComponent->ParentBoneMap.Num() == ThisMesh->RefSkeleton.Num() && SpaceBasesBoneIndex != INDEX_NONE )
+				{
+					// If valid, use matrix from parent component.
+					SpaceBasesBoneIndex = SkeletalMeshComponent->ParentBoneMap(SpaceBasesBoneIndex);
+					SpaceBasesComp = ParentComp;
+				}
+
+				if ( SpaceBasesComp->SpaceBases.IsValidIndex(SpaceBasesBoneIndex) )
+				{
+					const FMatrix BoneMatrix = SpaceBasesComp->SpaceBases(SpaceBasesBoneIndex).ToMatrix();
+					OutVectors(SectionIndex).v1 = BoneMatrix.GetOrigin();
+					OutVectors(SectionIndex).v2 = BoneMatrix.GetAxis(LODInfo.TriangleSortSettings(SectionIndex).CustomLeftRightAxis);
+				}
+				else
+				{
+					OutVectors(SectionIndex).v1 = FVector(0,0,0);
+					OutVectors(SectionIndex).v2 = AxisDirections[LODInfo.TriangleSortSettings(SectionIndex).CustomLeftRightAxis];
+				}
+			}
+		}
+	}
 }

@@ -1,9 +1,6 @@
 /*=============================================================================
 	UnCId.h: Cache Id's for all global Unreal objects.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 /*----------------------------------------------------------------------------
@@ -81,7 +78,5 @@ inline QWORD MakeCacheID( ECacheIDBase Base )
 	return Base + ((GMakeCacheIDIndex++) << 8);
 }
 
-/*-----------------------------------------------------------------------------
-	The End
------------------------------------------------------------------------------*/
+
 

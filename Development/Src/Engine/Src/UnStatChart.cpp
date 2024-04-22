@@ -1,8 +1,6 @@
 /*=============================================================================
 	UnStatChart.cpp: Stats Charting Utility
-	Copyright 2004 Epic MegaGames, Inc.
-	Revision history:
-		* Created by James Golding
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "EnginePrivate.h"
@@ -87,7 +85,7 @@ void FStatChart::AddDataPoint(const FString& LineName, FLOAT Data)
 		// Pick a hue and do HSV->RGB
 		//BYTE Hue = appRound(FRange(0, 255).GetRand());
 		BYTE Hue = (Lines.Num() * 40)%255;
-		FColor randomColor(FGetHSV(Hue, 128, 255));
+		FColor randomColor(FLinearColor::FGetHSV(Hue, 128, 255));
 		randomColor.A = 255;
 		
 		AddLineAutoRange(LineName, randomColor);
@@ -166,6 +164,11 @@ UBOOL FStatChart::Exec(const TCHAR* Cmd, FOutputDevice& Ar)
 			ReScale(this);
 			return 1;
 		}
+		else if ( ParseCommand(&Cmd, TEXT("RESET")) )
+		{
+			Reset();
+			return 1;
+		}
 
 		Parse(Cmd, TEXT("XRANGE="), XRange);
 		Parse(Cmd, TEXT("XSIZE="), ChartSize[0]);
@@ -193,7 +196,7 @@ UBOOL FStatChart::Exec(const TCHAR* Cmd, FOutputDevice& Ar)
 #define BG_KEY_WID			100
 #define BG_KEY_LINESPACE	10
 
-void FStatChart::Render(FChildViewport* Viewport, FRenderInterface* RI)
+void FStatChart::Render(FViewport* Viewport, FCanvas* Canvas)
 {
 	if(bHideChart)
 		return;
@@ -202,17 +205,17 @@ void FStatChart::Render(FChildViewport* Viewport, FRenderInterface* RI)
 		return;
 
 	// Draw Chart background
-	RI->DrawTile( 
-		ChartOrigin[0]-BG_BORDER, ChartOrigin[1]+BG_BORDER, 
-		ChartSize[0]+(2*BG_BORDER), -(ChartSize[1]+(2*BG_BORDER)), 
+	DrawTile(Canvas, 
+		appTrunc(ChartOrigin[0]-BG_BORDER), appTrunc(ChartOrigin[1]+BG_BORDER), 
+		appTrunc(ChartSize[0]+(2*BG_BORDER)), appTrunc(-(ChartSize[1]+(2*BG_BORDER))), 
 		0.f, 0.f, 1.f, 1.f, 
 		FColor(0,0,0,BackgroundAlpha) );
 
 	if(!bHideKey)
 	{
-		RI->DrawTile(
-			ChartOrigin[0]+ChartSize[0]+BG_BORDER+BG_KEY_GAP, ChartOrigin[1]+BG_BORDER, 
-			BG_KEY_WID + (2*BG_BORDER), -(ChartSize[1]+(2*BG_BORDER)), 
+		DrawTile(Canvas,
+			appTrunc(ChartOrigin[0]+ChartSize[0]+BG_BORDER+BG_KEY_GAP), appTrunc(ChartOrigin[1]+BG_BORDER), 
+			BG_KEY_WID + (2*BG_BORDER), appTrunc(-(ChartSize[1]+(2*BG_BORDER))), 
 		0.f, 0.f, 1.f, 1.f, 
 		FColor(0,0,0,BackgroundAlpha) );
 	}
@@ -220,14 +223,20 @@ void FStatChart::Render(FChildViewport* Viewport, FRenderInterface* RI)
 	FLOAT ZeroY = ChartOrigin[1] - (ChartSize[1] * ZeroYRatio);
 
 	// Chart y axis
-	RI->DrawLine2D(ChartOrigin[0], ChartOrigin[1], 
-		ChartOrigin[0], ChartOrigin[1]-ChartSize[1], 
-		FColor(255,255,255));
+	DrawLine2D(
+		Canvas,
+		FVector2D(appTrunc(ChartOrigin[0]), appTrunc(ChartOrigin[1])), 
+		FVector2D(appTrunc(ChartOrigin[0]), appTrunc(ChartOrigin[1]-ChartSize[1])), 
+		FColor(255,255,255)
+		);
 	
 	// Draw x axis.
-	RI->DrawLine2D(ChartOrigin[0], ZeroY, 
-		ChartOrigin[0]+ChartSize[0], ZeroY, 
-		FColor(255,255,255));	
+	DrawLine2D(
+		Canvas,
+		FVector2D(appTrunc(ChartOrigin[0]), appTrunc(ZeroY)), 
+		FVector2D(appTrunc(ChartOrigin[0]+ChartSize[0]), appTrunc(ZeroY)), 
+		FColor(255,255,255)
+		);	
 
 	UBOOL doFilter = (FilterString.Len() > 0);
 
@@ -239,7 +248,7 @@ void FStatChart::Render(FChildViewport* Viewport, FRenderInterface* RI)
 		{
 			FStatChartLine* line = &Lines(i);
 
-			if(line->bHideLine || (doFilter && line->LineName.Caps().InStr(FilterString.Caps()) == -1))
+			if(line->bHideLine || (doFilter && line->LineName.ToUpper().InStr(FilterString.ToUpper()) == -1))
 				continue;
 
 			TotalYRange[0] = Min(TotalYRange[0], line->YRange[0]);
@@ -254,18 +263,18 @@ void FStatChart::Render(FChildViewport* Viewport, FRenderInterface* RI)
 		FStatChartLine* line = &Lines(i);
 
 		// If this line is hidden, or its name doesn't match the filter, skip.
-		if(line->bHideLine || (doFilter && line->LineName.Caps().InStr(FilterString.Caps()) == -1))
+		if(line->bHideLine || (doFilter && line->LineName.ToUpper().InStr(FilterString.ToUpper()) == -1))
 			continue;
 	
 		// Draw key entry if desired.
 		if(!bHideKey)
 		{
-			TCHAR keyEntry[1024];
+			TCHAR keyEntry[MAX_SPRINTF]=TEXT("");
 			appSprintf(keyEntry, TEXT("%s: %f"), *(line->LineName), line->YRange[1]);
 
-			INT KeyX = ChartOrigin[0] + ChartSize[0] + (2*BG_BORDER) + BG_KEY_GAP;
-			INT KeyY = ChartOrigin[1] - ChartSize[1] + (BG_KEY_LINESPACE*(drawCount));
-			RI->DrawShadowedString( KeyX, KeyY, keyEntry, GEngine->SmallFont, line->LineColor );
+			INT KeyX = appTrunc(ChartOrigin[0] + ChartSize[0] + (2*BG_BORDER) + BG_KEY_GAP);
+			INT KeyY = appTrunc(ChartOrigin[1] - ChartSize[1] + (BG_KEY_LINESPACE*(drawCount)));
+			DrawShadowedString(Canvas, KeyX, KeyY, keyEntry, GEngine->SmallFont, line->LineColor );
 		}
 
 		// Factor to scale all data by to fit onto same Chart as other lines.
@@ -321,9 +330,12 @@ void FStatChart::Render(FChildViewport* Viewport, FRenderInterface* RI)
 			FLOAT y0 = line->DataHistory(dataPos) * lineScale;
 			FLOAT y1 = line->DataHistory(oldDataPos) * lineScale;
 
-			RI->DrawLine2D(xPos, ZeroY - y0, 
-				oldXPos, ZeroY - y1, 
-				line->LineColor);
+			DrawLine2D(
+				Canvas,
+				FVector2D(appTrunc(xPos), appTrunc(ZeroY - y0)),
+				FVector2D(appTrunc(oldXPos), appTrunc(ZeroY - y1)),
+				line->LineColor
+				);
 
 			// Move back in time/left along Chart
 			oldXPos = xPos;

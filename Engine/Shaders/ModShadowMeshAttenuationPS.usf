@@ -1,0 +1,61 @@
+/*=============================================================================
+	ModShadowMeshAttenuationPS.usf: Mesh attenutation PS for modulated shadows
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+/** 
+* r>0 allows for dot(n,l) attenuation
+* g>0 allows for emissive attenutation
+*/
+float2 AttenAllowed;
+#define NdotLAttenAllowed AttenAllowed.r
+#define EmissiveAttenAllowed AttenAllowed.g
+
+/** Used to update stencil values for areas we don't want modulated shadows */
+void Main(
+	in FVertexFactoryInterpolantsVSToPS FactoryInterpolants,
+	in float3 TangentLightVector : TEXCOORD4,
+	in float4 CameraVectorOrVertexColor : TEXCOORD5,
+	in float4 PixelPosition : TEXCOORD6,
+	OPTIONAL_FacingSign
+	out float4 OutColor : COLOR0
+	)
+{
+#if PER_PIXEL_TANGENT_BASIS
+	float3x3 TangentBasis = VertexFactoryGetPerPixelTangentBasis(FactoryInterpolants);
+	TangentLightVector = mul(TangentBasis, normalize(TangentLightVector));
+#if !PER_PIXEL_CAMERA_VECTOR
+	CameraVectorOrVertexColor.xyz = mul(TangentBasis, normalize(CameraVectorOrVertexColor.xyz));
+#endif
+#endif
+
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(FactoryInterpolants);
+	CalcMaterialParameters(MaterialParameters,FacingSign,CameraVectorOrVertexColor,PixelPosition,TangentLightVector);
+
+	half Atten = 0;
+
+	if(NdotLAttenAllowed > 0)
+	{
+		// N*L attenuation clamped to full. Only render if backfacing wrt light direction
+		half NdotL = dot(MaterialParameters.TangentLightVector,MaterialParameters.TangentNormal);
+ 		Atten += 1-ceil(saturate(NdotL));
+	}
+
+	// On xbox the emissive masking is stored in one of the scene color alpha bits and looked up during the projection pass
+#if !XBOX
+	if( EmissiveAttenAllowed > 0 )
+	{
+		// if any emissive color channel is >= 1 then it will be rendered
+		Atten += any(GetMaterialEmissive(MaterialParameters)) ? 1 : 0;
+	}
+#endif
+
+	// color writes are disabled but useful for debug
+	OutColor.rgb = half3(0,Atten,0);
+	// alpha test with a ref value of 0 is used to clip
+	OutColor.a = Atten;
+}

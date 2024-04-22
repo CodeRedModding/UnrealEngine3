@@ -1,19 +1,24 @@
 //=============================================================================
-// DefaultPhysicsVolume:  the default physics volume for areas of the level with 
+// DefaultPhysicsVolume:  the default physics volume for areas of the level with
 // no physics volume specified
+// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 //=============================================================================
 class DefaultPhysicsVolume extends PhysicsVolume
 	native
-	notplaceable;
+	notplaceable
+	transient;
 
-function Destroyed()
+event Destroyed()
 {
-	log(self$" destroyed!");
+	`log(self$" destroyed!");
 	assert(false);
 }
 
 defaultproperties
 {
+	// Visual things should be ticked in parallel with physics
+	TickGroup=TG_DuringAsyncWork
+
 	bStatic=false
 	bNoDelete=false
 }

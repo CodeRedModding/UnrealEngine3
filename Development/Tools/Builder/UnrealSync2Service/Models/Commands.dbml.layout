@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ordesignerObjectsDiagram dslVersion="1.0.0.0" absoluteBounds="0, 0, 11, 8.5" name="Commands">
+  <DataContextMoniker Name="/CommandsDataContext" />
+  <nestedChildShapes>
+    <classShape Id="6fbfdf02-981d-4f74-a3a6-1549eedc007e" absoluteBounds="0.5, 0.5, 2, 6.5196150716145826">
+      <DataClassMoniker Name="/CommandsDataContext/Command" />
+      <nestedChildShapes>
+        <elementListCompartment Id="04c25f35-2dab-4d70-984d-0456a8e2a997" absoluteBounds="0.51500000000000012, 0.96, 1.9700000000000002, 5.959615071614583" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(1.20923076923077 : 7.01961507161458); (1.20923076923077 : 7.26961507161458); (1.80461538461538 : 7.26961507161458); (1.80461538461538 : 7.01961507161458)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/CommandsDataContext/Command/Command_Command" />
+      <nodes>
+        <classShapeMoniker Id="6fbfdf02-981d-4f74-a3a6-1549eedc007e" />
+        <classShapeMoniker Id="6fbfdf02-981d-4f74-a3a6-1549eedc007e" />
+      </nodes>
+    </associationConnector>
+  </nestedChildShapes>
+</ordesignerObjectsDiagram>

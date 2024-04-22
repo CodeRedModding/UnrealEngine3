@@ -1,0 +1,74 @@
+/*=============================================================================
+	LightShaftDownSamplePixelShader.usf: Shaders for rendering light shafts
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+UNIFORM_SAMPLER2D(SceneColorTexture, TEXUNIT0); // : register(s0);
+
+/** return the scene lighting texture */
+half4 CalcSceneColor(vec2 ScreenUV)
+{
+	return USE_SCENECOLOR( texture2D(SceneColorTexture,ScreenUV) );
+}
+
+/** Origin in texture coordinates in xy. */
+UNIFORM(vec2, TextureSpaceBlurOrigin);
+
+UNIFORM(vec4, WorldSpaceBlurOriginAndRadius);
+
+/** Spot light direction. */
+UNIFORM(vec3, WorldSpaceSpotDirection);
+
+/** SpotLightInfo->CosOuterCone in x, SpotLightInfo->InvCosConeDifference in y. */
+UNIFORM(vec2, SpotAngles);
+
+UNIFORM(vec4, WorldSpaceCameraPositionAndDistance);
+
+/** Mins in xy, Maxes in zw. */
+UNIFORM(vec4, UVMinMax);
+
+UNIFORM(vec4, AspectRatioAndInvAspectRatio);
+
+/** 1.0 / OcclusionDepthRange in x, BloomScale in y, RadialBlurPercent / 100 in z, OcclusionMaskDarkness in w. */
+UNIFORM(vec4, LightShaftParameters);
+
+/** Tint in rgb, threshold in a. */
+UNIFORM(vec4, BloomTintAndThreshold);
+
+/** Transitions to 1 when the light shafts should no longer be seen. */
+UNIFORM(float, DistanceFade);
+
+/** Offsets for downsampling by a factor of 4 in each dimension. */
+UNIFORM(vec4, LightShaftSampleOffsets[2]);
+
+IN_VARYING_DEFAULT(vec2, TexCoord, TEXCOORD0);
+
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+
+// DownsampleLightShaftsPixelMain() without using a depth texture
+PIXEL_MAIN
+{
+	half4 SceneColor = CalcSceneColor(TexCoord);
+	half3 DownsampledColor = SceneColor.rgb;
+	half OcclusionMask = 1.0 - SceneColor.a;
+
+	vec2 NormalizedCoordinates = (TexCoord - UVMinMax.xy) / (UVMinMax.zw - UVMinMax.xy);
+	// Setup a mask that is 1 at the edges of the screen and 0.3 at the center
+	half EdgeMask = 1.0 - NormalizedCoordinates.x * (1.0 - NormalizedCoordinates.x) * NormalizedCoordinates.y * (1.0 - NormalizedCoordinates.y) * 8.0;
+	EdgeMask = EdgeMask * EdgeMask * EdgeMask * EdgeMask;
+	EdgeMask = 0.7 * EdgeMask + 0.3;
+
+	// Only bloom colors over BloomThreshold
+	half Luminance = max(dot(DownsampledColor, half3(.3, .59, .11)), 6.10352e-5);
+	half AdjustedLuminance = max(Luminance - BloomTintAndThreshold.a, 0.0);
+	half3 BloomColor = LightShaftParameters.y * DownsampledColor / Luminance * AdjustedLuminance * 2.0;
+
+	// Setup a mask that is 1 at TextureSpaceBlurOrigin and decreases to 0 over distance
+	half BlurOriginDistanceMask = 1.0 - saturate(length(TextureSpaceBlurOrigin.xy - TexCoord * AspectRatioAndInvAspectRatio.zw) * 5.0);
+	// Calculate bloom color with masks applied
+	gl_FragColor.rgb = BloomColor * OcclusionMask * (1.0 - EdgeMask) * BlurOriginDistanceMask * BlurOriginDistanceMask;
+	// Apply the edge mask to the occlusion factor
+	OcclusionMask = max(OcclusionMask, EdgeMask);
+    gl_FragColor.a = OcclusionMask;
+}

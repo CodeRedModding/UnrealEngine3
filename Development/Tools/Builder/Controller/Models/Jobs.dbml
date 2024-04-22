@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="Builder" Class="JobsDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="AppSettings" ConnectionString="Data Source=db-09;Initial Catalog=Builder;Integrated Security=True" SettingsObjectName="Controller.Properties.Settings" SettingsPropertyName="BuilderConnectionString" Provider="System.Data.SqlClient" />
+  <Table Name="dbo.Jobs" Member="Jobs">
+    <Type Name="Job">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Name" Type="System.String" DbType="VarChar(64)" CanBeNull="true" />
+      <Column Name="Command" Type="System.String" DbType="VarChar(64)" CanBeNull="true" />
+      <Column Name="Platform" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="Game" Type="System.String" DbType="VarChar(64)" CanBeNull="true" />
+      <Column Name="Config" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="ScriptConfig" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="Language" Type="System.String" DbType="VarChar(64)" CanBeNull="true" />
+      <Column Name="Define" Type="System.String" DbType="VarChar(64)" CanBeNull="true" />
+      <Column Name="Parameter" Type="System.String" DbType="VarChar(1024)" CanBeNull="true" />
+      <Column Name="Remote" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="BranchConfigID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="CISTaskID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="CISJobStateID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Label" Type="System.String" DbType="VarChar(96)" CanBeNull="true" />
+      <Column Name="Machine" Type="System.String" DbType="VarChar(16)" CanBeNull="true" />
+      <Column Name="BuildLogID" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="PrimaryBuild" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Active" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Complete" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Succeeded" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Optional" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Killing" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Suppressed" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="SpawnTime" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+    </Type>
+  </Table>
+</Database>

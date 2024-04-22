@@ -1,0 +1,35 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Database.SP_GetCisBranchesResult
+
+@{
+    Layout = null;
+}
+
+
+@{
+    string img;
+    string title;
+    
+    if (Model.LockedDown)
+    {
+        img = "locked.png";
+        title = "This branch is currently locked down. Do not check in files unless told otherwise!";
+    }
+    else
+    {
+        img = "unlocked.png";
+        title = "This branch is not locked down. Check in files at will.";
+    }
+ 
+    <tr title="@title">
+        <td>
+            <img class="icon" src="~/Content/Themes/Base/Images/@img" alt="Lockdown status" />
+            @Html.ActionLink(Model.Branch, "Branch", "Cis", new { id = Model.ID }, null )
+        </td>
+        <td class="numeric">
+            @if (Model.NumTasks > 0)
+            {
+                <text>@Model.NumTasks.Value.ToString()</text>
+            }
+        </td>
+    </tr>
+}

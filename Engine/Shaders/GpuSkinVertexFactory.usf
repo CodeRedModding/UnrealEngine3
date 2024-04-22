@@ -1,0 +1,950 @@
+/*=============================================================================
+	GpuSkinVertexFactory.hlsl: GPU skinned vertex factory shader code
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+
+	This code contains embedded portions of source code from dqconv.c Conversion routines between (regular quaternion, translation) and dual quaternion, Version 1.0.0, Copyright (C)2006-2007 University of Dublin, Trinity College, All Rights Reserved, which have been altered from their original version.
+
+	The following terms apply to dqconv.c Conversion routines between (regular quaternion, translation) and dual quaternion, Version 1.0.0:
+
+	This software is provided 'as-is', without any express or implied warranty.  In no event will the author(s) be held liable for any damages arising from the use of this software.
+
+	Permission is granted to anyone to use this software for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions:
+
+	1. The origin of this software must not be misrepresented; you must not
+	   claim that you wrote the original software. If you use this software
+	   in a product, an acknowledgment in the product documentation would be
+	   appreciated but is not required.
+	2. Altered source versions must be plainly marked as such, and must not be
+	   misrepresented as being the original software.
+	3. This notice may not be removed or altered from any source distribution.
+
+
+=============================================================================*/
+
+#define MAX_BONES 75
+
+#ifndef GPUSKIN_MORPH_BLEND
+#define GPUSKIN_MORPH_BLEND 0
+#endif
+
+#ifndef GPUSKIN_DECAL
+#define GPUSKIN_DECAL 0
+#endif
+
+#ifndef QUAT_SKINNING
+#define QUAT_SKINNING 0
+#endif
+
+#ifndef WITH_APEX_1BONE
+#define WITH_APEX_1BONE 0
+#endif
+
+#ifndef WITH_APEX
+#define WITH_APEX 0
+#endif
+
+#ifndef WITH_APEX_NORMALIZE
+#define WITH_APEX_NORMALIZE 0
+#endif
+
+#ifndef WITH_APEX_NO_LOCALTOWORLD
+#define WITH_APEX_NO_LOCALTOWORLD 0
+#endif
+
+#if QUAT_SKINNING
+#ifndef TRANSFORM_BLEND
+#define TRANSFORM_BLEND 1
+#endif
+#endif
+
+// In SM5, Vertex color can coexist with TANGENTTOWORLD0 and TANGENTTOWORLD2
+// Other platforms don't have enough interpolators
+#define ALLOW_VERTEX_COLOR (!WORLD_COORDS || SM5_PROFILE)
+
+// APEX Clothing uses the identical shader to this one, but is implemented with different code.
+// This dummy variable guarantees that the APEX clothing shader is treated as a unique shader.
+#if WITH_APEX
+float ApexDummy; // Just to make sure we don't get the wrong VertexFactory.
+#endif 
+
+// NOTE: We pack the LocalToWorldRotDeterminantFlip into the 4x4th element of the WorldToLocal register in
+//		 order to free up a vertex shader constant.  Bone matrices use up a lot of constants so this is crucial!
+#if ROW_MAJOR
+	float4x3 WorldToLocal;
+#else
+	float3x4 WorldToLocal;
+#endif
+
+// NOTE: To save a vertex shader constant, LocalToWorldRotDeterminantFlip is packed in with WorldToLocal
+#if WITH_APEX_NO_LOCALTOWORLD
+	#define LocalToWorldRotDeterminantFlip 1.0
+#elif ROW_MAJOR
+	#define LocalToWorldRotDeterminantFlip WorldToLocal[3][0]
+#else
+	#define LocalToWorldRotDeterminantFlip WorldToLocal[0][3]
+#endif
+
+// NOTE: To save a vertex shader constant, LocalToWorldRotDeterminantFlip is packed in with WorldToLocal
+// todo: make this a bool so that static branching can take effect (currently float because of a bug in the shader system)
+#if !TRANSFORM_BLEND
+#if ROW_MAJOR
+	#define PerBoneMotionBlur WorldToLocal[3][1]
+#else
+	#define PerBoneMotionBlur WorldToLocal[1][3]
+#endif
+#endif 
+
+#if GPUSKIN_DECAL
+float4 BoneToDecalRow0;
+float4 BoneToDecalRow1;
+float3 DecalLocation;
+#else
+float4x4 PreviousLocalToWorld;
+#endif
+float3 MeshOrigin;
+float3 MeshExtension;
+
+struct FVertexFactoryInput
+{
+	float4	Position		: POSITION;
+	half3	TangentX		: TANGENT;
+	// TangentZ.w contains sign of tangent basis determinant
+	half4	TangentZ		: NORMAL;	
+#if WITH_APEX_1BONE
+
+#if SM5_PROFILE
+	uint	BlendIndex	: BLENDINDICES0;
+#else
+	// Continue using int for SM3, compatibility of uint is unknown across SM3 platforms
+	int	BlendIndex	: BLENDINDICES0;
+#endif
+
+
+#else
+
+#if SM5_PROFILE
+	uint4	BlendIndices	: BLENDINDICES0;
+#else
+	// Continue using int for SM3, compatibility of uint is unknown across SM3 platforms
+	int4	BlendIndices	: BLENDINDICES0;
+#endif
+	float4	BlendWeights	: BLENDWEIGHT0;	
+#endif // end WITH_APEX_1BONE
+#if NUM_MATERIAL_TEXCOORDS && !(GPUSKIN_DECAL && MATERIAL_DECAL)
+	float2	TexCoords[NUM_MATERIAL_TEXCOORDS] : TEXCOORD0;
+#endif
+#if GPUSKIN_MORPH_BLEND
+	// NOTE: TEXCOORD6,TEXCOORD7 used instead of POSITION1,NORMAL1 since those semantics are not supported by Cg 
+	/** added to the Position */
+	float3	DeltaPosition	: TEXCOORD6;	//POSITION1;
+	/** added to the TangentZ and then used to derive new TangentX,TangentY */
+	half3	DeltaTangentZ	: TEXCOORD7;	//NORMAL1;
+#endif
+	/** Per vertex color */
+	float4 Color : COLOR0;
+};
+
+struct FVertexFactoryInterpolantsVSToPS
+{
+#if WORLD_COORDS
+	TANGENTTOWORLD_INTERPOLATOR_BLOCK
+#endif
+
+#if ALLOW_VERTEX_COLOR
+	float4 Color : COLOR0;
+#endif
+
+#if NUM_MATERIAL_TEXCOORDS
+	float2	TexCoords[NUM_MATERIAL_TEXCOORDS]	: TEXCOORD0;
+#endif
+
+#if !COMPILER_SUPPORTS_EMPTY_STRUCTS && !WORLD_COORDS && !NUM_MATERIAL_TEXCOORDS
+	float4 Dummy : TEXCOORD0;
+#endif
+};
+
+struct FVertexFactoryInterpolantsVSToDS
+{
+	FVertexFactoryInterpolantsVSToPS InterpolantsVSToPS;
+	
+	// If the PS does not call for world coords, provide our own for use in the DS
+#if !WORLD_COORDS
+	// First row of the tangent to world matrix
+	float3	TangentToWorld0	: VS_To_DS_TangentToWorld0;
+	// Last row of the tangent to world matrix in xyz
+	float4	TangentToWorld2	: VS_To_DS_TangentToWorld2;
+#endif
+};
+
+#if USING_SM5_TESSELLATION
+float2 VertexFactoryGetTextureCoordinateDS( FVertexFactoryInterpolantsVSToDS Interpolants )
+{
+#if NUM_MATERIAL_TEXCOORDS
+	return Interpolants.InterpolantsVSToPS.TexCoords[0].xy;
+#else // #if NUM_MATERIAL_TEXCOORDS
+	return float2(0,0);
+#endif // #if NUM_MATERIAL_TEXCOORDS
+}
+
+float4 VertexFactoryGetWorldNormalDS( FVertexFactoryInterpolantsVSToDS Interpolants )
+{
+#if WORLD_COORDS
+	return Interpolants.InterpolantsVSToPS.TangentToWorld2;
+#else
+	return Interpolants.TangentToWorld2;
+#endif
+}
+
+float3 VertexFactoryGetWorldTangentDS( FVertexFactoryInterpolantsVSToDS Interpolants )
+{
+#if WORLD_COORDS
+	return Interpolants.InterpolantsVSToPS.TangentToWorld0;
+#else
+	return Interpolants.TangentToWorld0;
+#endif
+}
+#endif // #if USING_SM5_TESSELLATION
+
+FVertexFactoryInterpolantsVSToPS VertexFactoryAssignInterpolants(FVertexFactoryInterpolantsVSToDS Input)
+{
+	return Input.InterpolantsVSToPS;
+}
+
+/** Converts from vertex factory specific interpolants to a FMaterialTessellationParameters, which is used by material inputs. */
+FMaterialTessellationParameters GetMaterialTessellationParameters(FVertexFactoryInterpolantsVSToDS Interpolants, float3 CameraLocalWorldPosition)
+{
+	FMaterialTessellationParameters	Result;
+#if NUM_MATERIAL_TEXCOORDS
+	UNROLL
+	for(int CoordinateIndex = 0;CoordinateIndex < NUM_MATERIAL_TEXCOORDS;CoordinateIndex++)
+		Result.TexCoords[CoordinateIndex] = Interpolants.InterpolantsVSToPS.TexCoords[CoordinateIndex];
+#endif
+
+#if !WORLD_COORDS
+	half3 TangentToWorld0 = UnpackColor3( Interpolants.TangentToWorld0.xyz );
+	half4 TangentToWorld2 = UnpackColor4( Interpolants.TangentToWorld2 );
+#else
+	half3 TangentToWorld0 = UnpackColor3( Interpolants.InterpolantsVSToPS.TangentToWorld0.xyz );
+	half4 TangentToWorld2 = UnpackColor4( Interpolants.InterpolantsVSToPS.TangentToWorld2 );
+#endif
+
+#if ALLOW_VERTEX_COLOR
+	Result.VertexColor = Interpolants.InterpolantsVSToPS.Color;
+#else
+	Result.VertexColor = 1;
+#endif
+
+	Result.TangentToWorldPreScale = 1;
+
+	Result.TangentToWorld = CalcTangentToWorld( TangentToWorld0, TangentToWorld2 );
+
+	Result.WorldPosition = CameraLocalWorldPosition + CameraWorldPos.xyz;
+
+#if DOMAINSHADER
+	Result.TangentCameraVector = TransformWorldVectorToTangent(Result.TangentToWorld,CameraPositionDS.xyz - CameraLocalWorldPosition.xyz * CameraPositionDS.w);
+#endif // #if DOMAINSHADER
+
+	return Result;
+}
+
+/** Converts from vertex factory specific interpolants to a FMaterialPixelParameters, which is used by material inputs. */
+FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	FMaterialPixelParameters	Result;
+#if NUM_MATERIAL_TEXCOORDS	
+	UNROLL
+	for(int CoordinateIndex = 0;CoordinateIndex < NUM_MATERIAL_TEXCOORDS;CoordinateIndex++)
+	{
+		Result.TexCoords[CoordinateIndex] = Interpolants.TexCoords[CoordinateIndex];
+		UNROLL
+		for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+		{
+			Result.SampleTexCoords[SampleIndex][CoordinateIndex] = EvaluateAttributeAtSample(Interpolants.TexCoords[CoordinateIndex/2].xy,SampleIndex);
+		}
+	}
+#endif
+
+	Result.TangentNormal = 0;
+	Result.TangentCameraVector = 0;
+	Result.TangentReflectionVector = 0;
+	Result.ScreenPosition = 0;
+	Result.TangentLightVector = 0;
+#if WORLD_COORDS
+	half3 TangentToWorld0 = UnpackColor3( Interpolants.TangentToWorld0.xyz );
+	half4 TangentToWorld2 = UnpackColor4( Interpolants.TangentToWorld2 );
+	Result.TangentToWorld = CalcTangentToWorld( TangentToWorld0, TangentToWorld2 );
+	Result.UnMirrored = TangentToWorld2.w;	
+#endif
+
+#if ALLOW_VERTEX_COLOR
+	Result.VertexColor = Interpolants.Color;
+#else
+	Result.VertexColor = 1;
+#endif
+
+#if MATERIAL_DECAL
+	Result.DecalAttenuation = 1;
+	Result.DecalPlaneDistance = 0;
+#endif
+
+#if LIGHTMAP_UV_ACCESS
+	Result.LightmapUVs = float2(0,0);
+#endif
+
+	Result.TwoSidedSign = 1;
+	return Result;
+}
+
+#if NEEDS_LIGHTMAP_COORDINATE
+float2 GetLightMapCoordinate(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	return float2(0,0);
+}
+
+#if NEEDS_SHADOWMAP_COORDINATE
+float2 GetShadowMapCoordinate(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	return float2(0,0);
+}
+#endif
+#endif
+
+#if ROW_MAJOR
+	#define FBoneMatrix float4x3
+#else
+	#define FBoneMatrix float3x4
+#endif
+
+#if SM5_PROFILE
+cbuffer VSBoneConstants : register(b3)
+{
+#endif
+
+#if QUAT_SKINNING
+// Having max const register error when using float2x4
+// So using struct 
+struct FDualQuaternion
+{
+	float4	DQ0;
+	float4	DQ1;
+};
+#if OPENGL
+// Make sure bones consts are where the bytecode-to-GLSL converter expects them to be. See OpenGLConstantBuffer.h for more details.
+VERTEXREGISTER(FDualQuaternion,		BoneQuats[MAX_BONES],		24);
+// Bone Scale array
+VERTEXREGISTER(float,				BoneScales[MAX_BONES],		174);
+#else
+FDualQuaternion BoneQuats[MAX_BONES];
+// Bone Scale array
+float	 BoneScales[MAX_BONES];
+#endif
+#else
+/** skinning matrices stored in 3x4 order */
+#if OPENGL
+// Make sure bones consts are where the bytecode-to-GLSL converter expects them to be. See OpenGLConstantBuffer.h for more details.
+VERTEXREGISTER(FBoneMatrix,			BoneMatrices[MAX_BONES],	24);
+#else
+FBoneMatrix BoneMatrices[MAX_BONES];
+#endif
+#endif
+
+#if SM5_PROFILE
+}; // VSBoneConstants
+#endif
+
+// 1d texture with all old bone matrices stored as 4x3 (3 float4 texels behind each other), all chunks of a skeletal mesh in one texture
+sampler PreviousBoneMatrices;
+// .xyz are the offsets (includes half texel shift) for the 3 lookups needed to get one bone, .w is to scale the index to the texture U position
+float4 BoneIndexOffsetAndScale;
+#if !TRANSFORM_BLEND
+#if XBOX 
+bool bUsePerBoneMotionBlur;
+#endif // XBOX
+#endif
+
+// Cache data to avoid multiple calculation 
+struct FVertexFactoryIntermediates
+{
+#if TRANSFORM_BLEND
+	// BlendDQ data to avoid recalc - I need only one time Scale, so no saving
+	float2x4	BlendDQ;
+	// Some of below are calculated only once or potentially more than once
+	// Maybe we don't need
+	// BlendScale
+	float BlendScale;
+#else
+	// Blend Matrix (used for position/tangents)
+	FBoneMatrix BlendMatrix;
+#endif
+
+	// Unpacked position
+	float3 UnpackedPosition;
+	
+	// Tangent Basis
+	float3x3 TangentBasis; 
+};
+
+float4 VertexFactoryGetVertexColor(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return Input.Color FCOLOR_COMPONENT_SWIZZLE;
+}
+
+/** Converts from vertex factory specific input to a FMaterialVertexParameters, which is used by vertex shader material inputs. */
+FMaterialVertexParameters GetMaterialVertexParameters( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentBasis )
+{
+	FMaterialVertexParameters Result;
+	Result.WorldPosition = WorldPosition - PreViewTranslation.xyz;
+	Result.VertexColor = VertexFactoryGetVertexColor(Input, Intermediates);
+
+	float3x3 TangentToLocal = transpose(TangentBasis);
+
+	#if ROW_MAJOR
+		// does not handle instancing!
+		float3x3 TangentToWorld = mul((float3x3)LocalToWorld, TangentToLocal); 
+	#else
+		float3x3 TangentToWorld = mul(transpose((float3x3)LocalToWorld), TangentToLocal); 
+	#endif
+
+	Result.TangentToWorld = TangentToWorld;
+#if NUM_MATERIAL_TEXCOORDS && !(DECAL_FACTORY && MATERIAL_DECAL)
+	for(int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS; CoordinateIndex++)
+	{
+		Result.TexCoords[CoordinateIndex] = Input.TexCoords[CoordinateIndex];
+	}
+#endif
+	return Result;
+}
+
+/**
+* Unpack position - uncompress xyz position to world position
+*/
+float3 UnpackedPosition( FVertexFactoryInput Input )
+{
+	return float3(Input.Position.xyz*MeshExtension + MeshOrigin);
+}
+
+#if GPUSKIN_MORPH_BLEND
+/** 
+* Adds the delta position from the combined morph targets to the vertex position 
+*/
+float3 MorphPosition( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates )
+{
+	return Intermediates.UnpackedPosition + Input.DeltaPosition;
+}
+#endif
+
+#if QUAT_SKINNING
+float4 GetScaledPosition(FVertexFactoryIntermediates Intermediates, float4 Position)
+{
+	//return Position;
+	return Intermediates.BlendScale*Position;
+}
+
+/* 
+ * Dual Quaternion - http://isg.cs.tcd.ie/projects/DualQuaternions/
+ * Blending DQ
+ */
+float2x4 CalcBlendDQ(FVertexFactoryInput Input)
+{
+	// Get BlendDQ
+	float4 DQ_X = BoneQuats[Input.BlendIndices.x].DQ0;
+	float4 DQ_Y = BoneQuats[Input.BlendIndices.y].DQ0;
+	float4 DQ_Z = BoneQuats[Input.BlendIndices.z].DQ0;
+	float4 DQ_W = BoneQuats[Input.BlendIndices.w].DQ0;
+
+	// SignedBlendWeights - keep shortest route for linear blending
+	float4 signedBlendWeights = sign(float4(1.f, dot(DQ_X, DQ_Y), dot(DQ_X, DQ_Z), dot(DQ_X, DQ_W)))*Input.BlendWeights;
+
+	// Blend DQ
+	float2x4 BlendDQ;
+
+	BlendDQ[0] = signedBlendWeights.x * BoneQuats[Input.BlendIndices.x].DQ0;
+	BlendDQ[0] += signedBlendWeights.y * BoneQuats[Input.BlendIndices.y].DQ0;
+	BlendDQ[0] += signedBlendWeights.z * BoneQuats[Input.BlendIndices.z].DQ0;
+	BlendDQ[0] += signedBlendWeights.w * BoneQuats[Input.BlendIndices.w].DQ0;
+
+	BlendDQ[1] = signedBlendWeights.x * BoneQuats[Input.BlendIndices.x].DQ1;
+	BlendDQ[1] += signedBlendWeights.y * BoneQuats[Input.BlendIndices.y].DQ1;
+	BlendDQ[1] += signedBlendWeights.z * BoneQuats[Input.BlendIndices.z].DQ1;
+	BlendDQ[1] += signedBlendWeights.w * BoneQuats[Input.BlendIndices.w].DQ1;
+
+	// Normalize
+	float rLen = rsqrt(dot(BlendDQ[0], BlendDQ[0]));
+	BlendDQ *= rLen;
+
+	return BlendDQ;
+}
+
+#if TRANSFORM_BLEND
+/* 
+ * Dual Quaternion - http://isg.cs.tcd.ie/projects/DualQuaternions/
+ * Convert DQ to Matrix
+ * This is faster in our case since it calculates DQ result once and reuse it for position/tangents
+ * If you use transform, you need to transform at least 3 times - more expensive (a lot of cross products)
+ * DQToMatrix does not work with Scale - so I'm saving this for reference in the future
+ */
+float3 CalcPositionFromDualQuat(FVertexFactoryIntermediates Intermediates, float4 Position)
+{
+	// get scale 
+	float3 ScaledPosition = GetScaledPosition(Intermediates, Position).xyz;
+
+	NOEXPRESSIONOPTIMIZATIONS
+	{
+		float3 NewPosition = ScaledPosition + 2.0*cross(Intermediates.BlendDQ[0].yzw, cross(Intermediates.BlendDQ[0].yzw, ScaledPosition) + Intermediates.BlendDQ[0].x*ScaledPosition);
+		NewPosition += 2.0*(Intermediates.BlendDQ[0].x*Intermediates.BlendDQ[1].yzw - Intermediates.BlendDQ[1].x*Intermediates.BlendDQ[0].yzw + cross(Intermediates.BlendDQ[0].yzw, Intermediates.BlendDQ[1].yzw));
+		return NewPosition;
+	}
+}
+#else
+
+/* 
+ * Dual Quaternion - http://isg.cs.tcd.ie/projects/DualQuaternions/
+ * Convert DQ to Matrix
+ * This is faster in our case since it calculates DQ result once and reuse it for position/tangents
+ * If you use transform, you need to transform at least 3 times - more expensive (a lot of cross products)
+ * DQToMatrix does not work with Scale - so I'm saving this for reference in the future
+ */
+FBoneMatrix DQToMatrix(float4 Qn, float4 Qd)
+{	
+	float Len = dot(Qn, Qn);
+	float4 Trans = float4(Qd.x, Qd.y, Qd.z, Qd.w);
+
+	float4 Quat = float4(Qn.y, Qn.z, Qn.w, Qn.x);
+
+	float3 XXYYZZ = 2 * Quat.xyz * Quat.xyz;
+	float3 XYXZYZ = 2 * Quat.xxy * Quat.yzz;
+	float3 XWYWZW = 2 * Quat.xyz * Quat.www;
+
+	float3 T = float3(1,1,1) - XXYYZZ.yxx - XXYYZZ.zzy;
+	float3 P = XYXZYZ.xzy + XWYWZW.zxy;
+	float3 M = XYXZYZ.yxz - XWYWZW.yzx;
+
+	float4 Quatx2 = 2*Quat;
+	
+	float3x4 TM = float3x4(
+		-Quatx2.x, 	Quatx2.w, 	-Quatx2.z, 	Quatx2.y,
+		-Quatx2.y, 	Quatx2.z, 	Quatx2.w, 	-Quatx2.x,
+		-Quatx2.z, -Quatx2.y, 	Quatx2.x, 	Quatx2.w
+		);
+	
+	float3 TransPosition = mul(TM, Trans);
+		
+#if ROW_MAJOR
+	FBoneMatrix BoneMatrix = float4x3(    
+		T.x,P.x,M.x,
+		M.y,T.y,P.y,
+		P.z,M.z,T.z,
+		TransPosition.x,
+		TransPosition.y,
+		TransPosition.z 
+		);
+#else
+	FBoneMatrix BoneMatrix = float3x4(    
+		T.x,M.y,P.z,TransPosition.x,
+		P.x,T.y,M.z,TransPosition.y,
+		M.x,P.y,T.z,TransPosition.z 
+		);
+#endif
+
+	BoneMatrix /= Len;
+	
+	return BoneMatrix;	
+}
+
+FBoneMatrix CalcBoneMatrix( FVertexFactoryInput Input )
+{
+	// Calculated Blend DQ
+	float2x4 BlendDQ = CalcBlendDQ(Input);
+	NOEXPRESSIONOPTIMIZATIONS
+	{
+		// Convert to Matrix
+		return DQToMatrix(BlendDQ[0], BlendDQ[1]);
+	}
+}
+#endif// TRANSFORM_BLEND
+#else
+FBoneMatrix CalcBoneMatrix( FVertexFactoryInput Input )
+{
+#if WITH_APEX_1BONE
+	FBoneMatrix BoneMatrix = BoneMatrices[Input.BlendIndex];
+#else
+	FBoneMatrix BoneMatrix = Input.BlendWeights.x * BoneMatrices[Input.BlendIndices.x];
+	BoneMatrix += Input.BlendWeights.y * BoneMatrices[Input.BlendIndices.y];
+	BoneMatrix += Input.BlendWeights.z * BoneMatrices[Input.BlendIndices.z];
+	BoneMatrix += Input.BlendWeights.w * BoneMatrices[Input.BlendIndices.w];
+#endif
+#if WITH_APEX // The 'ApexDummy' variable must be actually used or it will be removed and the shader will not be marked as unique.
+	if(ApexDummy == 4.9878532) BoneMatrix[0][0] *= -1.0;
+#endif
+	return BoneMatrix;
+}
+
+FBoneMatrix GetPreviousBoneMatrix(int Index)
+{
+	float BoneIndexScale = BoneIndexOffsetAndScale.w;
+
+	float4 A = tex1Dlod(PreviousBoneMatrices, float4(Index * BoneIndexScale + BoneIndexOffsetAndScale.x, 0, 0, 0));
+	float4 B = tex1Dlod(PreviousBoneMatrices, float4(Index * BoneIndexScale + BoneIndexOffsetAndScale.y, 0, 0, 0));
+	float4 C = tex1Dlod(PreviousBoneMatrices, float4(Index * BoneIndexScale + BoneIndexOffsetAndScale.z, 0, 0, 0));
+
+	float4x3 Mat = float4x3(
+		A.r, B.r, C.r,
+		A.g, B.g, C.g,
+		A.b, B.b, C.b,
+		A.a, B.a, C.a
+		);
+
+#if ROW_MAJOR
+	return Mat;
+#else
+	return transpose(Mat);
+#endif
+}
+
+#if !TRANSFORM_BLEND
+FBoneMatrix CalcPreviousBoneMatrix( FVertexFactoryInput Input )
+{
+#if WITH_APEX_1BONE
+//todo: support apex per bone motionblur - FGPUSkinVertexFactoryShaderParametersApexClothing is actually
+// using FLocalVertexFactoryShaderParameters with GPUSkinVertexFactory which is causing problems
+//	FBoneMatrix BoneMatrix = GetPreviousBoneMatrix(Input.BlendIndex);
+	FBoneMatrix BoneMatrix = BoneMatrices[Input.BlendIndex];
+#else // WITH_APEX_1BONE
+	FBoneMatrix BoneMatrix = Input.BlendWeights.x * GetPreviousBoneMatrix(Input.BlendIndices.x);
+	BoneMatrix += Input.BlendWeights.y * GetPreviousBoneMatrix(Input.BlendIndices.y);
+	BoneMatrix += Input.BlendWeights.z * GetPreviousBoneMatrix(Input.BlendIndices.z);
+	BoneMatrix += Input.BlendWeights.w * GetPreviousBoneMatrix(Input.BlendIndices.w);
+#endif // WITH_APEX_1BONE
+
+	return BoneMatrix;
+}
+#endif
+#endif // QUAT_SKINNING
+
+/** transform position by weighted sum of skinning matrices */
+float3 SkinPosition( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates )
+{
+#if GPUSKIN_MORPH_BLEND
+	float4 Position = float4(MorphPosition(Input, Intermediates),1);
+#else
+	float4 Position = float4(Intermediates.UnpackedPosition,1);
+#endif
+#if TRANSFORM_BLEND
+	return CalcPositionFromDualQuat(Intermediates, Position);
+#elif QUAT_SKINNING
+	return MulBone( Intermediates.BlendMatrix, GetScaledPosition(Intermediates, Position) );
+#else
+	return MulBone( Intermediates.BlendMatrix, Position );
+#endif
+}
+
+/** transform position by weighted sum of skinning matrices */
+float3 SkinPreviousPosition( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates )
+{
+#if GPUSKIN_MORPH_BLEND
+	float4 Position = float4(MorphPosition(Input, Intermediates),1);
+#else
+	float4 Position = float4(Intermediates.UnpackedPosition,1);
+#endif
+
+// for now disable mortion blur for DQ TRANSFORM_BLEND
+#if !TRANSFORM_BLEND
+
+	FBoneMatrix BlendMatrix = Intermediates.BlendMatrix;
+	
+	// Previous Blend Matrix (used for position in velocity rendering)
+
+	// switch on/off globaly
+	// later todo: switch on/off per object
+	// todo: static branch
+#if !WITH_APEX
+#if XBOX
+	// static branching
+	// Should be a bool on all platforms, but bool params don't work in vertex shaders yet (TTP 125134)
+	if(bUsePerBoneMotionBlur)
+#elif PS3
+	// for now deactivated in PS3, see GSupportsVertexTextureFetch for more details
+	if(0)
+#else
+	if(PerBoneMotionBlur > 0)
+#endif // XBOX
+	{
+		BlendMatrix = CalcPreviousBoneMatrix( Input );
+	}
+#endif
+#endif
+
+#if TRANSFORM_BLEND
+	return CalcPositionFromDualQuat(Intermediates, Position);
+#elif QUAT_SKINNING
+	return MulBone( BlendMatrix, GetScaledPosition(Intermediates, Position) );
+#else
+	return MulBone( BlendMatrix, Position );
+#endif
+}
+/** transform the tangent basis vectors */
+float3x3 SkinTangents( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates )
+{
+	float2x3 Tangents;	
+#if GPUSKIN_MORPH_BLEND
+	// tangent
+	float3 TangentX = TangentBias(Input.TangentX);
+	// normal
+	float4 TangentZ = TangentBias(Input.TangentZ);
+	// normal morph offset
+	float3 DeltaTangentZ = TangentBias(Input.DeltaTangentZ);	
+
+	// calc new normal by offseting it with the delta
+	Tangents[1] = normalize( float3(TangentZ.x,TangentZ.y,TangentZ.z) + DeltaTangentZ );
+	// derive the new tangent by orthonormalizing the new normal against
+	// the base tangent vector (assuming these are normalized)
+	Tangents[0] = normalize( TangentX - (dot(TangentX,Tangents[1]) * Tangents[1]) );
+#else
+	half4 TangentZ = TangentBias(Input.TangentZ);
+	// pass-thru the tangent
+	Tangents[0] = TangentBias(Input.TangentX);
+	// pass-thru the normal
+	Tangents[1] = float3(TangentZ.x,TangentZ.y,TangentZ.z);
+#endif
+
+	float3x3 TangentBasis;
+
+#if TRANSFORM_BLEND
+	NOEXPRESSIONOPTIMIZATIONS
+	{
+		TangentBasis[0] = Tangents[0] + 2.0*cross(Intermediates.BlendDQ[0].yzw, cross(Intermediates.BlendDQ[0].yzw, Tangents[0]) + Intermediates.BlendDQ[0].x*Tangents[0]);
+		TangentBasis[2] = Tangents[1] + 2.0*cross(Intermediates.BlendDQ[0].yzw, cross(Intermediates.BlendDQ[0].yzw, Tangents[1]) + Intermediates.BlendDQ[0].x*Tangents[1]);
+	}
+#else
+	TangentBasis[0] = MulBone( Intermediates.BlendMatrix, float4(Tangents[0],0) );
+	TangentBasis[2] = MulBone( Intermediates.BlendMatrix, float4(Tangents[1],0) );
+#endif
+	
+#if WITH_APEX_NORMALIZE
+	TangentBasis[0].xyz = normalize(TangentBasis[0].xyz);
+	TangentBasis[2].xyz = normalize(TangentBasis[2].xyz);
+#endif
+	
+	// derive the new binormal by getting the cross product of the normal and tangent
+	// and flip vector based on sign of tangent basis determinant
+	TangentBasis[1] = cross(TangentBasis[2], TangentBasis[0]) * TangentZ.w;
+
+	return TangentBasis;
+}
+
+FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
+{
+	FVertexFactoryIntermediates Intermediates;
+	
+	Intermediates.UnpackedPosition = UnpackedPosition(Input);
+
+#if QUAT_SKINNING
+	// Get Scale
+	Intermediates.BlendScale = 	Input.BlendWeights.x * BoneScales[Input.BlendIndices.x];
+	Intermediates.BlendScale += Input.BlendWeights.y * BoneScales[Input.BlendIndices.y];
+	Intermediates.BlendScale += Input.BlendWeights.z * BoneScales[Input.BlendIndices.z];
+	Intermediates.BlendScale += Input.BlendWeights.w * BoneScales[Input.BlendIndices.w];
+
+	#if TRANSFORM_BLEND
+		Intermediates.BlendDQ = CalcBlendDQ(Input);
+	#else
+		// DQ Note: This does not work with Scale
+		Intermediates.BlendMatrix = CalcBoneMatrix( Input );
+	#endif
+#else
+	// DQ Note: This does not work with Scale
+	Intermediates.BlendMatrix = CalcBoneMatrix( Input );
+#endif
+
+
+	// Fill TangentBasis
+	Intermediates.TangentBasis = SkinTangents(Input, Intermediates);
+
+	return Intermediates;
+}
+
+float4 CalcWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return MulMatrix( LocalToWorld, float4(SkinPosition(Input, Intermediates),1) );
+}
+
+#if GPUSKIN_DECAL
+float2 ComputeDecalTexCoord(float4 Point)
+{
+	float4 TempPoint = Point-float4(DecalLocation,1);
+	float Dot0 = dot( BoneToDecalRow0, TempPoint );
+	float Dot1 = dot( BoneToDecalRow1, TempPoint );
+	return float2(-Dot0+0.5, -Dot1+0.5);
+}
+#endif
+
+/**
+* Get the 3x3 tangent basis vectors for this vertex factory
+*
+* @param Input - vertex input stream structure
+* @return 3x3 matrix
+*/
+float3x3 VertexFactoryGetTangentBasis( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return Intermediates.TangentBasis;
+}
+
+float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return CalcWorldPosition(Input, Intermediates);
+}
+
+void CalcTangentToWorld(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, out float3 TangentToWorld0, out float4 TangentToWorld2)
+{
+	float3x3 TangentBasis = Intermediates.TangentBasis;
+	// The inverse of LocalToTangent is just the transpose because it is an orthonormal basis
+	float3x3 TangentToLocal = transpose(TangentBasis);
+
+	// Calculate the transform from tangent to world space
+	#if WITH_APEX_NO_LOCALTOWORLD
+		float3x3 TangentToWorld = TangentToLocal;
+	#elif ROW_MAJOR
+		float3x3 TangentToWorld = mul((float3x3)LocalToWorld, TangentToLocal); 
+	#else
+		float3x3 TangentToWorld = mul(transpose((float3x3)LocalToWorld), TangentToLocal); 
+	#endif
+
+	TangentToWorld0 = TangentToWorld[0];
+	TangentToWorld2 = float4(TangentToWorld[2], TangentBias(Input.TangentZ.w) * LocalToWorldRotDeterminantFlip);
+
+	TangentToWorld0 = PackColor3( TangentToWorld0 );
+	TangentToWorld2 = PackColor4( TangentToWorld2 );
+}
+
+FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	FVertexFactoryInterpolantsVSToPS Interpolants;
+#if NUM_MATERIAL_TEXCOORDS
+#if GPUSKIN_DECAL
+	float2 DecalTexCoords = ComputeDecalTexCoord( float4(Intermediates.UnpackedPosition,1) );
+	for(int CoordIndex = 0;CoordIndex < NUM_MATERIAL_TEXCOORDS;CoordIndex++)
+	{
+		Interpolants.TexCoords[CoordIndex] = DecalTexCoords;
+	}
+#else
+	for(int CoordIndex = 0;CoordIndex < NUM_MATERIAL_TEXCOORDS;CoordIndex++)
+	{
+		Interpolants.TexCoords[CoordIndex] = Input.TexCoords[CoordIndex];
+	}
+#endif
+#endif
+
+#if WORLD_COORDS
+	CalcTangentToWorld(Input, Intermediates, Interpolants.TangentToWorld0.xyz, Interpolants.TangentToWorld2);
+#endif
+#if ALLOW_VERTEX_COLOR
+	Interpolants.Color = VertexFactoryGetVertexColor(Input, Intermediates);
+#endif
+
+#if !COMPILER_SUPPORTS_EMPTY_STRUCTS && !WORLD_COORDS && !NUM_MATERIAL_TEXCOORDS
+	Interpolants.Dummy = float4(0,0,0,0);
+#endif
+
+	return Interpolants;
+}
+
+FVertexFactoryInterpolantsVSToDS VertexFactoryGetInterpolantsVSToDS(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	FVertexFactoryInterpolantsVSToDS Interpolants;
+	
+	Interpolants.InterpolantsVSToPS = VertexFactoryGetInterpolantsVSToPS(Input, Intermediates);
+	
+#if !WORLD_COORDS
+	// If the PS does not call for world coords, provide our own for use in the DS
+	CalcTangentToWorld(Input, Intermediates, Interpolants.TangentToWorld0.xyz, Interpolants.TangentToWorld2);
+#endif
+	
+	return Interpolants;
+}
+
+/** for motion blur */
+float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+#if GPUSKIN_DECAL
+	return MulMatrix( LocalToWorld, float4(SkinPosition(Input, Intermediates),1) );
+#else
+	return MulMatrix( PreviousLocalToWorld, float4(SkinPreviousPosition(Input, Intermediates),1) );
+#endif
+}
+
+/**
+* Transform a vector from world space to tangent space
+*
+* @param Input - vertex input stream structure
+* @param TangentBasis - 3x3 matrix to transform to tangent space
+* @param WorldVector - vector in world space to transform 
+* @return vector in tangent space
+*/
+float3 VertexFactoryWorldToTangentSpace( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3x3 TangentBasis, float3 WorldVector )
+{
+	// we use a straight mul here because we are generating the matrix, so we don't worry about column major vs row major (which is what MulMatrix manages per-platform)
+	return mul(TangentBasis, MulMatrix((float3x3)WorldToLocal, WorldVector) );
+}
+
+float3 VertexFactoryGetWorldNormal(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	float3x3 TangentBasis = VertexFactoryGetTangentBasis(Input, Intermediates);
+	float4 WorldNormal = MulMatrix( LocalToWorld, float4(TangentBasis[2],0) );
+	return WorldNormal.xyz;
+}
+
+FVertexFactoryInterpolantsVSToDS VertexFactoryInterpolate(FVertexFactoryInterpolantsVSToDS a, float aInterp, FVertexFactoryInterpolantsVSToDS b, float bInterp)
+{
+	FVertexFactoryInterpolantsVSToDS O;
+
+#if WORLD_COORDS
+	TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.TangentToWorld0.xyz);
+	TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.TangentToWorld2);
+#else
+	TESSELLATION_INTERPOLATE_MEMBER(TangentToWorld0);
+	TESSELLATION_INTERPOLATE_MEMBER(TangentToWorld2);
+#endif
+
+#if ALLOW_VERTEX_COLOR
+	TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.Color);
+#endif
+
+#if NUM_MATERIAL_TEXCOORDS
+	UNROLL
+	for(int tc = 0; tc < NUM_MATERIAL_TEXCOORDS; ++tc)
+	{
+		TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.TexCoords[tc]);
+	}
+#endif
+
+	return O;
+}
+
+float3x3 VertexFactoryGetTangentBasis(FVertexFactoryInterpolantsVSToDS Interpolants)
+{
+	// This duplicates stuff already going on in GetMaterialTessellationParameters(), so
+	// maybe the hull shader could leverage that instead?
+#if !WORLD_COORDS
+	half3 TangentToWorld0 = UnpackColor3( Interpolants.TangentToWorld0.xyz );
+	half4 TangentToWorld2 = UnpackColor4( Interpolants.TangentToWorld2 );
+#else
+	half3 TangentToWorld0 = UnpackColor3( Interpolants.InterpolantsVSToPS.TangentToWorld0.xyz );
+	half4 TangentToWorld2 = UnpackColor4( Interpolants.InterpolantsVSToPS.TangentToWorld2 );
+#endif
+
+	float3x3 TangentToWorld = CalcTangentToWorld( TangentToWorld0, TangentToWorld2 );
+	
+	return TangentToWorld;
+}
+
+
+float4 VertexFactoryGetWorldNormal(float3x3 TangentToWorld)
+{
+	return float4(mul(TangentToWorld, float3(0,0,1)), 0);
+}
+
+float4 VertexFactoryGetWorldNormal(FVertexFactoryInterpolantsVSToDS Interpolants)
+{
+	float3x3 TangentToWorld = VertexFactoryGetTangentBasis(Interpolants);
+	return VertexFactoryGetWorldNormal(TangentToWorld);
+}

@@ -1,0 +1,99 @@
+﻿<Border
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:UnrealEd="clr-namespace:UnrealEd;assembly=UnrealEdCSharp"
+    xmlns:CustomControls="clr-namespace:CustomControls;assembly=UnrealEdCSharp"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d"
+	xmlns:Microsoft_Windows_Themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero"
+	x:Name="MainBorder"
+	BorderThickness="2,2,2,2" Background="#FF444444"
+	>
+	<Border.Resources>
+		<BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+		<CustomControls:NegatedBooleanToVisibilityConverter x:Key="NegatedBoolToVisConverter" />
+		
+		<DrawingBrush x:Key="CheckboardTileBrush" TileMode="Tile" Stretch="None" Viewport="0,0,0.5,0.25">
+			<DrawingBrush.Drawing>
+				<DrawingGroup>
+					<GeometryDrawing Brush="#7F7F7F">
+						<GeometryDrawing.Geometry>
+							<RectangleGeometry Rect="0,0,20,20"/>
+						</GeometryDrawing.Geometry>
+					</GeometryDrawing>
+					<GeometryDrawing Brush="#afafaf">
+						<GeometryDrawing.Geometry>
+							<RectangleGeometry Rect="0,0,10,10"/>
+						</GeometryDrawing.Geometry>
+					</GeometryDrawing>
+					<GeometryDrawing Brush="#afafaf">
+						<GeometryDrawing.Geometry>
+							<RectangleGeometry Rect="10,10,10,10"/>
+						</GeometryDrawing.Geometry>
+					</GeometryDrawing>
+				</DrawingGroup>
+			</DrawingBrush.Drawing>
+		</DrawingBrush>
+		
+		<!-- Slider style override for Brightness Slider -->
+		<Geometry x:Key="SliderThumbOuterBorderGeometry">M-4,0 L4,0 L0,8 Z</Geometry>
+		<Geometry x:Key="SliderThumbMiddleBorderGeometry">M-3,-8 L3,-8 L0,-2 Z</Geometry>
+			
+	</Border.Resources>
+	
+
+
+	<Grid Margin="0,0,-2,0" >
+		<CustomControls:SlateBorder Background="{DynamicResource Slate_List_Background}" Margin="4,4,4,0">
+			<StackPanel Margin="10,10,10,10">
+				<DockPanel>                                    
+				    <CustomControls:EnterUpdateTextBox x:Name="ImportTGAFileNameText" BorderBrush="Black" Background="#FF3D3D3D" Foreground="#FFAAAAAA" TextWrapping="NoWrap" Width="180" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+				    <Button x:Name="ImportTGAFileButton" HorizontalAlignment="Right" Width="24" Content="..."/>
+				</DockPanel>					
+			       <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+				    <DockPanel Height="26"  HorizontalAlignment="Center">
+					<Label Content="{DynamicResource MeshPaintWindow_ImportFromFile_UV}" VerticalAlignment="Center" HorizontalAlignment="Center" Width="40" FontSize="10"/>
+					<ComboBox IsSynchronizedWithCurrentItem="True" x:Name="ImportUVCombo" Width="50" HorizontalAlignment="Center" Height="20" VerticalAlignment="Center">
+					    <ComboBoxItem Content="0" IsSelected="True"/>
+					    <ComboBoxItem Content="1"/>
+					    <ComboBoxItem Content="2"/>
+					    <ComboBoxItem Content="3"/>
+					</ComboBox>
+				    </DockPanel>
+				    <DockPanel Height="26">
+					<Label Content="{DynamicResource MeshPaintWindow_ImportFromFile_LOD}" VerticalAlignment="Center" HorizontalAlignment="Center"  Width="40" FontSize="10"/>
+					<ComboBox IsSynchronizedWithCurrentItem="True" x:Name="ImportLODCombo"  Width="50" HorizontalAlignment="Center" Height="20" VerticalAlignment="Center">
+					    <ComboBoxItem Content="0" IsSelected="True"/>
+					    <ComboBoxItem Content="1"/>
+					    <ComboBoxItem Content="2"/>
+					    <ComboBoxItem Content="3"/>
+					</ComboBox>
+				    </DockPanel>
+				</StackPanel>
+				<DockPanel Height="24">
+				    <!--<TextBlock Text="{DynamicResource MeshPaintWindow_ColorChannels}" x:Name="ImportColorChannelsLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>-->
+				    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+					<TextBlock Text="{DynamicResource MeshPaintWindow_WriteRed}" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,2,0" VerticalAlignment="Center"/>
+					<CheckBox x:Name="ImportRedCheckBox" IsChecked="True"/>
+					<TextBlock Text="{DynamicResource MeshPaintWindow_WriteGreen}" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="6,0,2,0" VerticalAlignment="Center"/>
+					<CheckBox x:Name="ImportGreenCheckBox" IsChecked="True"/>
+					<TextBlock Text="{DynamicResource MeshPaintWindow_WriteBlue}" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="6,0,2,0" VerticalAlignment="Center"/>
+					<CheckBox x:Name="ImportBlueCheckBox" IsChecked="True"/>
+					<TextBlock Text="{DynamicResource MeshPaintWindow_WriteAlpha}" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="6,0,2,0" VerticalAlignment="Center"/>
+					<CheckBox x:Name="ImportAlphaCheckBox" IsChecked="True"/>
+				    </StackPanel>
+				</DockPanel>
+				<!--<StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+					<TextBlock Text="{DynamicResource MeshPaintWindow_PaintTarget}" x:Name="VertexPaintTargetLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+					<UnrealEd:BindableRadioButton x:Name="AssetTypeIndex0" Margin="0,1" Content="{DynamicResource MeshPaintWindow_PaintTarget_ComponentInstance}" ToolTip="{DynamicResource LightmapResRatioWindow_CurrentLevel_ToolTip}"/>
+					<UnrealEd:BindableRadioButton x:Name="AssetTypeIndex1" Margin="0,1" Content="{DynamicResource MeshPaintWindow_PaintTarget_Mesh}" ToolTip="{DynamicResource LightmapResRatioWindow_SelectedLevels_ToolTip}"/>							
+				</StackPanel>-->						
+				<DockPanel>
+				    <Button x:Name="ImportVertexColors"   Width="200" HorizontalAlignment="Center" Content="{DynamicResource MeshPaintWindow_ImportFromFile_Button}"  Height="20" VerticalAlignment="Center"/>
+				</DockPanel>
+			</StackPanel>
+
+		</CustomControls:SlateBorder>
+	</Grid>
+
+</Border>

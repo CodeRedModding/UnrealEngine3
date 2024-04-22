@@ -1,9 +1,6 @@
 /*=============================================================================
 	UnDelphiInterface.h: Delphi(new) Debugger Interface interface
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-Revision history:
-	* Created by Lucas Alonso, Demiurge Studios
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #ifndef __UDELPHIINTERFACE_H__
@@ -79,6 +76,8 @@ private:
 	DelphiVoidInt			DelphiLockList;
 	DelphiVoidInt			DelphiUnlockList;
 	DelphiVoidChar			DelphiSetCurrentObjectName;
+
+	INT   LoadCount;
 };
 
 #endif

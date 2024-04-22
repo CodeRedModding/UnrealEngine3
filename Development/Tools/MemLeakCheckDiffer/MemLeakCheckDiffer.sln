@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MemLeakCheckDiffer", "MemLeakCheckDiffer\MemLeakCheckDiffer.csproj", "{AB38C3EE-D775-4A59-8A23-B5A5209EB11E}"
+EndProject
+Global
+	GlobalSection(SourceCodeControl) = preSolution
+		SccNumberOfProjects = 2
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = MemLeakCheckDiffer\\MemLeakCheckDiffer.csproj
+		SccLocalPath1 = .
+		SccProjectFilePathRelativizedFromConnection1 = MemLeakCheckDiffer\\
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AB38C3EE-D775-4A59-8A23-B5A5209EB11E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB38C3EE-D775-4A59-8A23-B5A5209EB11E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB38C3EE-D775-4A59-8A23-B5A5209EB11E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{AB38C3EE-D775-4A59-8A23-B5A5209EB11E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB38C3EE-D775-4A59-8A23-B5A5209EB11E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB38C3EE-D775-4A59-8A23-B5A5209EB11E}.Release|x64.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

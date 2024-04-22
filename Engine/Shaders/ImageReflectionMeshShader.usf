@@ -1,0 +1,85 @@
+/*=============================================================================
+	ImageReflectionMeshShader.usf: Mesh shaders used for image reflections
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+#if SM5_PROFILE
+
+#include "DeferredLightingCommon.usf"
+
+/** Reflection plane, in world space for the pixel shader, offsetted world space for the vertex shader. */
+float4 MirrorPlane;
+
+/* Vertex shader used to render meshes to a mirror reflection used for image reflection shadowing. */
+void ReflectionMaskVertexMain(
+	FVertexFactoryInput Input,
+	out float4 OutScreenPosition : TEXCOORD0,
+	out float3 OutWorldPosition : TEXCOORD1,
+	out float4 OutPosition : POSITION,
+	// Setup a D3D11 clip plane by outputting to SV_ClipDistance
+	out float OutClipDistance : SV_ClipDistance0
+	)
+{
+	FVertexFactoryIntermediates VFIntermediates = GetVertexFactoryIntermediates(Input);
+	// Only need to calculate position since masked materials are not handled separately
+	float4 WorldPos = VertexFactoryGetWorldPosition(Input, VFIntermediates);
+	float3x3 TangentBasis = VertexFactoryGetTangentBasis(Input, VFIntermediates);
+
+	FMaterialVertexParameters VertexParameters = GetMaterialVertexParameters(Input, VFIntermediates, WorldPos.xyz, TangentBasis);
+	WorldPos.xyz += GetMaterialWorldPositionOffset(VertexParameters);
+
+	// Mirror the world position about the plane and then transform to post projection space
+	OutPosition = OutScreenPosition = MulMatrix(ViewProjectionMatrix, WorldPos);
+
+	// Output world space distance to the reflection plane
+	OutClipDistance = dot(WorldPos.xyz, MirrorPlane.xyz) - MirrorPlane.w;
+
+	OutWorldPosition = WorldPos.xyz - PreViewTranslation;
+}
+
+/** World space camera position reflected about the mirror plane */
+float3 ReflectedCameraPosition;
+
+float InvResolutionX;
+
+void ReflectionMaskPixelMain(
+	float4 ScreenPosition : TEXCOORD0,
+	float3 WorldPosition : TEXCOORD1,
+	out float4 OutColor : COLOR0
+	)
+{
+	// World space distance from mirror plane
+	float DistanceFromPlane = dot(WorldPosition, MirrorPlane.xyz) - MirrorPlane.w;
+	// Cos of the angle between the plane normal and the vector from the pixel position to the reflected camera
+	float CosAngle = dot(MirrorPlane.xyz, normalize(WorldPosition - ReflectedCameraPosition));
+	// Distance from the plane to the pixel position, along the camera vector, using Cos(Angle) = Adjacent / Hypoteneuse
+	float IntersectionDistance = max(DistanceFromPlane / max(CosAngle, .0001f), 0);
+
+	float2 ScreenUV = ScreenPosition.xy / ScreenPosition.w * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+	// Look up the specular power from the full resolution G buffer
+	float4 SpecularAndPower = tex2D(SpecularGBufferTexture, ScreenUV);
+	float SpecularPower = DecodeSpecularPower(SpecularAndPower,true);
+
+	// Value of the phong specular lobe at which Theta should be defined, 
+	// Where Theta is the angle of the cone around the reflection vector that approximates the incoming light that contributes to the reflection.
+	float SpecularConstant = .1f;
+	// Solve for Cos of Theta given the phong specular lobe of cos(Theta)^SpecularPower = SpecularConstant
+	float CosTheta = pow(SpecularConstant, 1.0f / SpecularPower);
+	// Calculate Tangent of Theta using the identity Tan(ArcCos(Theta)) = sqrt(1 - Theta^2) / Theta
+	float TanTheta = sqrt(1 - CosTheta * CosTheta) / CosTheta;
+
+	// Calculate the opposite side of the right triangle formed by the ray to the intersection and the side of the reflection cone
+	float OppositeLength = IntersectionDistance * TanTheta;
+
+	// Figure out how many texels are contained in the reflection cone at the intersection in one dimension
+	// This will be used as a blur kernel radius in the next pass
+	float NumTexels = OppositeLength * 2 * ScreenPosition.w * InvResolutionX;
+
+	OutColor = float4(1, NumTexels * .005f, 1, IntersectionDistance);
+}
+
+#endif

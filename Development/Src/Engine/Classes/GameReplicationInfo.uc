@@ -1,97 +1,151 @@
 //=============================================================================
 // GameReplicationInfo.
+// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+//
+// Every GameInfo creates a GameReplicationInfo, which is always relevant, to replicate
+// important game data to clients (as the GameInfo is not replicated).
 //=============================================================================
 class GameReplicationInfo extends ReplicationInfo
 	config(Game)
-	native nativereplication;
+	native(ReplicationInfo)
+	nativereplication;
 
-var string GameName;						// Assigned by GameInfo.
-var string GameClass;						// Assigned by GameInfo.
-var bool bTeamGame;							// Assigned by GameInfo.
+/** Class of the server's gameinfo, assigned by GameInfo. */
+var repnotify class<GameInfo> GameClass;
+
+/** If true, stop RemainingTime countdown */
 var bool bStopCountDown;
-var bool bMatchHasBegun;
+
+/** Match is in progress (replicated) */
+var repnotify bool bMatchHasBegun;
+
+/** Match is over (replicated) */
+var repnotify bool bMatchIsOver;
+
+/** Used for counting down time in time limited games */
 var int  RemainingTime, ElapsedTime, RemainingMinute;
-var float SecondCount;
+
+/** Replicates scoring goal for this match */
 var int GoalScore;
+
+/** Replicates time limit for this match */
 var int TimeLimit;
-var int MaxLives;
 
-var TeamInfo Teams[2];
+/** Replicated list of teams participating in this match */
+var array<TeamInfo > Teams;
 
-var() globalconfig string ServerName;		// Name of the server, i.e.: Bob's Server.
-var() globalconfig string ShortName;		// Abbreviated name of server, i.e.: B's Serv (stupid example)
-var() globalconfig string AdminName;		// Name of the server admin.
-var() globalconfig string AdminEmail;		// Email address of the server admin.
-var() globalconfig int	  ServerRegion;		// Region of the game server.
+/** Name of the server, i.e.: Bob's Server. */
+var() globalconfig string ServerName;		
 
-var() globalconfig string MessageOfTheDay;
+/** Match winner.  Set by gameinfo when game ends */
+var Actor Winner;			
 
-var Actor Winner;			// set by gameinfo when game ends
+/** Array of all PlayerReplicationInfos, maintained on both server and clients (PRIs are always relevant) */
+var		array<PlayerReplicationInfo> PRIArray;
 
-var() array<PlayerReplicationInfo> PRIArray;
-
-enum ECarriedObjectState
-{
-    COS_Home,
-    COS_HeldFriendly,
-    COS_HeldEnemy,
-    COS_Down,
-};
-var ECarriedObjectState CarriedObjectState[2];
-
-// stats
-var int MatchID;
+/** This list mirrors the GameInfo's list of inactive PRI objects */
+var		array<PlayerReplicationInfo> InactivePRIArray;
 
 cpptext
 {
-	// Constructors.
-	AGameReplicationInfo() {}
-
 	// AActor interface.
 	INT* GetOptimizedRepList( BYTE* InDefault, FPropertyRetirement* Retire, INT* Ptr, UPackageMap* Map, UActorChannel* Channel );
+	
+	/**
+	 * Builds a list of components that are hidden for scene capture
+	 *
+	 * @param HiddenComponents the list to add to/remove from
+	 */
+	virtual void UpdateHiddenComponentsForSceneCapture(TSet<UPrimitiveComponent*>& HiddenComponents) {}
+
+	/**
+	 * Helper to return the default object of the GameInfo class corresponding to this GRI
+	 */
+	AGameInfo *GetDefaultGameInfo();
 }
 
 replication
 {
-	reliable if ( bNetDirty && (Role == ROLE_Authority) )
-		bStopCountDown, Winner, Teams, CarriedObjectState, bMatchHasBegun, MatchID; 
+	if ( bNetDirty )
+		bStopCountDown, Winner, bMatchHasBegun, bMatchIsOver;
 
-	reliable if ( !bNetInitial && bNetDirty && (Role == ROLE_Authority) )
+	if ( !bNetInitial && bNetDirty )
 		RemainingMinute;
 
-	reliable if ( bNetInitial && (Role==ROLE_Authority) )
-		GameName, GameClass, bTeamGame, 
-		RemainingTime, ElapsedTime,MessageOfTheDay, 
-		ServerName, ShortName, AdminName,
-		AdminEmail, ServerRegion, GoalScore, MaxLives, TimeLimit; 
+	if ( bNetInitial )
+		GameClass, RemainingTime, ElapsedTime, GoalScore, TimeLimit, ServerName;
 }
 
-simulated function PostNetBeginPlay()
+
+simulated event PostBeginPlay()
 {
 	local PlayerReplicationInfo PRI;
-	
-	Level.GRI = self;
+	local TeamInfo TI;
 
-	ForEach DynamicActors(class'PlayerReplicationInfo',PRI)
-		AddPRI(PRI);
-}
-
-simulated function PostBeginPlay()
-{
-	if( Level.NetMode == NM_Client )
+	if( WorldInfo.NetMode == NM_Client )
 	{
-		// clear variables so we don't display our own values if the server has them left blank 
+		// clear variables so we don't display our own values if the server has them left blank
 		ServerName = "";
-		AdminName = "";
-		AdminEmail = "";
-		MessageOfTheDay = "";
 	}
 
-	SecondCount = Level.TimeSeconds;
-	SetTimer(Level.TimeDilation, true);
+	SetTimer(WorldInfo.TimeDilation, true);
+
+	WorldInfo.GRI = self;
+
+	ForEach DynamicActors(class'PlayerReplicationInfo',PRI)
+	{
+		AddPRI(PRI);
+	}
+	foreach DynamicActors(class'TeamInfo', TI)
+	{
+		if (TI.TeamIndex >= 0)
+		{
+			SetTeam(TI.TeamIndex, TI);
+		}
+	}
 }
 
-/* Reset() 
+simulated event ReplicatedEvent(name VarName)
+{
+	if ( VarName == 'bMatchHasBegun' )
+	{
+		if (bMatchHasBegun)
+		{
+			WorldInfo.NotifyMatchStarted();
+			// @todo ib2merge - Chair added this - we could add a boolean to call this or not, set it to true in SwordGRI
+			// StartMatch();
+		}
+	}
+	else if ( VarName == 'bMatchIsOver' )
+	{
+		if ( bMatchIsOver )
+		{
+			EndGame();
+		}
+	}
+	else if ( VarName == 'GameClass' )
+	{
+		ReceivedGameClass();
+	}
+	else
+	{
+		Super.ReplicatedEvent(VarName);
+	}
+}
+
+
+/** Called when the GameClass property is set (at startup for the server, after the variable has been replicated on clients) */
+simulated function ReceivedGameClass()
+{
+	local PlayerController PC;
+	// Tell each PlayerController that the Game class is here
+	foreach LocalPlayerControllers(class'PlayerController',PC)
+	{
+		PC.ReceivedGameClass(GameClass);
+	}
+}
+
+/* Reset()
 reset actor to initial state - used when restarting level without reloading.
 */
 function Reset()
@@ -100,61 +154,68 @@ function Reset()
 	Winner = None;
 }
 
-simulated function Timer()
+simulated event Timer()
 {
-	if ( Level.NetMode == NM_Client )
+	if ( (WorldInfo.Game == None) || WorldInfo.Game.MatchIsInProgress() )
 	{
 		ElapsedTime++;
+	}
+	if ( WorldInfo.NetMode == NM_Client )
+	{
+		// sync remaining time with server once a minute
 		if ( RemainingMinute != 0 )
 		{
 			RemainingTime = RemainingMinute;
 			RemainingMinute = 0;
 		}
-		if ( (RemainingTime > 0) && !bStopCountDown )
-			RemainingTime--;
-		SetTimer(Level.TimeDilation, true);
 	}
+	if ( (RemainingTime > 0) && !bStopCountDown )
+	{
+		RemainingTime--;
+		if ( WorldInfo.NetMode != NM_Client )
+		{
+			if ( RemainingTime % 60 == 0 )
+			{
+				RemainingMinute = RemainingTime;
+			}
+		}
+	}
+
+	SetTimer(WorldInfo.TimeDilation, true);
 }
 
 /**
  * Checks to see if two actors are on the same team.
- * 
+ *
  * @return	true if they are, false if they aren't
  */
-simulated function bool OnSameTeam(Actor A, Actor B)
-{
-	local byte ATeamIndex, BTeamIndex;
-
-	if ( !bTeamGame || (A == None) || (B == None) )
-		return false;
-
-	ATeamIndex = A.GetTeamNum();
-	if ( ATeamIndex == 255 )
-		return false;
-
-	BTeamIndex = B.GetTeamNum();
-	if ( BTeamIndex == 255 )
-		return false;
-
-	return ( ATeamIndex == BTeamIndex );
-}
-
-simulated function PlayerReplicationInfo FindPlayerByID( int PlayerID )
-{
-    local int i;
-
-    for( i=0; i<PRIArray.Length; i++ )
-    {
-        if( PRIArray[i].PlayerID == PlayerID )
-            return PRIArray[i];
-    }
-    return None;
-}
+simulated native function bool OnSameTeam(Actor A, Actor B);
 
 
 simulated function AddPRI(PlayerReplicationInfo PRI)
 {
-    PRIArray[PRIArray.Length] = PRI;
+	local int i;
+
+	// Determine whether it should go in the active or inactive list
+	if (!PRI.bIsInactive)
+	{
+		// make sure no duplicates
+		for (i=0; i<PRIArray.Length; i++)
+		{
+			if (PRIArray[i] == PRI)
+				return;
+		}
+
+		PRIArray[PRIArray.Length] = PRI;
+	}
+	else
+	{
+		// Add once only
+		if (InactivePRIArray.Find(PRI) == INDEX_NONE)
+		{
+			InactivePRIArray[InactivePRIArray.Length] = PRI;
+		}
+	}
 }
 
 simulated function RemovePRI(PlayerReplicationInfo PRI)
@@ -163,40 +224,74 @@ simulated function RemovePRI(PlayerReplicationInfo PRI)
 
     for (i=0; i<PRIArray.Length; i++)
     {
-        if (PRIArray[i] == PRI)
-            break;
+		if (PRIArray[i] == PRI)
+		{
+		    PRIArray.Remove(i,1);
+			return;
+		}
     }
+}
 
-    if (i == PRIArray.Length)
-    {
-        log("GameReplicationInfo::RemovePRI() pri="$PRI$" not found.", 'Error');
-        return;
-    }
-
-    PRIArray.Remove(i,1);
-	}
-
-simulated function GetPRIArray(out array<PlayerReplicationInfo> pris)
+/**
+ * Assigns the specified TeamInfo to the location specified.
+ *
+ * @param	Index	location in the Teams array to place the new TeamInfo.
+ * @param	TI		the TeamInfo to assign
+ */
+simulated function SetTeam( int Index, TeamInfo TI )
 {
-    local int i;
-    local int num;
+	//`log(GetFuncName()@`showvar(Index)@`showvar(TI));
+	if ( Index >= 0 )
+	{
+		Teams[Index] = TI;
+	}
+}
 
-    pris.Remove(0, pris.Length);
-    for (i=0; i<PRIArray.Length; i++)
-    {
-        if (PRIArray[i] != None)
-            pris[num++] = PRIArray[i];
-    }
+/**
+ * Called on the server when the match has begin
+ *
+ * Network - Server and Client (Via ReplicatedEvent)
+ */
+
+simulated function StartMatch()
+{
+	bMatchHasBegun = true;
+}
+
+/**
+ * Called on the server when the match is over
+ *
+ * Network - Server and Client (Via ReplicatedEvent)
+ */
+
+simulated function EndGame()
+{
+	bMatchIsOver = true;
+}
+
+/** Is the current gametype a multiplayer game? */
+simulated function bool IsMultiplayerGame()
+{
+	return (WorldInfo.NetMode != NM_Standalone);
+}
+
+/** Is the current gametype a coop multiplayer game? */
+simulated function bool IsCoopMultiplayerGame()
+{
+	return FALSE;
+}
+
+/** Should players show gore? */
+simulated event bool ShouldShowGore()
+{
+	return TRUE;
 }
 
 defaultproperties
 {
-	CarriedObjectState[0]=COS_Home
-	CarriedObjectState[1]=COS_Home
+	TickGroup=TG_DuringAsyncWork
+
 	bStopCountDown=true
 	RemoteRole=ROLE_SimulatedProxy
 	bAlwaysRelevant=True
-	ServerName="Another Server"
-	ShortName="Server"
-	MessageOfTheDay=""
 }

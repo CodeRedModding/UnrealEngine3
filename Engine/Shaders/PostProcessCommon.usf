@@ -1,0 +1,137 @@
+/*=============================================================================
+	PostprocessCommon.hlsl: Common shader code.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+// 0/1
+// 0: old max_near,max_far,min_focus,focus_plane,focus range,pow, implemented in CalcUnfocusedPercent()
+// 1: (experimental) camera like, implemented in ComputeCircleOfConfusion()
+#define DOF_NEW_COC_FUNCTION			0
+
+// scene material parameters
+
+float4 SceneShadowsAndDesaturation;  // RGB = SceneShadows, A = (1-SceneDesaturation)
+float4 SceneInverseHighLights;       // RGB = 1 / SceneHighLights
+float4 SceneMidTones;                // RGB = SceneMidTones
+float4 SceneScaledLuminanceWeights;  // RGB = LuminanceWeights * SceneDesaturation
+float4 SceneColorize;				 // RGB = SceneColorize
+
+static float3 SceneShadows      = SceneShadowsAndDesaturation.rgb;
+static float  SceneDesaturation = SceneShadowsAndDesaturation.a;
+
+// gamma correction parameters
+
+//
+float4 GammaColorScaleAndInverse;
+// W unused
+float4 GammaOverlayColor;
+
+// width, height, 1.0/width, 1.0/height useful to access neighbor pixels (useful for Sharpen/SoftEdge)
+float4 RenderTargetExtent;          
+
+static float3 GammaColorScale = GammaColorScaleAndInverse.rgb;
+// not used, might be useful later on
+static float  GammaInverse    = GammaColorScaleAndInverse.a;
+
+//   ideally there should be no need for the max but as pow(x,y) is implemented as exp2(log2(x)*y) 0 is not defined
+//   the pow with 0.000001f made black appear grey so locally we use a smaller value. Later we can try to get rid of the max
+//   or use the smaller value in other places as well.
+static float SmallPowConst = 0.00000001f;
+
+
+
+
+
+// @param InLDRColor needs to be LDR (0..1) and in linear space
+half3 ColorCorrection(half3 InLDRColor)
+{
+	half3 Color = UnClampedPow(max(saturate(InLDRColor - SceneShadows) * SceneInverseHighLights.rgb, SmallPowConst), SceneMidTones.rgb);
+	
+	half3 ScaledLuminance = dot(Color.rgb, SceneScaledLuminanceWeights.rgb);
+
+	half3 MaterialResult = Color * SceneDesaturation + ScaledLuminance;
+
+	half3 LinearColor = MaterialResult.rgb * GammaColorScale.rgb + GammaOverlayColor.rgb;
+
+	return LinearColor * SceneColorize.rgb;
+}
+
+
+
+const static float X360DepthRange = 15000.0f;
+
+/**
+ * bring from worldspace depth to from texture usable range
+ * @param bMotionBlurObject - bit that identifies objects/background for motionblur 
+ */
+float CompressSceneDepthIntoHalfResTextureChannel(float In, bool bMotionBlurObject)
+{
+	float Sign = bMotionBlurObject ? 1.0f : -1.0f;
+
+#if PS3 || SM3_PROFILE
+	// clamp to fp 16 max to avoid INF on Geforce 6, 7 and RSX
+	// (repro: PhysTest.udk moving boxes in front of skybox)
+	In = min(In, 65503.0f);
+#endif
+
+	// needed if background has no depth / no skybox
+	// (repro: JW_MotionBlur.udk when using mouselook in PIE or game)
+#if SM3_PROFILE || SM5_PROFILE
+	if(In < 14.0f)
+	{
+		In = 65504.0f;
+	}
+#endif
+
+#if XBOX
+	// stored in 16bit int range -32..32, divided by the max expected depth (might not be enough)
+	return In * Sign * 32.0f / X360DepthRange;
+#else
+	// stored in half
+	return In * Sign;
+#endif
+}
+
+/** bring from texture usable range to worldspace range */
+float DecompressSceneDepthFromHalfResTextureChannel(float In, out bool bMotionBlurObject)
+{
+	bMotionBlurObject = (In >= 0.0f);
+
+	// remove the bit that identifies objects/background for motionblur 
+	In = abs(In);
+
+#if XBOX
+	return In * X360DepthRange / 32.0f;
+#else
+	return In;
+#endif
+}
+
+
+// Computed the "Circle Of Confusion" radius for "Depth of Field"
+// @param D e.g. SceneDepth
+// @param F e.g. InverseFocusRadius (Camera property e.g. 75mm)
+// @param P Plane in Focus e.g. FocusDistance
+float ComputeCircleOfConfusion(float D, float F, float P)
+{
+	// convert unreal units to mm
+	P *= 0.001f / 128;
+	D *= 0.001f / 128;
+
+	// Aperture
+	float A = 0.5f;
+
+	float Div = abs(D * (P - F));
+
+	// clamp crazy numbers
+//	Div = max(0.01f, Div);
+
+	float CoCRadiusFactor = A * F * abs(P - D) / Div;
+
+	return saturate(CoCRadiusFactor);
+}
+
+
+

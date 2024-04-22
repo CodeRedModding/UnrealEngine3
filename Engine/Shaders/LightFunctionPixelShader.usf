@@ -1,0 +1,51 @@
+/*=============================================================================
+	LightFunction.usf: Pixel shader for computing a light function.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+
+float4x4 ScreenToLight;
+
+/** GreyscaleFactor in x, ShadowFadeFraction in y. */
+float2 LightFunctionParameters;
+
+void Main(
+	in float4 ScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	half SceneW = PreviousDepthForShadows(ScreenPosition);
+	float4 LightVector = MulMatrix(ScreenToLight, float4(ScreenPosition.xy / ScreenPosition.w * SceneW, SceneW, 1));
+	LightVector.xyz /= LightVector.w;
+
+	FMaterialPixelParameters MaterialParameters;
+	MaterialParameters.MipBias = 0;
+#if NUM_MATERIAL_TEXCOORDS
+	for(int CoordinateIndex = 0;CoordinateIndex < NUM_MATERIAL_TEXCOORDS;CoordinateIndex++)
+	{
+		MaterialParameters.TexCoords[CoordinateIndex] = LightVector.xy;
+	}
+#endif
+	MaterialParameters.VertexColor = 1;
+	MaterialParameters.TangentNormal = 0;
+	MaterialParameters.TangentCameraVector = LightVector.xyz;
+	MaterialParameters.TangentReflectionVector = 0;
+	MaterialParameters.ScreenPosition = ScreenPosition;
+	MaterialParameters.TangentLightVector = LightVector.xyz;
+#if WORLD_COORDS
+	MaterialParameters.TangentToWorld = 0;
+#endif
+
+	half4 Color = float4( GetMaterialEmissive(MaterialParameters), 1 );
+
+	// Output color if GreyscaleFactor is 0, and a greyscale version if GreyscaleFactor is 1
+	Color.rgb = lerp(Color.rgb, dot(Color.rgb, .333f).xxx, LightFunctionParameters.x);
+	
+	// Fade to white based on ShadowFadeFraction
+	Color.rgb = lerp(half3(1,1,1), Color.rgb, LightFunctionParameters.y);
+
+	// RETURN_COLOR not needed unless writing to SceneColor
+	OutColor = EncodeLightAttenuation(Color);
+}

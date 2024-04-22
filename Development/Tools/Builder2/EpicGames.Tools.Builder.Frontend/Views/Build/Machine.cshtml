@@ -1,0 +1,97 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.BuildMachineModel
+
+@{
+    ViewBag.Title = "Build System";
+    ViewBag.Description = "Details for Machine '" + Model.MachineName + "'";
+}
+
+
+<script type="text/javascript">
+    function disableMaintenance( ) {
+        ($.ajax({
+            url: "@Url.RouteUrl(new { action = "DisableMachineMaintenance", controller = "Build", id = Model.MachineName })",
+            async: true
+        }));
+    }
+
+    function enableMaintenance( ) {
+        ($.ajax({
+            url: "@Url.RouteUrl(new { action = "EnableMachineMaintenance", controller = "Build", id = Model.MachineName })",
+            async: true
+        }));
+    }
+
+    function updateBuildLog( ) {
+        var query = $.ajax({
+            url: "@Url.RouteUrl(new { action = "MachineBuildLogs", controller = "Build", id = Model.MachineName })",
+            async: false
+        });
+            
+        query.success(
+                function( ) {
+                    setTimeout(function( ) {
+                        updateMachineDetails();
+                    },
+                    3000);
+                });
+
+        $('#buildLog').html(query.responseText);
+    }
+
+    function updateMachineDetails( ) {
+        var query = $.ajax({
+            url: "@Url.RouteUrl(new { action = "MachineDetails", controller = "Build", id = Model.MachineName })",
+            async: false
+        });
+            
+        query.success(
+            function( ) {
+                setTimeout(function( ) {
+                    updateMachineDetails();
+                },
+                3000);
+            });
+
+        $('#machineDetails').html(query.responseText);
+    }
+
+    $(document).ready(function( ) {
+        updateBuildLog();
+        updateMachineDetails();
+    });
+</script>
+
+
+<section>
+    <div class="grid6">
+        <span class="linkBack">
+            @Html.ActionLink("Infrastructure", "Infrastructure", "Build")
+        </span>
+
+        <span class="fr">
+            <a href="#details">Machine Details</a> |
+            <a href="#specs">Specs</a> |
+            <a href="#software">Software</a> |
+            <a href="#activity">Recent Activity</a> |
+            <a href="#buildhistory">Build History</a> |
+            <a href="#cishistory">CIS History</a> |
+            <a href="#verifyhistory">Verify History</a>
+        </span>
+    </div>
+</section>
+
+<section id="machineDetails" class="clearfix"></section>
+
+<div>
+    <a class="linkUp" href="#top">Back to top</a>
+</div>
+
+<section>
+    <div class="grid6">
+        <a name="activity"></a><h2>Recent Activity</h2>
+
+        <img class="chart" src="@Url.RouteUrl(new { action = "MachineLog", controller = "Chart", id = Model.MachineName })" alt="Build" />
+    </div>
+</section>
+
+<div id="buildLog"></div>

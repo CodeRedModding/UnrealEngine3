@@ -1,0 +1,20 @@
+﻿/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Resources;
+
+// These are the assembly properties for all tools
+[assembly: AssemblyCompany( "Epic Games, Inc." )]
+[assembly: AssemblyProduct( "UnrealEngine3" )]
+[assembly: AssemblyCopyright( "Copyright 1998-2013 Epic Games, Inc. All Rights Reserved." )]
+[assembly: AssemblyTrademark( "" )]
+
+// Use a neutral culture to avoid some localisation issues
+[assembly: AssemblyCulture( "" )]
+// Automatically generate a version number based on the time of compilation
+[assembly: AssemblyVersion( "1.0.*" )]
+
+[assembly: ComVisible( false )]

@@ -1,0 +1,101 @@
+/*=============================================================================
+	DOFGatherPixelShader.usf: Calculates blur factor in the alpha channel for depth-of-field.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+UNIFORM_SAMPLER2D(SceneColorTexture, TEXUNIT0);
+UNIFORM_SAMPLER2D(SceneDepthTexture, TEXUNIT1);
+
+IN_VARYING_DEFAULT(vec2, TextureUV, TEXCOORD0);
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+UNIFORM_HIGH(vec4, MinZ_MaxZRatio);
+
+/**
+ * Parameters for the bloom effect
+ *
+ * rgb: BloomColorScale: RGB scale for the bloomed color (BloomTint*BloomScale)
+ * a:   BloomThreshold - 
+ */
+UNIFORM(half4, BloomScaleAndThreshold);
+
+/**
+ * Parameters for the DOF effect
+ *
+ * x: FocusDistance - The distance which is 100% focused
+ * y: InverseFocusRadius - The focus falloff exponent
+ * z: One over the minimum distance from the focal which is 0% focused
+ * w: MinBlurAmount - clamp for min blur amount
+ */
+UNIFORM_HIGH(vec4, DOFPackedParameters);
+
+/**
+ * Max blur factor for the far geometry
+ */
+UNIFORM_HIGH(float, DOFFactor);
+
+
+/** return the world space converted depth (float precision needed for distances >65000, can affect fog) */
+float CalcSceneDepth( vec2 ScreenUV )
+{
+#if NGP
+	float DeviceZ = tex2D<float>(SceneDepthTexture,ScreenUV).r;
+#else
+	highp float DeviceZ = texture2D(SceneDepthTexture,ScreenUV).r;
+#endif
+
+	//return MinZ_MaxZRatio[0] / (1.0 - (DeviceZ / MinZ_MaxZRatio[1]));
+	return 1.0 / (DeviceZ * MinZ_MaxZRatio[2] - MinZ_MaxZRatio[3]);	
+}
+
+half4 CalcBloomColorAndFactor(half3 SceneColor)
+{
+	half3 BloomColorScale	= BloomScaleAndThreshold.rgb;
+	half BloomThreshold		= BloomScaleAndThreshold.a;
+
+	// RGB scale factor to calculated pixel luminance using a weight average
+	half3 LuminanceFactor	= half3( 0.3, 0.59, 0.11 );
+	half Luminance			= dot( LuminanceFactor, SceneColor );
+	half BloomFactor		= saturate(Luminance - BloomThreshold);
+	half3 BloomedColor		= SceneColor * BloomFactor * BloomColorScale;
+
+	return half4( BloomedColor, BloomFactor );
+}
+
+/** Returns 0-1 blur factor based on DOF. 0 = no blur, 1 = full blur. */
+float CalcDOFFactor(float SceneDepth)
+{
+	highp float FocusDistance			= DOFPackedParameters.x;
+	highp float FocusMinRadius			= DOFPackedParameters.y;
+	highp float FocusMaxRadius			= DOFPackedParameters.z;
+	highp float InverseTransitionRange	= DOFPackedParameters.w;
+
+	highp float Distance = SceneDepth - FocusDistance;
+	highp float DOFScale = saturate((Distance - FocusMinRadius) * InverseTransitionRange);
+	return DOFFactor * DOFScale;
+}
+
+//@TODO: Add #if support to turn features on/off
+PIXEL_MAIN
+{
+	half3 SceneColor = texture2D(SceneColorTexture, TextureUV).rgb;
+	half4 BloomColorAndFactor = CalcBloomColorAndFactor(SceneColor);
+	half3 BlurryColor = SceneColor + BloomColorAndFactor.rgb;
+
+#if USE_POSTPROCESS_MOBILE_DOF
+	highp float SceneDepth = CalcSceneDepth(TextureUV);
+	float DOFFactor = CalcDOFFactor(SceneDepth);
+
+	float BlurFactor = saturate(DOFFactor + BloomColorAndFactor.a);
+	
+	gl_FragColor = vec4(BlurryColor * BlurFactor, BlurFactor);
+#else
+	// In the Bloom-only gather case, pre-adjust the blur factor here, at lower res, to
+	// avoid more expensive, per-high-res-pixel math with virtually no visual impact
+	float BlurFactor = BloomColorAndFactor.a;
+	float AdjustedBlurFactor = 1.0 / (1.0 + BlurFactor);
+
+	// Scale and bias the factor as well, to increase effective precision in the LDR buffer
+	gl_FragColor = vec4(BlurryColor * BlurFactor, (2.0 * AdjustedBlurFactor) - 1.0);
+#endif
+}

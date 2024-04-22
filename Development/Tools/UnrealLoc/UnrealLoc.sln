@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnrealLoc", "UnrealLoc.csproj", "{F668D875-6BB2-436E-BD2F-CC3253E6DD8F}"
+EndProject
+Global
+	GlobalSection(SourceCodeControl) = preSolution
+		SccNumberOfProjects = 2
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = UnrealLoc.csproj
+		SccLocalPath1 = .
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F668D875-6BB2-436E-BD2F-CC3253E6DD8F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F668D875-6BB2-436E-BD2F-CC3253E6DD8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F668D875-6BB2-436E-BD2F-CC3253E6DD8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F668D875-6BB2-436E-BD2F-CC3253E6DD8F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

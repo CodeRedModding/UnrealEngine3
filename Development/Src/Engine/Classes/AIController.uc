@@ -4,24 +4,42 @@
 // Controllers are non-physical actors that can be attached to a pawn to control
 // its actions.  AIControllers implement the artificial intelligence for the pawns they control.
 //
-// This is a built-in Unreal class and it shouldn't be modified.
+//Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 //=============================================================================
 class AIController extends Controller
 	native(AI);
 
-var		bool		bHunting;			// tells navigation code that pawn is hunting another pawn,
-										//	so fall back to finding a path to a visible pathnode if none
-										//	are reachable
-var		bool		bAdjustFromWalls;	// auto-adjust around corners, with no hitwall notification for controller or pawn
-										// if wall is hit during a MoveTo() or MoveToward() latent execution.
+/** auto-adjust around corners, with no hitwall notification for controller or pawn
+	if wall is hit during a MoveTo() or MoveToward() latent execution. */
+var		bool		bAdjustFromWalls;	
 
-var     float		Skill;				// skill, scaled by game difficulty (add difficulty to this value)	
+/** skill, scaled by game difficulty (add difficulty to this value) */
+var     float		Skill;
+
+/** Move target from last scripted action */
+var Actor ScriptedMoveTarget;
+
+/** Route from last scripted action; if valid, sets ScriptedMoveTarget with the points along the route */
+var Route ScriptedRoute;
+
+/** if true, we're following the scripted route in reverse */
+var bool bReverseScriptedRoute;
+
+/** if ScriptedRoute is valid, the index of the current point we're moving to */
+var int ScriptedRouteIndex;
+
+/** view focus from last scripted action */
+var Actor ScriptedFocus;
 
 cpptext
 {
 	INT AcceptNearbyPath(AActor *goal);
 	void AdjustFromWall(FVector HitNormal, AActor* HitActor);
-	void SetAdjustLocation(FVector NewLoc);
+	virtual void SetAdjustLocation(FVector NewLoc,UBOOL bAdjust,UBOOL bOffsetFromBase=FALSE);
+	virtual FVector DesiredDirection();
+	
+	/** Called when the AIController is destroyed via script */
+	virtual void PostScriptDestroyed();
 }
 
 event PreBeginPlay()
@@ -30,8 +48,8 @@ event PreBeginPlay()
 	if ( bDeleteMe )
 		return;
 
-	if ( Level.Game != None )
-		Skill += Level.Game.GameDifficulty;
+	if ( WorldInfo.Game != None )
+		Skill += WorldInfo.Game.GameDifficulty;
 	Skill = FClamp(Skill, 0, 3);
 }
 
@@ -40,40 +58,10 @@ reset actor to initial state - used when restarting level without reloading.
 */
 function Reset()
 {
-	bHunting = false;
 	Super.Reset();
 }
 
-/* WeaponFireAgain()
-Notification from weapon when it is ready to fire (either just finished firing,
-or just finished coming up/reloading).
-Returns true if weapon should fire.
-If it returns false, can optionally set up a weapon change
-*/
-function bool WeaponFireAgain(float RefireRate, bool bFinishedFire)
-{
-	/*
-	if ( Pawn.IsPressingFire() && (FRand() < RefireRate) )
-	{
-		BotFire( bFinishedFire );
-		return true;
-	}
-
-	*/
-	StopFiring();
-	return false;
-}
-	
-/* BotFire 
-	Bot decides to fire
-*/
-function BotFire( bool bFinishedFire, optional byte FireModeNum )
-{
-	bFire = 1;
-	Pawn.StartFire( FireModeNum );
-}
-
-/** 
+/**
  * list important AIController variables on canvas.  HUD will call DisplayDebug() on the current ViewTarget when
  * the ShowDebug exec is used
  *
@@ -81,7 +69,7 @@ function BotFire( bool bFinishedFire, optional byte FireModeNum )
  * @input	out_YL		- Height of the current font
  * @input	out_YPos	- Y position on Canvas. out_YPos += out_YL, gives position to draw text for next debug line.
  */
-function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
+simulated function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 {
 	local int i;
 	local string T;
@@ -91,7 +79,7 @@ function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 
 	super.DisplayDebug(HUD, out_YL, out_YPos);
 
-	if ( HUD.bShowAIDebug )
+	if (HUD.ShouldDisplayDebug('AI'))
 	{
 		Canvas.DrawColor.B = 255;
 		if ( (Pawn != None) && (MoveTarget != None) && Pawn.ReachedDestination(MoveTarget) )
@@ -101,7 +89,7 @@ function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 		out_YPos += out_YL;
 		Canvas.SetPos(4,out_YPos);
 
-		Canvas.DrawText("      Destination "$Destination$" Focus "$GetItemName(string(Focus))$" Preparing Move "$bPreparingMove, false);
+		Canvas.DrawText("      Destination "$GetDestinationPosition()$" Focus "$GetItemName(string(Focus))$" Preparing Move "$bPreparingMove, false);
 		out_YPos += out_YL;
 		Canvas.SetPos(4,out_YPos);
 
@@ -127,97 +115,233 @@ function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 	}
 }
 
-function float AdjustDesireFor(PickupFactory P)
+event SetTeam(int inTeamIdx)
 {
-	return 0;
+	WorldInfo.Game.ChangeTeam(self,inTeamIdx,true);
 }
 
-// AdjustView() called if Controller's pawn is viewtarget of a player
-function AdjustView(float DeltaTime)
+simulated event GetPlayerViewPoint(out vector out_Location, out Rotator out_Rotation)
 {
-	local float TargetYaw, TargetPitch;
-	local rotator OldViewRotation,ViewRotation;
-
-	Super.AdjustView(DeltaTime);
-	if( !Pawn.bUpdateEyeHeight )
-		return;
-
-	// update viewrotation
-	ViewRotation = Rotation;
-	OldViewRotation = Rotation;			
-
-	if ( Enemy == None )
+	// AI does things from the Pawn
+	if (Pawn != None)
 	{
-		ViewRotation.Roll = 0;
-		if ( DeltaTime < 0.2 )
-		{
-			OldViewRotation.Yaw = OldViewRotation.Yaw & 65535;
-			OldViewRotation.Pitch = OldViewRotation.Pitch & 65535;
-			TargetYaw = float(Rotation.Yaw & 65535);
-			if ( Abs(TargetYaw - OldViewRotation.Yaw) > 32768 )
-			{
-				if ( TargetYaw < OldViewRotation.Yaw )
-					TargetYaw += 65536;
-				else
-					TargetYaw -= 65536;
-			}
-			TargetYaw = float(OldViewRotation.Yaw) * (1 - 5 * DeltaTime) + TargetYaw * 5 * DeltaTime;
-			ViewRotation.Yaw = int(TargetYaw);
-
-			TargetPitch = float(Rotation.Pitch & 65535);
-			if ( Abs(TargetPitch - OldViewRotation.Pitch) > 32768 )
-			{
-				if ( TargetPitch < OldViewRotation.Pitch )
-					TargetPitch += 65536;
-				else
-					TargetPitch -= 65536;
-			}
-			TargetPitch = float(OldViewRotation.Pitch) * (1 - 5 * DeltaTime) + TargetPitch * 5 * DeltaTime;
-			ViewRotation.Pitch = int(TargetPitch);
-			SetRotation(ViewRotation);
-		}
+		out_Location = Pawn.Location;
+		out_Rotation = Pawn.Rotation;
+	}
+	else
+	{
+		Super.GetPlayerViewPoint(out_Location, out_Rotation);
 	}
 }
 
-function SetOrders(name NewOrders, Controller OrderGiver);
-
-function actor GetOrderObject()
+/**
+ * Scripting hook to move this AI to a specific actor.
+ */
+function OnAIMoveToActor(SeqAct_AIMoveToActor Action)
 {
-	return None;
+	local Actor DestActor;
+	local SeqVar_Object ObjVar;
+
+	// abort any previous latent moves
+	ClearLatentAction(class'SeqAct_AIMoveToActor',true,Action);
+	// pick a destination
+	DestActor = Action.PickDestination(Pawn);
+	// if we found a valid destination
+	if (DestActor != None)
+	{
+		// set the target and push our movement state
+		ScriptedRoute = Route(DestActor);
+		if (ScriptedRoute != None)
+		{
+			if (ScriptedRoute.RouteList.length == 0)
+			{
+				`warn("Invalid route with empty MoveList for scripted move");
+			}
+			else
+			{
+				ScriptedRouteIndex = 0;
+				if (!IsInState('ScriptedRouteMove'))
+				{
+					PushState('ScriptedRouteMove');
+				}
+			}
+		}
+		else
+		{
+			ScriptedMoveTarget = DestActor;
+			if (!IsInState('ScriptedMove'))
+			{
+				PushState('ScriptedMove');
+			}
+		}
+		// set AI focus, if one was specified
+		ScriptedFocus = None;
+		foreach Action.LinkedVariables(class'SeqVar_Object', ObjVar, "Look At")
+		{
+			ScriptedFocus = Actor(ObjVar.GetObjectValue());
+			if (ScriptedFocus != None)
+			{
+				break;
+			}
+		}
+	}
+	else
+	{
+		`warn("Invalid destination for scripted move");
+	}
 }
 
-function name GetOrders()
+/**
+ * Simple scripted movement state, attempts to pathfind to ScriptedMoveTarget and
+ * returns execution to previous state upon either success/failure.
+ */
+state ScriptedMove
 {
-	return 'None';
+	event PoppedState()
+	{
+		if (ScriptedRoute == None)
+		{
+			// if we still have the move target, then finish the latent move
+			// otherwise consider it aborted
+			ClearLatentAction(class'SeqAct_AIMoveToActor', (ScriptedMoveTarget == None));
+		}
+		// and clear the scripted move target
+		ScriptedMoveTarget = None;
+	}
+
+	event PushedState()
+	{
+		if (Pawn != None)
+		{
+			// make sure the pawn physics are initialized
+			Pawn.SetMovementPhysics();
+		}
+	}
+
+Begin:
+	// while we have a valid pawn and move target, and
+	// we haven't reached the target yet
+	while (Pawn != None &&
+		   ScriptedMoveTarget != None &&
+		   !Pawn.ReachedDestination(ScriptedMoveTarget))
+	{
+		// check to see if it is directly reachable
+		if (ActorReachable(ScriptedMoveTarget))
+		{
+			// then move directly to the actor
+			MoveToward(ScriptedMoveTarget, ScriptedFocus);
+		}
+		else
+		{
+			// attempt to find a path to the target
+			MoveTarget = FindPathToward(ScriptedMoveTarget);
+			if (MoveTarget != None)
+			{
+				// move to the first node on the path
+				MoveToward(MoveTarget, ScriptedFocus);
+			}
+			else
+			{
+				// abort the move
+				`warn("Failed to find path to"@ScriptedMoveTarget);
+				ScriptedMoveTarget = None;
+			}
+		}
+	}
+	// return to the previous state
+	PopState();
 }
 
-/* PrepareForMove()
-Give controller a chance to prepare for a move along the navigation network, from
-Anchor (current node) to Goal, given the reachspec for that movement.
-
-Called if the reachspec doesn't support the pawn's current configuration.
-By default, the pawn will crouch when it hits an actual obstruction. However,
-Pawns with complex behaviors for setting up their smaller collision may want
-to call that behavior from here
-*/
-event PrepareForMove(NavigationPoint Goal, ReachSpec Path);
-
-function bool PriorityObjective()
+/** scripted route movement state, pushes ScriptedMove for each point along the route */
+state ScriptedRouteMove
 {
-	return false;
+	event PoppedState()
+	{
+		// if we still have the move target, then finish the latent move
+		// otherwise consider it aborted
+		ClearLatentAction(class'SeqAct_AIMoveToActor', (ScriptedRoute == None));
+		ScriptedRoute = None;
+	}
+
+Begin:
+	while (Pawn != None && ScriptedRoute != None && ScriptedRouteIndex < ScriptedRoute.RouteList.length && ScriptedRouteIndex >= 0)
+	{
+		ScriptedMoveTarget = ScriptedRoute.RouteList[ScriptedRouteIndex].Actor;
+		if (ScriptedMoveTarget != None)
+		{
+			PushState('ScriptedMove');
+		}
+		if (Pawn != None && Pawn.ReachedDestination(ScriptedRoute.RouteList[ScriptedRouteIndex].Actor))
+		{
+			if (bReverseScriptedRoute)
+			{
+				ScriptedRouteIndex--;
+			}
+			else
+			{
+				ScriptedRouteIndex++;
+			}
+		}
+		else
+		{
+			`warn("Aborting scripted route");
+			ScriptedRoute = None;
+			PopState();
+		}
+	}
+
+	if (Pawn != None && ScriptedRoute != None && ScriptedRoute.RouteList.length > 0)
+	{
+		switch (ScriptedRoute.RouteType)
+		{
+			case ERT_Linear:
+				PopState();
+				break;
+			case ERT_Loop:
+				bReverseScriptedRoute = !bReverseScriptedRoute;
+				// advance index by one to get back into valid range
+				if (bReverseScriptedRoute)
+				{
+					ScriptedRouteIndex--;
+				}
+				else
+				{
+					ScriptedRouteIndex++;
+				}
+				Goto('Begin');
+				break;
+			case ERT_Circle:
+				ScriptedRouteIndex = 0;
+				Goto('Begin');
+				break;
+			default:
+				`warn("Unknown route type");
+				ScriptedRoute = None;
+				PopState();
+				break;
+		}
+	}
+	else
+	{
+		ScriptedRoute = None;
+		PopState();
+	}
+
+	// should never get here
+	`warn("Reached end of state execution");
+	ScriptedRoute = None;
+	PopState();
 }
 
-function Startle(Actor A);
+function NotifyWeaponFired(Weapon W, byte FireMode);
+function NotifyWeaponFinishedFiring(Weapon W, byte FireMode);
 
-event SetTeam(int inTeamIdx)
-{
-	Level.Game.ChangeTeam(self,inTeamIdx,true);
-}
+function bool CanFireWeapon( Weapon Wpn, byte FireModeNum ) { return TRUE; }
+
 
 defaultproperties
 {
 	 bAdjustFromWalls=true
-     bCanOpenDoors=true
 	 bCanDoSpecial=true
 	 MinHitWall=-0.5f
 }

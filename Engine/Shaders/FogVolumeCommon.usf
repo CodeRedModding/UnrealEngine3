@@ -1,0 +1,214 @@
+/*=============================================================================
+	FogVolumeCommon.usf: 
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+/* parameters specific to the density function */
+const float4	FirstDensityFunctionParameters;
+const float4	SecondDensityFunctionParameters;
+
+/* Distance from the camera that fog should start, in world units. */
+float StartDistance;
+
+/* Used to avoid divide by zero */
+const static float Epsilon = .0001;
+
+/*
+* Constant density - constant density factor stored in FirstDensityFunctionParameters.x
+*
+* Computes the line integral from the camera to the current face of the fog volume being rendered
+* or an intersecting opaque object.
+*/
+float ConstantDensityLineIntegral(float3 WorldReceiverPos, float3 InCameraPosition, float2 IntersectionRange)
+{
+	float3 V = InCameraPosition - WorldReceiverPos;
+	float CameraToReceiverDistance = max(length(V) - StartDistance, 0.0f);
+	return CameraToReceiverDistance * saturate(IntersectionRange.y - IntersectionRange.x) * FirstDensityFunctionParameters.x;
+}
+
+/*
+* A halfspace of fog with density increasing linearly away from the plane, 
+* linear density factor stored in FirstDensityFunctionParameters.x, plane stored in SecondDensityFunctionParameters
+*
+* Computes the line integral from the camera to the current face of the fog volume being rendered
+* or an intersecting opaque object.
+*/
+float LinearHalfspaceLineIntegral(float3 WorldReceiverPos, float3 InCameraPosition)
+{
+	//parametrize the ray as R = WorldPos + V * t;
+	//so ray origin is WorldPos, ray direction is V
+	float3 V = InCameraPosition - WorldReceiverPos;
+
+	//linear halfspace density
+	float FDotC = dot(SecondDensityFunctionParameters, float4(InCameraPosition, 1));
+	float FDotP = dot(SecondDensityFunctionParameters, float4(WorldReceiverPos, 1));
+	float FDotV = dot(SecondDensityFunctionParameters, float4(V, 0));
+
+	//@todo: implement StartDistance
+	float CameraOutsideMask = FDotC <= 0;
+	float IntersectionMask = min((1 - 2 * CameraOutsideMask) * FDotP, 0);
+	float IntersectionPortion = IntersectionMask * IntersectionMask / (abs(FDotV) + Epsilon);
+	float InsideVolumePortion = CameraOutsideMask * (FDotP + FDotC);
+	return -.5 * FirstDensityFunctionParameters.x * .0001f * length(V) * (InsideVolumePortion - IntersectionPortion);
+}
+
+/*
+* A halfspace of fog with density increasing linearly away from the plane, 
+* Density function = -FirstDensityFunctionParameters.x * DistanceToPlane
+* linear density factor stored in FirstDensityFunctionParameters.x, plane stored in SecondDensityFunctionParameters
+* Clamps the ray to the range [IntersectionRange.x, IntersectionRange.y]
+*
+* Computes the line integral from the camera to the current face of the fog volume being rendered
+* or an intersecting opaque object.
+*/
+float LinearHalfspaceLineIntegral(float3 WorldReceiverPos, float3 InCameraPosition, float2 IntersectionRange)
+{
+	//parametrize the ray as R = WorldPos + V * t;
+	//so ray origin is WorldPos, ray direction is V
+	float3 V = InCameraPosition - WorldReceiverPos;
+	float ReceiverToCameraDistance = length(V);
+	
+	//plane dot WorldReceiverPos is stored in x, plane dot InCameraPosition in y
+	//these are used to handle the 4 cases:
+	//		FDotReceiver	FDotCamera		MinIntersection		MaxIntersection
+	//A) Ray does not intersect plane (both CameraPos and WorldPos are above the plane)
+	//  	+				+				0					0
+	//B) Camera above plane, WorldPos below
+	//  	-				+				0					RayPlaneIntersect
+	//C) WorldPos above plane, camera below
+	//  	+				-				RayPlaneIntersect	1
+	//D) Both below
+	//  	-				-				0					1
+	float3 PlaneDots;
+	PlaneDots.x = dot(SecondDensityFunctionParameters, float4(WorldReceiverPos, 1));
+	PlaneDots.y = dot(SecondDensityFunctionParameters, float4(InCameraPosition, 1));
+	PlaneDots.z = dot(SecondDensityFunctionParameters, float4(V, 0));
+	
+	//find the intersection between the ray and the plane
+	//t = - dot(Plane, float4(WorldPos, 1)) / dot(Plane, float4(V, 0));
+	float RayPlaneIntersect = -PlaneDots.x / (PlaneDots.z + Epsilon);
+
+	//setup masks based on the 4 cases
+	float2 IntersectionMasks = PlaneDots.xy < 0.0f;
+
+	//use those masks to setup the correct MinIntersection and MaxIntersection for each case
+	float2 Intersections = lerp(RayPlaneIntersect.xx, float2(0,1), IntersectionMasks);
+
+	//use the passed in range if it is more restrictive
+	Intersections.x = max(Intersections.x, IntersectionRange.x);
+	Intersections.y = min(Intersections.y, IntersectionRange.y);
+
+	//clamp the closest intersection to the camera to StartDistance
+	Intersections.y = min(1.0f - StartDistance / ReceiverToCameraDistance, Intersections.y);
+
+	//this can only happen if the passed in Intersections is invalid
+	//and indicates that the ray doesn't intersect anything
+	//set the Intersections to be equal so the line integral will be 0
+	if (Intersections.y <= Intersections.x)
+	{
+		Intersections = float2(0,0); 
+	}
+
+	//evaluate the line integral at both intersections
+	float2 IntegralEvaluations = Intersections * PlaneDots.xx + 0.5f * Intersections * Intersections * PlaneDots.zz;
+	return -(IntegralEvaluations.y - IntegralEvaluations.x) * ReceiverToCameraDistance * FirstDensityFunctionParameters.x * .0001f;
+}
+
+const static float PI_2 = 1.57079632f;
+
+float ArcTan(float value)
+{
+	//close enough
+	float ValueSign = sign(value);
+	return ValueSign * (-PI_2 * exp2(-ValueSign * value) + PI_2);
+
+	//funky
+	//return sin(value * 5.0f);
+
+	//slow
+	//return atan2(value, 1.0f);
+}
+
+/*
+* A sphere shaped density function with G1 continuity at the center and smooth quadratic falloff at the edges.
+* Spherical Density = MaximumDensity * (1 - distanceToCenter^2 / SphereRadius^2), where MaximumDensity is the maximum density at the center of the sphere.
+* This density function has its zeroes at SphereRadius and -SphereRadius, so the edges of the sphere fade out smoothly.
+* MaxDensity stored in FirstDensityFunctionParameters.x, sphere center in SecondDensityFunctionParameters.xyz, sphere radius in SecondDensityFunctionParameters.w
+*
+* Computes the line integral from the camera to the current face of the fog volume being rendered
+* or an intersecting opaque object.
+*/
+float SphericalLineIntegral(float3 WorldReceiverPos, float3 InCameraPosition)
+{
+	float LineIntegral = 0;
+	float3 V = InCameraPosition - WorldReceiverPos;
+	float ReceiverToCameraDistance = length(V);
+
+	float SphereRadiusSquared = SecondDensityFunctionParameters.w * SecondDensityFunctionParameters.w;
+
+	float3 ReceiverToSphereCenter = WorldReceiverPos - SecondDensityFunctionParameters.xyz;
+	float ReceiverToSphereCenterSq = dot(ReceiverToSphereCenter, ReceiverToSphereCenter);
+
+	//find the intersection between the ray from the receiver to the camera and the sphere
+	//x, y and z correspond to a, b and c in a * x^2 + b * x + c = 0
+	//except c has the -SphereRadiusSquared term left out for reuse in the integral
+	float3 QuadraticCoef;
+	QuadraticCoef.x = dot(V, V);
+	QuadraticCoef.y = 2 * dot(V, ReceiverToSphereCenter);
+	QuadraticCoef.z = ReceiverToSphereCenterSq;
+
+	//b^2 - 4 * a * c
+	float Determinant = QuadraticCoef.y * QuadraticCoef.y - 4 * QuadraticCoef.x * (QuadraticCoef.z - SphereRadiusSquared);
+
+	//only continue if the ray intersects the sphere
+	//@todo - try to optimize this using dynamic branching
+	if (Determinant >= 0)
+	{
+		float InvTwoA = .5 / (QuadraticCoef.x + Epsilon);
+		float SqrtDeterminant = sqrt(Determinant);
+
+		//clamp intersections to [0, 1].  0 on the ray is the receiver position, 1 is the camera position.
+		//closest stored in x, furthest in y
+		float2 Intersections = saturate(-(float2(SqrtDeterminant, -SqrtDeterminant) + QuadraticCoef.yy) * InvTwoA);
+
+		//clamp the closest intersection to the camera to StartDistance
+		Intersections.y = min(1.0f - StartDistance / ReceiverToCameraDistance, Intersections.y);
+		Intersections.y = max(Intersections.y, Intersections.x);
+
+		//spherical density = MaximumDensity * (1 - distanceToCenter^2 / SphereRadius^2), where MaximumDensity is the maximum density at the center of the sphere
+		//distanceToCenter is squared which cancels out the sqrt in the distance calculation and greatly simplifies the line integral
+
+		float3 IntegralCoefficients = QuadraticCoef * float3(1.0f / 3.0f, 1.0f / 2.0f, 1.0f);
+		float2 IntersectionsSquared = Intersections * Intersections;
+		float2 IntersectionsCubed = IntersectionsSquared * Intersections;
+		float3 ClosestVector = float3(IntersectionsCubed.x, IntersectionsSquared.x, Intersections.x);
+		float3 FurthestVector = float3(IntersectionsCubed.y, IntersectionsSquared.y, Intersections.y);
+		float2 IntegralPolynomials = float2(dot(IntegralCoefficients, ClosestVector), dot(IntegralCoefficients, FurthestVector));
+
+		//evaluation at the closest intersection in x, furthest in y
+		float2 Evaluations = FirstDensityFunctionParameters.xx * (Intersections - IntegralPolynomials / SphereRadiusSquared.xx);
+		LineIntegral = (Evaluations.y - Evaluations.x) * ReceiverToCameraDistance;
+		
+		/*
+		//spherical density = 1 / r^2
+		//looks like the inscattering from a bright lamp on a foggy night
+		float QuadraticFalloffCoef = .02;
+		float3 SphereCenterToReceiver = -ReceiverToSphereCenter;
+		float A2 = QuadraticCoef.x * QuadraticFalloffCoef;
+		float B2 = -2 * dot(V, SphereCenterToReceiver) * QuadraticFalloffCoef;
+		float C2 = dot(SphereCenterToReceiver, SphereCenterToReceiver) * QuadraticFalloffCoef;
+		
+		float IntegralDeterminant = 4 * A2 * C2 - B2 * B2;
+		float SqrtIntegralDeterminant = sqrt(abs(IntegralDeterminant));
+		float InvSqrtIntegralDeterminant = 1 / (SqrtIntegralDeterminant + Epsilon);
+		float FurthestValue = (2 * A2 * Intersections.y + B2) * InvSqrtIntegralDeterminant;
+		float ClosestValue = (2 * A2 * Intersections.x + B2) * InvSqrtIntegralDeterminant;
+		
+		if (IntegralDeterminant > 0)
+		{
+			LineIntegral = 2 * InvSqrtIntegralDeterminant * (ArcTan(FurthestValue) - ArcTan(ClosestValue)) * length(V);
+		}
+		*/
+	}
+	return LineIntegral;
+}

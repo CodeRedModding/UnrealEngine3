@@ -1,0 +1,28 @@
+/*=============================================================================
+	MobileFXAAVertexShader.msf : Postprocess Anti aliasing based on FXAA code from NVIDIA
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+// 1/RenderTargetWidth, 1/RenderTargetHeight, see Fxaa.. header for more details (used for VS and PS)
+UNIFORM_HIGH(float2, fxaaQualityRcpFrame);
+
+/*-----------------------------------------------------------------------------
+	FXAA vertex shader
+-----------------------------------------------------------------------------*/
+
+ATTRIBUTE(vec4, Position, POSITION);
+ATTRIBUTE(vec2, TexCoords0, TEXCOORD0);
+
+OUT_VARYING_HIGH(vec2, TexCenter, TEXCOORD0);
+OUT_VARYING_HIGH(vec4, TexCorners, TEXCOORD1);
+
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+void main()
+{	
+	gl_Position = Position;
+	TexCorners = float4(TexCoords0.xy - (0.5 * fxaaQualityRcpFrame), TexCoords0.xy + (0.5 * fxaaQualityRcpFrame));
+	TexCenter = TexCoords0.xy;
+}
+
+

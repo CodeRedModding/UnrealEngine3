@@ -1,0 +1,192 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="BuiltWithUnrealBuildTool|Win32">
+      <Configuration>BuiltWithUnrealBuildTool</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{D81C72CB-E8FC-4442-9D29-E060415DDBAA}</ProjectGuid>
+    <RootNamespace>GameFramework</RootNamespace>
+    <SccProjectName>
+    </SccProjectName>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+    <Keyword>MakeFileProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</IntDir>
+    <NMakeBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeReBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeCleanCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeOutput Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="Classes\DebugCameraController.uc" />
+    <None Include="Classes\DebugCameraHUD.uc" />
+    <None Include="Classes\DebugCameraInput.uc" />
+    <None Include="Classes\DynamicSpriteComponent.uc" />
+    <None Include="Classes\FrameworkGame.uc" />
+    <None Include="Classes\GameCheatManager.uc" />
+    <None Include="Classes\GameExplosion.uc" />
+    <None Include="Classes\GameExplosionActor.uc" />
+    <None Include="Classes\GameExplosionContent.uc" />
+    <None Include="Classes\GameKActorSpawnableEffect.uc" />
+    <None Include="Classes\GamePawn.uc" />
+    <None Include="Classes\GamePlayerController.uc" />
+    <None Include="Classes\GameSkelCtrl_Recoil.uc" />
+    <None Include="Classes\GameSpecialMove.uc" />
+    <None Include="Classes\GameTypes.uc" />
+    <None Include="Classes\GameWaveForms.uc" />
+    <None Include="Classes\MobileDebugCameraController.uc" />
+    <None Include="Classes\MobileDebugCameraHUD.uc" />
+    <None Include="Classes\MobileDebugCameraInput.uc" />
+    <None Include="Classes\MobileMenuBar.uc" />
+    <None Include="Classes\MobileMenuBarItem.uc" />
+    <None Include="Classes\MobileMenuElement.uc" />
+    <None Include="Classes\MobileMenuInventory.uc" />
+    <None Include="Classes\MobileMenuList.uc" />
+    <None Include="Classes\MobileMenuListItem.uc" />
+    <None Include="Classes\MobileMenuObjectProxy.uc" />
+    <None Include="Classes\MobileSecondaryViewportClient.uc" />
+    <None Include="Classes\MobileTouchInputVolume.uc" />
+    <None Include="Classes\PMESTG_LeaveADecalBase.uc" />
+    <None Include="Classes\SecondaryViewportClient.uc" />
+    <None Include="Classes\SeqAct_ControlGameMovie.uc" />
+    <None Include="Classes\SeqAct_ModifyProperty.uc" />
+    <None Include="Classes\DynamicGameCrowdDestination.uc" />
+    <None Include="Classes\GameCrowd_ListOfAgents.uc" />
+    <None Include="Classes\GameCrowdAgent.uc" />
+    <None Include="Classes\GameCrowdAgentBehavior.uc" />
+    <None Include="Classes\GameCrowdAgentSkeletal.uc" />
+    <None Include="Classes\GameCrowdAgentSM.uc" />
+    <None Include="Classes\GameCrowdBehavior_PlayAnimation.uc" />
+    <None Include="Classes\GameCrowdBehavior_RunFromPanic.uc" />
+    <None Include="Classes\GameCrowdBehavior_WaitForGroup.uc" />
+    <None Include="Classes\GameCrowdBehavior_WaitInQueue.uc" />
+    <None Include="Classes\GameCrowdBehaviorPoint.uc" />
+    <None Include="Classes\GameCrowdDestination.uc" />
+    <None Include="Classes\GameCrowdDestinationQueuePoint.uc" />
+    <None Include="Classes\GameCrowdGroup.uc" />
+    <None Include="Classes\GameCrowdInfoVolume.uc" />
+    <None Include="Classes\GameCrowdInteractionDestination.uc" />
+    <None Include="Classes\GameCrowdInteractionPoint.uc" />
+    <None Include="Classes\GameCrowdPopulationManager.uc" />
+    <None Include="Classes\GameCrowdReplicationActor.uc" />
+    <None Include="Classes\GameCrowdSpawnerInterface.uc" />
+    <None Include="Classes\GameCrowdSpawnInterface.uc" />
+    <None Include="Classes\GameCrowdSpawnRelativeActor.uc" />
+    <None Include="Classes\GameDestinationConnRenderingComponent.uc" />
+    <None Include="Classes\SeqAct_GameCrowdPopulationManagerToggle.uc" />
+    <None Include="Classes\SeqAct_GameCrowdSpawner.uc" />
+    <None Include="Classes\SeqAct_PlayAgentAnimation.uc" />
+    <None Include="Classes\SeqAct_ToggleMouseCursor.uc" />
+    <None Include="Classes\SeqEvent_CrowdAgentReachedDestination.uc" />
+    <None Include="Classes\GameCameraBase.uc" />
+    <None Include="Classes\GameCameraBlockingVolume.uc" />
+    <None Include="Classes\GameFixedCamera.uc" />
+    <None Include="Classes\GamePlayerCamera.uc" />
+    <None Include="Classes\GameThirdPersonCamera.uc" />
+    <None Include="Classes\GameThirdPersonCameraMode.uc" />
+    <None Include="Classes\GameThirdPersonCameraMode_Default.uc" />
+    <None Include="Classes\MobileHUD.uc" />
+    <None Include="Classes\MobileInputZone.uc" />
+    <None Include="Classes\MobilePlayerInput.uc" />
+    <None Include="Classes\SeqAct_Deproject.uc" />
+    <None Include="Classes\SeqAct_MobileAddInputZones.uc" />
+    <None Include="Classes\SeqAct_MobileClearInputZones.uc" />
+    <None Include="Classes\SeqAct_MobileRemoveInputZone.uc" />
+    <None Include="Classes\SeqAct_MobileSaveLoadValue.uc" />
+    <None Include="Classes\SeqEvent_HudRender.uc" />
+    <None Include="Classes\SeqEvent_HudRenderImage.uc" />
+    <None Include="Classes\SeqEvent_HudRenderText.uc" />
+    <None Include="Classes\SeqEvent_MobileBase.uc" />
+    <None Include="Classes\SeqEvent_MobileButton.uc" />
+    <None Include="Classes\SeqEvent_MobileInput.uc" />
+    <None Include="Classes\SeqEvent_MobileLook.uc" />
+    <None Include="Classes\SeqEvent_MobileMotion.uc" />
+    <None Include="Classes\SeqEvent_MobileObjectPicker.uc" />
+    <None Include="Classes\SeqEvent_MobileRawInput.uc" />
+    <None Include="Classes\SeqEvent_MobileSwipe.uc" />
+    <None Include="Classes\SeqEvent_MobileTouchInputVolume.uc" />
+    <None Include="Classes\SeqEvent_MobileZoneBase.uc" />
+    <None Include="Classes\MobileMenuButton.uc" />
+    <None Include="Classes\MobileMenuGame.uc" />
+    <None Include="Classes\MobileMenuImage.uc" />
+    <None Include="Classes\MobileMenuLabel.uc" />
+    <None Include="Classes\MobileMenuObject.uc" />
+    <None Include="Classes\MobileMenuPlayerController.uc" />
+    <None Include="Classes\MobileMenuScene.uc" />
+    <None Include="Classes\GameStateObject.uc" />
+    <None Include="Classes\GameStatsAggregator.uc" />
+    <None Include="Classes\GameAICmd_Hover_MoveToGoal.uc" />
+    <None Include="Classes\GameAICmd_Hover_MoveToGoal_Mesh.uc" />
+    <None Include="Classes\GameAICommand.uc" />
+    <None Include="Classes\GameAIController.uc" />
+    <None Include="Classes\NavMeshGoal_OutOfViewFrom.uc" />
+    <None Include="Classes\NavMeshPath_BiasAgainstPolysWithinDistanceOfLocations.uc" />
+    <None Include="Classes\TouchableElement3D.uc" />
+    <None Include="Globals.uci" />
+    <None Include="Classes\PlayerCollectorGame.uc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\DebugCameraController.cpp" />
+    <ClCompile Include="Src\DelayedUnpauser.cpp" />
+    <ClCompile Include="Src\DynamicSpriteComponent.cpp" />
+    <ClCompile Include="Src\GameAI.cpp" />
+    <ClCompile Include="Src\GameCamera.cpp" />
+    <ClCompile Include="Src\GameController.cpp" />
+    <ClCompile Include="Src\GameCrowd.cpp" />
+    <ClCompile Include="Src\GameFramework.cpp" />
+    <ClCompile Include="Src\GameMobile.cpp" />
+    <ClCompile Include="Src\GameMobileKismet.cpp" />
+    <ClCompile Include="Src\GamePawn.cpp" />
+    <ClCompile Include="Src\GameSequence.cpp" />
+    <ClCompile Include="Src\GameSkelControls.cpp" />
+    <ClCompile Include="Src\GameSpecialMoves.cpp" />
+    <ClCompile Include="Src\GameStats.cpp" />
+    <ClCompile Include="Src\GameWeapon.cpp" />
+    <ClCompile Include="Src\SecondaryViewportClient.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Src\DelayedUnpauser.h" />
+    <ClInclude Include="Inc\GameCrowdUtilities.h" />
+    <ClInclude Include="Inc\GameFramework.h" />
+    <ClInclude Include="Inc\GameFrameworkAnimClasses.h" />
+    <ClInclude Include="Inc\GameFrameworkCameraClasses.h" />
+    <ClInclude Include="Inc\GameFrameworkClasses.h" />
+    <ClInclude Include="Inc\GameFrameworkGameStatsClasses.h" />
+    <ClInclude Include="Inc\GameFrameworkNames.h" />
+    <ClInclude Include="Inc\GameFrameworkParticleClasses.h" />
+    <ClInclude Include="Inc\GameFrameworkSpecialMovesClasses.h" />
+    <ClInclude Include="Inc\GameStatsUtilities.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

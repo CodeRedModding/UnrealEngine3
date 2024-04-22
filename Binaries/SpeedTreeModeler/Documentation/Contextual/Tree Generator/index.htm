@@ -1,0 +1,596 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" property="text/html; charset=utf-8" />
+<title>Tree Generator</title>
+<link href="../contextual.css" rel="stylesheet" type="text/css" media="screen">
+<script src="../contextual.js" type="text/javascript"></script>
+</head>
+<body scroll="auto" class="container" id="container" topmargin="0" marginheight="0" leftmargin="0" bottommargin="0" rightmargin="0" marginwidth="0">
+<div class="object_label" id="object_label">
+	<div class="btn_house">
+		<a name="reserved.this">
+			<b class="button-next"></b>
+			<b class="button-auto" title="resize"></b>
+			<b class="button-fixed" title="resize"></b>
+		&nbsp;</a>
+	</div>
+	<h5>Tree Generator</h5>
+	<div class="object_desc">
+		<div class="generator-tree"></div>
+		<p>The Tree Generator is the root node of any model. It controls various global parameters such as the initial radius, LOD settings, and leaf collision.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Shape</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="shape.radius">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Radius</h2>
+	</div>
+	<div class="property">
+		<p>The radius of the tree area. </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="shape.sink">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Sink</h2>
+	</div>
+	<div class="property">
+		<p>The amount to lower the tree below the ground plane.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="shape.roll">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Roll</h2>
+	</div>
+	<div class="property">
+		<p>The amount to rotate the entire tree around the origin.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Level of Detail</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.enabled">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Enabled</h2>
+	</div>
+	<div class="property">
+		<p>Toggles level of detail preview.</p>
+		<p class="note"><b class="icon"></b>Enabling LOD preview may slow down compute time.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.preview_style">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Preview Style</h2>
+	</div>
+	<div class="property">
+		<h3>Manual</h3>
+		<p>LOD state is controlled with the LOD indicator in the tree window or via the CTRL + left-click key combo.</p>
+		<h3>Use near and far</h3>
+		<p>LOD  state is determined based on the camera's position between the <a href="#level_of_detail.near">near</a> and <a href="#level_of_detail.far">far</a> LOD planes.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.count">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer</span> Count</h2>
+	</div>
+	<div class="property">
+		<p>The number of discrete 3D levels of detail.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.near">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Near</h2>
+	</div>
+	<div class="property">
+		<p>The distance from the camera to begin the initial LOD transition.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.far">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Far</h2>
+	</div>
+	<div class="property">
+		<p>The distance from the camera to complete the final 3D LOD transition.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.billboard_start">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Billboard Start</h2>
+	</div>
+	<div class="property">
+		<p>The distance from the camera to initialize fading the billboard.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="level_of_detail.billboard_end">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Billboard End</h2>
+	</div>
+	<div class="property">
+		<p>The distance from the camera to finish fading in the billboard.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Leaf Collision</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="leaf_collision.enabled">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Enabled</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, leaf collision is active (either automatically or manually). </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="leaf_collision.automatic">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Automatic</h2>
+	</div>
+	<div class="property">
+		<h3>None</h3>
+		<p>No automatic leaf collision.</p>
+		<h3>Cull</h3>
+		<p>Automatic leaf culling.</p>
+		<h3>Spread</h3>
+		<p>Automatic leaf spreading.</p>
+		<h3>Spread then cull</h3>
+		<p>Automatically spread, then cull leaves.</p>
+		<h3>Cull then spread</h3>
+		<p>Automatically cull, then spread leaves.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="leaf_collision.spread_factor">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Spread Factor</h2>
+	</div>
+	<div class="property">
+		<p>Distance to spread colliding leaves in order to reduce overdraw and z-fighting. </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="leaf_collision.cull_tolerance">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Cull Tolerance</h2>
+	</div>
+	<div class="property">
+		<p>Amount of colliding leaves to remove entirely. </p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Degradation</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="degradation.enabled">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Enabled</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, various techniques are bypassed (and possibly resolution is reduced) to temporarily increase compute speed for high detail trees. </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="degradation.allow_welding">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Allow Welding</h2>
+	</div>
+	<div class="property">
+		<p>When <strong>disabled</strong>, welding is bypassed in degradation mode. </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="degradation.allow_leaf_collision">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Allow Leaf Collision</h2>
+	</div>
+	<div class="property">
+		<p>When <strong>disabled</strong>, leaf collision is bypassed in degradation mode. </p>
+		<p class="note"><b class="icon"></b> Even though disabling leaf collision results in more leaf polygons, the tree will compute quicker since leaf collision is a bottleneck in the compute process</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="degradation.segments_scalar">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Segments Scalar</h2>
+	</div>
+	<div class="property">
+		<p>Scalar for reducing the cross-sectional segments globally across the tree while in degradation mode.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="degradation.frequency_scalar">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Frequency Scalar</h2>
+	</div>
+	<div class="property">
+		<p>Scales the frequency of generators that are the end of the topological chain (e.g. leaves), or any generator with its <a href="../Spine Generator/index.htm#generation.degradation_style">degradation style</a> set to 'always'. Topological leaves often house the majority of generated nodes and thus are the slowest to compute.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Interactive Degradation</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="interactive_degradation.enabled">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Enabled</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, the tree becomes degraded only while computing (while the left mouse button is held down). This adds to the interactivity of high detail trees.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="interactive_degradation.allow_propagation">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Allow Propagation</h2>
+	</div>
+	<div class="property">
+		<p>When <strong>disabled</strong>, descendant nodes aren't generated while computing. This greatly increases the compute time for trees with large node structures.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="interactive_degradation.allow_skin_compute">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Allow Skin Compute </h2>
+	</div>
+	<div class="property">
+		<p>When <strong>disabled</strong>, skin compute is bypassed and the tree is rendered as only a frame until the compute is finished. </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="interactive_degradation.allow_welding">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Allow Welding</h2>
+	</div>
+	<div class="property">
+		<p>When <strong>disabled</strong>, branch welding is bypassed while the tree is computing. </p>
+		<p class="note"><b class="icon"></b>Edits to welding parameters may be difficult to view interactively with this option disabled since the effect is bypassed.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="interactive_degradation.allow_force_compute">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Allow Force Compute</h2>
+	</div>
+	<div class="property">
+		<p>When <strong>disabled</strong>, manipulating force objects in the scene or editing force properties does not compute the tree until the action is over. </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="interactive_degradation.allow_curve_edit_compute">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Allow Curve Edits...</h2>
+	</div>
+	<div class="property">
+		<p>When <strong>disabled</strong>, Moving points or handles in the curve editor are not applied to the tree until the  movement is completed.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="interactive_degradation.segments_scalar">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Segments Scalar</h2>
+	</div>
+	<div class="property">
+		<p>Scalar for reducing the cross-sectional segments globally across the tree while actively computing. </p>
+  </div>
+</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="interactive_degradation.low_detail_navigation">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Low Detail Navigation</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, panning, rotating, and zooming are greatly accelerated in the Tree Window by only drawing the frame. <br />
+	      Useful for when when working with high polygon tree models.</p>
+</div>
+
+<div class="group_label">
+	<h1>File</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="file.use_compression">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Use Compression</h2>
+	</div>
+	<div class="property">
+		<p>Use this option to zip compress '.spm' files when they are saved to dramatically reduce the file size. </p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="file.embed_geometry">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Embed Geometry</h2>
+	</div>
+	<div class="property">
+		<p>When this option is enabled, the geometry of the tree model is stored in the   file alongside the procedural paramters used to generate it. </p>
+		<p class="note">If you are using the SpeedTree SDK, you <strong>must</strong> have this option enabled.</p>
+  </div>
+  <div class="property_label">
+		<div class="btn_house">
+			<a name="file.compute_ao_on_load">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Compute AO On Load</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, ambient occlusion (AO) is computed once the tree is loaded. This option is disabled if 'Embed geometry' is enabled, since AO is saved with the gemoetry in that case (this is primarily for high detail trees not intended for real-time use).</p>
+  </div>
+  <div class="property_label">
+		<div class="btn_house">
+			<a name="file.fix_leaf_winding">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Fix Leaf Winding</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, leaf mesh vertex winding is adjust to match the average of the normals at each vertex so that two-sided lighting works correctly.</p>
+  </div>
+</div>
+<div class="group_label">
+	<h1>Physics</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.breakable">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Breakable</h2>
+	</div>
+	<div class="property">
+		<p>Controls whether or not the tree can break.</p>
+	</div>
+<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.joint_break_force_per_mass">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Joint Break Force Per Mass</h2>
+  </div>
+	<div class="property">
+		<p>A  multiplier for the maximum linear and angular force that the joint between  branches can withstand before breaking.</p>
+  </div>
+<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.joint_spring_per_mass">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Joint Spring Per Mass</h2>
+  </div>
+	<div class="property">
+		<p>A per  mass multiplier for the spring stiffness coefficient of the joints between  branches. </p>
+  </div>
+<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.joint_damping_per_mass">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Joint Damping Per Mass</h2>
+  </div>
+	<div class="property">
+		<p>A per  mass multiplier for the spring damping coefficient of the joints between  branches.</p>
+  </div>
+<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.branch_swing_range">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float </span>Branch Swing Range</h2>
+  </div>
+	<div class="property">
+		<p>A range  to determine how much the branches are allowed to swing (in degrees).</p>
+  </div>
+<div class="property_label">
+		<div class="btn_house">
+			<a name="physics.plastic_threshold_angle">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Plastic Threshold Angle</h2>
+  </div>
+	<div class="property">
+		<p>The angle at which the branch will stay deformed if plastic deformation is  enabled (in degrees).</p>
+  </div>
+</div>
+</body>
+</html>

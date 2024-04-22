@@ -1,0 +1,43 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+#if NGP
+
+// this builtin macro needs to be different in vertex and pixel shaders
+#define OUT_BUILTIN(Type,Name,Semantics)	out Type Name : Semantics;
+
+#endif
+
+// Tangent space bias (for unpacking packed vertex normals and such)
+#define TangentBias1( Val ) ( ( Val /       127.5 )   -       1.0 )
+
+// Tangent space bias (for unpacking packed vertex normals and such)
+#define TangentBias3( Vec ) ( ( Vec / vec3( 127.5 ) ) - vec3( 1.0 ) )
+
+//////////////////////////
+// SHARED TEXTURE CODE
+//////////////////////////
+
+#define XFORM_TEX_COORD(InTextureCoord) (MulMatrix(TextureTransform,vec3(InTextureCoord, 1.0))).xy
+
+#if USE_BASE_TEX_COORD_XFORM
+	#define BASE_TEX_COORD_XFORM(InTextureCoord) (MulMatrix(TextureTransform,vec3(InTextureCoord, 1.0))).xy
+#else
+	#define BASE_TEX_COORD_XFORM(InTextureCoord) InTextureCoord
+#endif
+
+#if USE_MASK_TEX_COORD_XFORM
+	#define MASK_TEX_COORD_XFORM(InTextureCoord) (MulMatrix(TextureTransform,vec3(InTextureCoord, 1.0))).xy
+#else
+	#define MASK_TEX_COORD_XFORM(InTextureCoord) InTextureCoord
+#endif
+
+#if USE_DETAIL_TEX_COORD_XFORM
+	#define DETAIL_TEX_COORD_XFORM(InTextureCoord) (MulMatrix(TextureTransform,vec3(InTextureCoord, 1.0))).xy
+#else
+	#define DETAIL_TEX_COORD_XFORM(InTextureCoord) InTextureCoord
+#endif
+
+// Texture transform matrix
+UNIFORM(mat3, TextureTransform);

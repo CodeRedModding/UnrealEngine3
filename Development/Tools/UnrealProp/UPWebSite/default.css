@@ -1,0 +1,39 @@
+﻿body 
+{ 
+	font: 12pt Tahoma;
+	background-image: url(Images/striped_background.gif);
+} 
+
+td.logo
+{
+	height: 167px;
+	background-color: black; 
+	background-image: url(Images/top.jpg);
+	background-repeat: no-repeat; 
+}
+
+td.backdrop
+{
+	background-image: url(Images/striped_background.gif);
+}
+
+td.leftmenu
+{
+	background-image: url(Images/left_menu_background.gif);	
+}
+
+.content 
+{ 
+	width: 100%;
+	padding: 4px 16px 4px 18px;
+}
+
+.collapsePanelHeader
+{
+	width: 100%;
+	height: 20px;
+	background-image: url(Images/bg-menu-main.png);
+	background-repeat: repeat-x;
+	color: white;
+	font-weight: bold;
+}

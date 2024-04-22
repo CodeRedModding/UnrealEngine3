@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	
+	<string name="Error">Fout</string>
+	<string name="Init_Failed">Toepassing initialisatie is mislukt. Zal de applicatie af te sluiten.</string>
+	<string name="OpenGL_Failed">OpenGL-Initialisierung fehlgeschlagen, kann Ihr Gerät wahrscheinlich nicht unterstützt Shader Model ES2.0, eine Voraussetzung für Dungeon Defenders.</string>
+	<string name="NotEnoughSpace">Niet Genoeg SDCard ruimte voor de installatie</string>
+	<string name="NoSDCard">Keine SDCard gefunden montiert</string>
+	<string name="DownloadManualURL">Fehler beim Herunterladen Spielinhalte. Bitte versuchen Sie es erneut, oder besuchen Sie die Anweisungen zur Durchführung einer manuellen Installation http://dungeondefenders.com/androidmobile.</string>
+	
+	<string name="MemNotEnough">Warnung: Dieses Android-Gerät erfüllt nicht die Mindestanforderung von 512 MB RAM. Dungeon Defenders: First Wave möglicherweise nicht korrekt ausgeführt.</string>
+	
+	<string name="CheckLicense">Überprüfen Lizenz...</string>
+	<string name="NoLicense">Kann eine Lizenz zu erhalten!</string>
+	
+	<string name="Download_Failed">Bestand downloaden mislukt</string>
+	<string name="Checksum_Failed">Mislukt Checksum Vergelijk</string>
+	<string name="SyncFile_Failed">Mislukt genereren Sync Bestand</string>
+	<string name="Composite_Failed">Mislukte Checksum op samengesteld Verdelen Bestanden</string>
+
+	<string name="NoNetwork_Failed">Keine Netzwerkverbindung erkannt.</string>	
+	<string name="CouldntConnect_Failed">Konnte keine Verbindung zum Remote-Datei-Host verbinden.</string>	
+	<string name="UnknownError_Failed">Unbekannter Fehler.</string>	
+	
+	<string name="Downloading">Herunterladen</string>
+	<string name="UpdateMessageBox">Update gefunden, Möchten Sie die Update?</string>
+	<string name="Yes">Jes</string>
+	<string name="No">Nein</string>
+	
+	<string name="WifiMessageBox">Kein Wifi gefunden, was würden Sie gerne tun?</string>	
+	<string name="Retry">Wiederholen</string>
+	<string name="Exit">Exit</string>
+	<string name="BinaryUpdateMessage">New Market Update gefunden, möchten Sie es herunterladen?</string>
+	
+	<string name="WifiSettings">Wifi Einstellungen</string>
+	
+	<string name="File">Bestand</string>	
+	<string name="SplitFile">Verdelen Bestand</string>	
+	<string name="Downloaded">Gedownload</string>	
+	<string name="InstallDirectory">Controleren / Installatie Directory</string>	
+	
+</resources>

@@ -1,0 +1,26 @@
+/*=============================================================================
+	SimpleElementVertexShader.hlsl: Vertex shader for drawing simple elements.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+float4x4 Transform;
+
+void Main(
+	in float4 InPosition : POSITION,
+	in float2 InTextureCoordinate : TEXCOORD0,
+	in float4 InColor : COLOR0,
+	in float4 InHitProxyId : COLOR1,
+	out float2 OutTextureCoordinate : TEXCOORD0,
+	out float4 OutColor : TEXCOORD1,
+	out float4 OutHitProxyId : TEXCOORD2,
+	out float4 OutPixelPosition : TEXCOORD3,
+	out float4 OutPosition : POSITION
+	)
+{
+	OutPosition = OutPixelPosition = MulMatrix(Transform,InPosition);
+	OutTextureCoordinate = InTextureCoordinate;
+	OutColor = InColor;
+	OutHitProxyId = InHitProxyId FCOLOR_COMPONENT_SWIZZLE;
+}

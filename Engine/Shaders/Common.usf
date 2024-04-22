@@ -1,0 +1,984 @@
+/*=============================================================================
+	Common.hlsl: Common shader code.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Definitions.usf"
+
+#if PS3 || WIIU
+	#define ROW_MAJOR 0
+#else
+	// by default, matrices are row major
+	#define ROW_MAJOR 1
+#endif
+
+#if XBOX
+	#include "Xbox360/Common360.usf"
+#endif
+
+#if PS3
+
+	// Tangent space bias
+	#define TangentBias(x)			( (x / 127.5) - 1 )
+	#define TangentNorm(x)			(x / 255.0)
+	
+	// Register keyword in CG. Note no pixel constant registers on PS3!
+	#define VERTEXREGISTER(type,name,cx)	type name : cx
+	#define PIXELREGISTER(type,name,cx)		type name
+
+	// On PS3, remap Tangent and Binormal to slot 5 and 6, so they don't overlap texcoord 6 and 7
+	#define TANGENT					ATTR5
+	#define BINORMAL				ATTR6
+
+	// Input semantic for pixel shaders to get the screenspace pixel position (window position)
+	#define VPOS					WPOS
+	#define VFACE					FACE
+
+	// The PS3 reads our FColor values as ARGB; GBAR swizzles the components into the right order.
+	#define FCOLOR_COMPONENT_SWIZZLE .gbar
+
+#elif WIIU
+	
+	// Tangent space bias
+	#define TangentBias(x)			( (x / 127.5) - 1 )
+	#define TangentNorm(x)			(x / 255.0)
+
+	// Register keyword in HLSL
+	#define VERTEXREGISTER(type,name,cx)	type name
+	#define PIXELREGISTER(type,name,cx)		type name
+// This is supported in SDK 1.7, but only if ALL registers are explicitly specified, which doesn't help us at all
+// 	#define VERTEXREGISTER(type,name,cx)	layout(binding = cx) uniform type name
+// 	#define PIXELREGISTER(type,name,cx)		layout(binding = cx) uniform type name
+
+	#define FCOLOR_COMPONENT_SWIZZLE .gbar
+	
+	// Input semantic for pixel shaders to get the screenspace pixel position (window position)
+	#define VPOS					WPOS
+	#define VFACE					FACE
+	
+	// See WiiUSupport.cpp, the ConvertShaderToGLSL() function for a NOTE on why we need to use
+	// BCOL0, BCOL1 instead of texcoords 8 and 9, and only for vertex shaders.
+	#if VERTEXSHADER
+		#define TEXCOORD8				BCOL0
+		#define TEXCOORD9				BCOL1
+		// make sure we pay attention to anyone trying to use more than texcoord9
+		// (one more will work, but needs testing)
+		#define TEXCOORD10				error
+	#endif
+	
+#elif SM5_PROFILE
+
+	// Tangent space bias
+	#define TangentBias(x)			( (x * 2) - 1 )
+	#define TangentNorm(x)			(x)
+
+	// Register keyword in HLSL 4.0
+	#define VERTEXREGISTER(type,name,cx)	type name
+	#define PIXELREGISTER(type,name,cx)		type name
+
+	// D3D11 vertex declarations read our FColor values as BGRA, so they need to be reversed.
+	#define FCOLOR_COMPONENT_SWIZZLE .bgra
+
+#else
+
+	// Tangent space bias
+	#define TangentBias(x)			( (x / 127.5) - 1 )
+	#define TangentNorm(x)			(x / 255.0)
+
+	// Register keyword in HLSL
+	#define VERTEXREGISTER(type,name,cx)	type name : register(c##cx)
+	#define PIXELREGISTER(type,name,cx)		type name : register(c##cx)
+
+	#define FCOLOR_COMPONENT_SWIZZLE .rgba
+#endif
+
+	// TANGENTTOWORLD0 is the first row of the tangent to world matrix, w might be needed for padding and is not used yet.
+	// TANGENTTOWORLD2 is the last row of the tangent to world matrix, determinant of tangent basis in w
+
+#if SM5_PROFILE
+
+	// Use the extended SM5 interpolators so that TangentToWorld will work with other features
+	#define TANGENTTOWORLD0					TEXCOORD10
+	#define TANGENTTOWORLD2					TEXCOORD11
+
+	// _centroid is needed to get better quality with MSAA
+
+	// The D3D shader compiler combines _centroid and non controid. Using float3 would results in a internal
+	// shader compiler error. This block is using float4 to prevent that.
+	#define TANGENTTOWORLD_INTERPOLATOR_BLOCK	float4 TangentToWorld0 : TEXCOORD10_centroid; float4	TangentToWorld2	: TEXCOORD11_centroid;
+
+#else
+
+	// Note that on PS3 COLOR0 and COLOR1 are fixed point and clamped to [0,1], but higher precision than 8 bit.
+	// We use PackColorN() and UnpackColorN() helper functions to pass vectors through a COLOR interpolator.
+	#define TANGENTTOWORLD0					COLOR0
+	#define TANGENTTOWORLD2					COLOR1
+
+	#define TANGENTTOWORLD_INTERPOLATOR_BLOCK	float3 TangentToWorld0 : TANGENTTOWORLD0; float4	TangentToWorld2	: TANGENTTOWORLD2;
+#endif
+
+#if PS3 || OPENGL
+	// Potentially normalizes and remaps a vector to [0,1] range, to fit in a COLOR interpolator.
+	float3	PackColor3( float3 UnpackedVector )
+	{
+		return normalize(UnpackedVector)*0.5f + 0.5f;
+	}
+	// Potentially normalizes and remaps a vector to [0,1] range, to fit in a COLOR interpolator.
+	float4	PackColor4( float4 UnpackedVector )
+	{
+		float4 PackedVector;
+		PackedVector.xyz = normalize(UnpackedVector.xyz);
+		PackedVector.w = UnpackedVector.w;
+		return PackedVector*0.5f + 0.5f;
+	}
+	// Potentially remaps a vector from [0,1] to [-1,+1] range, to unpack a vector from a COLOR interpolator.
+	half3	UnpackColor3( half3 PackedVector )
+	{
+		return PackedVector*2.0f - 1.0f;
+	}
+	// Potentially remaps a vector from [0,1] to [-1,+1] range, to unpack a vector from a COLOR interpolator.
+	half4	UnpackColor4( half4 PackedVector )
+	{
+		return PackedVector*2.0f - 1.0f;
+	}
+#else
+	// Potentially normalizes and remaps a vector to [0,1] range, to fit in a COLOR interpolator.
+	float3	PackColor3( float3 UnpackedVector )
+	{
+		return UnpackedVector;
+	}
+	// Potentially normalizes and remaps a vector to [0,1] range, to fit in a COLOR interpolator.
+	float4	PackColor4( float4 UnpackedVector )
+	{
+		return UnpackedVector;
+	}
+	// Potentially remaps a vector from [0,1] to [-1,+1] range, to unpack a vector from a COLOR interpolator.
+	half3	UnpackColor3( half3 PackedVector )
+	{
+		return PackedVector;
+	}
+	// Potentially remaps a vector from [0,1] to [-1,+1] range, to unpack a vector from a COLOR interpolator.
+	half4	UnpackColor4( half4 PackedVector )
+	{
+		return PackedVector;
+	}
+#endif
+
+#if VERTEX_FACTORY_SUPPORTS_LOCALTOWORLD
+// Local to world matrix for use by the vertex factories or by the TransformPosition material expression.  Note: PreViewTranslation is added to this matrix.
+float4x4 LocalToWorld;
+#endif
+
+float UnClampedPow(float X, float Y)
+{
+	return pow(X, Y);
+}
+float2 UnClampedPow(float2 X, float2 Y)
+{
+	return pow(X, Y);
+}
+float3 UnClampedPow(float3 X, float3 Y)
+{
+	return pow(X, Y);
+}
+float4 UnClampedPow(float4 X, float4 Y)
+{
+	return pow(X, Y);
+}
+
+// Clamp the base, so it's never <= 0.0f (INF/NaN).
+float ClampedPow(float X,float Y)
+{
+	// Workaround for a bug in the March 2009 DX SDK that compiles a scalar pow(max(abs(X), 0.0001f), Y) as:
+	// max( pow( abs(X), 80 ), pow( 0.0001f, 80 ) ); 
+	// The pow( 0.0001f, 80 ) generates a denorm. 
+	#if PC_D3D
+		return abs(X) < 0.000001f ? 0 : pow(abs(X), Y);
+	#else
+		return pow(max(abs(X),0.000001f),Y);
+	#endif
+}
+float2 ClampedPow(float2 X,float2 Y)
+{
+	return pow(max(abs(X),float2(0.000001f,0.000001f)),Y);
+}
+float3 ClampedPow(float3 X,float3 Y)
+{
+	return pow(max(abs(X),float3(0.000001f,0.000001f,0.000001f)),Y);
+}
+float4 ClampedPow(float4 X,float4 Y)
+{
+	return pow(max(abs(X),float4(0.000001f,0.000001f,0.000001f,0.000001f)),Y);
+}
+
+/** 
+ * Use this function to compute the pow() in the specular computation.
+ * This allows to change the implementation depending on platform or it easily can be replaced by some approxmation.
+ * It only provides the precision needed (half).
+ */
+half PhongShadingPow(half X, half Y)
+{
+	// The following clamping is done to prevent NaN being the result of the specular power computation.
+	// Clamping has a minor performance cost.
+
+	// In HLSL pow(a, b) is implemented as exp2(log2(a) * b).
+
+	// For a=0 this becomes exp2(-inf * 0) = exp2(NaN) = NaN.
+
+	// As seen in #TTP 160394 "QA Regression: PS3: Some maps have black pixelated artifacting."
+	// this can cause severe image artifacts (problem was caused by specular power of 0, lightshafts propagated this to other pixels).
+	// The problem appeared on PlayStation 3 but can also happen on similar PC NVidia hardware.
+
+	// In order to avoid platform differences and rarely occuring image atrifacts we clamp the base.
+
+	// Note: Clamping the exponent seemed to fix the issue mentioned TTP but we decided to fix the root and accept the
+	// minor performance cost.
+
+	return ClampedPow(X, Y);
+}
+
+#if ROW_MAJOR
+	#define MulMatrix(Mtx, Vect)	mul(Mtx, Vect)
+	#define MulBone(Mtx, Vect)		mul(Vect, Mtx)
+#else
+	// When multiplying with a matrix that is passed in externally through a matrix parameter, you MUST use MulMatrix.
+	// When multiplying by a generated matrix (float3x3(VecA, VecB, VecC)), you MUST use mul
+	// Note that MulMatrix also works for multiplying vector by matrix (transforming by transposed matrix), e.g. MulMatrix( Vect, Mtx ).
+	#define MulMatrix(Mtx, Vect)	mul(Vect, Mtx)
+	#define MulBone(Mtx, Vect)		mul(Mtx, Vect)
+#endif
+	
+#if PS3	
+	// Clamp the base, so it's never <= 0.0f on PS3 (INF/NaN).
+//	#define pow(x,y)				pow( max(abs(x), 0.000001f), (y) )
+#else
+	// It's necessary to use these whenever you're reading a depth value from a depth texture
+    #define texDepth2D				tex2D
+	#define texDepth2Dlod			tex2Dlod
+	#define texDepth2Dproj			tex2Dproj
+#endif
+
+#if !SM5_PROFILE
+	// SM5 is the only platform that natively supports uints in shaders; we just use floats on other platforms.
+	#define uint4	float4
+
+	// SM5 is the only platform that needs tex2Dbias currently, but the material compiler emits tex2Dbias for all platforms.
+	// On Xbox 360, tex2Dbias is considerably slower than tex2D so we override it.
+	#define tex2Dbias(sampler, uv) tex2D(sampler, uv.xy)
+#endif
+
+#if !VERTEXSHADER
+	#undef VERTEXREGISTER
+	#define VERTEXREGISTER(type,name,cx)	type name
+#endif
+
+#if !PIXELSHADER
+	#undef PIXELREGISTER
+	#define PIXELREGISTER(type,name,cx)		type name
+#endif
+
+// Pixel and vertex shader constant registers that are reserved by the Engine.
+// ----------------------------------------------------------------------------------------
+#if OPENGL
+// These #defines must place constants at the end of const tables and their base index must match
+// what is defined in OpenGLConstantBuffer.h, so the bytecode-to-GLSL converter can place consts in
+// correct uniform tables. See OpenGLConstantBuffer.h for more details.
+#define PSR_ColorBiasFactor         216  // Factor applied to the color output from the pixelshader
+#define PSR_ScreenPositionScaleBias 217  // Converts projection-space XY coordinates to texture-space UV coordinates
+#define PSR_MinZ_MaxZ_Ratio         218  // Converts device Z values to clip-space W values
+#define PSR_NvStereoEnabled         219  // Whether stereo is enabled on the current rendering device
+#define PSR_DiffuseOverride         220  // Overrides GetMaterialDiffuseColor for visualization
+#define PSR_SpecularOverride        221  // Overrides GetMaterialSpecularColor for visualization
+#define PSR_ViewOrigin              222  // World space position of the camera
+#define PSR_ScreenAndTexelSize      223  // Size of the screen in pixels (1280, 720), and 1/BufferSize (size of a texel in the render targets)
+
+#define VSR_ViewProjMatrix          249  // View-projection matrix, transforming from World space to Projection space
+#define VSR_ViewOrigin              253  // World space position of the camera
+#define VSR_PreViewTranslation      254  // Offset applied to LocalToWorld to reduce precision problems far from the world space origin
+#elif PS3
+// These #defines must match the enums EPixelShaderRegisters and EVertexShaderRegister
+// as they are defined in RHI.h.
+#define PSR_ColorBiasFactor         c0  // Factor applied to the color output from the pixelshader
+#define PSR_ScreenPositionScaleBias c1  // Converts projection-space XY coordinates to texture-space UV coordinates
+#define PSR_MinZ_MaxZ_Ratio         c2  // Converts device Z values to clip-space W values
+#define PSR_NvStereoEnabled         c3  // Whether stereo is enabled on the current rendering device
+#define PSR_DiffuseOverride         c4  // Overrides GetMaterialDiffuseColor for visualization
+#define PSR_SpecularOverride        c5  // Overrides GetMaterialSpecularColor for visualization
+#define PSR_ViewOrigin              c6  // World space position of the camera
+#define PSR_ScreenAndTexelSize      c7  // Size of the screen in pixels (1280, 720), and 1/BufferSize (size of a texel in the render targets)
+#if WITH_REALD
+#define PSR_RealDCoefficients1      c8        // Depth Buffer Allocation vars 1
+#endif	//WITH_REALD
+
+#define VSR_ViewProjMatrix          c0  // View-projection matrix, transforming from World space to Projection space
+#define VSR_ViewOrigin              c4  // World space position of the camera
+#define VSR_PreViewTranslation      c5  // Offset applied to LocalToWorld to reduce precision problems far from the world space origin
+#if WITH_REALD
+#define VSR_RealDCoefficients1      c6        // Depth Buffer Allocation vars 1
+#endif	//WITH_REALD
+#else
+// These #defines must match the enums EPixelShaderRegisters and EVertexShaderRegister
+// as they are defined in RHI.h.
+#define PSR_ColorBiasFactor             0  // Factor applied to the color output from the pixelshader
+#define PSR_ScreenPositionScaleBias     1  // Converts projection-space XY coordinates to texture-space UV coordinates
+#define PSR_MinZ_MaxZ_Ratio             2  // Converts device Z values to clip-space W values
+#define PSR_NvStereoEnabled             3  // Whether stereo is enabled on the current rendering device
+#define PSR_DiffuseOverride             4  // Overrides GetMaterialDiffuseColor for visualization
+#define PSR_SpecularOverride            5  // Overrides GetMaterialSpecularColor for visualization
+#define PSR_ViewOrigin                  6  // World space position of the camera
+#define PSR_ScreenAndTexelSize          7  // Size of the screen in pixels (1280, 720), and 1/BufferSize (size of a texel in the render targets)
+#if WITH_REALD
+#define PSR_RealDCoefficients1          8        // Depth Buffer Allocation vars 1
+#endif	//WITH_REALD
+
+#define VSR_ViewProjMatrix              0  // View-projection matrix, transforming from World space to Projection space
+#define VSR_ViewOrigin                  4  // World space position of the camera
+#define VSR_PreViewTranslation          5  // Offset applied to LocalToWorld to reduce precision problems far from the world space origin
+#if WITH_REALD
+#define VSR_RealDCoefficients1          6        // Depth Buffer Allocation vars 1
+#endif	//WITH_REALD
+
+#endif
+
+// Optional VertexID - used by tessellation to uniquely identify control points.
+#if USING_SM5_TESSELLATION && DISPLACEMENT_ANTICRACK
+	#define OPTIONAL_VertexID uint VertexID : SV_VertexID,
+	#define OPTIONAL_VertexID_VS_To_DS uint VertexID : VS_To_DS_VertexID;
+	#define OutputVertexID( Out ) Out.VertexID = VertexID
+#else // #if USING_SM5_TESSELLATION && DISPLACEMENT_ANTICRACK
+	#define OPTIONAL_VertexID
+	#define OPTIONAL_VertexID_VS_To_DS
+	#define OutputVertexID( Out )
+#endif // #if USING_SM5_TESSELLATION && DISPLACEMENT_ANTICRACK
+
+// Helper macro used to interpolate the given member
+#define TESSELLATION_INTERPOLATE_MEMBER(member) O.member = a.member * aInterp + b.member * bInterp
+
+#if SM5_PROFILE
+
+	// Warning: The register offsets MUST match what is defined in D3D11ConstantBuffer.h!
+	cbuffer VSOffsetConstants : register(b1)
+	{
+		/** Note - the vertex shader ViewProjectionMatrix is actually TranslatedViewProjectionMatrix, since camera position has been removed from it. */
+		VERTEXREGISTER(float4x4,	ViewProjectionMatrix,		VSR_ViewProjMatrix);
+		/** Note - the vertex shader CameraPosition has been translated so the camera position is at the origin. */
+		VERTEXREGISTER(float4,		CameraPositionVS,			VSR_ViewOrigin);
+		VERTEXREGISTER(float4,		PreViewTranslation,			VSR_PreViewTranslation);
+#if WITH_REALD
+                VERTEXREGISTER(float4,          VSRRealDCoefficients1,          VSR_RealDCoefficients1);
+#endif
+	};
+
+	cbuffer PSOffsetConstants : register(b2)
+	{
+		// Converts projection-space XY coordinates to texture-space UV coordinates
+		PIXELREGISTER(float4,		ScreenPositionScaleBias,	PSR_ScreenPositionScaleBias);
+		PIXELREGISTER(float4,		MinZ_MaxZRatio,				PSR_MinZ_MaxZ_Ratio);
+		PIXELREGISTER(float,		NvStereoEnabled,			PSR_NvStereoEnabled);
+		PIXELREGISTER(float4,		DiffuseOverrideParameter,	PSR_DiffuseOverride);
+		PIXELREGISTER(float4,		SpecularOverrideParameter,	PSR_SpecularOverride);
+		PIXELREGISTER(float4,		CameraPositionPS,			PSR_ViewOrigin);
+		PIXELREGISTER(float4,		ScreenAndTexelSize,			PSR_ScreenAndTexelSize);
+#if WITH_REALD
+                PIXELREGISTER(float4, PSRRealDCoefficients1, PSR_RealDCoefficients1);
+#endif
+	};
+
+	// Next is b4 as b3 is used in skinning VF (optionally)
+	cbuffer HSOffsetConstants : register(b4)	
+	{
+		float4x4	ViewProjectionMatrixHS;
+		float		AdaptiveTessellationFactor;
+		float		ProjectionScaleY;
+	};
+
+	cbuffer DSOffsetConstants : register(b5)	
+	{
+		/** Note - the domain shader ViewProjectionMatrix is actually TranslatedViewProjectionMatrix, since camera position has been removed from it. */
+		float4x4	ViewProjectionMatrixDS;
+		/** Note - the domain shader CameraPosition has been translated so the camera position is at the origin. */
+		float4		CameraPositionDS;
+	};
+
+	/** Parameters bound and set by FDeferredVertexShaderParameters */
+	// Transform from [-1, 1] screen space to world.
+	// If this is used in a vertex shader, it will have the PreViewTranslation built in, otherwise not.
+	float4x4 ScreenToWorldMatrix;
+
+	/** Parameters bound and set by FDeferredPixelShaderParameters */
+	// Unresolved multisampled GBuffer textures
+	Texture2DMS<float4> WorldNormalGBufferTextureMS;
+	Texture2DMS<float4> WorldReflectionNormalGBufferTextureMS;
+	Texture2DMS<float4> SpecularGBufferTextureMS;
+	Texture2DMS<float4> DiffuseGBufferTextureMS;
+
+	// Resolved GBuffer textures
+	sampler2D WorldNormalGBufferTexture;
+	sampler2D WorldReflectionNormalGBufferTexture;
+	sampler2D SpecularGBufferTexture;
+	sampler2D DiffuseGBufferTexture;
+
+	/** 
+	 * Number of MSAA samples supported by deferred passes in D3D11. 
+	 * This is hardcoded because it allows deferred passes to optimize for the given value (for example, unrolling a loop).
+	 */
+	#define NumMSAASamples 4
+
+#else
+	/** Note - the vertex shader ViewProjectionMatrix is actually TranslatedViewProjectionMatrix, since camera position has been removed from it. */
+	VERTEXREGISTER(float4x4,	ViewProjectionMatrix,		VSR_ViewProjMatrix);
+	/** Note - the vertex shader CameraPosition has been translated so the camera position is at the origin. */
+	VERTEXREGISTER(float4,		CameraPositionVS,			VSR_ViewOrigin);
+	VERTEXREGISTER(float4,		PreViewTranslation,			VSR_PreViewTranslation);
+#if WITH_REALD
+        VERTEXREGISTER(float4, VSRRealDCoefficients1, VSR_RealDCoefficients1);
+#endif
+
+	// Converts projection-space XY coordinates to texture-space UV coordinates
+	PIXELREGISTER(float4,		ScreenPositionScaleBias,	PSR_ScreenPositionScaleBias);
+	PIXELREGISTER(float4,		MinZ_MaxZRatio,				PSR_MinZ_MaxZ_Ratio);
+	PIXELREGISTER(float4,		CameraPositionPS,			PSR_ViewOrigin);
+	PIXELREGISTER(float4,		ScreenAndTexelSize,			PSR_ScreenAndTexelSize);
+#if SM3_PROFILE
+	PIXELREGISTER(float,		NvStereoEnabled,			PSR_NvStereoEnabled);
+	PIXELREGISTER(float4,		DiffuseOverrideParameter,	PSR_DiffuseOverride);
+	PIXELREGISTER(float4,		SpecularOverrideParameter,	PSR_SpecularOverride);
+#endif
+#if WITH_REALD
+        PIXELREGISTER(float4, PSRRealDCoefficients1, PSR_RealDCoefficients1);
+#endif
+#endif
+
+#if !PC_D3D
+	// Define these to constants on non-PC platforms so they are optimized out
+	static const float4 DiffuseOverrideParameter = float4(0,0,0,1);
+	static const float4 SpecularOverrideParameter = float4(0,0,0,1);
+#endif
+
+#if XBOX
+	// The x component is set to 1 when rendering to an LDR buffer, otherwise 2^SCENE_COLOR_BIAS_FACTOR_EXP (See XeD3DRenderTarget.cpp)
+	PIXELREGISTER(float4,		SCENE_COLOR_BIAS_FACTOR,		PSR_ColorBiasFactor);
+#else
+	#define SCENE_COLOR_BIAS_FACTOR			1.0f
+#endif
+
+/** 
+ * Whether to output shadow depths as Z/W (z buffer) or to output just W (linear).
+ * Note: This must match the value of ShouldRenderNonLinearShadowDepths() in ShadowRendering.h!
+ */
+#define NON_LINEAR_SHADOW_DEPTHS SM5_PROFILE
+
+// Mirrors the value used in FPerspectiveMatrix for creating a perspective matrix with an infinite far plane
+#define Z_PRECISION	0.001f
+
+#if MATERIAL_TWOSIDED
+	// For two sided surfaces, this is the sign that should be applied to the normal.
+	// Two sided surfaces are only drawn once without backface culling, and VFACE
+	// is used to determine which side is being drawn.  TwoSidedSign contains useful information
+	// about whether the model is flipped.
+	half TwoSidedSign;
+#endif
+
+sampler2D 	SceneDepthTexture;
+sampler2D	SceneColorTexture;
+
+#if ALLOW_NVIDIA_STEREO_3D
+sampler2D NvStereoFixTexture;
+#endif
+
+#if WITH_REALD
+	#include "RealD/CommonDepth.usf"
+#endif	//WITH_REALD
+
+// Because the pixel shader is transforming the eye position to clip itself, it's transforming to mono-space clip space.
+// However, if the game is running in stereo, the position of objects will have been shifted to stereo-clip space. This
+// code looks up values for each eye to correct for the amount of separation that has occurred, or it returns the original
+// position if stereo is disabled.
+float4 MonoToStereoClipPos(float4 monoClipPos)
+{
+#if ALLOW_NVIDIA_STEREO_3D
+	if (NvStereoEnabled)
+	{
+		// Correct would be float2(0.0625f, 0.5f) but it should not be changed without proper testing.
+		float2 stereoParms = tex2D(NvStereoFixTexture, float2(0.0625f, 0.0f)).rg;
+
+		float4 stereoClipPos = monoClipPos;
+		
+		// Duplicate the stereo transform here.
+		stereoClipPos.x += stereoParms.x * (stereoClipPos.w - stereoParms.y);
+		return stereoClipPos;
+	}
+#endif
+
+#if WITH_REALD
+	return CalcDBAPixelConditional( monoClipPos );
+#endif	//WITH_REALD
+ 
+    // No correction needed for consoles, or old hardware
+    return monoClipPos;
+}
+
+
+// ----------------------------------------------------------------------------------------
+
+#if XBOX
+	float4 BiasColor( float4 Color )
+	{
+		return float4( Color.rgb * SCENE_COLOR_BIAS_FACTOR.x, Color.a );
+	}
+	// RETURN_COLOR should only be used when rendering to the SceneColor surface
+	#define RETURN_COLOR( Color ) BiasColor( Color );
+#else
+	// We don't use an inline function so we can avoid type promotion/ coercion.
+	#define RETURN_COLOR( Color ) ( Color )
+#endif
+
+//the largest value any color component is allowed to have, scene color is clamped to this in DOFAndBloomGatherPixelShader.usf
+//also used to pack color into the fixed point filter buffer, which requires a range of [0-1]
+#define MAX_SCENE_COLOR 4.0f
+
+float Square(float A)
+{
+	return A * A;
+}
+float2 Square(float2 A)
+{
+	return A * A;
+}
+float3 Square(float3 A)
+{
+	return A * A;
+}
+float4 Square(float4 A)
+{
+	return A * A;
+}
+
+
+float4 ExpandRGBE( float4 RGBE )
+{
+#if WIIU
+	return half4( RGBE.xyz * exp2(255.0 * RGBE.w - 128.0 ), 1.0 );
+#else
+	return half4( ldexp( RGBE.xyz, 255.0 * RGBE.w - 128.0 ), 1.0 );
+#endif
+}
+
+float4 ExpandCompressedRGBE( float4 RGBE )
+{
+#if WIIU
+	return half4( RGBE.xyz * exp2(255.0 / 16.0 * RGBE.w - 8.0 ), 1.0 );
+#else
+	return half4( ldexp( RGBE.xyz, 255.0 / 16.0 * RGBE.w - 8.0 ), 1.0 );
+#endif
+}
+
+half3 PointLightPhong(half3 DiffuseColor,half DiffusePower,half3 TransmissionMask,half3 SpecularColor,half SpecularPower, half3 L, float3 E, half3 N, float3 R)
+{
+	half	DiffuseLighting = PhongShadingPow(saturate(dot(N, L)), DiffusePower);
+#ifndef DISABLE_DYNAMIC_SPECULAR
+	half	SpecularLighting = PhongShadingPow(saturate(dot(R, L)), SpecularPower);
+#else
+	half	SpecularLighting = 0.0f;
+#endif
+
+	// Only apply transmission to diffuse, not specular
+	return DiffuseColor * lerp(half3(DiffuseLighting,DiffuseLighting,DiffuseLighting), TransmissionMask, TransmissionMask) + SpecularLighting * SpecularColor;
+}
+
+float3 PointLightAnisotropic(half3 DiffuseColor,half3 TransmissionMask,half3 SpecularColor,half SpecularPower, half3 L, float3 E, half3 N, float3 R, half3 T)
+{
+	// from http://ati.amd.com/developer/shaderx/ShaderX_PerPixelAniso.pdf
+	half	DiffuseLighting = sqrt(1.0 - Square(dot(L,T)));
+	half	VdotR = sqrt(1.0 - Square(dot(L,T))) * sqrt(1.0 - Square(dot(E,T))) - dot(L,T) * dot(E,T);
+#ifndef DISABLE_DYNAMIC_SPECULAR
+	half	SpecularLighting = PhongShadingPow(saturate(VdotR), SpecularPower);
+#else
+	half	SpecularLighting = 0.0f;
+#endif
+			
+	// We attenuate the diffuse and specular on the side facing away from the light
+	// because otherwise we get horrible hard edges at the shadow map edge.
+	half	DiffuseAttenuation = saturate(dot(N, L));
+	half	SpecularAttenuation = PhongShadingPow(saturate(dot(N,L)), 0.3f);
+
+	// Only apply transmission to diffuse, not specular
+	half3 Spec = SpecularAttenuation * SpecularLighting * SpecularColor;
+	return DiffuseColor * lerp(half3(DiffuseAttenuation,DiffuseAttenuation,DiffuseAttenuation) * DiffuseLighting, TransmissionMask, TransmissionMask.x) + Spec;
+}
+
+float4 PreviousLighting(float4 ScreenPosition)
+{
+	return tex2D(SceneColorTexture,ScreenPosition.xy / ScreenPosition.w * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz);
+}
+
+sampler2D	LightAttenuationTexture;
+
+/** Fetches the values in the light attenuation buffer. */
+half4 GetLightAttenuation(float4 ScreenPosition)
+{
+	float4 stereoClipPos = MonoToStereoClipPos(ScreenPosition);
+	stereoClipPos.xy = float2(stereoClipPos.xy / stereoClipPos.w * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz);
+	float4 Attenuation = tex2D(LightAttenuationTexture, stereoClipPos.xy);
+	// Undo the sqrt that was used to encode
+	return Square(Attenuation);
+}
+
+/** Converts a linear input value into a value to be stored in the light attenuation buffer. */
+float EncodeLightAttenuation(float InColor)
+{
+	// Apply a 1/2 power to the input, which allocates more bits for the darks and prevents banding
+	// Similar to storing colors in gamma space, except this uses less instructions than a pow(x, 1/2.2)
+	return sqrt(InColor);
+}
+
+/** Converts a linear input value into a value to be stored in the light attenuation buffer. */
+half4 EncodeLightAttenuation(half4 InColor)
+{
+	return sqrt(InColor);
+}
+
+/** return the scene lighting texture */
+half3 CalcSceneColor(float2 ScreenUV)
+{
+	return tex2D(SceneColorTexture,ScreenUV).rgb;
+}
+
+/** return all channels of the scene lighting texture */
+half4 CalcFullSceneColor(float2 ScreenUV)
+{
+      return tex2D(SceneColorTexture,ScreenUV);
+}
+
+// Converts depth buffer Z / W into W
+float ConvertFromDeviceZ(float DeviceZ)
+{
+	// Clamp to be valid
+	// Only values less than 1 - Z_PRECISION can be decoded, but background depths may have been cleared to 1
+	DeviceZ = min(DeviceZ, 1 - Z_PRECISION);
+	return 1.f / (DeviceZ * MinZ_MaxZRatio[2] - MinZ_MaxZRatio[3]);	
+}
+
+/** 
+ * Encodes the W coordinate of a pixel for storage in 16 bit floating point. 
+ * Note: This must match EncodeFloatW in Scene.h!
+ */
+float EncodeFloatW(float W)
+{
+	#if SUPPORTS_DEPTH_TEXTURES
+		return 0;
+	#else
+		float DepthAdd = -MinZ_MaxZRatio[0];
+		float DepthMul = 1 - MinZ_MaxZRatio[1];
+		// Encode the depth so that it handles world space depth ranges much larger than 16 fp max
+		return DepthMul + DepthAdd / W;
+	#endif
+}
+
+/** 
+ * Decodes the value stored in scene color alpha into world space depth. 
+ * Note: This must match DecodeFloatW in Scene.h!
+ */
+float DecodeFloatW(float EncodedW)
+{
+	float DepthAdd = -MinZ_MaxZRatio[0];
+	float DepthMul = 1 - MinZ_MaxZRatio[1];
+	// Solve for W
+	return DepthAdd / (EncodedW - DepthMul);
+}
+
+/** Returns clip space W, which is world space distance along the View Z axis. */
+float CalcSceneDepth( float2 ScreenUV )
+{
+#if SUPPORTS_DEPTH_TEXTURES
+	// Fetch the depth buffer Z / W value, solve for W
+	return ConvertFromDeviceZ(texDepth2Dlod(SceneDepthTexture, float4(ScreenUV,0,0)).r);
+#else
+	// Fetch the encoded W in scene color alpha, solve for W
+	return DecodeFloatW(tex2Dlod(SceneColorTexture, float4(ScreenUV,0,0)).a);
+#endif
+}
+
+/**
+* Returns scene color in rgb, depth in a
+*/
+float4 CalcSceneColorAndDepth( float2 ScreenUV )
+{
+	return float4(CalcSceneColor(ScreenUV), CalcSceneDepth(ScreenUV));
+}
+
+float PreviousDepth(float4 ScreenPosition)
+{
+	float4 stereoClipPos = MonoToStereoClipPos(ScreenPosition);
+	stereoClipPos.xy = float2(stereoClipPos.xy / stereoClipPos.w * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz);
+	return CalcSceneDepth(stereoClipPos.xy);
+}
+
+#if SM5_PROFILE
+	Texture2DMS<float> SceneDepthSurface;
+
+	float CalcSceneDepthMSAA(float2 ScreenUV,uint SampleIndex)
+	{
+		float2 SurfaceDimensions;
+		int NumSurfaceSamples;
+		SceneDepthSurface.GetDimensions(SurfaceDimensions.x,SurfaceDimensions.y,NumSurfaceSamples);
+
+		int2 IntUV = trunc(ScreenUV * SurfaceDimensions);
+		float DeviceZ = SceneDepthSurface.Load(IntUV,SampleIndex);
+
+		return ConvertFromDeviceZ(DeviceZ);
+	}
+	float PreviousDepthMSAA(float4 ScreenPosition,uint SampleIndex)
+	{
+		float4 stereoClipPos = MonoToStereoClipPos(ScreenPosition);
+		stereoClipPos.xy = float2(stereoClipPos.xy / stereoClipPos.w * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz);
+		return CalcSceneDepthMSAA(stereoClipPos.xy,SampleIndex);
+	}
+	float PreviousDepthForShadowsMSAA(float4 ScreenPosition,uint SampleIndex)
+	{
+		return PreviousDepthMSAA(ScreenPosition,SampleIndex);
+	}
+#endif
+
+#if PS3 || WIIU
+	float PreviousDepthForShadows(float4 ScreenPosition)
+	{
+		float2 ScreenUV = ScreenPosition.xy / ScreenPosition.w * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+
+		// get depth buffer z value
+		float DeviceZ = texDepth2D(SceneDepthTexture,ScreenUV).r;
+#if WIIU
+		// Need to offset the read in values...
+		DeviceZ = DeviceZ * 2.0 - 1.0;
+#endif
+		// convert it to clip space w
+		return ConvertFromDeviceZ(DeviceZ);
+	}
+#else
+	float PreviousDepthForShadows(float4 ScreenPosition)
+	{
+		return PreviousDepth(ScreenPosition);
+	}
+#endif
+
+/** 
+ * aligns the clip space position so that it can be used as a texture coordinate
+ * to properly align in screen space
+ */
+float4 ScreenAlignedPosition( float4 ScreenPosition )
+{
+	return float4(ScreenPosition.xy / ScreenPosition.w * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz, ScreenPosition.z/ScreenPosition.w,1);
+}
+
+/** 
+ * Aligns the [0,1] UV to match the view within the backbuffer
+ */
+half2 ScreenAlignedUV( half2 UV )
+{
+	return (UV*half2(2,-2) + half2(-1,1))*ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+}
+
+/**
+ * Calculate the normal Z component from X and Y
+ */
+float4 NormalCalcZ( float4 Normal )
+{
+	return float4( Normal.xy, sqrt(1.0 - dot(Normal.xy,Normal.xy)), 1 );
+}
+ 
+/*
+ * Bias the normal sampled from a texture to the range of (-1..1, -1..1, -1..1, 0..1)
+ */
+float4 BiasNormalMap( float4 Normal )
+{
+	return Normal * float4(2.f,2.f,2.f,1.f) - float4(1.f,1.f,1.f,0.f);
+}
+
+#if PS3
+
+float4 BiasNormalizeNormalMap_DXT1( float4 Normal ) { return Normal; }
+float4 BiasNormalizeNormalMap_DXT5( float4 Normal ) { return BiasNormalMap(Normal); }
+float4 BiasNormalizeNormalMap_V8U8( float4 Normal ) { return NormalCalcZ(Normal); }
+
+#elif XBOX
+
+// these cause problems with the Xbox shader compiler so we use a #define instead.
+/*
+float4 BiasNormalizeNormalMap_DXT1( float4 Normal ) { return BiasNormalMap(Normal); }
+float4 BiasNormalizeNormalMap_DXT5( float4 Normal ) { return BiasNormalMap(Normal); }
+float4 BiasNormalizeNormalMap_V8U8( float4 Normal ) { return NormalCalcZ(Normal); }
+float4 BiasNormalizeNormalMap_BC5( float4 Normal ) { return NormalCalcZ(BiasNormalMap(Normal)); }
+*/
+
+#define NORMALCALCZ(Normal) (float4((Normal).xy, sqrt(1.f - dot((Normal).xy,(Normal).xy)), 1.f))
+#define BIASNORMALMAP(Normal) ((Normal) * float4(2.f,2.f,2.f,1.f) - float4(1.f,1.f,1.f,0.f))
+
+#define BiasNormalizeNormalMap_DXT1(Normal) BIASNORMALMAP(Normal)
+#define BiasNormalizeNormalMap_DXT5(Normal) BIASNORMALMAP(Normal)
+#define BiasNormalizeNormalMap_V8U8(Normal) NORMALCALCZ(Normal)
+#define BiasNormalizeNormalMap_BC5(Normal) NORMALCALCZ(BIASNORMALMAP(Normal))
+
+#else
+
+float4 BiasNormalizeNormalMap_DXT1( float4 Normal ) { return BiasNormalMap(Normal); }
+float4 BiasNormalizeNormalMap_DXT5( float4 Normal ) { return BiasNormalMap(Normal); }
+float4 BiasNormalizeNormalMap_V8U8( float4 Normal ) { return NormalCalcZ(Normal); }
+float4 BiasNormalizeNormalMap_BC5( float4 Normal ) { return NormalCalcZ(BiasNormalMap(Normal)); }
+
+#endif
+
+// Antialiased version of a binary comparison between ThresholdConst and a texture channel.
+float AntialiasedTextureMask( sampler2D Tex, float2 UV, float ThresholdConst, int Channel )
+{
+	// By setting MaskConst to 0001, 0010, 0100 or 1000 individual channels can be chosen (the compiler should be able to optimize that).
+	half4 MaskConst = half4(Channel == 0, Channel == 1, Channel == 2, Channel == 3);
+
+	// border width in pixels, for antialiasing 1 .. 1.5 is good but 1.0 is good for optimizations 
+	const float WidthConst = 1.0f;			
+	float InvWidthConst = 1 / WidthConst;
+
+	// Problem:
+
+	// A simple texture lookup with a comparison against some thresold value allows to get a mask useful
+	// for many purposes (e.g. text rendering, signs, oil/water/paint). Antialiased masks look much better
+	// and mip mapping provides that but only for minification. So when the texture resolution is lower than
+	// the rendering size results get blurry.
+
+	// Idea:
+
+	// We compute the distance to the threshold line in pixels (with subpixel precision). We can visualize
+	// the problem as a heightmap that intersects a axis aligned plane at the threshold height. Only surface
+	// above the threshold plane contributes to the mask. Looking at one pixel the heightmap can be approximated
+	// by a plane. We can easily get the plane center value form a texture lookup and get the plane equation from
+	// ddx and ddy of that value (only one value per 2x2 block) or some other more precise method. We can reduce the
+	// 3d problem to 2d (looking at the steepest angle only) and the resulting value tells us how much the texture value
+	// changes for one pixel. This allows us to scale and bias (threshold) the texture value the so it maps to the
+	// distance function. We rescaling the distance to 0.5 coverage at the line, >1 half a pixel inside and <0 half
+	// a pixel outside. Clamping this value in the range from 0..1 gives us a good approximation of the pixel coverage.
+
+	// We tried multiple possible implementations - this is the cheapest and looks ok is most cases.
+	// If quality improvements are needed we can add an option to the node later on.
+	float Result;
+	{
+		// optimized, ddx/ddy only for every 2x2 block (bad for distant stuff)
+		float Sample1 = dot(MaskConst, tex2D(Tex, UV));
+
+		// compute the derivatives of the texture content
+		float2 TexDD = float2(ddx(Sample1), ddy(Sample1));
+
+		float TexDDLength = max(abs(TexDD.x), abs(TexDD.y)); 
+		float Top = InvWidthConst * (Sample1 - ThresholdConst);
+		Result = Top / TexDDLength + ThresholdConst;
+	}
+
+	Result = saturate(Result);	// no always needed (e.g. DX9 framebuffer blending)
+
+	return Result;
+}
+
+/*
+* Clips a ray to an AABB.  Does not handle rays parallel to any of the planes.
+*
+* @param RayOrigin - The origin of the ray in world space.
+* @param RayEnd - The end of the ray in world space.  
+* @param BoxMin - The minimum extrema of the box.
+* @param BoxMax - The maximum extrema of the box.
+* @return - Returns the closest intersection along the ray in x, and furthest in y.  
+*			If the ray did not intersect the box, then the furthest intersection <= the closest intersection.
+*			The intersections will always be in the range [0,1], which corresponds to [RayOrigin, RayEnd] in worldspace.
+*			To find the world space position of either intersection, simply plug it back into the ray equation:
+*			WorldPos = RayOrigin + (RayEnd - RayOrigin) * Intersection;
+*/
+float2 RayBoxIntersect(float3 RayOrigin, float3 RayEnd, float3 BoxMin, float3 BoxMax)
+{
+	float3 InvRayDir = 1.0f / (RayEnd - RayOrigin);
+	
+	//find the ray intersection with each of the 3 planes defined by the minimum extrema.
+	float3 FirstPlaneIntersections = (BoxMin - RayOrigin) * InvRayDir;
+	//find the ray intersection with each of the 3 planes defined by the maximum extrema.
+	float3 SecondPlaneIntersections = (BoxMax - RayOrigin) * InvRayDir;
+	//get the closest of these intersections along the ray
+	float3 ClosestPlaneIntersections = min(FirstPlaneIntersections, SecondPlaneIntersections);
+	//get the furthest of these intersections along the ray
+	float3 FurthestPlaneIntersections = max(FirstPlaneIntersections, SecondPlaneIntersections);
+
+	float2 BoxIntersections;
+	//find the furthest near intersection
+	BoxIntersections.x = max(ClosestPlaneIntersections.x, max(ClosestPlaneIntersections.y, ClosestPlaneIntersections.z));
+	//find the closest far intersection
+	BoxIntersections.y = min(FurthestPlaneIntersections.x, min(FurthestPlaneIntersections.y, FurthestPlaneIntersections.z));
+	//clamp the intersections to be between RayOrigin and RayEnd on the ray
+	return saturate(BoxIntersections);
+}
+
+/** Transforms a vector from tangent space to world space */
+float3 TransformTangentVectorToWorld(float3x3 TangentToWorld, float3 InTangentVector)
+{
+	// Transform directly to world space
+	// The vector transform is optimized for this case, only one vector-matrix multiply is needed
+	return mul(TangentToWorld, InTangentVector);
+}
+
+/** Transforms a vector from world space to tangent space */
+float3 TransformWorldVectorToTangent(float3x3 TangentToWorld, float3 InWorldVector)
+{
+	// Transform from world to tangent space
+	return mul(InWorldVector, TangentToWorld);
+}
+
+// Define passthrough implementations of EvaluateAttributeAtSample for non-D3D11 platforms.
+#if PS3
+	typedef unsigned int uint;
+#endif
+
+#if !SM5_PROFILE
+	float EvaluateAttributeAtSample(float Attribute,uint SampleIndex) { return Attribute; }
+	float2 EvaluateAttributeAtSample(float2 Attribute,uint SampleIndex) { return Attribute; }
+	float3 EvaluateAttributeAtSample(float3 Attribute,uint SampleIndex) { return Attribute; }
+	float4 EvaluateAttributeAtSample(float4 Attribute,uint SampleIndex) { return Attribute; }
+#endif
+
+#if !XBOX
+// for XBOX the function is implemented in Common360.usf
+half4 FixupSceneColor(half4 In)
+{
+	return In;
+}
+#endif
+
+/** same as GSceneRenderTargets.bSceneColorTextureIsRaw */
+bool bDecompressSceneColor;
+
+half4 GetMaterialEffectSceneColor(sampler2D s, float2 UV)
+{
+	half4 SceneColor = tex2D(s, UV);
+
+#if XBOX
+	// static branch
+	if(bDecompressSceneColor)
+	{
+		// if the SceneColor is in RAW we need to decompress it
+		// this means it's before tone mapping
+		SceneColor = FixupSceneColor(SceneColor); 
+	}
+#endif
+
+	return SceneColor;
+}
+
+
+/**
+ * Returns the size of the screen/view (in pixels, like (1280,720))
+ */
+float2 GetScreenSize()
+{
+	return ScreenAndTexelSize.xy;
+}
+
+/**
+ * Returns the size of a redner targettexel in terms of the buffer size (1/BufferSize.X, 1/BufferSize.Y)
+ */
+float2 GetTexelSize()
+{
+	return ScreenAndTexelSize.zw;
+}

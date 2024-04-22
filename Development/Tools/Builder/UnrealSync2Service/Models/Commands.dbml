@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="Builder" Class="CommandsDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="AppSettings" ConnectionString="Data Source=db-09;Initial Catalog=Builder;Integrated Security=True" SettingsObjectName="Builder.UnrealSyncService.Properties.Settings" SettingsPropertyName="BuilderConnectionString" Provider="System.Data.SqlClient" />
+  <Table Name="dbo.Commands" Member="Commands">
+    <Type Name="Command">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Command" Member="Command1" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="Type" Type="System.Byte" DbType="TinyInt NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="BranchConfigID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Platform" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Game" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="Config" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Language" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Parameter" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="IsPromotable" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="MachineLock" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="NextTriggerDelay" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="NextTrigger" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="PrimaryBuild" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttemptedChangeList" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttemptedDateTime" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="LastFailedChangeList" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastFailedDateTime" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="LastGoodChangeList" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastGoodLabel" Type="System.String" DbType="VarChar(96)" CanBeNull="true" />
+      <Column Name="LastGoodDateTime" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="LatestApprovedLabel" Type="System.String" DbType="VarChar(96)" CanBeNull="true" />
+      <Column Name="Operator" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Killer" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Pending" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Killing" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Machine" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="BuildLogID" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="ConchHolder" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="UserLevel" Type="System.Int16" DbType="SmallInt NOT NULL" CanBeNull="false" />
+      <Column Name="Access" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Display" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="DisplayDetail" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Hint" Type="System.String" DbType="VarChar(16) NOT NULL" CanBeNull="false" />
+      <Association Name="Command_Command" Member="Command3" ThisKey="ID" OtherKey="ID" Type="Command" Cardinality="One" />
+      <Association Name="Command_Command" Member="Command2" ThisKey="ID" OtherKey="ID" Type="Command" IsForeignKey="true" />
+    </Type>
+  </Table>
+</Database>

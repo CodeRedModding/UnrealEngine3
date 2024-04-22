@@ -1,0 +1,59 @@
+﻿<UserControl
+	x:Class="ContentBrowser.TypeFilterTier"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:cc="clr-namespace:CustomControls"
+	xmlns:cb="clr-namespace:ContentBrowser">
+	<UserControl.Resources>
+
+		<ContextMenu x:Key="FavoritesManagerMenu">
+			<MenuItem Command="cb:TypeFilterTierCommands.AddToFavorites" />
+			<MenuItem Command="cb:TypeFilterTierCommands.RemoveFromFavorites" />
+		</ContextMenu>
+		
+		
+		<BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+	</UserControl.Resources>
+
+	<!--                             CONTENT                                -->	
+	
+	<!-- A single column in a filter panel (e.g. Tags column, Object Types column) -->
+	<Border Style="{StaticResource FilterSubpanel}" Background="{StaticResource Slate_FilterListBackground}" >
+		<Grid>
+			<DockPanel>
+				<!-- Border around the header; lights up when the filter is active -->
+				<cc:SlateBorder x:Name="mFilterBorder" DockPanel.Dock="Top" Padding="2" BorderStyle="FilterHeader" >
+					<DockPanel LastChildFill="False">
+						<!-- Header Label -->
+						<Label DockPanel.Dock="Left"  Content="{DynamicResource ContentBrowser_ObjectTypeFilterLabel}" Target="{Binding ElementName=mFilterListView}" Padding="0"/>
+					</DockPanel>
+				</cc:SlateBorder>
+				<!-- Faux tab control: tabs -->
+				<Grid DockPanel.Dock="Top">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="1" />
+						<ColumnDefinition Width="*" />
+					</Grid.ColumnDefinitions>
+					<!-- Simple View Tab -->
+					<RadioButton Style="{StaticResource FauxTab_Light}" x:Name="mFavoritesViewTab" IsChecked="True" Grid.Column="0" Content="{DynamicResource ContentBrowser_FilterPanel_TypeFilterColumn_Favorites}" HorizontalContentAlignment="Center" />
+					<!-- Tab separator (thin line) -->
+					<Border  Grid.Column="1" BorderThickness="1,0,0,0" BorderBrush="{StaticResource Slate_FauxTab_Border}"  />
+					<!-- Advanced View Tab -->
+					<RadioButton Style="{StaticResource FauxTab_Light}" x:Name="mTypesViewTab" Grid.Column="2" Content="{DynamicResource ContentBrowser_FilterPanel_TypeFilterColumn_Types}" HorizontalContentAlignment="Center" />
+				</Grid>
+				<!-- Faux tab control: pages -->
+				<Grid DockPanel.Dock="Top" Margin="0,2,0,0">
+					<!-- Favorites -->
+					<cb:TypeFilterListView ItemContextMenu="{StaticResource FavoritesManagerMenu}" x:Name="mFavoritesListView" Visibility="{Binding ElementName=mFavoritesViewTab, Path=IsChecked, Converter={StaticResource BoolToVisConverter}}" />
+					<!-- Types View -->
+					<cb:TypeFilterListView ItemContextMenu="{StaticResource FavoritesManagerMenu}" x:Name="mTypesListView" Visibility="{Binding ElementName=mTypesViewTab, Path=IsChecked, Converter={StaticResource BoolToVisConverter}}" />
+				</Grid>
+			</DockPanel>
+			<!-- A glyph to signify this filter node is disabled -->
+			<Border x:Name="mDisabledGlyph" Background="{DynamicResource Slate_FilterList_DisabledOverlay}" Visibility="Hidden" >
+				<TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Text="{DynamicResource ContentBrowser_FilterPanel_FilterListDisabledBlurb}" />
+			</Border>
+		</Grid>
+	</Border>
+</UserControl>

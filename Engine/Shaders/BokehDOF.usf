@@ -1,0 +1,242 @@
+/*=============================================================================
+	BokehDOF.usf: Shader for rendering post processing depth of field.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+#include "PostProcessCommon.usf"
+#include "DepthOfFieldCommon.usf"
+
+// 0:off / 1:red color means 4 quads, green means single quad
+#define DEBUG_SHOW_WHERE_ADAPTIVE_BOKEHDOF 0
+
+struct GS_IN
+{
+};
+
+struct GS_OUT
+{
+	// RGB for the color, A to define how faint (non opaque) the Bokeh is
+	float4 BokehColor : TEXCOORD0; 
+	float2 PixelUV : TEXCOORD1;
+	float4 Position : POSITION; 
+	// to emit the triangles to different viewports depending if they are big (smaller viewport) or in front or behind the focus plane (sorting)
+	uint ViewportArrayIndex: SV_ViewportArrayIndex;
+};
+
+// for PS and GS (half res scene)
+sampler2D BokehInputTexture0;
+// for GS (translucent RGB with weight in alpha)
+sampler2D BokehInputTexture1;
+// for GS (depth of translucency with weight in alpha)
+sampler2D BokehInputTexture2;
+// for PS
+sampler2D BokehTexture;
+
+// to compute Screen Pos, XY:mul, ZW:add
+float4 SceneCoordinate1ScaleBias;
+// to compute UV Pos, XY:mul, ZW:add
+float4 SceneCoordinate2ScaleBias;
+// X:BlurKernelSize, YZW unused
+float4 DOFKernelSize;
+// X:is the amount of tiles in x, YZW unused (set for GS only)
+float4 ArraySettings;
+
+float2 ConvertPixelPosToScreen(float2 In)
+{
+	return In * SceneCoordinate1ScaleBias.xy + SceneCoordinate1ScaleBias.zw;
+} 
+
+float2 ConvertPixelPosToUV(float2 In)
+{
+	return In * SceneCoordinate2ScaleBias.xy + SceneCoordinate2ScaleBias.zw;
+} 
+
+half PostprocessCalcUnfocusedPercent(float SceneDepth)
+{
+#if DOF_NEW_COC_FUNCTION == 0
+	return CalcUnfocusedPercent(SceneDepth);
+#else
+	return ComputeCircleOfConfusion(SceneDepth, InverseFocusRadius, FocusDistance);
+#endif
+}
+
+/*=============================================================================
+ * Geometry shader
+ =============================================================================*/
+void SpawnBokehQuad(
+	inout TriangleStream<GS_OUT> TriStream,
+	in float4 ColorAndOcclusion,
+	in float2 Pos,
+	in float CoCFactor,
+	in uint ViewportArrayIndex,
+	float OpacityScaleFactor)
+{
+	GS_OUT Out;
+	Out.Position.zw = 1;
+
+	// 0..   * 0.5 as we are in half res
+	float ExtendedBy = CoCFactor * 0.5f * DOFKernelSize.x;
+
+	Out.ViewportArrayIndex = ViewportArrayIndex;
+
+	// to bigger the Bokeh shape gets the less opaque it becomes
+//	float4 BokehColor = float4(Color, 1) / max(1.0f, ExtendedBy * ExtendedBy);
+	float4 BokehColor = ColorAndOcclusion / max(1.0f, pow(ExtendedBy, OpacityScaleFactor));
+
+	Out.Position.xy = ConvertPixelPosToScreen(Pos + float2(- ExtendedBy, -ExtendedBy));
+	Out.PixelUV = float2(0, 0);
+	Out.BokehColor = BokehColor;
+	TriStream.Append(Out);
+
+	Out.Position.xy = ConvertPixelPosToScreen(Pos + float2(1 + ExtendedBy, - ExtendedBy));
+	Out.PixelUV  = float2(1, 0);
+	Out.BokehColor = BokehColor;
+	TriStream.Append(Out);
+
+	Out.Position.xy = ConvertPixelPosToScreen(Pos + float2(- ExtendedBy, 1 + ExtendedBy));
+	Out.PixelUV = float2(0, 1);
+	Out.BokehColor = BokehColor;
+	TriStream.Append(Out);
+
+	Out.Position.xy = ConvertPixelPosToScreen(Pos + float2(1 + ExtendedBy, 1 + ExtendedBy));
+	Out.PixelUV = float2(1, 1);
+	Out.BokehColor = BokehColor;
+	TriStream.Append(Out);
+
+	TriStream.RestartStrip();
+}
+
+// 1 triangle gets amplified to 1 or 4 quads
+[maxvertexcount(16)]
+void MainGeometryShader(
+	triangle GS_IN input[3],
+	inout TriangleStream<GS_OUT> TriStream,
+	uint PId: SV_PrimitiveID )
+{
+	int TileCountInX = ArraySettings.x;
+
+	uint IntY = PId / TileCountInX;
+	uint IntX = PId - IntY * TileCountInX;
+
+	float4 SceneColorAndOpaqueCocFactors[2][2];
+	float SceneDepths[2][2];
+
+	UNROLL for(uint yy = 0; yy < 2; ++yy)
+	{
+		UNROLL for(uint xx = 0; xx < 2; ++xx)
+		{
+			float x = IntX * 2 + xx;
+			float y = IntY * 2 + yy;
+
+			float2 HalfResUV = ConvertPixelPosToUV(float2(x, y));
+
+			float4 SceneColorAndDepth = tex2Dlod(BokehInputTexture0, float4(HalfResUV, 0, 0));
+
+			bool bMotionBlurObject;
+			// bring from texture usable range to worldspace range
+			SceneDepths[xx][yy] = DecompressSceneDepthFromHalfResTextureChannel(SceneColorAndDepth.a, bMotionBlurObject);
+
+			SceneColorAndOpaqueCocFactors[xx][yy].rgb = SceneColorAndDepth.rgb;
+			SceneColorAndOpaqueCocFactors[xx][yy].a = PostprocessCalcUnfocusedPercent(SceneDepths[xx][yy]);
+		}
+	}
+	
+	// compute MinMax of color and CoCFactors
+	float4 MinValue = SceneColorAndOpaqueCocFactors[0][0]; 
+	float4 MaxValue = SceneColorAndOpaqueCocFactors[0][0];
+
+	MinValue = min(MinValue, SceneColorAndOpaqueCocFactors[1][0]);
+	MaxValue = max(MaxValue, SceneColorAndOpaqueCocFactors[1][0]);
+	MinValue = min(MinValue, SceneColorAndOpaqueCocFactors[0][1]);
+	MaxValue = max(MaxValue, SceneColorAndOpaqueCocFactors[0][1]);
+	MinValue = min(MinValue, SceneColorAndOpaqueCocFactors[1][1]);
+	MaxValue = max(MaxValue, SceneColorAndOpaqueCocFactors[1][1]);
+
+	const float ColorThreshold = 0.5f;
+	const float CoCThreshold = 0.1f;
+
+	const float InvColorThreshold = 1 / ColorThreshold;
+	float ScalarDifference = dot(float4(InvColorThreshold, InvColorThreshold, InvColorThreshold, 1 / CoCThreshold), MaxValue - MinValue);
+
+	// also render full quality if the radius is too small (then fillrate is no issue anyway and quality is better)
+	ScalarDifference += DOFKernelSize.x * MaxValue.a < 4.0f;
+
+	// if color and depth is similar enough - we render 1 quad instead of 4 quads 
+	if(ScalarDifference < 1.0f)
+	{
+		// render 1 quad to represent 4 pixels
+		float x = IntX * 2 + 0.5f;
+		float y = IntY * 2 + 0.5f;
+
+		float3 SceneColor = (MinValue.rgb + MaxValue.rgb) / 2;
+		float SceneDepth = (SceneDepths[0][0] + SceneDepths[1][0] + SceneDepths[0][1] + SceneDepths[1][1]) / 4;
+
+		float OpaqueCoCFactor = PostprocessCalcUnfocusedPercent(SceneDepth);
+
+		// Opaque
+		{
+			// compute into which viewport we render to
+			uint ViewportArrayIndex = (SceneDepth < FocusDistance) ? 0 : 1;
+
+#if DEBUG_SHOW_WHERE_ADAPTIVE_BOKEHDOF
+			// visualize where adaptiveness 
+			SceneColor *= float3(0,4,0);
+#endif
+			// *4: times brighter and occluding
+			SpawnBokehQuad(TriStream, float4(SceneColor, 1) * 4, float2(x, y), OpaqueCoCFactor, ViewportArrayIndex, 1.2f);
+		}
+	}
+	else
+	{
+		// render 4 quads to represent 4 pixels
+		for(uint yy = 0; yy < 2; ++yy)
+		{
+			for(uint xx = 0; xx < 2; ++xx)
+			{
+				float x = IntX * 2 + xx;
+				float y = IntY * 2 + yy;
+
+				float3 SceneColor = SceneColorAndOpaqueCocFactors[xx][yy].rgb;
+				float SceneDepth = SceneDepths[xx][yy];
+
+				float OpaqueCoCFactor = SceneColorAndOpaqueCocFactors[xx][yy].a;
+
+				// Opaque
+				{
+					// compute into which viewport we render to
+					uint ViewportArrayIndex = (SceneDepth < FocusDistance) ? 0 : 1;
+
+#if DEBUG_SHOW_WHERE_ADAPTIVE_BOKEHDOF
+					SceneColor *= float3(4,0,0);
+#endif
+					SpawnBokehQuad(TriStream, float4(SceneColor, 1), float2(x, y), OpaqueCoCFactor, ViewportArrayIndex, 1.2f);
+				}
+			}
+		}
+	}
+}
+
+
+/*=============================================================================
+ * Vertex shader
+ =============================================================================*/
+void MainVS(
+	float2 InPosition		: POSITION,
+	out float4 OutPosition	: POSITION
+	)
+{
+	OutPosition = float4( InPosition, 0, 1 );
+}
+
+/*=============================================================================
+ * Pixel shader
+ =============================================================================*/
+void MainPS(float4 BokehColor : TEXCOORD0, float2 InUV : TEXCOORD1, out float4 OutColor : COLOR0)
+{
+	// RGB for color
+	float4 BokehShape = tex2D(BokehTexture, InUV);
+
+	// occlusion is computed from RGB
+	BokehShape.a = dot(1/ 3.0f, BokehShape.rgb);
+
+	OutColor = BokehColor * BokehShape;
+}

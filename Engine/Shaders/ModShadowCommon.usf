@@ -1,0 +1,55 @@
+/*=============================================================================
+	ModShadowCommon.usf: modulated shadow helper functions.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#ifndef MODSHADOW_LIGHTTYPE_DIRECTIONAL
+#define MODSHADOW_LIGHTTYPE_DIRECTIONAL 0
+#endif
+
+#ifndef MODSHADOW_LIGHTTYPE_POINT
+#define MODSHADOW_LIGHTTYPE_POINT 0
+#endif
+
+#ifndef MODSHADOW_LIGHTTYPE_SPOT
+#define MODSHADOW_LIGHTTYPE_SPOT 0
+#endif
+
+/** color to modulate shadowed areas on screen */
+float4	ShadowModulateColor;
+/** world position of light casting a shadow. Note: w = 1.0 / Radius */
+float4	LightPosition;
+/** needed to get world positions from deferred scene depth values */
+float4x4 ScreenToWorld;
+/** Falloff parameters for light casting a shadow */
+half3 FalloffParameters;
+#define FalloffExponent FalloffParameters.x
+#define FalloffDistanceScale FalloffParameters.y
+#define FalloffDistanceBias FalloffParameters.z
+/** spot light direction vector in world space */
+float3	SpotDirection;
+/** spot light cone cut-off angles */
+float2	SpotAngles;
+
+float ShadowAttenuation(float4 ScreenPositionVec,float SceneDepth)
+{
+	// derive world position from scene depth
+	float4 WorldPosition = MulMatrix(ScreenToWorld,float4((ScreenPositionVec.xy/ScreenPositionVec.w)*SceneDepth,SceneDepth,1));
+	// vector from world position to light
+	float4 WorldLightVector = float4((LightPosition.xyz - WorldPosition.xyz),0) * LightPosition.w;	
+	// mul world vector by 1/radius to get distance attenuation
+	half Attenuation = pow(
+		saturate(1.0f - Square(max(0,length(WorldLightVector) * FalloffDistanceScale + FalloffDistanceBias)) ),
+		FalloffExponent
+		);
+	
+#if MODSHADOW_LIGHTTYPE_SPOT
+	// radial attenuation based on inner/outer cone angles for spot lights
+	Attenuation *= Square(clamp((dot(normalize((float3)WorldLightVector.xyz), -SpotDirection) - SpotAngles.x) * SpotAngles.y,0,1));
+#endif
+	
+	// attenuation result as a percentage of world light vector length to light radius 
+	return Attenuation;
+}
+
+

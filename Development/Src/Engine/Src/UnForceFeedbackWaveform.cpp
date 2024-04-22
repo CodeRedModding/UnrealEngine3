@@ -1,10 +1,7 @@
 /*=============================================================================
 	UnForceFeedbackWaveform.cpp: Contains the platform independent forcefeedback
 	code.
-	Copyright 2004 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Joe Graf
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "EnginePrivate.h"

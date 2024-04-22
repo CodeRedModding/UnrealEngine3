@@ -1,9 +1,6 @@
 /*=============================================================================
 	UnObj.h: Standard Unreal object definitions.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 /*----------------------------------------------------------------------------
@@ -19,12 +16,14 @@ class			UPendingLevel;
 class		UPlayer;
 class			UViewport;
 class			UNetConnection;
+class				UChildConnection;
 class		UInteraction;
 class		UCheatManager;
 class		UChannel;
 class			UActorChannel;
-class		UMaterialInstance;
+class		UMaterialInterface;
 class		FColor;
+struct		FLightmassPrimitiveSettings;
 
 // Other classes.
 class  AActor;
@@ -71,6 +70,15 @@ struct FZoneSet
 
 	// Operators.
 
+	UBOOL operator==( const FZoneSet& Other ) const
+	{
+		return MaskBits == Other.MaskBits;
+	}
+	UBOOL operator!=( const FZoneSet& Other ) const
+	{
+		return MaskBits != Other.MaskBits;
+	}
+
 	friend FZoneSet operator|(const FZoneSet& A,const FZoneSet& B)
 	{
 		return FZoneSet(A.MaskBits | B.MaskBits);
@@ -103,6 +111,90 @@ private:
 };
 
 /*-----------------------------------------------------------------------------
+	FLightmassPrimitiveSettings
+-----------------------------------------------------------------------------*/
+/** 
+ *	Per-object settings for Lightmass
+ */
+//@warning: this structure is manually mirrored in EngineTypes.uc
+struct FLightmassPrimitiveSettings
+{
+	/** If TRUE, this object will be lit as if it receives light from both sides of its polygons. */
+	BITFIELD	bUseTwoSidedLighting:1;
+	/** If TRUE, this object will only shadow indirect lighting.  					*/
+	BITFIELD	bShadowIndirectOnly:1;
+	/** If TRUE, allow using the emissive for static lighting.						*/
+	BITFIELD	bUseEmissiveForStaticLighting:1;
+	/** Direct lighting falloff exponent for mesh area lights created from emissive areas on this primitive. */
+	FLOAT		EmissiveLightFalloffExponent;
+	/** 
+	 * Direct lighting influence radius.  
+	 * The default is 0, which means the influence radius should be automatically generated based on the emissive light brightness.
+	 * Values greater than 0 override the automatic method.
+	 */
+	FLOAT		EmissiveLightExplicitInfluenceRadius;
+	/** Scales the emissive contribution of all materials applied to this object.	*/
+	FLOAT		EmissiveBoost;
+	/** Scales the diffuse contribution of all materials applied to this object.	*/
+	FLOAT		DiffuseBoost;
+	/** Scales the specular contribution of all materials applied to this object.	*/
+	FLOAT		SpecularBoost;
+	/** Fraction of samples taken that must be occluded in order to reach full occlusion. */
+	FLOAT		FullyOccludedSamplesFraction;
+
+	FLightmassPrimitiveSettings()
+	{
+	}
+
+	FLightmassPrimitiveSettings(ENativeConstructor)
+		: bUseTwoSidedLighting(FALSE)
+		, bShadowIndirectOnly(FALSE)
+		, bUseEmissiveForStaticLighting(FALSE)
+		, EmissiveLightFalloffExponent(2.0f)
+		, EmissiveLightExplicitInfluenceRadius(0.0f)
+		, EmissiveBoost(1.0f)
+		, DiffuseBoost(1.0f)
+		, SpecularBoost(1.0f)
+		, FullyOccludedSamplesFraction(1.0f)
+	{}
+
+	explicit FORCEINLINE FLightmassPrimitiveSettings(EEventParm)
+	{
+		appMemzero(this, sizeof(FLightmassPrimitiveSettings));
+	}
+
+	friend UBOOL operator==(const FLightmassPrimitiveSettings& A, const FLightmassPrimitiveSettings& B)
+	{
+		//@lmtodo. Do we want a little 'leeway' in joining 
+		if ((A.bUseTwoSidedLighting != B.bUseTwoSidedLighting) ||
+			(A.bShadowIndirectOnly != B.bShadowIndirectOnly) || 
+			(A.bUseEmissiveForStaticLighting != B.bUseEmissiveForStaticLighting) || 
+			(fabsf(A.EmissiveLightFalloffExponent - B.EmissiveLightFalloffExponent) > SMALL_NUMBER) ||
+			(fabsf(A.EmissiveLightExplicitInfluenceRadius - B.EmissiveLightExplicitInfluenceRadius) > SMALL_NUMBER) ||
+			(fabsf(A.EmissiveBoost - B.EmissiveBoost) > SMALL_NUMBER) ||
+			(fabsf(A.DiffuseBoost - B.DiffuseBoost) > SMALL_NUMBER) ||
+			(fabsf(A.SpecularBoost - B.SpecularBoost) > SMALL_NUMBER) ||
+			(fabsf(A.FullyOccludedSamplesFraction - B.FullyOccludedSamplesFraction) > SMALL_NUMBER))
+		{
+			return FALSE;
+		}
+		return TRUE;
+	}
+
+	// Functions.
+	friend FArchive& operator<<(FArchive& Ar, FLightmassPrimitiveSettings& Settings);
+
+	UBOOL CheckForInvalidSettings() const
+	{
+		return (EmissiveLightFalloffExponent < 0.0f) || 
+			(EmissiveLightExplicitInfluenceRadius < 0.0f) ||
+			(EmissiveLightExplicitInfluenceRadius > WORLD_MAX) ||
+			(FullyOccludedSamplesFraction < 0.0f) ||
+			(FullyOccludedSamplesFraction > 1.0f);
+	}
+};
+
+/*-----------------------------------------------------------------------------
 	UPolys.
 -----------------------------------------------------------------------------*/
 
@@ -126,35 +218,49 @@ enum ESplitType
 class FPoly
 {
 public:
-	enum {MAX_VERTICES=16}; // Maximum vertices an FPoly may have.
-	enum {VERTEX_THRESHOLD=MAX_VERTICES-2}; // Threshold for splitting into two.
+#if CONSOLE
+	// Store up to 4 vertices inline.
+	typedef TArray<FVector,TInlineAllocator<4> > VerticesArrayType;
+#else
+	// Store up to 16 vertices inline.
+	typedef TArray<FVector,TInlineAllocator<16> > VerticesArrayType;
+#endif
 
 	FVector				Base;					// Base point of polygon.
 	FVector				Normal;					// Normal of polygon.
 	FVector				TextureU;				// Texture U vector.
 	FVector				TextureV;				// Texture V vector.
-	FVector				Vertex[MAX_VERTICES];	// Actual vertices.
+	VerticesArrayType	Vertices;
 	DWORD				PolyFlags;				// FPoly & Bsp poly bit flags (PF_).
 	ABrush*				Actor;					// Brush where this originated, or NULL.
-	UMaterialInstance*	Material;				// Material.
+	UMaterialInterface*	Material;				// Material.
+	FName				RulesetVariation;		// Name of variation within a ProcBuilding Ruleset for this face
 	FName				ItemName;				// Item name.
-	INT					NumVertices;			// Number of vertices.
 	INT					iLink;					// iBspSurf, or brush fpoly index of first identical polygon, or MAXWORD.
 	INT					iBrushPoly;				// Index of editor solid's polygon this originated from.
 	DWORD				SmoothingMask;			// A mask used to determine which smoothing groups this polygon is in.  SmoothingMask & (1 << GroupNumber)
-	FLOAT				LightMapScale;			// The number of units/lightmap texel on this surface.
+	FLOAT				ShadowMapScale;			// The number of units/shadowmap texel on this surface.
+	DWORD				LightingChannels;		// Lighting channels of affecting lights.
+	
+	// This MUST be the format of FLightmassPrimitiveSettings
+	// The Lightmass settings for surfaces generated from this poly
+ 	FLightmassPrimitiveSettings		LightmassSettings;
+
+	/**
+	 * Constructor, initializing all member variables.
+	 */
+	FPoly();
 
 	// Custom functions.
 	void Init();
 	void Reverse();
-	void SplitInHalf(FPoly *OtherHalf);
 	void Transform(const FVector &PreSubtract,const FVector &PostAdd);
 	int Fix();
 	int CalcNormal( UBOOL bSilent = 0 );
 	int SplitWithPlane(const FVector &Base,const FVector &Normal,FPoly *FrontPoly,FPoly *BackPoly,int VeryPrecise) const;
 	int SplitWithNode(const UModel *Model,INT iNode,FPoly *FrontPoly,FPoly *BackPoly,int VeryPrecise) const;
-	int SplitWithPlaneFast(const FPlane Plane,FPoly *FrontPoly,FPoly *BackPoly) const;
-	int Split(const FVector &Normal, const FVector &Base, int NoOverflow=0 );
+	int SplitWithPlaneFast(const FPlane& Plane,FPoly *FrontPoly,FPoly *BackPoly) const;
+	int Split(const FVector &Normal, const FVector &Base );
 	int RemoveColinears();
 	int Finalize( ABrush* InOwner, int NoError );
 	int Faces(const FPoly &Test) const;
@@ -165,9 +271,13 @@ public:
 	void InsertVertex( INT InPos, FVector InVtx );
 	void RemoveVertex( FVector InVtx );
 	UBOOL IsCoplanar();
-	INT Triangulate( ABrush* InOwner );
+	UBOOL IsConvex();
+	INT Triangulate( ABrush* InOwnerBrush, TArray<FPoly>& OutTriangles );
 	INT GetVertexIndex( FVector& InVtx );
 	FVector GetMidPoint();
+	static FPoly BuildInfiniteFPoly(const FPlane& InPlane);
+	static void OptimizeIntoConvexPolys( ABrush* InOwnerBrush, TArray<FPoly>& InPolygons );
+	static void GetOutsideWindings( ABrush* InOwnerBrush, TArray<FPoly>& InPolygons, TArray< TArray<FVector> >& InWindings, UBOOL bFlipNormals = TRUE);
 
 	// Serializer.
 	friend FArchive& operator<<( FArchive& Ar, FPoly& Poly );
@@ -178,27 +288,26 @@ public:
 	int IsCoplanar( const FPoly &Test ) const
 		{return Abs((Base - Test.Base)|Normal)<0.01f && Abs(Normal|Test.Normal)>0.9999f;}
 
-	inline UBOOL operator==( FPoly Other )
+	friend UBOOL operator==(const FPoly& A,const FPoly& B)
 	{
-		if( NumVertices != Other.NumVertices )
-			return 0;
+		if(A.Vertices.Num() != B.Vertices.Num())
+		{
+			return FALSE;
+		}
 
-		for( int x = 0 ; x < NumVertices ; x++ )
-			if( Vertex[x] != Other.Vertex[x] )
-				return 0;
+		for(INT VertexIndex = 0;VertexIndex < A.Vertices.Num();VertexIndex++)
+		{
+			if(A.Vertices(VertexIndex) != B.Vertices(VertexIndex))
+			{
+				return FALSE;
+			}
+		}
 
-		return 1;
+		return TRUE;
 	}
-	inline UBOOL operator!=( FPoly Other )
+	friend UBOOL operator!=(const FPoly& A,const FPoly& B)
 	{
-		if( NumVertices != Other.NumVertices )
-			return 1;
-
-		for( int x = 0 ; x < NumVertices ; x++ )
-			if( Vertex[x] != Other.Vertex[x] )
-				return 1;
-
-		return 0;
+		return !(A == B);
 	}
 };
 
@@ -207,7 +316,7 @@ public:
 //
 class UPolys : public UObject
 {
-	DECLARE_CLASS(UPolys,UObject,CLASS_RuntimeStatic,Engine)
+	DECLARE_CLASS_INTRINSIC(UPolys,UObject,0,Engine)
 
 	// Elements.
 	TTransArray<FPoly> Element;
@@ -217,50 +326,29 @@ class UPolys : public UObject
 	: Element( this )
 	{}
 
+	/**
+	 * Static constructor called once per class during static initialization via IMPLEMENT_CLASS
+	 * macro. Used to e.g. emit object reference tokens for realtime garbage collection or expose
+	 * properties for native- only classes.
+	 */
+	void StaticConstructor();
+
+	/**
+	* Note that the object has been modified.  If we are currently recording into the 
+	* transaction buffer (undo/redo), save a copy of this object into the buffer and 
+	* marks the package as needing to be saved.
+	*
+	* @param	bAlwaysMarkDirty	if TRUE, marks the package dirty even if we aren't
+	*								currently recording an active undo/redo transaction
+	*/
+	virtual void Modify(UBOOL bAlwaysMarkDirty = FALSE);
+
 	// UObject interface.
-	void Serialize( FArchive& Ar )
-	{
-		Super::Serialize( Ar );
-		if( Ar.IsTrans() )
-		{
-			Ar << Element;
-		}
-		else
-		{
-			Element.CountBytes( Ar );
-			INT DbNum=Element.Num(), DbMax=DbNum;
-			Ar << DbNum << DbMax;
-			if( Ar.IsLoading() )
-			{
-				Element.Empty( DbNum );
-				Element.AddZeroed( DbNum );
-			}
-			for( INT i=0; i<Element.Num(); i++ )
-				Ar << Element(i);
-		}
-	}
+	void Serialize( FArchive& Ar );
+
+	/**
+	 * Fixup improper load flags on save so that the load flags are always up to date
+	 */
+	void PreSave();
 };
 
-
-/*-----------------------------------------------------------------------------
-	FVerts.
------------------------------------------------------------------------------*/
-
-//
-// One vertex associated with a Bsp node's polygon.  Contains a vertex index
-// into the level's FPoints table, and a unique number which is common to all
-// other sides in the level which are cospatial with this side.
-//
-class FVert
-{
-public:
-	// Variables.
-	INT 	pVertex;	// Index of vertex.
-	INT		iSide;		// If shared, index of unique side. Otherwise INDEX_NONE.
-
-	// Functions.
-	friend FArchive& operator<< (FArchive &Ar, FVert &Vert)
-	{
-		return Ar << Vert.pVertex << Vert.iSide;
-	}
-};

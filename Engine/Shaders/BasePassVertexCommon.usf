@@ -1,0 +1,150 @@
+/*=============================================================================
+	BasePassVertexCommon.usf: Vertex-related base pass definitions, used by vertex,
+	hull and domain shader
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "BasePassCommon.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+#if NEEDS_BASEPASS_FOGGING
+	#include "HeightFogCommon.usf"
+	#include "FogVolumeCommon.usf"
+#endif
+
+/*
+ * The light position and inverse radius.
+ * A directional light has W=0, which is equivalent to an infinite radius.
+ */
+float4 LightPositionAndInvRadius;
+
+#if NEEDS_BASEPASS_FOGGING
+	/** Intersecting fog volume color */
+	half3 ApproxFogColor;
+
+	/** Minimum extrema of the AABB of the intersecting fog volume */
+	float3 FogVolumeBoxMin;
+
+	/** Maximum extrema of the AABB of the intersecting fog volume */
+	float3 FogVolumeBoxMax;
+
+	/*
+	* Combines height fog and fog volume contribution.  Height fog is always applied after the fog volume 
+	* since height fog is infinite in extent and fog volumes are bounded.
+	*/
+	half4 GetCombinedFog(half4 HeightFogContribution,half4 FogVolumeContribution)
+	{
+		//filter fog volume color as if it were coming through the height fog, and add in the emitted color from height fog
+		//alpha stores the amount of original scene color to be transmitted, which is attenuated by both fog factors
+		return half4(
+			FogVolumeContribution.rgb * HeightFogContribution.a + HeightFogContribution.rgb,
+			FogVolumeContribution.a * HeightFogContribution.a
+			);
+	}
+
+	/** Computes fogging contribution for a given line integral. */
+	half4 ComputeFogContribution(float LineIntegral)
+	{
+		//find the fog volume factor by evaluating the transmittance function
+		half FogVolumeFactor = exp2(-LineIntegral);
+		//weight fog volume color by 1 - fog volume factor
+		half3 FogVolumeColor = (1.0f - FogVolumeFactor) * ApproxFogColor;
+
+		return half4(FogVolumeColor,FogVolumeFactor);
+	}
+
+	#if FOGVOLUMEDENSITY_NONE || !SUPPORTS_DECAL_FOGGING
+		/** Computes fog contribution from no fog volume. */
+		half4 GetFogDensity(float4 WorldPosition, float4 CameraPos)
+		{
+			return half4(0,0,0,1);
+		}
+	#endif
+
+	#if FOGVOLUMEDENSITY_CONSTANT && SUPPORTS_DECAL_FOGGING
+		/**
+		 * Computes fog contribution for a constant density fog volume.
+		 * The fog volume contribution is clipped by the AABB of the fog volume.
+		 */
+		half4 GetFogDensity(float4 WorldPosition, float4 CameraPos)
+		{
+			//clip the ray from the vertex to the camera by the AABB of the fog volume 
+			float2 BoxIntersections = RayBoxIntersect(WorldPosition.xyz, CameraPos.xyz, FogVolumeBoxMin, FogVolumeBoxMax); 
+			//get the fog volume line integral
+			half LineIntegral = ConstantDensityLineIntegral(WorldPosition.xyz, CameraPos.xyz, BoxIntersections);
+			// Compute the fog volume contribution from the integral.
+			return ComputeFogContribution(LineIntegral);
+		}
+	#endif
+
+	#if FOGVOLUMEDENSITY_LINEARHALFSPACE && SUPPORTS_DECAL_FOGGING
+		/**
+		 * Computes fog contribution for a linear halfspace density fog volume.
+		 * The fog volume contribution is clipped by the AABB of the fog volume.
+		 */
+		half4 GetFogDensity(float4 WorldPosition, float4 CameraPos)
+		{
+			//clip the ray from the vertex to the camera by the AABB of the fog volume 
+			float2 BoxIntersections = RayBoxIntersect(WorldPosition.xyz, CameraPos.xyz, FogVolumeBoxMin, FogVolumeBoxMax); 
+			//get the fog volume line integral
+			half LineIntegral = LinearHalfspaceLineIntegral(WorldPosition.xyz, CameraPos.xyz, BoxIntersections);
+			// Compute the fog volume contribution from the integral.
+			return ComputeFogContribution(LineIntegral);
+		}
+	#endif
+
+	#if FOGVOLUMEDENSITY_SPHEREDENSITY && SUPPORTS_DECAL_FOGGING
+		/**
+		 * Computes fog contribution for a spherical density fog volume.
+		 */
+		half4 GetFogDensity(float4 WorldPosition, float4 CameraPos)
+		{
+			//get the fog volume line integral
+			half LineIntegral = SphericalLineIntegral(WorldPosition.xyz, CameraPos.xyz);
+			// Compute the fog volume contribution from the integral.
+			return ComputeFogContribution(LineIntegral);
+		}
+	#endif
+
+	#if FOGVOLUMEDENSITY_CONEDENSITY && SUPPORTS_DECAL_FOGGING
+		/**
+		 * Computes fog contribution for a spherical density fog volume.
+		 */
+		half4 GetFogDensity(float4 WorldPosition, float4 CameraPos)
+		{
+			// Cone fog integral isn't implemented for translucency!
+			half LineIntegral = 0;
+			// Compute the fog volume contribution from the integral.
+			return ComputeFogContribution(LineIntegral);
+		}
+	#endif
+#endif
+
+struct FBasePassVSToPS
+{
+	FVertexFactoryInterpolantsVSToPS FactoryInterpolants;
+	FBasePassInterpolantsVSToPS BasePassInterpolants;
+	float4 Position : POSITION;
+};
+
+#if USING_SM5_TESSELLATION	
+	struct FBasePassVSToDS
+	{
+		FVertexFactoryInterpolantsVSToDS FactoryInterpolants;
+		FBasePassInterpolantsVSToDS BasePassInterpolants;
+		float4 Position : VS_To_DS_Position;
+		OPTIONAL_VertexID_VS_To_DS
+	};
+	
+	#define FBasePassVSOutput FBasePassVSToDS
+	#define VertexFactoryGetInterpolants VertexFactoryGetInterpolantsVSToDS
+	#define FPassSpecificVSToDS FBasePassVSToDS
+	#define FPassSpecificVSToPS FBasePassVSToPS
+#else
+	#define FBasePassVSOutput FBasePassVSToPS
+	#define VertexFactoryGetInterpolants VertexFactoryGetInterpolantsVSToPS
+#endif
+
+

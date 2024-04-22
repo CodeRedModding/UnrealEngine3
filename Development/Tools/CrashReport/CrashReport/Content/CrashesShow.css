@@ -1,0 +1,295 @@
+﻿/*// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.*/
+/*---- for crash show.aspx ---- */
+
+#CrashesShowContainer
+{
+	padding: 0 30px;
+	width: 1400px;
+	width: 1400px;
+}
+
+#CrashDataContainer
+{
+	background: #2e363f;
+	float:left;
+	width: 350px;
+	height: 606px;
+	margin-top: 10px;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	font-size: 14px;
+	border-top: 1px solid black;
+	border-left: 1px solid black;
+	border-right: 1px solid #718698;
+	border-bottom: 1px solid #718698;
+}
+
+.CrashDataTopLeft
+{
+	background: url('/Content/Images/CrashDataTopLeft.png') top left no-repeat;
+}
+
+.CrashDataTopRight
+{
+	background: url('/Content/Images/CrashDataTopRight.png') top right no-repeat;
+}
+
+#CrashDataBottomLeft
+{
+	background: url('/Content/Images/CrashDataTop.png') Bottom left no-repeat;
+}
+
+#CrashDataBottomLeft
+{
+	background: url('/Content/Images/CrashDataTop.png') bottom right no-repeat;
+}
+
+#CrashDataContainer dt, #CrashDataContainer dd 
+{
+	display: block; 
+	float: left; 
+	margin: 5px 0; 
+}
+
+#CrashDataContainer dt 
+{
+	clear: both;
+	width: 150px;
+	font-weight: bold;
+	padding-left: 5px;
+	text-align:right;
+	color: #718698;
+	margin-left:10px;
+}
+
+#CrashDataContainer dd
+{
+	width: 140px;
+	font-weight: normal;
+	margin-left:1em;
+	color: #C3CAD0;
+}
+
+
+#CrashDataContainer .even
+{
+	
+}
+
+#CallStackContainer
+{
+	float:right;
+	width:65%;
+	margin-right: 60px;
+	padding: 20px;
+}
+
+#FormattedCallStackContainer,  #RawCallStackContainer
+{
+	background-color: #778A99;
+	height: 100%;
+	height: 300px;
+	margin-top:15px;
+	}
+
+#FormattedCallStackContainer p, #RawCallStackContainer p
+{
+	white-space:nowrap;
+	overflow: scroll;
+	overflow-x: scroll;
+	overflow-y: no-scroll;
+}
+
+#RawCallStackContainer p
+{
+	padding-left: 10px;
+}
+
+.CrashViewTextBox
+{
+	width:100%;
+	background-color: #758A98;
+	margin-bottom: 10px;
+	height:100%;
+	background: #758A98 url('/Content/Images/CrashTextTopLeft.png') top left no-repeat;
+}
+
+.CrashViewTextBoxRight
+{
+	background: url('/Content/Images/CrashTextTopRight.png') top right no-repeat;
+	padding-top: 10px;
+}
+
+.CrashViewTextBox p
+{
+	background-color: #C3CAD0; 
+	color: Black;
+	height: 100%;
+	border-top: thin solid black ;
+	border-bottom: 1px solid #718698;   
+}
+
+.CrashViewTextBox p  span
+{
+	padding-left: 10px;
+}
+
+#CrashDescription
+{
+
+}
+
+.CrashViewTextBox input
+{
+	display:none;
+	width: 99.5%;
+	height: 100%;
+	height: 2em;
+}
+
+.EditButton
+{
+	color: Blue;
+	cursor: pointer;
+}
+
+#SaveDescription
+{
+	display:none;
+}
+
+.CrashViewTextBox h3
+{
+	color: White;
+	margin: 0px;
+	padding: 0px;
+	height: .5em;
+	padding-left: 5px;
+	padding-bottom:2px;
+	width: 100%;
+}
+
+#ShowCrashSummary, #ShowCrashDescription, #ShowCommandLine
+{
+	height: 4em;
+	margin-bottom: 40px;
+	margin-top:20px;
+}
+
+#ShowCrashSummary p, #ShowCrashDescription p, #ShowCommandLine p
+{
+	height: 3em;
+}
+
+#CallStackContainer
+{
+	margin-top: 10px;
+	padding:0;
+}
+
+#ShowCrashInfoContainer
+{
+	width: 100%;
+	height: 100%;
+}
+
+.function-name {
+	color: #000;
+	font-weight:bold;
+}
+
+#FormatCallStack
+{
+	color: #C3CAD0;
+}
+
+.file-path
+{
+	font-style: italic;
+}
+
+.file-name
+{
+	color: #778A99;
+	font-weight: bold;
+}
+
+.line-number
+{
+	color: Black;
+}
+
+#set-status
+{
+
+}
+
+.submit
+{
+	height:22px;
+	width:30px;
+}
+
+#set-ttp
+{
+
+}
+
+#ttp-text-box
+{
+	height:15px;
+	width:75px;
+}
+
+#set-fixed-in
+{
+
+}
+
+#fixed-in-text-box
+{
+	height:15px;
+	width:73px;
+}
+
+#SetBar
+{
+	color: White;
+	width: 100%;
+	height: 3em;
+	padding-top: 20px;
+}
+
+#SetBar #SetInput
+{
+	padding-left: 31%;
+}
+
+#SetBar #SetForm
+{
+	padding: 0;
+	margin: 1px 1px 1px 0;
+}
+
+#SetForm
+{
+	display: inline;
+	font-size: 12px;
+	margin-left: 20px;
+	vertical-align:Middle;
+}
+
+.set-status
+{
+	margin-left: 10px;
+}
+
+#SetForm input.form-submit, .SetButton
+{
+	height: 25px;
+	width: 41px;
+	border:none;
+	cursor: pointer;
+	background : url('/Content/Images/SetButtonGreen.png') no-repeat left top;
+	color: White;
+}

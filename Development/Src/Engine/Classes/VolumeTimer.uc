@@ -1,21 +1,26 @@
-class VolumeTimer extends info;
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+class VolumeTimer extends Info;
 
 var PhysicsVolume V;
 
-function PostBeginPlay()
+event PostBeginPlay()
 {
 	Super.PostBeginPlay();
-	SetTimer(1.0, true);
 	V = PhysicsVolume(Owner);
+	SetTimer(V.PainInterval, true);
 }
 
-function Timer()
+event Timer()
 {
 	V.TimerPop(self);
 }
 
 defaultproperties
 {
+	TickGroup=TG_PreAsyncWork
+
 	bStatic=false
 	RemoteRole=ROLE_None
 }

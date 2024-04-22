@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RPCUtility", "RPCUtility.csproj", "{CDD574FE-15C6-4BE8-9FE4-2631BF65442D}"
+EndProject
+Global
+	GlobalSection(SourceCodeControl) = preSolution
+		SccNumberOfProjects = 2
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = RPCUtility.csproj
+		SccLocalPath1 = .
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CDD574FE-15C6-4BE8-9FE4-2631BF65442D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDD574FE-15C6-4BE8-9FE4-2631BF65442D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CDD574FE-15C6-4BE8-9FE4-2631BF65442D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CDD574FE-15C6-4BE8-9FE4-2631BF65442D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

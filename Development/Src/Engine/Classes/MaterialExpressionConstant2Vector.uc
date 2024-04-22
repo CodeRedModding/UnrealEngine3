@@ -1,3 +1,6 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class MaterialExpressionConstant2Vector extends MaterialExpression
 	native(Material)
 	collapsecategories
@@ -8,6 +11,12 @@ var() float	R,
 
 cpptext
 {
-	virtual INT Compile(FMaterialCompiler* Compiler);
+	virtual INT Compile(FMaterialCompiler* Compiler, INT OutputIndex);
 	virtual FString GetCaption() const;
+}
+
+defaultproperties
+{
+	MenuCategories(0)="Constants"
+	MenuCategories(1)="Vectors"
 }

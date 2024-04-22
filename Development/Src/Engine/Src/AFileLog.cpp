@@ -1,9 +1,6 @@
 /*=============================================================================
 	AFileLog.cpp: Unreal Tournament 2003 mod author logging
-	Copyright 1997-2002 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Joe Wilcox
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "EnginePrivate.h"
@@ -11,78 +8,156 @@
 /*-----------------------------------------------------------------------------
 	Stat Log Implementation.
 -----------------------------------------------------------------------------*/
-
+ 
+IMPLEMENT_CLASS(AFileWriter);
 IMPLEMENT_CLASS(AFileLog);
 
-void AFileLog::OpenLog(FString &fileName,FString &extension)
+UBOOL AFileWriter::OpenFile(const FString& InFilename,BYTE InFileType,const FString& InExtension,UBOOL bUnique, UBOOL bIncludeTimeStamp)
 {
-	if (LogAr == NULL)
+#if !(NO_LOGGING || FINAL_RELEASE)
+	if (ArchivePtr == NULL)
 	{
-		// Strip all pathing characters from the name
-		for (INT i = 0; i < fileName.Len(); i++)
+		// Create the default Path based on the InFileType
+
+		FString DefaultPath;
+		FString DefaultExt;
+		switch (InFileType)
 		{
-			if ( (*fileName)[i]=='\\' || (*fileName)[i]=='.')
+			case	FWFT_Stats:		
+
+					DefaultPath = appGameDir() + TEXT("Stats") PATH_SEPARATOR;
+					DefaultExt = TEXT(".stats");
+					break;
+
+			case	FWFT_HTML:		
+
+					DefaultPath = appGameDir() + TEXT("Web") PATH_SEPARATOR TEXT("DynamicHTML") PATH_SEPARATOR;
+					DefaultExt = TEXT(".html");
+
+					break;
+
+			case	FWFT_User:		
+
+					DefaultPath = appGameDir() + TEXT("User") PATH_SEPARATOR; 
+					DefaultExt = TEXT(".txt");
+					break;
+
+			case	FWFT_Debug:		
+
+					DefaultPath = appGameDir() + TEXT("Debug") PATH_SEPARATOR;	
+					DefaultExt = TEXT(".debug");
+					break;
+
+			default:
+
+					DefaultPath = appGameDir() + TEXT("Logs") PATH_SEPARATOR;
+					DefaultExt = TEXT(".log");
+					break;
+		}
+
+		// Make sure the path exists
+
+		GFileManager->MakeDirectory(*DefaultPath,1);
+
+		// Autoappend the default extesion if it doesn't exist
+
+		if ( InExtension.Len() > 0 )
+			DefaultExt = InExtension;
+
+		// Attempt to generate a filename.  Keep going added _xxx to the filename until a unique
+
+		if ( bIncludeTimeStamp )
+		{
+			INT Year, Month, DayOfWeek, Day, Hour, Min, Sec,MSec;
+			appSystemTime( Year, Month, DayOfWeek, Day, Hour, Min, Sec, MSec );
+		
+			Filename = FString::Printf(TEXT("%s%s-%02i%02i%02i.%02i%02i%02i%s"),*DefaultPath,*InFilename,Year,Month, Day, Hour, Min, Sec,*DefaultExt);
+		}
+		else
+		{
+			Filename = FString::Printf(TEXT("%s%s%s"),*DefaultPath,*InFilename,*DefaultExt);
+		}
+
+		if (bUnique)
+		{
+			INT UniqueTag=0;
+			while ( GFileManager->FileSize(*Filename) >= 0 )
 			{
-				((TCHAR*)(*fileName))[i] = '_';
+				Filename = FString::Printf(TEXT("%s%s_%i%s"),*DefaultPath,*InFilename,++UniqueTag,*DefaultExt);
 			}
 		}
-		// append the extension
-		fileName += extension;
-		// save the new log file name
-		fileName = FString::Printf(TEXT("%s%s"),*appGameLogDir(),*fileName);
-		LogFileName = fileName;
-		debugf(TEXT("Opening user log %s"),*LogFileName);
+
+		debugf(TEXT("Creating file: %s"),*Filename);
+		INT Flags = FILEWRITE_EvenIfReadOnly;
+		// Check for async writes and change flags accordingly
+		if (bWantsAsyncWrites)
+		{
+			bFlushEachWrite = FALSE;
+			Flags |= FILEWRITE_Async;
+		}
+
+		// set the file so you can tail -f it
+		Flags |= FILEWRITE_AllowRead;
+		
 		// and create the actual archive
-		LogAr = GFileManager->CreateFileWriter(*LogFileName, FILEWRITE_EvenIfReadOnly);
+		ArchivePtr = GFileManager->CreateFileWriter(*Filename, Flags, GWarn);
+
+		return (ArchivePtr != NULL);
 	}
-
+	else
+	{
+		return true;
+	}
+#else
+	return FALSE;
+#endif
 }
 
-void AFileLog::execOpenLog( FFrame& Stack, RESULT_DECL )
+void AFileWriter::CloseFile()
 {
-	P_GET_STR(fileName);
-	P_GET_STR_OPTX(extension,TEXT(".txt"));
-	P_FINISH;
-	OpenLog(fileName,extension);
-}
-
-void AFileLog::execCloseLog( FFrame& Stack, RESULT_DECL )
-{
-	P_FINISH;
+#if !(NO_LOGGING || FINAL_RELEASE)
 	// if the archive exists
-	if (LogAr != NULL) 
+	if (ArchivePtr != NULL) 
 	{
 		// delete it
-		delete (FArchive*)LogAr;
+		delete ArchivePtr;
 	}
-	LogAr = NULL;
+	ArchivePtr = NULL;
+#endif
 }
 
-void AFileLog::Logf(FString &logString)
+void AFileWriter::Logf(const FString& logString)
 {
-	if (LogAr != NULL)
+#if !(NO_LOGGING || FINAL_RELEASE)
+	if (ArchivePtr != NULL)
 	{
-		// append eol characters
-		logString += TEXT("\r\n");
-		check(logString.Len() < 1024 && "Can only log strings <1024 length");
-		// and convert to ansi
+		// convert to ansi
 		ANSICHAR ansiStr[1024];
 		INT idx;
-		for (idx = 0; idx < logString.Len(); idx++)
+		for (idx = 0; idx < logString.Len() && idx < 1024 - 3; idx++)
 		{
 			ansiStr[idx] = ToAnsi((*logString)[idx]);
 		}
+
 		// null terminate
+		ansiStr[idx++] = '\r';
+		ansiStr[idx++] = '\n';
 		ansiStr[idx] = '\0';
+
 		// and serialize to the archive
-		((FArchive*)LogAr)->Serialize(ansiStr, idx);
-		((FArchive*)LogAr)->Flush();
+		ArchivePtr->Serialize(ansiStr, idx);
+		if (bFlushEachWrite)
+		{
+			ArchivePtr->Flush();
+		}
 	}
+#endif
 }
 
-void AFileLog::execLogf( FFrame& Stack, RESULT_DECL )
+void AFileWriter::BeginDestroy()
 {
-	P_GET_STR(logString);
-	P_FINISH;
-	Logf(logString);
+	// make sure the file has been closed
+	CloseFile();
+
+	Super::BeginDestroy();
 }

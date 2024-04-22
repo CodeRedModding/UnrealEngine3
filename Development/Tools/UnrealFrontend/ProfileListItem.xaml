@@ -1,0 +1,49 @@
+﻿<!--
+  Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+-->
+<UserControl x:Class="UnrealFrontend.ProfileListItem"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	x:Name="This"
+    >
+	
+	<!--
+	NOTE: The ProfileListItem's DataContext is the Profile that it is visualizing.
+	Bindings will look at the Profile by default.
+	-->
+
+	<DockPanel>
+		
+		<StackPanel Margin="3" DockPanel.Dock="Right">
+			<StackPanel Orientation="Horizontal" >
+
+				<StackPanel Orientation="Horizontal">
+					<!-- Current profile indicator -->
+					<Ellipse Margin="2,0" VerticalAlignment="Center" Height="8" Width="8"
+							 Fill="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
+							 Visibility="{Binding Path=IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListBoxItem}}, Converter={StaticResource BoolToVis_Hide}}"/>
+					<!-- Profile Name -->
+					<TextBlock x:Name="mNameTextBlock" Text="{Binding Path=Name}"/>
+				</StackPanel>
+
+				<!-- TextBox for profile renaming -->
+				<TextBox x:Name="mRenameTextBox"
+						 Text="{Binding Path=Name}"
+						 Visibility="Collapsed"
+						 PreviewKeyDown="OnRenameTextboxPreviewKeyDown"
+						 LostFocus="OnRenameTextboxLostFocus"/>
+
+			</StackPanel>
+			
+			<!-- Extra profile details -->
+			<StackPanel Orientation="Horizontal">
+				<TextBlock Text="{Binding Path=SelectedGameName}" Margin="12,0,3,0" Opacity="0.5"/>
+				<TextBlock Text="on" Margin="3,0" Opacity="0.5"/>
+				<TextBlock Text="{Binding Path=TargetPlatformType}" Margin="3,0" Opacity="0.5"/>
+			</StackPanel>
+			
+		</StackPanel>
+		
+	</DockPanel>
+	
+</UserControl>

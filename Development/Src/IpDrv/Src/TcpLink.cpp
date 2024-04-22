@@ -1,15 +1,11 @@
 /*=============================================================================
-	IpDrv.cpp: Unreal TCP/IP driver.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-Revision history:
-	* Implemented by M.Michon
-	* Created by Tim Sweeney.
-	* Rewritten by Brandon Reinhart.
-	* Multiple inbound connections added by Jack Porter.
+	TcpLink.cpp: Simple TCP socket implementation.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "UnIpDrv.h"
+
+#if WITH_UE3_NETWORKING
 
 /*-----------------------------------------------------------------------------
 	ATcpLink functions.
@@ -30,137 +26,131 @@ ATcpLink::ATcpLink()
 //
 void ATcpLink::PostScriptDestroyed()
 {
-	if( GetSocket() != INVALID_SOCKET )
-		closesocket(GetSocket());
-	if( RemoteSocket != INVALID_SOCKET )
-		closesocket(RemoteSocket);
+	if( Socket != NULL )
+	{
+		GSocketSubsystem->DestroySocket(Socket);
+		Socket = NULL;
+	}
+	if( RemoteSocket != NULL )
+	{
+		GSocketSubsystem->DestroySocket(RemoteSocket);
+		RemoteSocket = NULL;
+	}
 	Super::PostScriptDestroyed();
 }
 
 //
 // BindPort: Binds a free port or optional port specified in argument one.
 //
-void ATcpLink::execBindPort( FFrame& Stack, RESULT_DECL )
+INT ATcpLink::BindPort(INT PortNum,UBOOL bUseNextAvailable)
 {
-	P_GET_INT_OPTX(InPort,0);
-	P_GET_UBOOL_OPTX(bUseNextAvailable,0);
-	P_FINISH;
-
 	if( GIpDrvInitialized )
 	{
-		if( GetSocket() == INVALID_SOCKET )
+		if( GetSocket() == NULL )
 		{
-			Socket = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
-			SetSocketReuseAddr( GetSocket() );
-			if( GetSocket() != INVALID_SOCKET )
+			FSocket* NewSocket = GSocketSubsystem->CreateStreamSocket(TEXT("TCPLink Connection"));
+			NewSocket->SetReuseAddr(TRUE);
+			
+			if( NewSocket != NULL )
 			{
 				//if( SetSocketLinger( GetSocket()) )
 				{
-					sockaddr_in Addr;
-					Addr.sin_family      = AF_INET;
-					Addr.sin_addr        = getlocalbindaddr( Stack );
-					Addr.sin_port        = htons(InPort);
-					INT boundport = bindnextport( Socket, &Addr, bUseNextAvailable ? 20 : 1, 1 );
+					FInternetIpAddr IpAddr;
+					IpAddr.SetIp(getlocalbindaddr(*GWarn));
+					IpAddr.SetPort(PortNum);
+
+					INT boundport = bindnextport( NewSocket, IpAddr, bUseNextAvailable ? 20 : 1, 1 );
 					if( boundport )
 					{
-						if( SetNonBlocking( Socket ) )
+						if( NewSocket->SetNonBlocking(TRUE) )
 						{
 							// Successfully bound the port.
-							Port = ntohs( Addr.sin_port );
+							IpAddr.GetPort(Port);
 							LinkState = STATE_Ready;
-							*(INT*)Result = boundport;
-							return;
+							RecvBuf.Empty();
+							Socket = NewSocket;
+							return boundport;
 						}
-						else Stack.Logf( TEXT("BindPort: ioctlsocket or fcntl failed") );
+						else 
+						{
+							debugf( TEXT("BindPort: ioctlsocket or fcntl failed") );
+						}
 					}
-					else Stack.Logf( TEXT("BindPort: bind failed") );
+					else
+					{
+						debugf( TEXT("BindPort: bind failed") );
+					}
 				}
-				//else Stack.Logf( TEXT("BindPort: setsockopt failed") );
+				//else debugf( TEXT("BindPort: setsockopt failed") );
+				NewSocket->Close();
 			}
-			else Stack.Logf( TEXT("BindPort: socket failed") );
-			closesocket(GetSocket());
-			GetSocket()=0;
+			else 
+			{
+				debugf( TEXT("BindPort: socket failed") );
+			}
 		}
-		else Stack.Logf( TEXT("BindPort: already bound") );
+		else 
+		{
+			debugf( TEXT("BindPort: already bound") );
+		}
 	}
-	else Stack.Logf( TEXT("BindPort: winsock failed") );
-	*(INT*)Result = 0;
+	else 
+	{
+		debugf( TEXT("BindPort: IpDrv is not initialized") );
+	}
+	return 0;
 }
 
 //
 // IsConnected: Returns true if connected.
 //
-void ATcpLink::execIsConnected( FFrame& Stack, RESULT_DECL )
+UBOOL ATcpLink::IsConnected()
 {
-	P_FINISH;
-
-	fd_set SocketSet;
-	TIMEVAL SelectTime = {0, 0};
-	INT Error;
-
 	if ( LinkState == STATE_Initialized )
 	{
-		*(DWORD*)Result = 0;
-		return;
+		return FALSE;
 	}
 
-	if ( (LinkState == STATE_Listening) && (GetSocket() != INVALID_SOCKET) )
+	if ( (LinkState == STATE_Listening) && (GetRemoteSocket() != NULL) )
 	{
-		FD_ZERO( &SocketSet );
-		FD_SET( RemoteSocket, &SocketSet );
-		Error = select( RemoteSocket + 1, 0, &SocketSet, 0, &SelectTime );
-		if (( Error != SOCKET_ERROR ) && ( Error != 0 )) {
-			*(DWORD*)Result = 1;
-			return;
-		}
+		if (GetRemoteSocket()->GetConnectionState() == SCS_Connected)
+			return TRUE;
 	}
 
-	if ( GetSocket() != INVALID_SOCKET )
+	if ( GetSocket() != NULL )
 	{
-		FD_ZERO( &SocketSet );
-		FD_SET( Socket, &SocketSet );
-		Error = select( Socket + 1, 0, &SocketSet, 0, &SelectTime );
-		if (( Error != SOCKET_ERROR ) && ( Error != 0 )) {
-			*(DWORD*)Result = 1;
-			return;
-		}
+		if (GetSocket()->GetConnectionState() == SCS_Connected)
+			return TRUE;
 	}
 
-	*(DWORD*)Result = 0;
+	return FALSE;
 }
 
 //
 // Listen: Puts this object in a listening state.
 //
-void ATcpLink::execListen( FFrame& Stack, RESULT_DECL )
+UBOOL ATcpLink::Listen()
 {
-	P_FINISH;
-
-	INT Error;
-	if ( GIpDrvInitialized && (GetSocket() != INVALID_SOCKET) )
+	if ( GIpDrvInitialized && (GetSocket() != NULL) )
 	{
 		if( LinkState != STATE_ListenClosing )
 		{
 			if ( LinkState != STATE_Ready ) {
-				*(DWORD*)Result = 0;
-				return;
+				return FALSE;
 			}
-			Error = listen(Socket, AcceptClass ? 10 : 1);
-			if (Error == SOCKET_ERROR)
+
+			if (GetSocket()->Listen(AcceptClass ? 10 : 1) == FALSE)
 			{
-				Stack.Logf( TEXT("Listen: listen failed") );
-				*(DWORD*)Result = 0;
-				return;
+				debugf( TEXT("Listen: listen failed") );
+				return FALSE;
 			}
 		}
 		LinkState = STATE_Listening;
 		SendFIFO.Empty();
-		*(DWORD*)Result = 1;
-		return;
+		return TRUE;
 	}
 
-	*(DWORD*)Result = 1;
-
+	return TRUE;
 }
 
 //
@@ -170,7 +160,7 @@ UBOOL ATcpLink::Tick( FLOAT DeltaTime, enum ELevelTick TickType )
 {
 	UBOOL Result = Super::Tick( DeltaTime, TickType );
 
-	if( GetSocket() != INVALID_SOCKET )
+	if( GetSocket() != NULL )
 	{
 		switch( LinkState )
 		{
@@ -194,6 +184,13 @@ UBOOL ATcpLink::Tick( FLOAT DeltaTime, enum ELevelTick TickType )
 			case STATE_Connected:
 				PollConnections();
 				FlushSendBuffer();
+				/*while (FlushSendBuffer())
+				{
+					if (GSocketSubsystem->GetLastErrorCode() != SE_EWOULDBLOCK)
+					{
+						break;
+					}
+				};*/
 				break;
 			case STATE_ConnectClosePending:
 			case STATE_ListenClosePending:
@@ -204,7 +201,7 @@ UBOOL ATcpLink::Tick( FLOAT DeltaTime, enum ELevelTick TickType )
 		}
 	}
 
-	INT* CheckSocket;
+	FSocket** CheckSocket;
 	switch( LinkState )
 	{
 		case STATE_Connecting:
@@ -212,48 +209,45 @@ UBOOL ATcpLink::Tick( FLOAT DeltaTime, enum ELevelTick TickType )
 		case STATE_ConnectClosing:
 		case STATE_ConnectClosePending:
 		case STATE_Connected:
-			CheckSocket = &Socket;
+			CheckSocket = (FSocket**)&Socket;
 			break;
 		case STATE_ListenClosing:
 		case STATE_ListenClosePending:
 		case STATE_Listening:
-			CheckSocket = &RemoteSocket;
+			CheckSocket = (FSocket**)&RemoteSocket;
 			break;
 		default:
 			return Result;
 	}
-	if (*CheckSocket != INVALID_SOCKET)
+
+	if (*CheckSocket != NULL)
 	{
 		// See if the socket needs to be closed.
-		TIMEVAL SelectTime = {0, 0};
-		SOCKET s;
-		fd_set SocketSet;
-		FD_ZERO(&SocketSet);
-		FD_SET( *CheckSocket, &SocketSet );
-		s = select( *CheckSocket + 1, &SocketSet, 0, 0, &SelectTime );
-		if (( s != SOCKET_ERROR ) && ( s != 0 ))
+		UINT PendingDataSize = 0;
+		if ((*CheckSocket)->HasPendingData(PendingDataSize))
 		{
-			u_long numbytes;
-			ioctlsocket( *CheckSocket, FIONREAD, &numbytes );
-			if (numbytes == 0)
+			if (PendingDataSize == 0)
 			{
 				// Disconnect
 				if (LinkState != STATE_Listening)
+				{
 					LinkState = STATE_Initialized;
-				closesocket(*CheckSocket);
-				*CheckSocket = INVALID_SOCKET;
+				}
+				(*CheckSocket)->Close();
+				(*CheckSocket) = NULL;
 				eventClosed();
 			}
-			if (numbytes == SOCKET_ERROR)
-				if (WSAGetLastError() != WSAEWOULDBLOCK)
+			else if ((PendingDataSize == (UINT)SOCKET_ERROR) && (GSocketSubsystem->GetLastErrorCode() != SE_EWOULDBLOCK)) 
+			{
+				// Socket error, disconnect.
+				if (LinkState != STATE_Listening)
 				{
-					// Socket error, disconnect.
-					if (LinkState != STATE_Listening)
-						LinkState = STATE_Initialized;
-					closesocket(*CheckSocket);
-					*CheckSocket = INVALID_SOCKET;
-					eventClosed();
+					LinkState = STATE_Initialized;
 				}
+				(*CheckSocket)->Close();
+				(*CheckSocket) = NULL;
+				eventClosed();
+			}
 		}
 	}
 
@@ -268,55 +262,53 @@ UBOOL ATcpLink::Tick( FLOAT DeltaTime, enum ELevelTick TickType )
 //
 void ATcpLink::CheckConnectionQueue()
 {
-	fd_set SocketSet;
-	TIMEVAL SelectTime = {0, 0};
-	INT Error;
-	INT NewSocket;
-	SOCKADDR_IN ForeignHost;
-
-	FD_ZERO( &SocketSet );
-	FD_SET( GetSocket(), &SocketSet );
-	// If listening, check for a queued connection to accept.
-	Error = select( GetSocket() + 1, &SocketSet, 0, 0, &SelectTime);
-	if ( Error == SOCKET_ERROR ) {
-		debugf( NAME_Log, TEXT("CheckConnectionQueue: Error while checking socket status. %i"), WSAGetLastError());
+    UBOOL bHasPendingConnection = FALSE;
+	if (GetSocket()->HasPendingConnection(bHasPendingConnection) == FALSE)
+	{
+		debugf( NAME_Log, TEXT("CheckConnectionQueue: Error while checking socket status. %s"), *GSocketSubsystem->GetSocketError());
 		return;
 	}
-	if ( Error == 0 ) {
+
+	if (!bHasPendingConnection)
+	{
 		// debugf( NAME_Log, "CheckConnectionQueue: No connections waiting." );
 		return;
 	}
-	__SIZE_T__ i = sizeof(SOCKADDR);
-	NewSocket = accept( Socket, (SOCKADDR*) &ForeignHost, &i );
-	if ( NewSocket == INVALID_SOCKET ) {
-		debugf( NAME_Log, TEXT("CheckConnectionQueue: Failed to accept queued connection: %i"), WSAGetLastError() );
+
+	FSocket* NewSocket = GetSocket()->Accept(TEXT("TCPLink accept connection"));
+
+	if ( NewSocket == NULL ) {
+		debugf( NAME_Log, TEXT("CheckConnectionQueue: Failed to accept queued connection: %s"), *GSocketSubsystem->GetSocketError());
 		return;
 	}
 
-	if ( !AcceptClass && RemoteSocket != INVALID_SOCKET ) {
+	if ( !AcceptClass && RemoteSocket != NULL ) {
 		debugf( NAME_Log, TEXT("Discarding redundant connection attempt.") );
 		debugf( NAME_Log, TEXT("Current socket handle is %i"), RemoteSocket);
+		NewSocket->Close(); //??
 		return;
 	}
 
-	SetNonBlocking(NewSocket);
+	NewSocket->SetNonBlocking(TRUE);
 
 	if( AcceptClass )
 	{
 		if( AcceptClass->IsChildOf(ATcpLink::StaticClass()) )
 		{
-			ATcpLink *Child = Cast<ATcpLink>( GetLevel()->SpawnActor( AcceptClass, NAME_None, Location, Rotation, NULL, 0,0,this,Instigator ) );
+			ATcpLink *Child = Cast<ATcpLink>( GWorld->SpawnActor( AcceptClass, NAME_None, Location, Rotation, NULL, 0,0,this,Instigator ) );
 			if (!Child)
-			  debugf( NAME_Log, TEXT("Could not spawn AcceptClass!") );
+			{
+				debugf( NAME_Log, TEXT("Could not spawn AcceptClass!") );
+			}
 			else
 			{
-			  Child->LinkState = STATE_Connected;
-			  Child->LinkMode = LinkMode;
-			  Child->Socket = NewSocket;
-			  IpGetInt( ForeignHost.sin_addr, Child->RemoteAddr.Addr );
-			  Child->RemoteAddr.Addr = htonl( Child->RemoteAddr.Addr );
-			  Child->RemoteAddr.Port = ForeignHost.sin_port;
-			  Child->eventAccepted();
+				Child->LinkState = STATE_Connected;
+				Child->LinkMode = LinkMode;
+				Child->Socket = NewSocket;
+
+				Child->RemoteAddr = NewSocket->GetAddress();
+
+				Child->eventAccepted();
 			}
 		}
 		else
@@ -326,134 +318,119 @@ void ATcpLink::CheckConnectionQueue()
 	}
 
 	RemoteSocket = NewSocket;
-	IpGetInt( ForeignHost.sin_addr, RemoteAddr.Addr );
-	RemoteAddr.Addr = htonl( RemoteAddr.Addr );
-	RemoteAddr.Port = ForeignHost.sin_port;
-	eventAccepted();
+	RemoteAddr = NewSocket->GetAddress();
 
+	eventAccepted();
 }
 
 //
 // PollConnections: Poll a connection for pending data.
 //
 void ATcpLink::PollConnections()
-{
-	if ( ReceiveMode == RMODE_Manual )
+{				
+	//Grab the right socket
+	FSocket* TestSocket = GetRemoteSocket();
+	if ( TestSocket == NULL )
 	{
-		INT S;
-		fd_set SocketSet;
-		TIMEVAL SelectTime = {0, 0};
-		INT Error;
-
-		FD_ZERO( &SocketSet );
-		if ( RemoteSocket == INVALID_SOCKET ) {
-			S = Socket;
-			FD_SET( Socket, &SocketSet );
-		} else {
-			S = RemoteSocket;
-			FD_SET( RemoteSocket, &SocketSet );
-		}
-
-		Error = select( S + 1, &SocketSet, 0, 0, &SelectTime);
-
-		if (( Error == 0 ) || ( Error == SOCKET_ERROR )) {
-			DataPending = 0;
-		} else {
-			DataPending = 1;
-		}
-	} else if ( ReceiveMode == RMODE_Event ) {
-		if ( LinkMode == MODE_Text ) {
-			ANSICHAR Str[1000];
-			INT BytesReceived;
-
-			for ( INT i=0; i<1000; i++ )
-				Str[i] = 0;
-
-			if ( RemoteSocket != INVALID_SOCKET )
-				BytesReceived = recv( (SOCKET) RemoteSocket, Str, sizeof(Str) - 1, 0 );
-			else
-				BytesReceived = recv( (SOCKET) Socket, Str, sizeof(Str) - 1, 0 );
-
-			if( BytesReceived != SOCKET_ERROR )
-			{
-				Str[BytesReceived]=0;
-				eventReceivedText( ANSI_TO_TCHAR(Str) );
-			}
-		} else if ( LinkMode == MODE_Line ) {
-			ANSICHAR Str[1000];
-			INT BytesReceived;
-
-			for ( INT i=0; i<1000; i++ )
-				Str[i] = 0;
-
-			if ( RemoteSocket != INVALID_SOCKET )
-				BytesReceived = recv( (SOCKET) RemoteSocket, Str, sizeof(Str) - 1, 0 );
-			else
-				BytesReceived = recv( (SOCKET) Socket, Str, sizeof(Str) - 1, 0 );
-
-			if( BytesReceived != SOCKET_ERROR )
-			{
-				Str[BytesReceived]=0;
-				eventReceivedLine( ANSI_TO_TCHAR(Str) );
-			}
-		} else if ( LinkMode == MODE_Binary ) {
-			BYTE Str[1000];
-			INT BytesReceived;
-
-			for ( INT i=0; i<1000; i++ )
-				Str[i] = 0;
-
-			if ( RemoteSocket != INVALID_SOCKET )
-				BytesReceived = recv( (SOCKET) RemoteSocket, (char*) Str, sizeof(Str) - 1, 0 );
-			else
-				BytesReceived = recv( (SOCKET) Socket, (char*) Str, sizeof(Str) - 1, 0 );
-
-			if( BytesReceived != SOCKET_ERROR )
-				eventReceivedBinary( BytesReceived, Str );
-		}
+		TestSocket = GetSocket();	
 	}
 
+	if ( ReceiveMode == RMODE_Manual )
+	{
+		if (TestSocket && TestSocket->GetConnectionState() == SCS_Connected)
+		{
+			DataPending = 1;
+		}
+		else
+		{
+			DataPending = 0;
+		}
+	}
+	else if ( ReceiveMode == RMODE_Event )
+	{
+		switch( LinkMode )
+		{
+		case MODE_Text:
+			{
+				ANSICHAR Str[1000];
+				INT BytesReceived;
+				appMemzero(Str, sizeof(Str));
+
+				UBOOL Success = TestSocket->Recv((BYTE*)Str, sizeof(Str) - 1, BytesReceived);
+				if( Success && BytesReceived >= 0 )
+				{
+					Str[BytesReceived]=0;
+					eventReceivedText( ANSI_TO_TCHAR(Str) );
+				}
+			}
+			break;
+		case MODE_Line:
+			{
+				ANSICHAR Str[1000];
+				INT BytesReceived;
+				appMemzero(Str, sizeof(Str));
+
+				UBOOL Success = TestSocket->Recv((BYTE*)Str, sizeof(Str) - 1, BytesReceived);
+
+				if( Success && BytesReceived >= 0 )
+				{
+					Str[BytesReceived]=0;
+					FString fstr, SplitStr;
+					switch (InLineMode)
+					{
+						case LMODE_DOS:		SplitStr = TEXT("\r\n"); break;
+						case LMODE_auto:
+						case LMODE_UNIX:	SplitStr = TEXT("\n"); break;
+						case LMODE_MAC:		SplitStr = TEXT("\n\r"); break;
+					}
+					RecvBuf = FString::Printf(TEXT("%s%s"), *RecvBuf, ANSI_TO_TCHAR(Str));
+					while (RecvBuf.Split(SplitStr, &fstr, &RecvBuf))
+					{
+						if (InLineMode == LMODE_auto)
+						{
+							if (fstr.Len() > 0 && fstr[fstr.Len()-1] == '\r') // DOS fix
+								fstr = fstr.Left(fstr.Len()-1);
+							if (RecvBuf.Len() > 0 && RecvBuf[0] == '\r') // MAC fix
+								RecvBuf = RecvBuf.Mid(1);
+						}
+						eventReceivedLine( fstr );
+					}
+				}
+			}
+			break;
+		case MODE_Binary:
+			{
+				BYTE Str[255];
+				INT BytesReceived;
+				appMemzero(Str, sizeof(Str));
+
+				UBOOL Success = TestSocket->Recv(Str, sizeof(Str) - 1, BytesReceived);
+
+				if( Success && BytesReceived >= 0 )
+				{
+					eventReceivedBinary( BytesReceived, Str );
+				}
+			}
+			break;
+		}
+	}
 }
 
 //
 // Open: Open a connection to a foreign host.
 //
-void ATcpLink::execOpen( FFrame& Stack, RESULT_DECL )
+UBOOL ATcpLink::Open(FIpAddr Addr)
 {
-	P_GET_STRUCT( FIpAddr, Addr );
-	P_FINISH;
-
-	SOCKADDR_IN RemoteHost;
-	INT Error;
-
-	if ( GIpDrvInitialized && (GetSocket() != INVALID_SOCKET) )
+	if ( GIpDrvInitialized && (GetSocket() != NULL) )
 	{
-		RemoteHost.sin_family      = AF_INET;
-		RemoteHost.sin_port		   = htons(Addr.Port);
-		RemoteHost.sin_addr.s_addr = htonl(Addr.Addr);
-		Error = connect( GetSocket(), (SOCKADDR*) &RemoteHost, sizeof(RemoteHost) );
-		if ( Error == SOCKET_ERROR ) {
-            int err = WSAGetLastError();
-            bool ignoreError;
-            #if __linux__
-                ignoreError = ((err == EINPROGRESS) || (err == EWOULDBLOCK));
-            #else
-                ignoreError = (err == WSAEWOULDBLOCK);
-            #endif
-
-			if ( !ignoreError ) {
-				debugf(NAME_Log, TEXT("Open: An error occured while attempting to connect: %i"), WSAGetLastError());
-				*(DWORD*) Result = 0;
-				return;
-			}
-		}
-
+		FInternetIpAddr IpAddr;
+		IpAddr.SetAddress(Addr);
+		GetSocket()->Connect(IpAddr);
 		LinkState = STATE_Connecting;
 		SendFIFO.Empty();
 	}
 
-	*(DWORD*) Result = 1;
-
+	return TRUE;
 }
 
 //
@@ -462,57 +439,57 @@ void ATcpLink::execOpen( FFrame& Stack, RESULT_DECL )
 //
 void ATcpLink::CheckConnectionAttempt()
 {
-	fd_set SocketSet;
-	TIMEVAL SelectTime = {0, 0};
-	INT Error;
-
-	if (GetSocket() == INVALID_SOCKET)
+	if (GetSocket() == NULL)
 		return;
 
-	FD_ZERO( &SocketSet );
-	FD_SET( GetSocket(), &SocketSet );
-	// Check for writability.  If the socket is writable, the
-	// connection attempt succeeded.
-	Error = select( GetSocket() + 1, 0, &SocketSet, 0, &SelectTime);
-
-	if ( Error == SOCKET_ERROR ) {
+	ESocketConnectionState ConnectState = GetSocket()->GetConnectionState();
+	if (ConnectState == SCS_Connected)
+	{
+		// Socket is writable, so we are connected.
+		LinkState = STATE_Connected;
+		eventOpened();
+	}
+	else if (ConnectState == SCS_ConnectionError)
+	{
 		debugf( NAME_Log, TEXT("CheckConnectionAttempt: Error while checking socket status.") );
 		return;
-	} else if ( Error == 0 ) {
-		//debugf( NAME_Log, "CheckConnectionAttempt: Connection attempt has not yet completed." );
+	}
+	else
+	{
+		debugf( NAME_Log, TEXT("CheckConnectionAttempt: Connection attempt has not yet completed.") );
 		return;
 	}
-
-	// Socket is writable, so we are connected.
-	LinkState = STATE_Connected;
-	eventOpened();
-
 }
 
 //
 // Close: Closes the specified connection.  If no connection
 // is specified, closes the "main" connection..
 //
-void ATcpLink::execClose( FFrame& Stack, RESULT_DECL )
+UBOOL ATcpLink::Close()
 {
-	P_FINISH;
-
-	if ( GIpDrvInitialized && (GetSocket() != INVALID_SOCKET) )
+	if ( GIpDrvInitialized && (GetSocket() != NULL) )
 	{
 		if ( LinkState == STATE_Listening )
 		{
 			// if we're listening and not connected, just go into the ListenClosing state
 			// to stop performing accept()'s.  If we're listening and connected, we stay in
 			// the Listening state to accept further connections.
-			if( RemoteSocket != INVALID_SOCKET )
+			if( RemoteSocket != NULL )
+			{
 				LinkState = STATE_ListenClosePending;
+			}
 			else
+			{
 				LinkState = STATE_ListenClosing;
+			}
 		}
-		else
+		else if (( LinkState != STATE_ListenClosing ) && ( LinkState != STATE_ConnectClosing ))
+		{
 			LinkState = STATE_ConnectClosePending;
+		}
 	}
-	*(DWORD*) Result = 1;
+
+	return TRUE;
 }
 
 //
@@ -520,27 +497,41 @@ void ATcpLink::execClose( FFrame& Stack, RESULT_DECL )
 //
 void ATcpLink::ShutdownConnection()
 {
-	if ( GIpDrvInitialized && (GetSocket() != INVALID_SOCKET) )
+	if ( GIpDrvInitialized && (GetSocket() != NULL) )
 	{
-		INT Error = 0;
+		UBOOL Success = FALSE;
 		if( LinkState == STATE_ListenClosePending )
 		{
-			Error = shutdown( (SOCKET) RemoteSocket, 2 );
-			if( Error != SOCKET_ERROR )
-				LinkState = STATE_ListenClosing;
+			//Error = shutdown( (SOCKET) RemoteSocket, SD_BOTH );
+			if (RemoteSocket != NULL)
+			{
+				Success = RemoteSocket->Close(); //not the same as shutdown
+
+				LinkState = STATE_Initialized;
+				RemoteSocket = NULL;
+				eventClosed();
+			}
 		}
-		else
-		if( LinkState == STATE_ConnectClosePending )
+		else if( LinkState == STATE_ConnectClosePending )
 		{
-			Error = shutdown( (SOCKET) Socket, 2 );
-			if( Error != SOCKET_ERROR )
-				LinkState = STATE_ConnectClosing;
+			//Error = shutdown( (SOCKET) Socket, SD_BOTH );
+			if (Socket != NULL)
+			{
+				Success = Socket->Close(); //not the same as shutdown
+
+				LinkState = STATE_Initialized;
+				Socket = NULL;
+				eventClosed();
+			}
 		}
-		if( Error == SOCKET_ERROR )
+		if (!Success)
 		{
-			debugf( NAME_Log, TEXT("Close: Error while attempting to close socket.") );
-			if ( WSAGetLastError() == WSAENOTSOCK )
+			INT ErrorCode = GSocketSubsystem->GetLastErrorCode();
+			debugf( NAME_Log, TEXT("Close: Error while attempting to close socket. (%d)"), ErrorCode );
+			if (ErrorCode == SE_ENOTSOCK)
+			{
 				debugf( NAME_Log, TEXT("Close: Tried to close an invalid socket.") );
+			}
 		}
 	}
 }
@@ -548,35 +539,40 @@ void ATcpLink::ShutdownConnection()
 //
 // Read text
 //
-void ATcpLink::execReadText( FFrame& Stack, RESULT_DECL )
+INT ATcpLink::ReadText(FString& Str)
 {
-	P_GET_STR_REF( Str );
-	P_FINISH;
-
 	INT BytesReceived;
-	if( GIpDrvInitialized && (GetSocket() != INVALID_SOCKET) )
+	if( GIpDrvInitialized && (GetSocket() != NULL) )
 	{
+		//Grab the right socket
+		FSocket* TestSocket = GetRemoteSocket();
+		if ( TestSocket == NULL )
+		{
+			TestSocket = GetSocket();	
+		}
+
 		if( LinkState==STATE_Listening || LinkState==STATE_Connected )
 		{
 			BYTE Buffer[MAX_STRING_CONST_SIZE];
 			appMemset( Buffer, 0, sizeof(Buffer) );
-			if( RemoteSocket != INVALID_SOCKET )
-				BytesReceived = recv( (SOCKET)RemoteSocket, (char*)Buffer, sizeof(Buffer) - 1, 0 );
-			else
-				BytesReceived = recv( (SOCKET)Socket, (char*)Buffer, sizeof(Buffer) - 1, 0 );
-			if( BytesReceived == SOCKET_ERROR )
+
+			UBOOL Success = TestSocket->Recv(Buffer, sizeof(Buffer) - 1, BytesReceived);
+			
+			if (!Success)
 			{
-				*(DWORD*)Result = 0;
-				if( WSAGetLastError() != WSAEWOULDBLOCK )
+				if (GSocketSubsystem->GetLastErrorCode() != SE_EWOULDBLOCK)
+				{
 					debugf( NAME_Log, TEXT("ReadText: Error reading text.") );
-				return;
+				}
+				return 0;
 			}
-			*Str = ANSI_TO_TCHAR((ANSICHAR*)Buffer);
-			*(DWORD*)Result = BytesReceived;
-			return;
+
+			Str = ANSI_TO_TCHAR((ANSICHAR*)Buffer);
+			return BytesReceived;
 		}
 	}
-	*(DWORD*)Result = 0;
+	
+	return 0;
 }
 
 //
@@ -589,16 +585,24 @@ UBOOL ATcpLink::FlushSendBuffer()
 		 (LinkState == STATE_ConnectClosePending) ||
 		 (LinkState == STATE_ListenClosePending))
 	{
+		//Grab the right socket
+		FSocket* TestSocket = GetRemoteSocket();
+		if ( TestSocket == NULL )
+		{
+			TestSocket = GetSocket();	
+		}
+
 		INT Count = Min<INT>(SendFIFO.Num(), 512);
 		INT BytesSent;
+
 		while(Count > 0)
-		{
-			if ( RemoteSocket != INVALID_SOCKET )
-				BytesSent = send( (SOCKET) RemoteSocket, (char*)&SendFIFO(0), Count, 0 );
-			else
-				BytesSent = send( (SOCKET) Socket, (char*)&SendFIFO(0), Count, 0 );
-			if ( BytesSent == SOCKET_ERROR )
-				return 1;
+		{					  
+			UBOOL Success = TestSocket->Send(&SendFIFO(0), Count, BytesSent);
+			if (!Success)
+			{
+				  return 1;
+			}
+
 			SendFIFO.Remove(0, BytesSent);
 			Count = Min<INT>(SendFIFO.Num(), 512);
 		}
@@ -609,85 +613,96 @@ UBOOL ATcpLink::FlushSendBuffer()
 //
 // Send raw binary data.
 //
-void ATcpLink::execSendBinary( FFrame& Stack, RESULT_DECL )
+INT ATcpLink::SendBinary(INT Count, BYTE* B)
 {
-	P_GET_INT(Count);
-	P_GET_ARRAY_REF(BYTE,B);
-	P_FINISH;
-
-	if ( GIpDrvInitialized && (GetSocket() != INVALID_SOCKET) )
+	if ( GIpDrvInitialized && (GetSocket() != NULL) )
 	{
 		INT Index = SendFIFO.Add( Count );
 		for(INT i=0; i < Count; i++)
 			SendFIFO(i+Index) = B[i];
 
-		*(DWORD*)Result = Count;
 		FlushSendBuffer();
-		return;
+		return Count;
 	}
-	*(DWORD*)Result = 0;
+	
+	return 0;
 }
 
 //
 // SendText: Sends text string.
 // Appends a cr/lf if LinkMode=MODE_Line.
 //
-void ATcpLink::execSendText( FFrame& Stack, RESULT_DECL )
+INT ATcpLink::SendText(const FString& Str)
 {
-	P_GET_STR( Str );
-	P_FINISH;
-
-	*(DWORD*)Result = 0;
-	if( GIpDrvInitialized && (GetSocket() != INVALID_SOCKET) )
+	if( GIpDrvInitialized && (GetSocket() != NULL) )
 	{
+		FString NewStr(Str);
 		if( LinkMode == MODE_Line )
-			Str += TEXT("\r\n");
-		ANSICHAR* p = TCHAR_TO_ANSI(*Str);
-		INT Count = ::strlen(p);
+		{
+			switch (OutLineMode)
+			{
+				case LMODE_auto:
+				case LMODE_DOS:		NewStr = Str + TEXT("\r\n"); break;
+				case LMODE_UNIX:	NewStr = Str + TEXT("\n"); break;
+				case LMODE_MAC:		NewStr = Str + TEXT("\n\r"); break;
+			}
+		}
+
+		INT Count = NewStr.Len();
 		INT Index = SendFIFO.Add( Count );
-		appMemcpy( &SendFIFO(Index), p, Count );
-		*(DWORD*)Result = Count;
+		//debugf(TEXT("--------------------------SendText size %d chars"), Count);
+		//debugf(TEXT("%s"), *FString(TCHAR_TO_ANSI(*NewStr)));
+		//debugf(TEXT("------------------------------------------------"), Count);
+		appMemcpy( &SendFIFO(Index), TCHAR_TO_ANSI(*NewStr), Count );
 		FlushSendBuffer();
-		return;
+		return Count;
 	}
-	*(DWORD*)Result = 0;
+	
+	return 0;
+}
+
+/** Script interface to ReadBinary
+*/
+INT ATcpLink::ReadBinary(INT Count, BYTE* B)
+{
+	return NativeReadBinary(Count, B);
 }
 
 //
 // Read Binary.
 //
-void ATcpLink::execReadBinary( FFrame& Stack, RESULT_DECL )
-{
-	P_GET_INT(Count);
-	P_GET_ARRAY_REF(BYTE,B);
-	P_FINISH;
 
+INT ATcpLink::NativeReadBinary(INT Count, BYTE*& B)
+{
 	int BytesReceived;
 
-	if ( GIpDrvInitialized && (GetSocket() != INVALID_SOCKET) )
+	if ( GIpDrvInitialized && (GetSocket() != NULL) )
 	{
 		if ( (LinkState == STATE_Listening) || (LinkState == STATE_Connected) )
 		{
-			if ( RemoteSocket != INVALID_SOCKET )
-				BytesReceived = recv( (SOCKET) RemoteSocket, (char *) B, Count, 0 );
-			else
-				BytesReceived = recv( (SOCKET) Socket, (char *) B, Count, 0 );
-			if ( BytesReceived == SOCKET_ERROR ) {
-				*(DWORD*) Result = 0;
-				if ( WSAGetLastError() != WSAEWOULDBLOCK )
-					debugf( NAME_Log, TEXT("ReadBinary: Error reading bytes.") );
-				return;
+			//Grab the right socket
+			FSocket* TestSocket = GetRemoteSocket();
+			if ( TestSocket == NULL )
+			{
+				TestSocket = GetSocket();	
 			}
-			*(DWORD*) Result = BytesReceived;
-			return;
+
+			UBOOL Success = TestSocket->Recv(B, Count, BytesReceived);
+
+			if (!Success)
+			{
+				if (GSocketSubsystem->GetLastErrorCode() != SE_EWOULDBLOCK)
+				{
+					debugf( NAME_Log, TEXT("ReadBinary: Error reading bytes.") );
+				}
+				return 0;
+			}
+
+			return BytesReceived;
 		}
 	}
 
-	*(DWORD*)Result = 0;
-
+	return 0;
 }
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
-
+#endif

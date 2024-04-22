@@ -1,0 +1,48 @@
+; We current cannot mix and match Win32 and Win64 and even though iPhone can be mixed in, it
+; hogs the local execution units if XGE is enabled.
+
+; Win32
+ExampleGame Win32 Debug
+ExampleGame Win32 Release
+ExampleGame Win32 Test
+ExampleGame Win32 Shipping
+UDKGame Win32 Debug
+UDKGame Win32 Release
+UDKGame Win32 Test
+UDKGame Win32 Shipping
+GearGame Win32 Debug
+GearGame Win32 Release
+GearGame Win32 Test
+GearGame Win32 Shipping
+GearGameServer Win32 Debug
+GearGameServer Win32 Release
+GearGameServer Win32 Test
+GearGameServer Win32 Shipping
+
+; PS3
+ExampleGame PS3 Debug
+ExampleGame PS3 Release
+ExampleGame PS3 Test
+ExampleGame PS3 Shipping
+UDKGame PS3 Debug
+UDKGame PS3 Release
+UDKGame PS3 Test
+UDKGame PS3 Shipping
+GearGame PS3 Debug
+GearGame PS3 Release
+GearGame PS3 Test
+GearGame PS3 Shipping
+
+; Xbox 360
+ExampleGame Xbox360 Debug
+ExampleGame Xbox360 Release
+ExampleGame Xbox360 Test
+ExampleGame Xbox360 Shipping
+UDKGame Xbox360 Debug
+UDKGame Xbox360 Release
+UDKGame Xbox360 Test
+UDKGame Xbox360 Shipping
+GearGame Xbox360 Debug
+GearGame Xbox360 Release
+GearGame Xbox360 Test
+GearGame Xbox360 Shipping

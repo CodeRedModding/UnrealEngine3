@@ -1,0 +1,347 @@
+/*=============================================================================
+	MotionBlurCommon.usf: Common helper functionality for motion blur.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#ifndef NUM_SAMPLES
+#define NUM_SAMPLES 5
+#endif
+
+float4 RenderTargetClampParameter;
+
+float2 ClampUV(float2 UV)
+{
+	// Clamp the sampling UVs to avoid sampling from outside viewport region
+	// (hence render target size can be bigger than viewport region)
+	UV.x = clamp(UV.x, RenderTargetClampParameter.x, RenderTargetClampParameter.z);
+	UV.y = clamp(UV.y, RenderTargetClampParameter.y, RenderTargetClampParameter.w);
+	return UV;
+}
+
+// @return like length() without sqrt()
+float length2(float2 vec)
+{
+	return dot(vec, vec);
+}
+
+// quarter resolution FilterColor2 texture
+// contains MotionBlur during the half resolution pass
+// and Bloom for the full resolution pass.
+sampler2D FilterColor2Texture;
+
+// xy=multipler for the masking to blend between high resolution image and motion blurred half resolution (includes aspect ratio), zw=unused
+float4 MotionBlurMaskScaleAndBias;
+
+sampler2D	VelocityBuffer;
+sampler2D	LowResSceneBuffer;
+float4x4	ScreenToWorld;
+float4x4	PrevViewProjMatrix;
+
+//{ 0.5f, -0.5f, MAX_PIXELVELOCITY, MAX_PIXELVELOCITY }
+float4 StaticVelocityParameters = { 0.5f, -0.5f, 16.0f/1280.0f, 16.0f/720.0f };
+// { 2.0f*MAX_PIXELVELOCITY, -2.0f*MAX_PIXELVELOCITY, 2.0f*MAX_TRANSLUCENT_PIXELVELOCITY, -2.0f*MAX_TRANSLUCENT_PIXELVELOCITY }
+float4 DynamicVelocityParameters = { 2.0f*16.0f/1280.0f, -2.0f*16.0f/720.0f, -64.0f/1280.0f, 64.0f/720.0f };
+
+// offsets/weights when sampling using opaque motion based velocity
+// set by c++: {0, 1, -1, 2, -2} / NUM_SAMPLES;
+float StepOffsetsOpaque[NUM_SAMPLES];
+// set by c++: {2.0/10.0, 2/10.0, 2.0/10.0, 2.0/10.0, 2.0/10.0};
+float StepWeightsOpaque[NUM_SAMPLES];
+
+// offsets/weights when sampling using translucent non-motion based velocity
+// set by c++: {0, 1, 2, 3, 4} / NUM_SAMPLES;
+float StepOffsetsTranslucent[NUM_SAMPLES];
+// set by c++: {1.0/5.0, 1.0/5.0, 1.0/5.0, 1.0/5.0, 1.5/10.0};
+float StepWeightsTranslucent[NUM_SAMPLES];
+
+half MotionBlur_HardEdge( half3 SceneColor, float4 ScreenPosition, out half3 OutColor : COLOR0 )
+{
+	half2 PixelVelocity = 0;	
+	half2 RadialBlurVector = 0;
+
+	float2 UV = ScreenPosition.zw;
+
+	// scaling of step offset size for each sample
+	float StepOffsets[NUM_SAMPLES] = StepOffsetsOpaque;
+	// weight for contribution from each sample
+	float StepWeights[NUM_SAMPLES] = StepWeightsOpaque;
+
+	half4	DynamicVelocity	= tex2D( VelocityBuffer, UV );	
+
+	// 0.0f (-1.0f after scale-and-bias) in the velocity buffer has special meaning. It means "use static background velocity".
+	// Velocity rendering clamps to 1/255, so every pixel it touches will fail this check.
+
+	bool SelectorOpaque =  DynamicVelocity.x + DynamicVelocity.y > 0;
+	half SelectorTranslucent = DynamicVelocity.z;
+	if ( SelectorTranslucent > 0 )
+	{
+		// Scale from [0,1] to [-1,+1], flip y to be consistent with the code here
+		half2 NominalVelocity	= float2(DynamicVelocity.z, 1.0f - DynamicVelocity.w) * 2.0f - 1.0f;
+
+		// Scale dynamic velocity from [-1,+1] to [-MAX_TRANSLUCENT_PIXELVELOCITY,+MAX_TRANSLUCENT_PIXELVELOCITY] pixels
+		RadialBlurVector = NominalVelocity * DynamicVelocityParameters.zw;
+
+		// override offsets/weights to use translucent version
+		StepOffsets = StepOffsetsTranslucent;
+		StepWeights = StepWeightsTranslucent;
+	}
+	if ( SelectorOpaque )
+	{
+		// Scale from [0,1] to [-1,+1]
+		half2 NominalVelocity	= DynamicVelocity.xy * 2.0f - 1.0f;
+
+		// Accumulate total pixel velocity
+		PixelVelocity += NominalVelocity;
+	}
+	else
+	{
+		float CurrDepth = CalcSceneDepth( UV );
+		if ( CurrDepth < 14.0f )
+			CurrDepth = 65504.0f;
+		float4	ProjectedPosition	= float4( ScreenPosition.xy * CurrDepth, CurrDepth, 1 );
+		float4	PrevScreenPosition	= MulMatrix( PrevViewProjMatrix, ProjectedPosition );
+		PrevScreenPosition.xy		/= PrevScreenPosition.w;
+
+		// Scale static velocity from projection space to texel space and clamp to +/- MAX_VELOCITY pixels.
+		half2 StaticVelocity	= ScreenPosition.xy - PrevScreenPosition.xy;
+
+		// Accumulate total pixel velocity
+		PixelVelocity += StaticVelocity * StaticVelocityParameters.xy;
+	}
+	
+	// x: -1=left .. 1=right, y: -1=up .. 1=down
+
+	// clamp motion vector in a circle from -1 to 1
+	{
+		half Len = length2(PixelVelocity);
+		FLATTEN if(Len > 1)
+		{
+			PixelVelocity *= rsqrt(Len);
+		}
+	}
+
+	// Scale dynamic velocity from [-1,+1] to [-MAX_VELOCITY,+MAX_VELOCITY] pixels
+	half2 FinalVelocity = PixelVelocity * DynamicVelocityParameters.xy + RadialBlurVector;
+
+	half WeightSum = StepWeights[0];
+
+	OutColor = SceneColor * StepWeights[0];	
+
+	// Average NUM_SAMPLES screen colors along the velocity vector.
+	UNROLL 
+	for(int i=1; i<NUM_SAMPLES; i++)
+	{
+		float2 LocalUV = ClampUV(UV + FinalVelocity * StepOffsets[i]);
+
+		// anti leaking (if the velocity is very different we don't take that sample into account)
+		half2 SampleDynamicVelocity = tex2D( VelocityBuffer, LocalUV ).rg;	
+		half SampleWeight = saturate(1 - 10.0f *  length2(SampleDynamicVelocity - DynamicVelocity.rg));
+
+		SampleWeight *= StepWeights[i];
+
+		// sample motion blur from half resolution
+		OutColor += tex2D( LowResSceneBuffer, LocalUV ).rgb * SampleWeight;
+		WeightSum += SampleWeight;
+	}
+
+	OutColor /= WeightSum;
+
+	// compute motion strength to fade out motion blur if there is little movement
+	// to see the full resolution source image, tweaked value
+	float MotionStrength = saturate(length(FinalVelocity * MotionBlurMaskScaleAndBias.xy));
+
+	// 0..1 0:0% motionblur , 1:100% motion blur
+	return MotionStrength;
+}
+
+
+// return 0..1, 0=no motionblur
+// @param ScreenPosition xy:ScreenPos -1..1, zw:HalfRes
+half MotionBlur_SoftEdge( half3 SceneColor, float4 ScreenPosition, float2 QuarterResUV, out half3 OutColor : COLOR0)
+{
+	half2 RadialBlurVector = 0;
+
+	float2 UV = ScreenPosition.zw;
+
+	// scaling of step offset size for each sample
+	float StepOffsets[NUM_SAMPLES] = StepOffsetsOpaque;
+	// weight for contribution from each sample
+	float StepWeights[NUM_SAMPLES] = StepWeightsOpaque;
+
+	half4 DynamicVelocity = tex2D( VelocityBuffer, UV );	
+
+	// optimization, as StepOffsets[0] is known to be 0,0
+	half4 CenterSample = tex2D(LowResSceneBuffer, UV);
+
+	// todo: need to profile to make sure this is not getting slower, check radial blur feature ----------------------------
+
+	// compute Camera
+	half2 CameraVelocity;
+	{
+		bool SelectorOpaque;
+		float CurrDepth = DecompressSceneDepthFromHalfResTextureChannel(CenterSample.a, SelectorOpaque);
+
+		float4 ProjectedPosition = float4( ScreenPosition.xy * CurrDepth, CurrDepth, 1 );
+		float4 PrevScreenPosition = MulMatrix( PrevViewProjMatrix, ProjectedPosition );
+		PrevScreenPosition.xy /= PrevScreenPosition.w;
+
+		// Scale static velocity from projection space to texel space and clamp to +/- MAX_VELOCITY pixels.
+		half2 StaticVelocity = ScreenPosition.xy - PrevScreenPosition.xy;
+
+		// Accumulate total pixel velocity
+		CameraVelocity = StaticVelocity * StaticVelocityParameters.xy;
+	}
+
+
+	// xy == 0,0 in the velocity buffer has special meaning. It means "use static background velocity".
+	// Velocity rendering clamps in a circle, so every pixel it touches will fail this check.
+
+	half SelectorTranslucent = DynamicVelocity.z;
+	if(SelectorTranslucent > 0)
+	{
+		// Scale from [0,1] to [-1,+1], flip y to be consistent with the code here
+		half2 NominalVelocity	= float2(DynamicVelocity.z, 1.0f - DynamicVelocity.w) * 2.0f - 1.0f;
+
+		// Scale dynamic velocity from [-1,+1] to [-MAX_TRANSLUCENT_PIXELVELOCITY,+MAX_TRANSLUCENT_PIXELVELOCITY] pixels
+		RadialBlurVector = NominalVelocity * DynamicVelocityParameters.zw;
+
+		// override offsets/weights to use translucent version
+		StepOffsets = StepOffsetsTranslucent;
+		StepWeights = StepWeightsTranslucent;
+	}
+
+	half2 ObjectVelocity;
+	// 0 = only camera motion, >0=object motion, 1=full object motion
+	half MaskObjectMotion;
+	{
+		half4 BlurredTextureData = tex2D(FilterColor2Texture, QuarterResUV);
+
+		// to compensate for the soft black border that is introduced by the blurring step
+		BlurredTextureData.rgb /= BlurredTextureData.a;
+
+		MaskObjectMotion = BlurredTextureData.b;
+
+		// 2*-1 as we stored the data in a tetxure in the range 0..1
+		ObjectVelocity = BlurredTextureData.rg * 2 - 1;
+		// to normalize and blur the content outside the borders
+		ObjectVelocity /= BlurredTextureData.b;
+	}
+	
+	// x: -1=left .. 1=right, y: -1=up .. 1=down
+
+	// clamp camera velocity vector in a circle from -1 to 1
+	{ 
+		half Len = length2(CameraVelocity);
+		FLATTEN if(Len > 1)
+		{
+			CameraVelocity *= rsqrt(Len);
+		}
+	}
+
+	// Scale dynamic velocity from [-1,+1] to [-MAX_VELOCITY,+MAX_VELOCITY] pixels
+	half2 FinalCameraVelocity = CameraVelocity * DynamicVelocityParameters.xy + RadialBlurVector;
+	half2 FinalObjectVelocity = ObjectVelocity * DynamicVelocityParameters.xy;
+
+	// rgb:color behind the moving object, a:0 if no background found, 1 if background was found
+	half4 ColorC = 0;
+
+	// needed for Playstation3
+	half Bias = 0.001f;
+
+	// background
+	half4 ColorB = half4(0, 0, 0, Bias);	// rgb: background, a:0 if not found yet, 1 if found
+
+	// Average NUM_SAMPLES screen colors along the camera velocity vector.
+	{
+		UNROLL 
+		for(int i = 0; i < NUM_SAMPLES; i++)
+		{
+			half4 SampleColor = (i == 0) ? CenterSample : tex2D(LowResSceneBuffer, ClampUV(UV + FinalCameraVelocity * StepOffsets[i]));
+
+			bool SelectorOpaque;
+			DecompressSceneDepthFromHalfResTextureChannel(SampleColor.a, SelectorOpaque);
+
+			FLATTEN if(!SelectorOpaque)
+			{
+				// sample motion blur from half resolution
+				ColorB += half4(SampleColor.rgb, 1) * StepWeights[i];
+			}
+		}
+	}
+
+#if PS3
+	// dynamic branching on that hardware is assumed to be slower
+	if(1)
+#else
+	// This dyanmic branching helps to improve the average performance as moving objects are not too big on the screen.
+	BRANCH if(MaskObjectMotion > 0.1f)
+#endif
+	{
+		// complex case: moving object
+
+		// object
+		half4 ColorA = half4(0, 0, 0, Bias);
+
+		// Average NUM_SAMPLES screen colors along the object velocity vector.
+		UNROLL 
+		for(int i = 0; i < NUM_SAMPLES; i++)
+		{
+			half4 SampleColor = (i == 0) ? CenterSample : tex2Dlod(LowResSceneBuffer, float4(ClampUV(UV + FinalObjectVelocity * StepOffsets[i]), 0, 0));
+
+			bool SelectorOpaque;
+			DecompressSceneDepthFromHalfResTextureChannel(SampleColor.a, SelectorOpaque);
+
+			FLATTEN if(SelectorOpaque)
+			{
+				// sample motion blur from half resolution
+				ColorA += half4(SampleColor.rgb, 1) * StepWeights[i];
+			}
+			else
+			{
+				// take the first sample that is not the opaque object as background
+				ColorC += half4(SampleColor.rgb, 1) * (1 - ColorC.a);
+			}
+		}
+
+		// now the color of of the moving Background is is ColorB.rgb / ColorB.a;
+
+		// fill in missing content behind the moving object
+		// the next line is the optimimized version of this: "half3 Background = lerp(ColorC.rgb, ColorB.rgb / ColorB.a, ColorB.a);"
+		half3 Background = ColorC.rgb * (1 - ColorB.a) + ColorB.rgb;
+
+		// now the color of of the OpaqueMovingObject is ColorA.rgb / ColorA.a;
+
+		// blend the moving object on top of the background
+		// the next line is the optimimized version of this: "OutColor = lerp(Background, ColorA.rgb / ColorA.a, ColorA.a);"
+		OutColor = Background * (1 - ColorA.a) + ColorA.rgb;
+
+		// 0..1 compute motion strength to fade out motion blur if there is little movement to see the full resolution source image
+		float MotionStrength;
+		{
+			float MotionStrengthBackground = saturate(length(FinalCameraVelocity * MotionBlurMaskScaleAndBias.xy));
+			float MotionStrengthOpaqueMovingObject = saturate(length(FinalObjectVelocity * MotionBlurMaskScaleAndBias.xy));
+
+			// saturate(...*5): even with little amount of motion we take the object motion vector in favor
+			// this could be implemented differently as well
+			MotionStrength = lerp(MotionStrengthBackground, MotionStrengthOpaqueMovingObject, saturate(ColorA.a * 5));
+		}
+
+		return MotionStrength;
+	}
+	else
+	{
+		// simple case, no moving object (optimized)
+
+		// now the color of of the moving Background is is ColorB.rgb / ColorB.a;
+
+		// fill in missing content behind the moving object
+		// the next line is the optimimized version of this: "OutColor = lerp(CenterSample.rgb, ColorB.rgb / ColorB.a, ColorB.a);"
+		OutColor = CenterSample.rgb * (1 - ColorB.a) + ColorB.rgb;
+
+		// 0..1 compute motion strength to fade out motion blur if there is little movement to see the full resolution source image
+		float MotionStrength = saturate(length(FinalCameraVelocity * MotionBlurMaskScaleAndBias.xy));
+
+		return MotionStrength;
+	}
+}
+

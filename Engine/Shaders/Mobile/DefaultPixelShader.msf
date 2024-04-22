@@ -1,0 +1,1366 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+
+////////////////////////
+// Conditions
+////////////////////////
+
+#define NEED_EXTRA_COLOR_TEXTURE 0
+#define NEED_MASK_TEXTURE 0
+#define NEED_NORMAL_TEXTURE 0
+#define NEED_EMISSIVE_TEXTURE 0
+#define NEED_PIXEL_WORLD_POSITION 0
+#define NEED_PIXEL_TANGENT_TO_WORLD 0
+#define NEED_PIXEL_TANGENT_HALF_VECTOR 0
+#define NEED_PIXEL_TANGENT_LIGHT_DIRECTION 0
+#define NEED_PIXEL_TANGENT_UP_VECTOR 0
+#define NEED_PIXEL_TANGENT_CAMERA_VECTOR 0
+#define NEED_LIGHTING_COLOR 0
+#define NEED_DIRECTIONAL_LIGHT_UNIFORMS 0
+#define NEED_PER_PIXEL_RIM_TERM 0
+
+#if IS_LANDSCAPE
+	#if LANDSCAPE_USE_MONOCHROME_LAYER_BLENDING
+			#undef NEED_MASK_TEXTURE
+			#define NEED_MASK_TEXTURE 1
+		UNIFORM_LOW(vec3, LandscapeMonochromeLayerColors[4]);
+	#endif
+#endif
+
+
+#if !DEPTH_ONLY && !SHADOW_DEPTH_ONLY && !SHADOW_PROJECTION
+	#if USE_UNIFORM_COLOR_MULTIPLY || USE_VERTEX_COLOR_MULTIPLY
+		#if (COLOR_MULTIPLY_SOURCE >= COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_RED) && (COLOR_MULTIPLY_SOURCE <= COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_ALPHA)
+			#undef NEED_MASK_TEXTURE
+			#define NEED_MASK_TEXTURE 1
+		#endif
+	#endif
+
+	#if USE_DYNAMIC_DIRECTIONAL_LIGHT
+		#if USE_NORMAL_MAPPING
+			#if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+				#undef NEED_PIXEL_TANGENT_LIGHT_DIRECTION
+				#define NEED_PIXEL_TANGENT_LIGHT_DIRECTION 1
+			#else
+				#undef NEED_DIRECTIONAL_LIGHT_UNIFORMS
+				#define NEED_DIRECTIONAL_LIGHT_UNIFORMS 1
+			#endif
+		#else
+			#undef NEED_LIGHTING_COLOR
+			#define NEED_LIGHTING_COLOR 1
+		#endif
+	#endif
+
+	#if USE_DYNAMIC_SKY_LIGHT
+		#if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_DYNAMIC_SKY_LIGHT
+			#if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+				#undef NEED_PIXEL_TANGENT_UP_VECTOR
+				#define NEED_PIXEL_TANGENT_UP_VECTOR 1
+			#endif
+		#else
+			#undef NEED_LIGHTING_COLOR
+			#define NEED_LIGHTING_COLOR 1
+		#endif
+	#endif
+
+	#if NEED_ONE_DETAIL_TEXTURES
+		#undef NEED_EXTRA_COLOR_TEXTURE
+		#define NEED_EXTRA_COLOR_TEXTURE 1
+
+		#if IS_LANDSCAPE || TEXTURE_BLEND_FACTOR_SOURCE == TEXTURE_BLEND_FACTOR_SOURCE_MASK_TEXTURE
+			#undef NEED_MASK_TEXTURE
+			#define NEED_MASK_TEXTURE 1
+		#endif
+	#endif
+
+	#if USE_SPECULAR
+		#if (SPECULAR_MASK >= SPECMASK_MASK_TEXTURE_RGB) && (SPECULAR_MASK <= SPECMASK_MASK_TEXTURE_ALPHA)
+			#undef NEED_MASK_TEXTURE
+			#define NEED_MASK_TEXTURE 1
+		#endif
+	#endif
+
+	#if (ALPHA_VALUE_SOURCE >= ALPHA_VALUE_SOURCE_MASK_RED) && (ALPHA_VALUE_SOURCE <= ALPHA_VALUE_SOURCE_MASK_BLUE)
+		#undef NEED_MASK_TEXTURE
+		#define NEED_MASK_TEXTURE 1
+	#endif
+
+	#if USE_PIXEL_SPECULAR
+		#if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+			#undef NEED_PIXEL_TANGENT_HALF_VECTOR
+			#define NEED_PIXEL_TANGENT_HALF_VECTOR 1
+
+			#undef NEED_PIXEL_TANGENT_LIGHT_DIRECTION
+			#define NEED_PIXEL_TANGENT_LIGHT_DIRECTION 1
+		#else
+			#undef NEED_DIRECTIONAL_LIGHT_UNIFORMS
+			#define NEED_DIRECTIONAL_LIGHT_UNIFORMS 1
+		
+			#undef NEED_PIXEL_WORLD_POSITION 
+			#define NEED_PIXEL_WORLD_POSITION 1
+		#endif
+	#endif
+
+	#if USE_LIGHTMAP_SPECULAR
+		#undef NEED_PIXEL_TANGENT_CAMERA_VECTOR
+		#define NEED_PIXEL_TANGENT_CAMERA_VECTOR 1
+	#endif
+
+	#if USE_ENVIRONMENT_MAPPING
+		#if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_ENVIRONMENT_MAPPING
+			#undef NEED_PER_PIXEL_RIM_TERM
+			#define NEED_PER_PIXEL_RIM_TERM 1
+		#endif
+	
+		#if (ENVIRONMENT_MASK_SOURCE >= ENVIRONMENT_MASK_SOURCE_MASK_TEXTURE_RED) && (ENVIRONMENT_MASK_SOURCE <= ENVIRONMENT_MASK_SOURCE_MASK_TEXTURE_ALPHA)
+			#undef NEED_MASK_TEXTURE
+			#define NEED_MASK_TEXTURE 1
+		#endif
+
+		#if ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_NORMAL_TEXTURE_ALPHA
+			#undef NEED_NORMAL_TEXTURE
+			#define NEED_NORMAL_TEXTURE 1
+		#endif
+	#endif
+
+	#if USE_EMISSIVE
+		#if EMISSIVE_COLOR_SOURCE == EMISSIVE_COLOR_SOURCE_EMISSIVE_TEXTURE
+			#undef NEED_EMISSIVE_TEXTURE
+			#define NEED_EMISSIVE_TEXTURE 1
+		#endif
+
+		#if (EMISSIVE_MASK_SOURCE >= EMISSIVE_MASK_SOURCE_MASK_TEXTURE_RED) && (EMISSIVE_MASK_SOURCE <= EMISSIVE_MASK_SOURCE_MASK_TEXTURE_ALPHA)
+			#undef NEED_MASK_TEXTURE
+			#define NEED_MASK_TEXTURE 1
+		#endif
+
+		#if EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_NORMAL_TEXTURE_ALPHA
+			#undef NEED_NORMAL_TEXTURE
+			#define NEED_NORMAL_TEXTURE 1
+		#endif
+
+		#if (EMISSIVE_MASK_SOURCE >= EMISSIVE_MASK_SOURCE_EMISSIVE_TEXTURE_RED) && (EMISSIVE_MASK_SOURCE <= EMISSIVE_MASK_SOURCE_EMISSIVE_TEXTURE_ALPHA)
+			#undef NEED_EMISSIVE_TEXTURE
+			#define NEED_EMISSIVE_TEXTURE 1
+		#endif
+	#endif
+
+	#if USE_RIM_LIGHTING
+		#if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_RIM_LIGHTING
+			#undef NEED_PER_PIXEL_RIM_TERM
+			#define NEED_PER_PIXEL_RIM_TERM 1
+		#else
+			#if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_CONSTANT || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_RED || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_GREEN || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_BLUE || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_ALPHA
+				#undef NEED_LIGHTING_COLOR
+				#define NEED_LIGHTING_COLOR 1
+			#endif
+		#endif
+
+		#if (RIM_LIGHTING_MASK_SOURCE >= RIM_LIGHTING_MASK_SOURCE_MASK_TEXTURE_RED) && (RIM_LIGHTING_MASK_SOURCE <= RIM_LIGHTING_MASK_SOURCE_MASK_TEXTURE_ALPHA)
+			#undef NEED_MASK_TEXTURE
+			#define NEED_MASK_TEXTURE 1
+		#endif
+
+		#if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_NORMAL_TEXTURE_ALPHA
+			#undef NEED_NORMAL_TEXTURE
+			#define NEED_NORMAL_TEXTURE 1
+		#endif
+	#endif
+
+	#if USE_NORMAL_MAPPING
+		#undef NEED_NORMAL_TEXTURE
+		#define NEED_NORMAL_TEXTURE 1
+
+		#if !PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+			#undef NEED_PIXEL_TANGENT_TO_WORLD
+			#define NEED_PIXEL_TANGENT_TO_WORLD 1
+		#endif
+	#endif
+
+	#if USE_BUMP_OFFSET
+		#undef NEED_PIXEL_TANGENT_CAMERA_VECTOR
+		#define NEED_PIXEL_TANGENT_CAMERA_VECTOR 1
+	
+		#undef NEED_MASK_TEXTURE
+		#define NEED_MASK_TEXTURE 1
+	#endif
+
+	#if USE_HEIGHT_FOG
+		#undef NEED_PIXEL_WORLD_POSITION
+		#define NEED_PIXEL_WORLD_POSITION 1
+	#endif
+
+	#if NEED_PER_PIXEL_RIM_TERM
+		#if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+			#undef NEED_PIXEL_TANGENT_CAMERA_VECTOR
+			#define NEED_PIXEL_TANGENT_CAMERA_VECTOR 1
+		#else
+			#undef NEED_PIXEL_WORLD_POSITION 
+			#define NEED_PIXEL_WORLD_POSITION 1
+		#endif
+	#endif
+#endif // #if !DEPTH_ONLY
+
+
+#if SHADOW_PROJECTION
+	#undef NEED_PIXEL_WORLD_POSITION 
+	#define NEED_PIXEL_WORLD_POSITION 1
+#endif
+
+
+////////////////////////
+// Variables
+////////////////////////
+
+#if !DEPTH_ONLY && !SHADOW_DEPTH_ONLY && !SHADOW_PROJECTION
+
+	UNIFORM_SAMPLER2D(TextureBase, TEXUNIT0);
+	IN_VARYING_HIGH( vec4, UVBase, TEXCOORD0 );
+
+#if USE_OPACITY_MULTIPLIER
+	UNIFORM_MEDIUM( float, MobileOpacityMultiplier);
+#endif
+
+	#if USE_LIGHTMAP
+		UNIFORM_SAMPLER2D(TextureLightmap, TEXUNIT2);
+		#if !USE_LIGHTMAP_FIXED_SCALE
+			// We must use at mediump in order to handle larger light map scale values
+			UNIFORM_MEDIUM(vec4, LightMapScale[2]);
+		#endif
+
+		IN_VARYING_HIGH( vec2, UVLightmap, TEXCOORD1 );
+
+		#if USE_DIRECTIONAL_LIGHTMAP
+			UNIFORM_SAMPLER2D(TextureLightmap2, TEXUNIT7);
+		#endif
+	#endif
+
+	#if USE_VERTEX_LIGHTMAP
+		IN_VARYING_LOW( vec3, PrelitColor, COLOR0 );
+	#endif
+
+	#if USE_UNIFORM_COLOR_MULTIPLY || USE_VERTEX_COLOR_MULTIPLY
+		IN_VARYING_HIGH( vec4, ColorMultiply, TEXCOORD5 );
+	#endif
+
+	#if RENORMALIZE_INTERPOLATED_NORMALS
+		#define OPTIONAL_NORMALIZE( Vec ) normalize( Vec )
+	#else
+		#define OPTIONAL_NORMALIZE( Vec ) Vec
+	#endif
+
+	#if USE_DYNAMIC_DIRECTIONAL_LIGHT
+		#if USE_NORMAL_MAPPING
+			UNIFORM_LOW(vec4, DirectionalLightColor);
+		#endif
+	#endif
+
+	#if USE_DYNAMIC_SKY_LIGHT
+		#if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_DYNAMIC_SKY_LIGHT
+			// @todo: Currently these parameters will only be set for actors with light environments!!
+			UNIFORM_LOW(vec4, LowerSkyColor);
+			UNIFORM_LOW(vec4, UpperSkyColor);
+		#endif
+	#endif
+
+	#if NEED_ONE_DETAIL_TEXTURES
+		#if TEXTURE_BLEND_FACTOR_SOURCE == TEXTURE_BLEND_FACTOR_SOURCE_VERTEX_COLOR
+			IN_VARYING_LOW( float4, TextureBlendFactor, TEXCOORD9 );
+		#endif
+	
+		#undef NEED_EXTRA_COLOR_TEXTURE
+		#define NEED_EXTRA_COLOR_TEXTURE 1
+
+		#if TEXTURE_BLEND_FACTOR_SOURCE == TEXTURE_BLEND_FACTOR_SOURCE_MASK_TEXTURE
+			#undef NEED_MASK_TEXTURE
+			#define NEED_MASK_TEXTURE 1
+		#endif
+	#endif
+
+	//// Embodies various global color changes (i.e. full screen effects, fog)
+	IN_VARYING_LOW( vec4, GlobalEffectColorAndAmount, COLOR1 );
+
+	#if NEED_ONE_DETAIL_TEXTURES
+		UNIFORM_SAMPLER2D(TextureDetail, TEXUNIT1);
+
+		#if NEED_TWO_DETAIL_TEXTURES
+			UNIFORM_SAMPLER2D(TextureDetail2, TEXUNIT4);
+
+			#if NEED_THREE_DETAIL_TEXTURES
+				UNIFORM_SAMPLER2D(TextureDetail3, TEXUNIT5);
+			#endif
+		#endif
+	
+		// @todo: We could opt to only include this when UVTransform features are enabled (UVs are actually different)
+		IN_VARYING_HIGH( vec2, UVDetail, TEXCOORD2 );
+	#endif
+
+	#if USE_VERTEX_SPECULAR
+		IN_VARYING_LOW( vec3, Specular, TEXCOORD3 );
+	#endif
+
+	#if USE_PIXEL_SPECULAR
+		// NOTE: Power must be at least mediump to handle sharp specular highlights
+		UNIFORM_MEDIUM(float, SpecularPower);
+		UNIFORM_LOW(vec3, LightColorTimesSpecularColor);
+	#endif
+
+	#if USE_LIGHTMAP_SPECULAR
+		UNIFORM_MEDIUM(float, SpecularPower);
+		UNIFORM_LOW(vec3, SpecularColor);
+	#endif
+
+	#if USE_AMBIENT_OCCLUSION
+		IN_VARYING_LOW( float, AmbientOcclusion, TODO );
+	#endif
+
+	#if NEED_DIRECTIONAL_LIGHT_UNIFORMS
+		// @todo: This is a little weird because for actors with light environments, this direction will be
+		//   driven by the light environment direction, otherwise we use the brightest directional light
+		//   in the scene.  However, for specular the color always comes from the brightest directional light.
+		UNIFORM_LOW(vec4, LightDirectionAndbDirectional);
+	#endif
+
+	#if USE_ENVIRONMENT_MAPPING
+		UNIFORM_SAMPLER2D(TextureEnvironment, TEXUNIT4);
+		UNIFORM_LOW(vec3, EnvironmentColorScale);
+	
+		#if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_ENVIRONMENT_MAPPING
+			UNIFORM_MEDIUM(vec3, EnvironmentParameters); // We use mediump to handle larger fresnel exponents
+	   
+			#if (ENVIRONMENT_MASK_SOURCE >= ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_RED) && (ENVIRONMENT_MASK_SOURCE <= ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_ALPHA)
+				IN_VARYING_LOW( float, EnvironmentMask, TODO );
+			#endif
+		#else
+			IN_VARYING_MEDIUM( vec4, EnvironmentVectorAndAmount, TODO );
+		#endif
+	#endif
+
+	#if USE_EMISSIVE
+		UNIFORM_LOW(vec4, ConstantEmissiveColor);
+
+		#if EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_RED || EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_GREEN || EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_BLUE || EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_ALPHA
+			IN_VARYING_LOW( float, EmissiveMask, TODO );
+		#endif
+	#endif
+
+	#if USE_RIM_LIGHTING
+		#if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_RIM_LIGHTING
+			UNIFORM_MEDIUM(vec4, RimLightingColorAndExponent);
+
+			#if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_RED || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_GREEN || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_BLUE || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_ALPHA
+				IN_VARYING_LOW( float, RimLightingMask, TODO );
+			#endif
+		#else
+			#if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_CONSTANT || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_RED || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_GREEN || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_BLUE || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_ALPHA
+			#else    
+				IN_VARYING_LOW( vec3, MaskableRimLighting, TODO );
+			#endif
+		#endif
+	#endif
+
+	#if USE_BUMP_OFFSET
+		UNIFORM_MEDIUM(float, PreMultipliedBumpReferencePlane);
+		UNIFORM_MEDIUM(float, BumpHeightRatio);
+	#endif
+	
+	#if USE_HEIGHT_FOG
+		/** Shader parameters shared between exponential and multi-layer height fog, to reduce constant register usage. */
+		UNIFORM_HIGH(vec4,FogDistanceScale);
+		UNIFORM_HIGH(vec4,FogExtinctionDistance);
+		UNIFORM_HIGH(vec4,FogStartDistance);
+		UNIFORM_HIGH(vec4,FogMinHeight);
+		UNIFORM_HIGH(vec4,FogMaxHeight);
+		UNIFORM_HIGH(vec4,FogInScattering)[4];
+
+		/** calculate ratio of distance between world z height and relative fog height */
+		vec4 LinePlaneIntersection(vec3 RelativeB,vec4 RelativeZ)
+		{
+			return RelativeZ / (abs(RelativeB.z) <= 0.001 ? 0.001 : RelativeB.z);
+		}
+
+		mediump vec4 CalculateHeightFog(vec3 WorldPosition)
+		{
+			vec3  WorldVector = WorldPosition.xyz;
+			float Distance = length(WorldVector);
+
+						 // maxfog - camera / z height
+			vec4         MinHeightPercent = LinePlaneIntersection(WorldVector,FogMinHeight);
+						 // minfog - camera / z height
+			vec4         MaxHeightPercent = LinePlaneIntersection(WorldVector,FogMaxHeight);
+						 // fog layer distance based on % over max/min fog heights
+			mediump vec4 LayerDistance = max(vec4(0.0,0.0,0.0,0.0),Distance - FogStartDistance) * abs(saturate(MaxHeightPercent) - saturate(MinHeightPercent));
+						 // clamp anything beyond the extinction distance to 0 scattering
+						 // scattering falloff is exponential based on normalized layer distance
+			mediump vec4 Scattering = mix(vec4(0,0,0,0),exp2(FogDistanceScale * LayerDistance),vecLessThan(LayerDistance,FogExtinctionDistance));
+						 // ratio of the inscattering color to be used
+			mediump vec4 InScattering = Scattering - 1.0;
+
+#if 0
+			mediump vec4 Fog = vec4(0,0,0,1);
+			for(int LayerIndex = 0;LayerIndex < 4;LayerIndex++)
+			{
+				Fog *= Scattering[LayerIndex];
+				Fog.rgb += InScattering[LayerIndex] * FogInScattering[LayerIndex].xyz;
+			}
+#else
+			// Workaround for height-fog not working or working differently on various iOS versions.
+
+			mediump vec4 Fog;
+			Fog.a = Scattering.x;
+			Fog.rgb = InScattering.x * FogInScattering[0].xyz;
+
+			Fog *= Scattering.y;
+			Fog.rgb += InScattering.y * FogInScattering[1].xyz;
+
+			Fog *= Scattering.z;
+			Fog.rgb += InScattering.z * FogInScattering[2].xyz;
+
+			Fog *= Scattering.w;
+			Fog.rgb += InScattering.w * FogInScattering[3].xyz;
+#endif
+			return Fog;
+		}
+	#endif
+
+	#if NEED_PIXEL_TANGENT_CAMERA_VECTOR
+		IN_VARYING_LOW( vec3, VarTangentCameraVector, TODO );
+	#endif
+
+	#if NEED_PIXEL_TANGENT_TO_WORLD
+		IN_VARYING_LOW( vec3, VarWorldNormal, TODO );
+		IN_VARYING_LOW( vec3, VarWorldTangent, TODO );
+
+		#if !COMPUTE_BINORMAL_IN_PIXEL_SHADER
+			IN_VARYING_LOW( vec3, VarWorldBinormal, TODO );
+		#endif
+	#endif
+
+	#if NEED_PIXEL_TANGENT_LIGHT_DIRECTION
+		IN_VARYING_LOW( vec3, VarTangentLightDirection, TEXCOORD7 );
+	#endif
+
+	#if NEED_PIXEL_TANGENT_UP_VECTOR
+		IN_VARYING_LOW( vec3, VarTangentUpVector, TODO );
+	#endif
+
+	#if NEED_PIXEL_TANGENT_HALF_VECTOR
+		IN_VARYING_LOW( vec3, VarTangentHalfVector, TEXCOORD8 );
+	#endif
+
+	#if NEED_NORMAL_TEXTURE
+		UNIFORM_SAMPLER2D(TextureNormal, TEXUNIT3);
+	#endif
+
+	#if NEED_MASK_TEXTURE
+		UNIFORM_SAMPLER2D(TextureMask, TEXUNIT5);
+		IN_VARYING_HIGH( vec2, UVMask, TEXCOORD6 );
+	#endif
+
+	#if NEED_EMISSIVE_TEXTURE
+		UNIFORM_SAMPLER2D(TextureEmissive, TEXUNIT6);
+	#endif
+
+	#if NEED_LIGHTING_COLOR
+		IN_VARYING_LOW( vec3, LightingColor, TEXCOORD4 );
+	#endif
+#endif // #if !DEPTH_ONLY
+
+#if SHADOW_PROJECTION
+	UNIFORM_HIGH(vec3, ShadowCasterWorldPosition);
+	UNIFORM_HIGH(vec3, ModShadowColor);
+#endif
+
+#if NEED_PIXEL_WORLD_POSITION
+	IN_VARYING_MEDIUM( vec3, VarWorldPosition, TODO );
+#endif
+
+
+////////////////////////
+// Implementation
+////////////////////////
+
+PIXEL_MAIN
+{
+	// Use for debugging; will be optimized away by compiler if not needed
+	// To draw ONLY this color, simply set a value then #define SHOW_DEBUG_COLOR
+	lowp vec3 DebugColor;
+
+	#if DEPTH_ONLY || SHADOW_DEPTH_ONLY
+		gl_FragColor = vec4(0,0,0,0);
+
+	#elif USE_FALLBACK_STREAM_COLOR
+		gl_FragColor = vec4(1,0,1,1);
+
+	#elif SHADOW_PROJECTION
+		// Cylinder blob shadow shape
+		//@todo - expose these constants
+		highp float BlobShadow = saturate(length(ShadowCasterWorldPosition.xy - VarWorldPosition.xy) / 40.0);
+		// Limit the shadow to beneath the caster's position
+		highp float HeightRange = saturate((VarWorldPosition.z - ShadowCasterWorldPosition.z) / 10.0);
+		// Combine the masks and apply ModShadowColor
+		BlobShadow = 1.0 - (1.0 - BlobShadow * BlobShadow * BlobShadow) * (1.0 - HeightRange) * 1.3;
+		gl_FragColor = vec4(BlobShadow * ModShadowColor, 0.0);
+	#else
+		highp vec2 FinalBaseUV = UVBase.xy;
+		highp vec2 TransformedFinalBaseUV = UVBase.zw;
+	
+		#if NEED_PIXEL_TANGENT_HALF_VECTOR
+			lowp vec3 TangentHalfVector = OPTIONAL_NORMALIZE( VarTangentHalfVector );
+		#endif
+
+		#if NEED_PIXEL_TANGENT_LIGHT_DIRECTION
+			lowp vec3 TangentLightDirection = OPTIONAL_NORMALIZE( VarTangentLightDirection );
+		#endif
+	
+		#if NEED_PIXEL_TANGENT_UP_VECTOR
+			lowp vec3 TangentUpVector = OPTIONAL_NORMALIZE( VarTangentUpVector );
+		#endif
+
+		#if NEED_MASK_TEXTURE
+			lowp vec4 MaskTextureColor = texture2D( TextureMask, UVMask );
+			lowp vec4 MaskTextureColorSRGB = HANDLE_SRGB_READ( MaskTextureColor );
+		#endif
+	
+		#if NEED_DIRECTIONAL_LIGHT_UNIFORMS
+			lowp vec3 WorldLightDirection = LightDirectionAndbDirectional.xyz;
+		#endif
+	
+		#if NEED_PIXEL_TANGENT_CAMERA_VECTOR
+			lowp vec3 TangentCameraVector = OPTIONAL_NORMALIZE( VarTangentCameraVector );    
+		#endif
+	
+		#if USE_BUMP_OFFSET
+		{
+			// Bump offset height is stored in 'mask' texture red channel
+			mediump float PixelHeight = MaskTextureColor.r;
+			mediump vec2 BumpUVOffset = TangentCameraVector.xy * ( BumpHeightRatio * PixelHeight + PreMultipliedBumpReferencePlane );
+
+			FinalBaseUV += BumpUVOffset;
+			TransformedFinalBaseUV += BumpUVOffset;
+		}
+		#endif
+	
+		highp vec2 BaseTextureCoord;
+		#if USE_BASE_TEX_COORD_XFORM
+			BaseTextureCoord = TransformedFinalBaseUV;
+		#else
+			BaseTextureCoord = FinalBaseUV;
+		#endif
+
+		#if IS_DECAL && SUPPORTS_DISCARD
+			if (any(lessThan(BaseTextureCoord, vec2(0.0, 0.0))) || any(greaterThan(BaseTextureCoord, vec2(1.0,1.0))))
+			{
+				discard;
+			}
+		#elif IS_DECAL
+			BaseTextureCoord = max(vec2(0.0, 0.0), min(vec2(1.0, 1.0), BaseTextureCoord));
+		#endif
+
+		lowp vec4 BaseColor = texture2DBias( TextureBase, BaseTextureCoord, DEFAULT_LOD_BIAS );
+
+		#if IS_LANDSCAPE
+			#if LANDSCAPE_USE_MONOCHROME_LAYER_BLENDING
+				// Use monochrome layer in base textureRGBA, with weightmap and fixed color for each layer
+				BaseColor.xyzw = HANDLE_SRGB_READ( BaseColor.xyzw );
+
+				lowp vec4 PolyColor;
+
+				PolyColor.xyz = 
+					BaseColor.xxx * MaskTextureColor.r * LandscapeMonochromeLayerColors[0] +
+					BaseColor.yyy * MaskTextureColor.g * LandscapeMonochromeLayerColors[1] +
+					BaseColor.zzz * MaskTextureColor.b * LandscapeMonochromeLayerColors[2] +
+					BaseColor.www * MaskTextureColor.a * LandscapeMonochromeLayerColors[3];
+
+				PolyColor.a = 1.0;
+			#else
+
+				BaseColor.xyz = HANDLE_SRGB_READ( BaseColor.xyz );
+				lowp vec4 PolyColor = vec4(BaseColor.xyz, 1.0);
+
+				#if NEED_ONE_DETAIL_TEXTURES 
+					PolyColor.xyz *= MaskTextureColor.r;
+		 	
+					vec4 DetailColor = texture2DBias( TextureDetail, UVDetail, DEFAULT_LOD_BIAS );
+					PolyColor.xyz += HANDLE_SRGB_READ( DetailColor.xyz ) * MaskTextureColor.g;
+					#if NEED_TWO_DETAIL_TEXTURES 
+						DetailColor = texture2DBias( TextureDetail2, UVDetail, DEFAULT_LOD_BIAS );
+						PolyColor.xyz += HANDLE_SRGB_READ( DetailColor.xyz ) * MaskTextureColor.b;
+						#if NEED_THREE_DETAIL_TEXTURES 
+							DetailColor = texture2DBias( TextureDetail3, UVDetail, DEFAULT_LOD_BIAS );
+							PolyColor.xyz += HANDLE_SRGB_READ( DetailColor.xyz ) * MaskTextureColor.a;
+						#endif
+					#endif
+				#endif
+			#endif
+		#else
+
+			lowp float AlphaVal = BaseColor.a;
+			#if ALPHA_VALUE_SOURCE == ALPHA_VALUE_SOURCE_MASK_RED
+			{
+				AlphaVal = MaskTextureColor.r;
+			}
+			#elif ALPHA_VALUE_SOURCE == ALPHA_VALUE_SOURCE_MASK_GREEN
+			{
+				AlphaVal = MaskTextureColor.g;
+			}
+			#elif ALPHA_VALUE_SOURCE == ALPHA_VALUE_SOURCE_MASK_BLUE
+			{
+				AlphaVal = MaskTextureColor.b;
+			}
+			#else
+			{
+				//AlphaVal = BaseColor.a;
+			}
+			#endif
+
+			// Alpha test
+			ALPHAKILL( AlphaVal )
+
+			BaseColor.xyz = HANDLE_SRGB_READ( BaseColor.xyz );
+			lowp vec4 PolyColor = vec4(BaseColor.xyz, AlphaVal);
+
+			#if NEED_ONE_DETAIL_TEXTURES && !USE_DETAIL_NORMAL
+			{
+				lowp vec4 DetailColor = texture2DBias( TextureDetail, UVDetail, DEFAULT_LOD_BIAS );
+				DetailColor.xyz = HANDLE_SRGB_READ( DetailColor.xyz );
+
+				// Chose color that provides the blend values for the detail textures
+				lowp float4 TextureBlend;
+
+				#if TEXTURE_BLEND_FACTOR_SOURCE == TEXTURE_BLEND_FACTOR_SOURCE_MASK_TEXTURE
+					TextureBlend = MaskTextureColor;
+				#else
+					TextureBlend = TextureBlendFactor;
+				#endif
+
+				// Blend the base color with the detail color using the blend factor
+				PolyColor.xyz = mix( PolyColor.xyz, DetailColor.xyz, TextureBlend.r ).xyz;
+
+				#if NEED_TWO_DETAIL_TEXTURES
+					DetailColor = texture2DBias( TextureDetail2, UVDetail, DEFAULT_LOD_BIAS );
+					DetailColor.xyz = HANDLE_SRGB_READ( DetailColor.xyz );
+					PolyColor.xyz = mix( PolyColor.xyz, DetailColor.xyz, TextureBlend.g ).rgb;
+
+					#if NEED_THREE_DETAIL_TEXTURES
+						DetailColor = texture2DBias( TextureDetail3, UVDetail, DEFAULT_LOD_BIAS );
+						DetailColor.xyz = HANDLE_SRGB_READ( DetailColor.xyz );
+						PolyColor.xyz = mix( PolyColor.xyz, DetailColor.xyz, TextureBlend.b ).rgb;
+					#endif
+				#endif
+			}
+			#endif
+
+		#endif
+
+	
+		// Compute tangent to world matrix per pixel
+		#if NEED_PIXEL_TANGENT_TO_WORLD
+		lowp mat3 TangentToWorld;
+		{
+			#if COMPUTE_BINORMAL_IN_PIXEL_SHADER
+				// Compute the vertex binormal using the normal and tangent vectors
+				lowp vec3 WorldBinormal = cross( VarWorldNormal, VarWorldTangent );
+			#else
+				lowp vec3 WorldBinormal = VarWorldBinormal;
+			#endif
+			TangentToWorld = mat3( VarWorldTangent, WorldBinormal, VarWorldNormal );
+		}
+		#endif
+	
+	
+		#if NEED_NORMAL_TEXTURE
+		lowp vec4 NormalColor;
+		{
+			highp vec2 NormalTexCoord;
+			#if USE_NORMAL_TEX_COORD_XFORM
+				NormalTexCoord = TransformedFinalBaseUV;
+			#else
+				NormalTexCoord = FinalBaseUV;
+			#endif
+
+			// NOTE: We expect normal textures to be in linear space, not SRGB!
+			NormalColor = texture2DBias( TextureNormal, NormalTexCoord, DEFAULT_LOD_BIAS );
+		}
+		#endif
+	
+
+		// Normal mapping
+		#if USE_NORMAL_MAPPING
+		lowp vec3 PerPixelNormal;
+		{
+			PerPixelNormal = ( NormalColor.xyz * 2.0 ) - 1.0;
+
+			#if NEED_ONE_DETAIL_TEXTURES && USE_DETAIL_NORMAL
+			{
+				lowp vec3 DetailNormal = texture2DBias( TextureDetail, UVDetail, DEFAULT_LOD_BIAS ).xyz * vec3(2, 2, 0) - vec3(1, 1, 0);
+
+				// Blend the normals (cheap)
+				PerPixelNormal = normalize(PerPixelNormal + DetailNormal);
+			}
+			#endif
+		}
+		#endif
+	
+	
+		#if USE_NORMAL_MAPPING && !PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+		lowp vec3 PerPixelWorldNormal;
+		{
+			PerPixelWorldNormal = OPTIONAL_NORMALIZE( TangentToWorld * PerPixelNormal );
+		}
+		#endif
+	
+	
+		#if NEED_PIXEL_WORLD_POSITION
+		lowp vec3 WorldSpaceEyeToVertexDirection;
+		{
+			// NOTE: We're relying on the compiler to optimize these away if they're not needed
+			mediump vec3 EyeToVertexVector = CameraWorldPosition - VarWorldPosition.xyz;
+			WorldSpaceEyeToVertexDirection = normalize( EyeToVertexVector );
+		}
+		#endif
+
+
+		#if NEED_EMISSIVE_TEXTURE
+			lowp vec4 EmissiveTextureColor;
+			{
+				highp vec2 EmissiveTexCoord;
+				#if USE_EMISSIVE_TEX_COORD_XFORM
+					EmissiveTexCoord = TransformedFinalBaseUV;
+				#else
+					EmissiveTexCoord = FinalBaseUV;
+				#endif
+
+				EmissiveTextureColor = texture2DBias( TextureEmissive, EmissiveTexCoord, DEFAULT_LOD_BIAS );
+				EmissiveTextureColor.xyz = HANDLE_SRGB_READ( EmissiveTextureColor.xyz );
+			}
+		#endif
+	
+
+		// Pre-declare specular amount variable if we need it.  We'll compute specular early but won't apply
+		// it until near the very end of the shader
+		#if USE_PIXEL_SPECULAR
+			lowp vec3 Specular;
+		#endif
+
+	
+		// Per-pixel environment reflection vector and rim term/fresnel
+		#if NEED_PER_PIXEL_RIM_TERM
+		lowp float PerPixelRimTerm;
+		lowp vec3 PerPixelEnvironmentVector;
+		{
+			lowp vec3 EnvNormal;
+			lowp vec3 EnvCameraVector;
+			#if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+				EnvNormal = PerPixelNormal;
+				EnvCameraVector = TangentCameraVector;
+			#else
+				EnvNormal = PerPixelWorldNormal;
+				EnvCameraVector = WorldSpaceEyeToVertexDirection;
+			#endif
+		
+
+			// Compute environment reflection per pixel
+			#if USE_REFLECTION_BASED_ENVIRONMENT_MAPS
+				// Reflection-based
+				PerPixelEnvironmentVector = reflect( EnvCameraVector, EnvNormal );
+			#else
+				// View direction-based
+				PerPixelEnvironmentVector = EnvCameraVector;
+			#endif
+	   
+			// NOTE: We're relying on the compiler's dead code removal to eliminate this when not needed
+			lowp float NDotE = dot( EnvCameraVector, EnvNormal );
+			PerPixelRimTerm = max( 0.01, 1.0 - abs( NDotE ) );
+		}
+		#endif
+	
+		// Accumulated specular, is explicitly not affected by some diffuse lighting computations
+		lowp float3 EnvironmentSpecular = float3(0, 0, 0);
+	
+		// Environment mapping
+		#if USE_ENVIRONMENT_MAPPING
+		{
+			lowp float EnvironmentAmount;
+			lowp vec3 EnvironmentVector;
+		
+			#if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_ENVIRONMENT_MAPPING
+			{
+				EnvironmentAmount = EnvironmentParameters.x;
+				EnvironmentVector = PerPixelEnvironmentVector;
+		   
+				// Apply fresnel
+				#if USE_ENVIRONMENT_FRESNEL
+				{
+					lowp float FresnelAmount = EnvironmentParameters.y;
+					lowp float FresnelExponent = EnvironmentParameters.z;
+				
+					lowp float FresnelTerm = pow( PerPixelRimTerm, FresnelExponent );
+					lowp float ScaledFresnelTerm = ( 1.0 - FresnelAmount ) + FresnelAmount * FresnelTerm;
+				
+					EnvironmentAmount *= ScaledFresnelTerm;
+				}
+				#endif
+
+				#if ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_RED || ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_GREEN || ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_BLUE || ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_ALPHA
+					EnvironmentAmount *= EnvironmentMask;
+				#endif
+			}    
+			#else
+			{
+				// Environment reflection computed per vertex, interpolated per pixel
+				// NOTE: For reflection-based env maps, using a normalize is pretty important
+				//     as the direction is already reflected by a per-vertex normal and every bit
+				//     of accuracy we have left is crucial
+				#if USE_REFLECTION_BASED_ENVIRONMENT_MAPS
+					EnvironmentVector = normalize( EnvironmentVectorAndAmount.xyz );
+				#else
+					EnvironmentVector = OPTIONAL_NORMALIZE( EnvironmentVectorAndAmount.xyz );
+				#endif
+				EnvironmentAmount = EnvironmentVectorAndAmount.w;
+			}    
+			#endif
+		
+		
+			// Sample spherical environment map texture
+			lowp vec2 EnvironmentTexCoord = EnvironmentVector.xy * 0.5 + 0.5;
+			lowp vec4 EnvironmentColor = texture2D( TextureEnvironment, EnvironmentTexCoord );
+			EnvironmentColor.xyz = HANDLE_SRGB_READ( EnvironmentColor.xyz );
+
+		
+			// Apply masking!
+			{
+				#if ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_BASE_TEXTURE_RED
+					EnvironmentAmount *= BaseColor.r;
+				#elif ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_BASE_TEXTURE_GREEN
+					EnvironmentAmount *= BaseColor.g;
+				#elif ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_BASE_TEXTURE_BLUE
+					EnvironmentAmount *= BaseColor.b;
+				#elif ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_BASE_TEXTURE_ALPHA
+					EnvironmentAmount *= BaseColor.a;
+				#elif ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_MASK_TEXTURE_RED
+					EnvironmentAmount *= MaskTextureColor.r;
+				#elif ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_MASK_TEXTURE_GREEN
+					EnvironmentAmount *= MaskTextureColor.g;
+				#elif ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_MASK_TEXTURE_BLUE
+					EnvironmentAmount *= MaskTextureColor.b;
+				#elif ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_MASK_TEXTURE_ALPHA
+					EnvironmentAmount *= MaskTextureColor.a;
+				#else
+					#if ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_NORMAL_TEXTURE_ALPHA
+						EnvironmentAmount *= NormalColor.a;
+					#endif
+				#endif
+			}        
+
+		
+			// Apply environment color scaling
+			lowp vec3 FinalEnvironmentColor = EnvironmentColor.rgb * EnvironmentColorScale;
+		
+			#if ENVIRONMENT_BLEND_MODE == ENVIRONMENT_BLEND_ADD
+		
+				// Add environment map contribution to base color.  This looks more like a mirror-reflection
+				// or specular highlight.
+				EnvironmentSpecular += FinalEnvironmentColor * EnvironmentAmount;
+			
+			#elif ENVIRONMENT_BLEND_MODE == ENVIRONMENT_BLEND_LERP
+		
+				// Lerp between base texture color and environment map.  This looks like a metallic effect.
+				PolyColor.rgb = mix( PolyColor.rgb, FinalEnvironmentColor, EnvironmentAmount );
+
+			#endif
+		}
+		#endif
+
+
+		#define SHOULD_APPLY_DIFFUSE_LIGHT 0
+		lowp vec3 TotalDiffuseLight = vec3( 0.0, 0.0, 0.0 );
+
+		// Per-pixel direct lighting
+		#if USE_NORMAL_MAPPING && USE_DYNAMIC_DIRECTIONAL_LIGHT
+		{
+			#if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+				lowp vec3 LightDirection = TangentLightDirection;
+				lowp vec3 SurfaceNormal = PerPixelNormal;
+			#else
+				lowp vec3 LightDirection = WorldLightDirection;
+				lowp vec3 SurfaceNormal = PerPixelWorldNormal;
+			#endif
+		
+ 			// calculate how much the directional light affects this fragment
+ 			lowp vec3 LightColor = DirectionalLightColor.xyz * 
+ 				max( 0.0, dot( LightDirection, SurfaceNormal ) );
+			
+			TotalDiffuseLight += LightColor;
+		
+			#undef SHOULD_APPLY_DIFFUSE_LIGHT
+			#define SHOULD_APPLY_DIFFUSE_LIGHT 1
+		}
+		#endif
+
+		// Per-pixel sky lighting
+		#if USE_NORMAL_MAPPING && USE_DYNAMIC_SKY_LIGHT && ALLOW_PER_PIXEL_DYNAMIC_SKY_LIGHT
+		{
+			lowp float NormalContribution;
+			#if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+				NormalContribution = dot( PerPixelNormal, TangentUpVector ) * 0.5 + 0.5;
+			#else
+				// calculate how much of the sky colors to use (normal.z, -1 = all lower, 1 = all upper, 0 = 50/50)
+				NormalContribution = PerPixelWorldNormal.z * 0.5 + 0.5;
+			#endif
+		
+			#if USE_FASTER_SKY_LIGHT
+				// NOTE: 0.5 is to create results more similar to when the squared falloff is applied (below)
+				// @todo ib2merge: Chair had removed the 0.5 scale
+				lowp vec3 SkyColor = 0.5 * mix( LowerSkyColor.xyz, UpperSkyColor.xyz, NormalContribution );
+			#else
+				// Apply square sky light intensity falloff based on surface angle relative to either hemisphere
+				lowp vec2 ContributionWeightsSqrt = vec2(0.5, 0.5) + vec2(0.5, -0.5) * NormalContribution;
+				lowp vec2 ContributionWeights = ContributionWeightsSqrt * ContributionWeightsSqrt;
+				lowp vec3 UpperLighting = UpperSkyColor.rgb * ContributionWeights.x;
+				lowp vec3 LowerLighting = LowerSkyColor.rgb * ContributionWeights.y;
+				lowp vec3 SkyColor = UpperLighting + LowerLighting;
+			#endif
+
+			#if USE_AMBIENT_OCCLUSION
+				// Also apply AO from the vertex color to the sky light
+				SkyColor *= AmbientOcclusion;
+			#endif
+		
+			TotalDiffuseLight += SkyColor;
+
+			#undef SHOULD_APPLY_DIFFUSE_LIGHT
+			#define SHOULD_APPLY_DIFFUSE_LIGHT 1
+		}
+		#endif
+
+		// Apply per-vertex lighting (direct, sky, unmasked rim) passed down from the vertex shader
+		#if NEED_LIGHTING_COLOR
+		{
+			// Use diffuse/sky lighting computed in vertex shader
+			TotalDiffuseLight += LightingColor;
+		
+			#undef SHOULD_APPLY_DIFFUSE_LIGHT
+			#define SHOULD_APPLY_DIFFUSE_LIGHT 1
+		}
+		#endif
+
+		#if SHOULD_APPLY_DIFFUSE_LIGHT
+			PolyColor.rgb *= TotalDiffuseLight;
+		#endif
+	
+		// add additive environment lighting
+		PolyColor.rgb += EnvironmentSpecular;
+	
+		// Per-pixel specular
+		#if USE_PIXEL_SPECULAR
+		{
+			#if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+				// NOTE: With tangent space lighting, we only support half-vector specular currently
+				// Half-vector specular (faster, big highlight, less realistic)
+				lowp float BaseSpec = max( 0.0, dot( PerPixelNormal, TangentHalfVector ) );  // NDotH
+			#else
+				#if USE_HALF_VECTOR_SPECULAR_MODEL
+					// Half-vector specular (faster, big highlight, less realistic)
+					lowp vec3 WorldHalfVector = normalize( WorldSpaceEyeToVertexDirection + WorldLightDirection );
+					lowp float BaseSpec = max( 0.0, dot( PerPixelWorldNormal, WorldHalfVector ) );  // NDotH
+				#elif 1
+					// Reflection-based specular (slower, higher quality)
+					lowp vec3 WorldReflectionVector = reflect( WorldLightDirection, PerPixelWorldNormal );
+					lowp float BaseSpec = max( 0.0, dot( WorldSpaceEyeToVertexDirection, WorldReflectionVector ) );   // VDotR
+				#else
+					// Diffuse lighting (for debugging only)
+					lowp float BaseSpec = max( 0.0, dot( WorldLightDirection, PerPixelWorldNormal ) );  // NDotL
+				#endif
+			#endif
+		
+			#if USE_PIXEL_FIXED_SPECULAR_POWER_APPROXIMATION        
+				// Fast specular approximation (http://www.gamasutra.com/view/feature/2972/a_noninteger_power_function_on_.php)
+				// Basically pow( N, P ) can be approximated by pow( max( A * N + B ), M )
+				//      - A and B are constants that must be tweaked to get artifact-free results
+				//      - M can be really small in practice (2 looks good, can be replaced by single multiply)
+				// This should result in a mad_sat instruction plus one multiply (2 instructions total!)
+			
+				// N = 18
+				#define SpecApproxA 6.645
+				#define SpecApproxB -5.645   
+				lowp float SpecularAmount = clamp( SpecApproxA * BaseSpec + SpecApproxB, 0.0, 1.0 );
+				SpecularAmount *= SpecularAmount;   // M = 2
+			#else
+				// Power function for specular curve
+				lowp float SpecularAmount = pow( BaseSpec, SpecularPower );
+			#endif        
+
+			#if 0
+				// Apply specular shadowing by multiplying with diffuse coefficient
+				#if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+					lowp float ShadowTerm = max( 0.0, dot( TangentLightDirection, SurfaceNormal ) );
+				#else
+					lowp float ShadowTerm = max( 0.0, dot( WorldLightDirection, SurfaceNormal ) );
+				#endif
+				SpecularAmount *= ShadowTerm;
+			#endif
+	   
+			Specular = SpecularAmount * LightColorTimesSpecularColor;
+		}
+		#endif
+
+	
+		// Add specular
+		lowp vec3 PreSpecularPolyColor = PolyColor.rgb;
+		#if USE_VERTEX_SPECULAR || USE_PIXEL_SPECULAR
+		{
+			// Note that we add specular to the base color (pre-light map multiply) so that shadows in light map
+			// will affect the specular highlight
+		
+			// Scale specular amount by specific diffuse channel before adding to output color
+			#if SPECULAR_MASK == SPECMASK_DIFFUSE_RED
+				PolyColor.rgb += Specular * BaseColor.r;
+			#elif SPECULAR_MASK == SPECMASK_DIFFUSE_GREEN
+				PolyColor.rgb += Specular * BaseColor.g;
+			#elif SPECULAR_MASK == SPECMASK_DIFFUSE_BLUE
+				PolyColor.rgb += Specular * BaseColor.b;
+			#elif SPECULAR_MASK == SPECMASK_DIFFUSE_ALPHA
+				PolyColor.rgb += Specular * BaseColor.a;
+			#elif SPECULAR_MASK == SPECMASK_LUMINANCE
+				// Generate a fake spec mask using diffuse luminance
+				vec3 LumConstants = vec3( .2126, 0.7152, 0.0722);	
+				mediump float AvgLum = dot(LumConstants, BaseColor.rgb);
+				PolyColor.rgb += Specular * AvgLum;		
+			#elif SPECULAR_MASK == SPECMASK_MASK_TEXTURE_RGB
+				PolyColor.rgb += Specular * MaskTextureColorSRGB.rgb;
+			#elif SPECULAR_MASK == SPECMASK_MASK_TEXTURE_RED
+				PolyColor.rgb += Specular * MaskTextureColorSRGB.r;
+			#elif SPECULAR_MASK == SPECMASK_MASK_TEXTURE_GREEN
+				PolyColor.rgb += Specular * MaskTextureColorSRGB.g;
+			#elif SPECULAR_MASK == SPECMASK_MASK_TEXTURE_BLUE
+				PolyColor.rgb += Specular * MaskTextureColorSRGB.b;
+			#elif SPECULAR_MASK == SPECMASK_MASK_TEXTURE_ALPHA
+				PolyColor.rgb += Specular * MaskTextureColorSRGB.a;
+			#else   // SPECMASK_CONSTANT
+				// Just add specular with no mask
+				PolyColor.rgb += Specular;			
+			#endif
+		}
+		#endif
+
+
+		// Texture light map
+		#if USE_LIGHTMAP
+		{
+			#if USE_DIRECTIONAL_LIGHTMAP
+				// Average color of the incident lighting over all directions, normalized by the maximum color component.
+				mediump vec3 NormalizedAverageColor = HANDLE_SRGB_READ( texture2D( TextureLightmap, UVLightmap ).rgb );
+				// Maximum color component of the incident lighting along each of the lightmap basis directions.
+				mediump vec3 BasisDirectionsMaxComponents = HANDLE_SRGB_READ( texture2D( TextureLightmap2, UVLightmap ).rgb );
+
+				// The lightmap basis matrix is required when we have a per-pixel normal or computing lightmap specular.
+				#if USE_NORMAL_MAPPING || USE_LIGHTMAP_SPECULAR
+					// Assignment is column-major, so the matrix is the transpose of the way it looks :)
+					mediump mat3 LightMapBasis = mat3(
+						vec3(  0.0,            sqrt(6.0)/3.0, +1.0/sqrt(3.0) ),
+						vec3( -1.0/sqrt(2.0), -1.0/sqrt(6.0), +1.0/sqrt(3.0) ),
+						vec3( +1.0/sqrt(2.0), -1.0/sqrt(6.0), +1.0/sqrt(3.0) )
+						);
+				#endif
+
+				// Compute the contribution from each direction in the lightmap basis using the per-pixel normal.
+				#if USE_NORMAL_MAPPING
+					// Square the lightmap basis influences to get closer results to dynamic lighting with strong normals
+					mediump vec3 LightMapNormal = clamp(PerPixelNormal * LightMapBasis, 0.0, 1.0);
+					mediump vec3 DiffuseTransferCoefficients = LightMapNormal * LightMapNormal;
+
+					#if USE_LIGHTMAP_SPECULAR
+						mediump vec3 TangentReflectionVector = reflect(-TangentCameraVector, PerPixelNormal);
+						mediump vec3 SpecularTransferCoefficients = pow(clamp(TangentReflectionVector * LightMapBasis, 0.0, 1.0), SpecularPower);
+					#endif
+
+				#else // #if USE_NORMAL_MAPPING
+					mediump vec3 DiffuseTransferCoefficients = vec3( +1.0/3.0, +1.0/3.0, +1.0/3.0 );
+					#if USE_LIGHTMAP_SPECULAR
+						mediump vec3 TangentReflectionVector = TangentCameraVector * vec3( 0.0, 0.0, -1.0 );
+						mediump vec3 SpecularTransferCoefficients = pow(clamp(TangentReflectionVector * LightMapBasis, 0.0, 1.0), SpecularPower);
+					#endif
+				#endif // #if USE_NORMAL_MAPPING
+
+				// Apply lightmap scales.
+				NormalizedAverageColor *= LightMapScale[0].rgb;
+				BasisDirectionsMaxComponents *= LightMapScale[1].rgb;
+
+				// Dot DiffuseTransferCoefficients and BasisDirectionsMaxComponents to scale each max component by the influence of the corresponding basis direction based on the per-pixel normal
+				mediump vec3 LightmapDiffuseLighting = NormalizedAverageColor * dot(BasisDirectionsMaxComponents, DiffuseTransferCoefficients);
+
+				// Add in the diffuse lightmap contribution.
+				PolyColor.rgb = PolyColor.rgb * LightmapDiffuseLighting;
+
+				// Add in specular lightmap contribution.
+				#if USE_LIGHTMAP_SPECULAR
+
+					mediump vec3 LightmapSpecularLighting = SpecularColor * NormalizedAverageColor * dot(BasisDirectionsMaxComponents, SpecularTransferCoefficients);
+
+					#if SPECULAR_MASK == SPECMASK_DIFFUSE_RED
+						PolyColor.rgb += LightmapSpecularLighting * BaseColor.r;
+					#elif SPECULAR_MASK == SPECMASK_DIFFUSE_GREEN
+						PolyColor.rgb += LightmapSpecularLighting * BaseColor.g;
+					#elif SPECULAR_MASK == SPECMASK_DIFFUSE_BLUE
+						PolyColor.rgb += LightmapSpecularLighting * BaseColor.b;
+					#elif SPECULAR_MASK == SPECMASK_DIFFUSE_ALPHA
+						PolyColor.rgb += LightmapSpecularLighting * BaseColor.a;
+					#elif SPECULAR_MASK == SPECMASK_LUMINANCE
+						// Generate a fake spec mask using diffuse luminance
+						vec3 LumConstants = vec3( .2126, 0.7152, 0.0722);	
+						mediump float AvgLum = dot(LumConstants, BaseColor.rgb);
+						PolyColor.rgb += LightmapSpecularLighting * AvgLum;		
+					#elif SPECULAR_MASK == SPECMASK_MASK_TEXTURE_RGB
+						PolyColor.rgb += LightmapSpecularLighting * MaskTextureColorSRGB.rgb;
+					#elif SPECULAR_MASK == SPECMASK_MASK_TEXTURE_RED
+						PolyColor.rgb += LightmapSpecularLighting * MaskTextureColorSRGB.r;
+					#elif SPECULAR_MASK == SPECMASK_MASK_TEXTURE_GREEN
+						PolyColor.rgb += LightmapSpecularLighting * MaskTextureColorSRGB.g;
+					#elif SPECULAR_MASK == SPECMASK_MASK_TEXTURE_BLUE
+						PolyColor.rgb += LightmapSpecularLighting * MaskTextureColorSRGB.b;
+					#elif SPECULAR_MASK == SPECMASK_MASK_TEXTURE_ALPHA
+						PolyColor.rgb += LightmapSpecularLighting * MaskTextureColorSRGB.a;
+					#else   // SPECMASK_CONSTANT
+						// Just add specular with no mask
+						PolyColor.rgb += LightmapSpecularLighting;
+			
+					#endif
+				#endif
+
+			#elif USE_LIGHTMAP_FIXED_SCALE
+				lowp vec3 LightmapColor = texture2D( TextureLightmap, UVLightmap ).rgb;
+				LightmapColor = HANDLE_SRGB_READ( LightmapColor );
+				PolyColor.rgb = PolyColor.rgb * LightmapColor;
+				PolyColor.rgb += PolyColor.rgb;	// 2X scale
+			#else
+				// NOTE: We use mediump to avoid saturating the lightmap color before multiplying with the pixel color
+				mediump vec3 LightmapColor = texture2D( TextureLightmap, UVLightmap ).rgb;
+				LightmapColor = HANDLE_SRGB_READ( LightmapColor );
+				mediump vec3 TempColor = PolyColor.rgb * LightMapScale[0].rgb;
+				PolyColor.rgb = TempColor * LightmapColor;
+			#endif
+		}
+		#endif
+
+
+		// Vertex light map
+		#if USE_VERTEX_LIGHTMAP
+		{
+			PolyColor.rgb *= PrelitColor;
+		}
+		#endif
+	
+	
+		#if USE_RIM_LIGHTING
+		{
+			#define SHOULD_APPLY_RIM_LIGHTING 1
+			mediump vec3 RimLighting;
+
+			#if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_RIM_LIGHTING
+			{
+				// Note: The 'strength' of the rim light is pre-multiplied with the color
+				mediump vec3 RimLightingColor = RimLightingColorAndExponent.xyz;
+//				mediump float RimLightingExponent = RimLightingColorAndExponent.w;
+			
+				// was:	RimLighting = RimLightingColor * pow( PerPixelRimTerm, RimLightingExponent );
+				// optimized by hard coding the exponent for better performance. Will remove the value later if this is not causing trouble
+				RimLighting = RimLightingColor * Square(Square(PerPixelRimTerm));
+
+
+				// Apply vertex color rim light mask if we need to
+				#if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_RED || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_GREEN || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_BLUE || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_ALPHA
+					RimLighting *= RimLightingMask;
+				#endif
+			}
+			#else
+			{
+				// Apply masked per-vertex rim lighting, if enabled.  Note that if the rim lighting is unmasked,
+				// the rim term will be added to the LightingColor value already instead of applied here
+				#if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_CONSTANT || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_RED || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_GREEN || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_BLUE || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_ALPHA
+					// Rim lighting was already applied to LightingColor in vertex shader, no need to do anything else
+					#undef SHOULD_APPLY_RIM_LIGHTING
+					#define SHOULD_APPLY_RIM_LIGHTING 0
+				#else
+					RimLighting = MaskableRimLighting;
+				#endif  
+			}
+			#endif
+
+		   
+			// Apply masking
+			{
+				#if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_BASE_TEXTURE_RED
+					RimLighting *= BaseColor.r;
+				#elif RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_BASE_TEXTURE_GREEN
+					RimLighting *= BaseColor.g;
+				#elif RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_BASE_TEXTURE_BLUE
+					RimLighting *= BaseColor.b;
+				#elif RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_BASE_TEXTURE_ALPHA
+					RimLighting *= BaseColor.a;
+				#elif RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_MASK_TEXTURE_RED
+					RimLighting *= MaskTextureColor.r;
+				#elif RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_MASK_TEXTURE_GREEN
+					RimLighting *= MaskTextureColor.g;
+				#elif RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_MASK_TEXTURE_BLUE
+					RimLighting *= MaskTextureColor.b;
+				#elif RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_MASK_TEXTURE_ALPHA
+					RimLighting *= MaskTextureColor.a;
+				#else
+					#if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_NORMAL_TEXTURE_ALPHA
+						RimLighting *= NormalColor.a;
+					#endif
+				#endif
+			}
+
+			#if SHOULD_APPLY_RIM_LIGHTING
+				// NOTE: Rim lighting is applied after light maps as we don't want the rim light to be
+				// 		 shadowed by precomputed lighting
+				PolyColor.rgb += RimLighting * PreSpecularPolyColor;
+			#endif
+		}
+		#endif
+	
+	
+		#if USE_EMISSIVE
+		{
+			lowp vec3 Emissive;
+		
+		
+			// Grab the emissive color
+			#if EMISSIVE_COLOR_SOURCE == EMISSIVE_COLOR_SOURCE_CONSTANT
+			{
+				Emissive = ConstantEmissiveColor.rgb;
+			}
+			#else
+			{
+				#if EMISSIVE_COLOR_SOURCE == EMISSIVE_COLOR_SOURCE_EMISSIVE_TEXTURE
+				{
+					Emissive = EmissiveTextureColor.rgb;
+				}
+				#elif EMISSIVE_COLOR_SOURCE == EMISSIVE_COLOR_SOURCE_BASE_TEXTURE
+				{
+					Emissive = BaseColor.rgb;
+				}
+				#endif
+			
+				// The Constant acts as a blend color when using other sources. 
+				// Allowing the user to more easily control the final emissive color.
+				Emissive *= ConstantEmissiveColor.rgb;
+			}
+			#endif
+		
+			// The constants alpha channel acts as the emissive outputs weight
+			Emissive *= ConstantEmissiveColor.a;
+
+			// Apply emissive masking
+			#if EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_BASE_TEXTURE_RED
+				Emissive *= BaseColor.r;
+			#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_BASE_TEXTURE_GREEN
+				Emissive *= BaseColor.g;
+			#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_BASE_TEXTURE_BLUE
+				Emissive *= BaseColor.b;
+			#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_BASE_TEXTURE_ALPHA
+				Emissive *= BaseColor.a;
+			#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_MASK_TEXTURE_RED
+				Emissive *= MaskTextureColor.r;
+			#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_MASK_TEXTURE_GREEN
+				Emissive *= MaskTextureColor.g;
+			#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_MASK_TEXTURE_BLUE
+				Emissive *= MaskTextureColor.b;
+			#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_MASK_TEXTURE_ALPHA
+				Emissive *= MaskTextureColor.a;
+			#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_NORMAL_TEXTURE_ALPHA
+				Emissive *= NormalColor.a;
+			#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_RED || EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_GREEN || EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_BLUE || EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_ALPHA
+				Emissive *= EmissiveMask;
+			#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_EMISSIVE_TEXTURE_RED
+				Emissive *= EmissiveTextureColor.r;
+			#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_EMISSIVE_TEXTURE_GREEN
+				Emissive *= EmissiveTextureColor.g;
+			#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_EMISSIVE_TEXTURE_BLUE
+				Emissive *= EmissiveTextureColor.b;
+			#else
+				#if EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_EMISSIVE_TEXTURE_ALPHA
+					Emissive *= EmissiveTextureColor.a;
+				#endif
+			#endif
+		
+			PolyColor.rgb += Emissive;
+		}
+		#endif
+
+		// Color multiply
+		#if USE_UNIFORM_COLOR_MULTIPLY || USE_VERTEX_COLOR_MULTIPLY
+			#if COLOR_MULTIPLY_SOURCE != COLOR_MULTIPLY_SOURCE_NONE
+			{
+				// Colour multiply source determines blend strength
+				lowp float ColorMultiplyAmount = 1.0;
+
+				#if COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_BASE_TEXTURE_RED
+					ColorMultiplyAmount = BaseColor.r;
+				#elif COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_BASE_TEXTURE_GREEN
+					ColorMultiplyAmount = BaseColor.g;
+				#elif COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_BASE_TEXTURE_BLUE
+					ColorMultiplyAmount = BaseColor.b;
+				#elif COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_BASE_TEXTURE_ALPHA
+					ColorMultiplyAmount = BaseColor.a;
+				#elif COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_RED
+					ColorMultiplyAmount = MaskTextureColorSRGB.r;
+				#elif COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_GREEN
+					ColorMultiplyAmount = MaskTextureColorSRGB.g;
+				#elif COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_BLUE
+					ColorMultiplyAmount = MaskTextureColorSRGB.b;
+				#else
+					#if COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_ALPHA
+						ColorMultiplyAmount = MaskTextureColorSRGB.a;
+					#endif
+				#endif
+
+				PolyColor = mix(PolyColor, PolyColor * ColorMultiply, ColorMultiplyAmount);
+			}
+			#else
+				PolyColor.rgba *= ColorMultiply;
+			#endif
+		#endif
+
+		// Fog
+		#if USE_HEIGHT_FOG
+		{
+			mediump vec4 HeightFog = CalculateHeightFog(VarWorldPosition);
+			PolyColor.rgb = PolyColor.rgb * HeightFog.a + HeightFog.rgb;
+		}
+		#endif
+
+		//// Final, constant color fade/blend, which is used to embody various global color changes (i.e. full screen effects, fog)
+		//// This value is calculated per-vertex in order to reduce the pixel shader math to a single MAD in all cases
+		PolyColor.xyz = (PolyColor.xyz * GlobalEffectColorAndAmount.w) + GlobalEffectColorAndAmount.xyz;
+
+		// Color grading
+		MOBILECOLORGRADE(PolyColor)
+
+		// Convert to gamma 2.2 space
+		PolyColor.xyz = HANDLE_SRGB_WRITE(PolyColor.xyz);
+
+
+		// Opacity multiplier
+		#if USE_OPACITY_MULTIPLIER
+			#if USE_PREMULTIPLIED_OPACITY
+				PolyColor.rgb *= MobileOpacityMultiplier;
+			#else
+				PolyColor.a *= MobileOpacityMultiplier;
+			#endif
+		#endif
+
+		gl_FragColor = AlphaBlend(PolyColor);
+
+		// Debug color (for debugging purposes only)
+		#ifdef SHOW_DEBUG_COLOR
+			gl_FragColor.rgb = DebugColor;	
+		#endif
+	#endif //#if !DEPTH_ONLY
+}

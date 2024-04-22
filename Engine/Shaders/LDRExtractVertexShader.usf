@@ -1,0 +1,15 @@
+/*=============================================================================
+	LDRExtractVertexShader.usf - Passes vertex inputs through to the pixel shader.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+void Main(
+	in float4 InPosition : POSITION,
+	in float2 InTexCoord : TEXCOORD0,
+	out float2 OutTexCoord : TEXCOORD0,
+	out float4 OutPosition : POSITION
+	)
+{
+	OutPosition = InPosition;
+	OutTexCoord = InTexCoord;
+}

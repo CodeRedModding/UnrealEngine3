@@ -1,47 +1,31 @@
 /*=============================================================================
 	UnMem.cpp: Unreal memory grabbing functions
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-Revision history:
-	* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "CorePrivate.h"
 
 /*-----------------------------------------------------------------------------
-	FMemStack statics.
------------------------------------------------------------------------------*/
-
-FMemStack::FTaggedMemory* FMemStack::UnusedChunks = NULL;
-
-/*-----------------------------------------------------------------------------
 	FMemStack implementation.
 -----------------------------------------------------------------------------*/
 
-//
-// Initialize this memory stack.
-//
-void FMemStack::Init( INT InDefaultChunkSize )
+FMemStack::FMemStack( INT InDefaultChunkSize, UBOOL bInUsedInGameThread, UBOOL bInUsedInRenderingThread )
+:	Top(NULL)
+,	End(NULL)
+,	DefaultChunkSize(InDefaultChunkSize)
+,	TopChunk(NULL)
+,	TopMark(NULL)
+,	UnusedChunks(NULL)
+,	NumMarks(0)
+,	bUsedInGameThread(bInUsedInGameThread)
+,	bUsedInRenderingThread(bInUsedInRenderingThread)
 {
-	DefaultChunkSize = InDefaultChunkSize;
-	TopChunk         = NULL;
-	End              = NULL;
-	Top		         = NULL;
 }
 
-//
-// Timer tick. Makes sure the memory stack is empty.
-//
-void FMemStack::Tick()
+FMemStack::~FMemStack()
 {
-	check(TopChunk==NULL);
-}
+	check(GIsCriticalError || !NumMarks);
 
-//
-// Free this memory stack.
-//
-void FMemStack::Exit()
-{
 	Tick();
 	while( UnusedChunks )
 	{
@@ -51,31 +35,37 @@ void FMemStack::Exit()
 	}
 }
 
-//
-// Return the amount of bytes that have been allocated by this memory stack.
-//
-INT FMemStack::GetByteCount()
+void FMemStack::Tick() const
+{
+	check(TopChunk==NULL);
+}
+
+INT FMemStack::GetByteCount() const
 {
 	INT Count = 0;
 	for( FTaggedMemory* Chunk=TopChunk; Chunk; Chunk=Chunk->Next )
 	{
 		if( Chunk!=TopChunk )
+		{
 			Count += Chunk->DataSize;
+		}
 		else
+		{
 			Count += Top - Chunk->Data;
+		}
+	}
+	return Count;
+}
+INT FMemStack::GetUnusedByteCount() const
+{
+	INT Count = 0;
+	for( FTaggedMemory* Chunk=UnusedChunks; Chunk; Chunk=Chunk->Next )
+	{
+		Count += Chunk->DataSize;
 	}
 	return Count;
 }
 
-/*-----------------------------------------------------------------------------
-	Chunk functions.
------------------------------------------------------------------------------*/
-
-//
-// Allocate a new chunk of memory of at least MinSize size,
-// and return it aligned to Align. Updates the memory stack's
-// Chunks table and ActiveChunks counter.
-//
 BYTE* FMemStack::AllocateNewChunk( INT MinSize )
 {
 	FTaggedMemory* Chunk=NULL;
@@ -89,10 +79,11 @@ BYTE* FMemStack::AllocateNewChunk( INT MinSize )
 			break;
 		}
 	}
+
 	if( !Chunk )
 	{
 		// Create new chunk.
-		INT DataSize    = Max( MinSize, DefaultChunkSize-(INT)sizeof(FTaggedMemory) );
+		INT DataSize	= AlignArbitrary<INT>( MinSize + (INT)sizeof(FTaggedMemory), DefaultChunkSize ) - sizeof(FTaggedMemory);
 		Chunk           = (FTaggedMemory*)appMalloc( DataSize + sizeof(FTaggedMemory) );
 		Chunk->DataSize = DataSize;
 	}
@@ -120,8 +111,4 @@ void FMemStack::FreeChunks( FTaggedMemory* NewTopChunk )
 		End = Top + TopChunk->DataSize;
 	}
 }
-
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
 

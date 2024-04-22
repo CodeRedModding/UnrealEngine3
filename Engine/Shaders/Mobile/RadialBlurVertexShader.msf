@@ -1,0 +1,16 @@
+/*=============================================================================
+	RadialBlurVertexShader.msf: Screen space radial blur
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+ATTRIBUTE(vec4, Position, POSITION);
+ATTRIBUTE(vec2, TexCoords0, TEXCOORD0);
+
+OUT_VARYING_DEFAULT(vec4, ScreenPosition, TEXCOORD0);
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+void main()
+{	
+	gl_Position = vec4(Position.xy, 0.0, 1.0);
+	ScreenPosition = gl_Position;
+}

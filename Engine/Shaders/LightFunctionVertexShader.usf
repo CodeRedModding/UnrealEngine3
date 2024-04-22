@@ -1,0 +1,16 @@
+/*=============================================================================
+	LightFunction.usf: Vertex shader for computing a light function.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+void Main(
+	in float4 InPosition : POSITION,
+	out float4 OutScreenPosition : TEXCOORD0,
+	out float4 OutPosition : POSITION
+	)
+{
+	OutPosition = OutScreenPosition = MulMatrix(ViewProjectionMatrix,InPosition);
+}
+

@@ -1,0 +1,57 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.CisBranchModel
+
+@{
+    ViewBag.Title = "Continuous Integration System";
+    ViewBag.Description = "Details for Branch '" + Model.Details.Branch + "'";
+}
+
+
+<script type="text/javascript">
+    function GetStatusList () {
+        return ($.ajax({
+            url: "@Url.RouteUrl(new { action = "BranchTasks", controller = "Cis", id = Model.Details.ID })",
+            async: false
+        }));
+    }
+
+    function UpdateStatusList () {
+        var query = GetStatusList().success(
+            function () {
+                setTimeout(function () {
+                    UpdateStatusList();
+                },
+                10000);
+            });
+
+        $('#taskList').html(query.responseText);
+    }
+
+    $(document).ready(function () {
+        UpdateStatusList();
+    });
+</script>
+
+
+<section>
+    <div class="grid6">
+        <span class="linkBack">
+            @Html.ActionLink("CIS Status", "Status", "Cis")
+        </span>
+
+        <span class="fr">
+            <a href="#status">Current Task Status</a>
+        </span>
+    </div>
+</section>
+
+@if (Model.Details.LockedDown)
+{
+    <div class="grid6">
+        <p>
+            <img class="icon" src="~/Content/Themes/Base/Images/warning.png" alt="Warning" />
+            This branch is currently locked down. Do not check in files unless told otherwise!
+        </p>
+    </div>
+}
+
+<section id="taskList"></section>

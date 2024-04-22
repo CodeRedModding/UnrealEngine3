@@ -1,0 +1,4 @@
+/** to allow local placement of widgets still under development, keep this file checked out and change this define to placeable 
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+`define DevPlaceable	notplaceable

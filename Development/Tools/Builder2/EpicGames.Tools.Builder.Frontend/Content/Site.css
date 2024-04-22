@@ -1,0 +1,856 @@
+/* General
+-----------------------------------------------------------*/
+
+a
+{
+    color: #369;
+}
+
+    a:visited
+    {
+        color: #246;
+    }
+
+    a:hover
+    {
+        color: #48b;
+    }
+    
+body
+{
+    background-color: #eee;
+    font-family: "Segoe UI", Verdana, Helvetica, Sans-Serif;
+    color: #232323;
+    line-height: 1.75em;
+    margin: 0;
+    padding: 0;
+}
+
+button
+{
+    background-color: #555;
+    border-radius: 0.3em;
+    border-width: 0;
+    color: #eee;
+    cursor: pointer;
+    float: right;
+    font-size: 80%;
+    font-weight: 600;
+    margin-left: 1em;
+    padding: 0.05em 0.75em;
+    text-decoration: none;
+    -moz-border-radius: 0.4em;
+    -webkit-border-radius: 0.4em;
+}
+
+    button:hover
+    {
+        background-color: #666;
+        color: #ff7;
+    }
+
+header, footer, nav, section
+{
+    display: block;
+}
+
+h1, h2, h3
+{
+    font-weight:  bold;
+}
+
+h1
+{
+    font-size: 1.75em;
+}
+
+h2
+{
+    font-size: 1.25em;
+}
+
+img.chart
+{
+    width:  100%;
+}
+
+img.icon
+{
+    vertical-align: bottom;
+    width: 1.5em;
+}
+
+p
+{
+    padding-bottom: 1em;
+}
+
+pre
+{
+    border: 0.1em solid #ddd;
+    font: inherit;
+    overflow: auto;
+    padding: 1em;
+    margin: 0 0 1.5em 0;
+}
+
+strong
+{
+    font-weight: 600;
+}
+
+.c
+{
+    text-align: center;
+}
+
+.clearfix:after
+{
+    content: ".";
+    clear: both;
+    display: block;
+    height: 0;
+    visibility: hidden;
+}
+
+.fr
+{
+    float: right;
+}
+
+.nowrap
+{
+    white-space: nowrap;
+}
+
+.padded
+{
+    padding: 1em;
+}
+
+.r
+{
+    text-align: right;
+}
+
+.v
+{
+    display: block;
+    height: 6em;
+    padding-top: 1em;
+    white-space: nowrap;
+    width: 1.5em;
+    writing-mode: tb-rl;
+    -webkit-transform: rotate(90deg);
+    -webkit-transform-origin: 1em 2em;
+	-moz-transform: rotate(90deg);
+    -moz-transform-origin: 1em 2em;
+	-o-transform: rotate(90deg);
+}
+
+
+/* Layout
+-----------------------------------------------------------*/
+
+.siteWrap
+{
+    margin: 0 auto;
+    width:  66em;
+}
+
+.grid1, .grid2, .grid3, .grid4, .grid6
+{
+    display: inline;
+    float: left;
+    padding: 1em;
+}
+
+.grid1
+{
+    width: 8em;
+}
+
+.grid2
+{
+    width: 20em;
+}
+
+.grid3
+{
+    width: 31em;
+}
+
+.grid4
+{
+    width: 42em;
+}
+.grid6
+{
+    width: 64em;
+}
+
+.gridWrap
+{
+    display: inline;
+    float: left;   
+}
+
+.fill
+{
+    width: 100%;
+}
+
+
+/* Header
+-----------------------------------------------------------*/
+
+body > header
+{
+    background-color: #666;
+    clear: both;
+    color: #ccc;
+}
+
+    body > header a
+    {
+        color: #eee;
+        text-decoration: none;
+    }
+    
+        body > header a:visited
+        {
+            color: #eee;
+        }
+    
+        body > header a:hover
+        {
+            color: #ff7;
+        }
+
+    body > header .mainMenu
+    {
+        float: right;
+        padding-top: 0.5em;
+        text-align: right;
+    }
+
+        body > header .mainMenu li
+        {
+            display: inline;
+            float: left;
+            list-style: none;
+            padding-left: 1.5em;
+        }
+
+#siteLogo
+{
+    float: left;
+    font-weight: bold;
+    line-height: normal;
+}
+
+    #siteLogo img
+    {
+        float: left;
+        margin-right: 1em;
+        width: 4em;        
+    }
+
+#siteMenu
+{
+    float: right;
+}
+
+    #siteMenu div
+    {
+        border-bottom: 0.1em solid #999;
+        font-style: italic;
+        padding-bottom: 0.5em;
+        text-align: right;
+    }
+
+
+/* Navigation
+-----------------------------------------------------------*/
+
+body > nav
+{
+    background-color: #444;
+    clear: both;
+    color: #ccc;
+}
+
+    body > nav a
+    {
+        color: #eee;
+        display: block;
+        font-weight: bold;
+        padding: 0.75em 0.5em 0.5em 0.5em;
+        text-decoration: none;
+    }
+    
+        body > nav a:visited
+        {
+            color: #eee;
+        }
+   
+        body > nav a:hover
+        {
+            background-color: #555;
+            color:  #ff7;
+        }
+
+    body > nav hgroup
+    {
+        float: left;
+        margin-left: 1em;
+        padding-top: 1.5em;
+    }
+
+        body > nav hgroup h1
+        {
+            font-size: 2em;
+            font-weight: normal;
+        }
+
+        body > nav hgroup h2
+        {
+            font-size: 1em;
+            font-weight: normal;
+            margin-top: 0.5em;
+        }
+
+    body > nav .systemMenu
+    {
+        float: right;
+        margin-right: 1em;
+    }
+
+        body > nav .systemMenu li
+        {
+            display: block;
+            float:  left;
+            list-style: none;
+            text-align: center;
+            width: 5em;
+        }
+
+            body > nav .systemMenu li img
+            {
+                width: 3.5em;
+            }
+
+body.Latest li.buttonLatest,
+body.Build li.buttonBuild,
+body.Promote li.buttonPromote,
+body.Cis li.buttonCis,
+body.Verify li.buttonVerify
+{
+    background-color: #8C6200;
+}
+
+body.Latest li.buttonLatest:hover,
+body.Latest li.buttonLatest a:hover,
+body.Build li.buttonBuild:hover,
+body.Build li.buttonBuild a:hover,
+body.Promote li.buttonPromote:hover,
+body.Promote li.buttonPromote a:hover,
+body.Cis li.buttonCis:hover,
+body.Cis li.buttonCis a:hover,
+body.Verify li.buttonVerify:hover
+body.Verify li.buttonVerify a:hover
+{
+    background-color: #B28B00;
+}
+
+
+/* Content
+-----------------------------------------------------------*/
+
+body > article
+{
+    background-color: #fff;
+    border-bottom: 0.25em solid #8C6200;
+    border-top: 0.25em solid #8C6200;
+    color: #666;
+    clear: both;
+}
+
+    body > article h2
+    {
+        padding-bottom: 0.75em;
+    }
+
+        body > article h2 span
+        {
+            float: right;
+            font-size: 0.8em;
+            font-weight: normal;
+        }
+
+    body > article li
+    {
+        list-style-type: disc;
+        margin-left: 1em;
+    }
+
+    body > article section
+    {
+        padding: 0 0 0.5em 0;
+    }
+
+.linkBack:before
+{
+    content: "\2190";
+}
+
+.linkUp
+{
+    float: right;
+    margin-top: 1em;
+}
+
+.linkUp:before
+{
+    content: "\2191";
+}
+
+
+/* Footer
+-----------------------------------------------------------*/
+
+body > footer
+{
+    background-color: #444;
+    clear: both;
+    color: #ccc;
+}
+
+    body > footer a
+    {
+        color: #eee;
+        font-weight: bold;
+        text-decoration: none;
+    }
+    
+        body > footer a:visited
+        {
+            color: #eee;
+        }
+    
+        body > footer a:hover
+        {
+            color:  #ff7;
+        }
+ 
+    body > footer .grid2,
+    body > footer .grid4
+    {
+        padding: 0;
+    }
+
+    body > footer li
+    {
+        display: block;
+        list-style: none;
+        padding-top: 1em;
+        text-align: center;
+    }
+
+        body > footer li img
+        {
+            display: none;
+        }
+
+    body > footer .mainMenu
+    {
+        float: left;
+        margin-left: 1em;
+    }
+
+        body > footer .mainMenu li
+        {
+            float: left;
+            padding-right: 1.5em;
+        }
+
+    body > footer .systemMenu
+    {
+        float: right;
+        margin-right: 1em;
+    }
+
+        body > footer .systemMenu li
+        {
+            display: block;
+            float: left;
+            list-style: none;
+            text-align: center;
+            width: 5em;
+        }
+
+#siteCopyright
+{
+    font-size: 0.8em;
+    padding: 1em 0 0.75em 0;
+    text-align: center;
+}
+
+
+/* Popups
+-----------------------------------------------------------*/
+
+#popupBg
+{
+    background-color: #000;
+    display: none;
+    height: 100%;
+    left: 0;
+    position: fixed;
+    _position: absolute; /* hack for IE6 */
+    top: 0;
+    width: 100%;
+    z-index: 1;
+}
+
+#popupClose
+{
+    float: right;
+}
+
+#popupContent
+{
+    width: 100%;
+}
+
+#popupWindow
+{
+    background-color: #fff;
+    display: none;
+    padding: 1em;
+    position: fixed;
+    _position: absolute; /* hack for IE6 */
+    z-index: 2;
+}
+
+
+
+
+/* Forms
+-----------------------------------------------------------*/
+
+fieldset
+{
+    border: 0.1em solid #ddd;
+    padding: 1em;
+    margin: 0 0 1.5em 0;
+}
+
+    fieldset div
+    {
+        padding-bottom: 0.5em;
+    }
+
+input[type=checkbox]
+{
+    margin-right: 1em;
+}
+
+input[type=submit]
+{
+    border: none;
+    float: right;
+    padding: 0.25em 0.75em;
+    margin-top: -0.5em;
+    margin-left: 0.5em;
+}
+
+input[type=text],
+select
+{
+    width: 100%;
+}
+
+label
+{
+    display: block;
+    font-weight: 600;
+}
+
+    label:after
+    {
+        content: ":";
+    }
+    
+legend
+{
+}
+
+textarea
+{
+    min-height: 75px;
+}
+    
+.button
+{
+    background-color: #555;
+    border-radius: 0.4em;
+    color: #eee;
+    float: right;
+    font-weight: 600;
+    margin-left: 1em;
+    padding: 0.25em 0.75em;
+    text-decoration: none;
+    -moz-border-radius: 0.4em;
+    -webkit-border-radius: 0.4em;
+}
+
+    .button:hover
+    {
+        background-color: #666;
+        color: #ff7;
+    }
+
+.editor-label
+{
+    margin: 1em 0 0 0;
+}
+
+.editor-field
+{
+    margin: 0.5em 0 0 0;
+}
+
+
+/* Forms Validation
+-----------------------------------------------------------*/
+
+.field-validation-error {
+    color: #f00;
+}
+
+.field-validation-valid {
+    display: none;
+}
+
+.input-validation-error {
+    border: 1px solid #f00;
+    background-color: #fee;
+}
+
+.validation-summary-errors {
+    font-weight: bold;
+    color: #f00;
+}
+
+.validation-summary-valid {
+    display: none;
+}
+
+
+/* Status Indicators
+-----------------------------------------------------------*/
+
+.stateBuilding
+{
+    color: #393;
+}
+
+.stateConnected
+{
+}
+
+.stateDead
+{
+    color: #f93;
+}
+
+.stateOffline
+{
+    color: #999;
+}
+
+.stateZombied
+{
+    color: #f33;
+}
+
+
+/* Table Formatting
+-----------------------------------------------------------*/
+
+table
+{
+    margin-bottom: 1.5em;
+    width: 100%;
+}
+
+td,
+th
+{
+    padding: 0.25em 0.5em;
+    vertical-align: top;
+}
+
+    td.alpha,
+    th.alpha
+    {
+        text-align: left;
+    }
+
+    td.enum,
+    th.enum
+    {
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    td.numeric,
+    th.numeric
+    {
+        text-align: right;
+        white-space: nowrap;
+    }
+
+td
+{
+}
+
+    td.highlight
+    {
+        background-color: #f7f7f7;
+    }
+
+    td img
+    {
+        vertical-align: middle;
+    }
+    
+
+th
+{
+    background-color: #ddd;
+    color: #666;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+tr
+{
+    border-bottom: 0.1em dotted #666;
+}
+
+    tr:hover
+    {
+        background-color: #f7f7f7;
+    }
+
+        tr:hover td.highlight
+        {
+            background-color: #ddd;
+        }
+
+    tr.bad
+    {
+        background-color: #fee;
+    }
+    
+        tr.bad:hover
+        {
+            background-color: #edd;
+        }
+        
+    tr.odd
+    {
+        background-color: #f7f7f7;
+    }
+    
+        tr.odd:hover
+        {
+            background-color: #ddd;
+        }
+        
+    tr.p
+    {
+        border-bottom: none;
+    }
+    
+        tr.p:hover
+        {
+            background-color: #fff;
+        }
+    
+    tr.p td
+    {
+        padding: 0;
+    }
+
+        tr.p td h2
+        {
+            padding-top: 1.5em;
+            text-align: left;
+        }
+
+        tr.p:first-child td h2
+        {
+            padding-top: 0;
+        }
+        
+    tr.current
+    {
+        background-color: #efe;
+    }
+    
+        tr.current:hover
+        {
+            background-color: #ded;
+        }
+
+.tableKeyValue td
+{
+    text-align: right;
+}
+
+.tableKeyValue th
+{
+    width: max-content;
+}
+
+
+/* Content Specific (Build Machines)
+-----------------------------------------------------------*/
+
+#infrastructureList .grid2 > div
+{
+    height: 3em;
+}
+
+.machineList span
+{
+    white-space: nowrap;
+    word-break: keep-all;
+}
+
+    .machineList span:before
+    {
+        content: "| ";
+    }
+
+        .machineList span:first-child:before
+        {
+            content: "";
+        }
+
+
+/* Debug
+-----------------------------------------------------------*/
+
+.debug
+{
+    background-color: Green;
+}
+
+.defunct
+{
+    background-color: #fff3c8;
+}

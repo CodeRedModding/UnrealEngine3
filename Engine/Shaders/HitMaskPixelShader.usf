@@ -1,0 +1,93 @@
+/*=============================================================================
+	GPUSkinHitMaskPixelShader.usf: This is used for skeletalmesh to render hit mask texture
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+// hit location and radius
+float3	HitLocation;
+float3	HitStartLocation;
+float	HitRadius;
+float	HitCullDistance;
+
+// allowed normal for testing
+// for gun shot, you'd like to check facing, add 0.f or any cone of cos (cos X)
+// but for gore, you probably don't want any dot check, so it will be -1
+float	HitCullNormal;
+
+// Current Mask Texture
+sampler2D CurrentMaskTexture;
+
+void Main(
+	FVertexFactoryInterpolantsVSToPS FactoryInterpolants,
+	float4 WorldPosition	: TEXCOORD5,
+	float3 WorldNormal		: TEXCOORD6,
+	float2 TexCoords		: TEXCOORD7,
+	out float4 OutColor		: COLOR0
+	)
+{
+	float4 NewColor = 0;
+
+	// First sample the source values from the clone texture
+#if NUM_MATERIAL_TEXCOORDS
+	// First sample the source values from the previous texture
+	// The tex coords isn't material coords, but modified/unmirrored coords
+	float4 OldColor = tex2D( CurrentMaskTexture, TexCoords );
+#if WORLD_COORDS
+	float3 SkinPosition = WorldPosition.xyz;
+	// first cull by distance 
+	float Length = length(HitLocation - SkinPosition);
+	if (Length < HitCullDistance && length(WorldNormal) > 0)
+	{
+		// check skin normal is facing
+		float3 SkinNormal = normalize(WorldNormal);
+		float3 HitNormal = normalize(HitStartLocation-HitLocation);
+		if ( HitCullNormal == -1 )
+		{
+			if ( Length < HitRadius )
+			{
+				// first just check radius and see if you get color value
+				float Normalized = clamp(Length/HitRadius, 0, 1);
+				NewColor = float4(Normalized, Normalized, Normalized, 1);		
+			}
+		}
+		// cull backfacing
+		else if ( dot(SkinNormal, HitNormal) > HitCullNormal )
+		{
+			// first just check radius and see if you get color value
+			float Normalized = clamp(Length/HitRadius, 0, 1);
+			NewColor = 1-pow(Normalized, 3);
+
+			float4 NewColor2 = 0;
+
+			// now getting ideal Desired Cos value
+			// first get vector of HitStart->HitLoc & HitStart->SkinPosition
+			float3 HitStartVector = HitLocation-HitStartLocation;
+			float3 HitStartToSkinVector = SkinPosition-HitStartLocation;
+			// get cosine of two vector
+			float AbsCosBetween = abs(dot(normalize(HitStartToSkinVector), normalize(HitStartVector)));
+			// desiredcosvalue is HitDistance/sqrt(HitDistance^2+HitRadius^2) by trig rule;
+			float DesiredCosVal = length(HitStartVector)/sqrt(dot(HitStartVector, HitStartVector)+HitRadius*HitRadius);
+
+			// if new color is still small
+			if (AbsCosBetween >= DesiredCosVal)
+			{
+				// normalized 0-1
+				float Normalized = 2*(AbsCosBetween-DesiredCosVal)/(1-DesiredCosVal);
+				// since this is already curved, try ^2
+				NewColor2 = pow(Normalized, 3);			
+			}
+
+			NewColor = max(NewColor, NewColor2);
+		}
+	}
+	// Accumulate the color
+	NewColor += OldColor;
+#endif
+#else
+#endif
+	OutColor = NewColor;
+}

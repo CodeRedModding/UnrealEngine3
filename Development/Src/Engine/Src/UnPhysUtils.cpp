@@ -3,9 +3,11 @@
     
     - MeMemory/MeMessage glue
     - Debug line drawing
-============================================================================*/
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ ===========================================================================*/
 
 #include "EnginePrivate.h"
+#include "UnPhysicalMaterial.h"
 
 /* *********************************************************************** */
 /* *********************************************************************** */
@@ -13,260 +15,196 @@
 /* *********************************************************************** */
 /* *********************************************************************** */
 
-#define LOCAL_EPS (0.01f)
 
-static void AddVertexIfNotPresent(TArray<FVector> &vertices, const FVector& newVertex)
-{
-	UBOOL isPresent = 0;
-
-	for(INT i=0; i<vertices.Num() && !isPresent; i++)
-	{
-		FLOAT diffSqr = (newVertex - vertices(i)).SizeSquared();
-		if(diffSqr < LOCAL_EPS * LOCAL_EPS)
-			isPresent = 1;
-	}
-
-	if(!isPresent)
-		vertices.AddItem(newVertex);
-
-}
-
-static void AddConvexPrim(FKAggregateGeom* outGeom, TArray<FPlane> &planes, UModel* inModel, const FVector& prePivot)
+/** Returns FALSE if ModelToHulls operation should halt because of vertex count overflow. */
+static UBOOL AddConvexPrim(FKAggregateGeom* outGeom, TArray<FPlane> &planes, UModel* inModel)
 {
 	// Add Hull.
-	int ex = outGeom->ConvexElems.AddZeroed();
+	const INT ex = outGeom->ConvexElems.AddZeroed();
 	FKConvexElem* c = &outGeom->ConvexElems(ex);
 
-	c->PlaneData = planes;
-
-	FLOAT TotalPolyArea = 0;
-
-	for(INT i=0; i<planes.Num(); i++)
+	// Because of precision, we use the original model verts as 'snap to' verts.
+	TArray<FVector> SnapVerts;
+	for(INT k=0; k<inModel->Verts.Num(); k++)
 	{
-		FPoly	Polygon;
-		FVector Base, AxisX, AxisY;
-
-		Polygon.Normal = planes(i);
-		Polygon.NumVertices = 4;
-		Polygon.Normal.FindBestAxisVectors(AxisX,AxisY);
-
-		Base = planes(i) * planes(i).W;
-
-		Polygon.Vertex[0] = Base + AxisX * HALF_WORLD_MAX + AxisY * HALF_WORLD_MAX;
-		Polygon.Vertex[1] = Base - AxisX * HALF_WORLD_MAX + AxisY * HALF_WORLD_MAX;
-		Polygon.Vertex[2] = Base - AxisX * HALF_WORLD_MAX - AxisY * HALF_WORLD_MAX;
-		Polygon.Vertex[3] = Base + AxisX * HALF_WORLD_MAX - AxisY * HALF_WORLD_MAX;
-
-		for(INT j=0; j<planes.Num(); j++)
+		// Find vertex vector. Bit of  hack - sometimes FVerts are uninitialised.
+		const INT pointIx = inModel->Verts(k).pVertex;
+		if(pointIx < 0 || pointIx >= inModel->Points.Num())
 		{
-			if(i != j)
-			{
-				if(!Polygon.Split(-FVector(planes(j)), planes(j) * planes(j).W))
-				{
-					Polygon.NumVertices = 0;
-					break;
-				}
-			}
+			continue;
 		}
 
-		TotalPolyArea += Polygon.Area();
-
-		// Add vertices of polygon to convex primitive.
-		for(INT j=0; j<Polygon.NumVertices; j++)
-		{
-			// Because of errors with the polygon-clipping, we dont use the vertices we just generated,
-			// but the ones stored in the model. We find the closest.
-			INT nearestVert = INDEX_NONE;
-			FLOAT nearestDistSqr = BIG_NUMBER;
-
-			for(INT k=0; k<inModel->Verts.Num(); k++)
-			{
-				// Find vertex vector. Bit of  hack - sometimes FVerts are uninitialised.
-				INT pointIx = inModel->Verts(k).pVertex;
-				if(pointIx < 0 || pointIx >= inModel->Points.Num())
-					continue;
-
-				FLOAT distSquared = (Polygon.Vertex[j] - inModel->Points(pointIx)).SizeSquared();
-
-				if( distSquared < nearestDistSqr )
-				{
-					nearestVert = k;
-					nearestDistSqr = distSquared;
-				}
-			}
-
-			// If we have found a suitably close vertex, use that
-			if( nearestVert != INDEX_NONE && nearestDistSqr < LOCAL_EPS )
-			{
-				FVector localVert = ((inModel->Points(inModel->Verts(nearestVert).pVertex)) - prePivot);
-				AddVertexIfNotPresent(c->VertexData, localVert);
-			}
-			else
-			{
-				FVector localVert = (Polygon.Vertex[j] - prePivot);
-				AddVertexIfNotPresent(c->VertexData, localVert);
-			}
-		}
+		SnapVerts.AddItem(inModel->Points(pointIx));
 	}
 
-#if 1
-	if(TotalPolyArea < 0.001f || TotalPolyArea > 1000000000.0f)
-	{
-		debugf( TEXT("Total Polygon Area invalid: %f") );
-		return;
-	}
+	// Create a hull from a set of planes
+	UBOOL bSuccess = c->HullFromPlanes(planes, SnapVerts);
 
-	// We need at least 4 vertices to make a convex hull with non-zero volume.
-	// We shouldn't have the same vertex multiple times (using AddVertexIfNotPresent above)
-	if(c->VertexData.Num() < 4)
+	// If it failed for some reason, remove from the array
+	if(!bSuccess || !c->ElemBox.IsValid)
 	{
 		outGeom->ConvexElems.Remove(ex);
-		return;
 	}
 
-	// Check that not all vertices lie on a line (ie. find plane)
-	// Again, this should be a non-zero vector because we shouldn't have duplicate verts.
-	UBOOL found;
-	FVector dir2, dir1;
-	
-	dir1 = c->VertexData(1) - c->VertexData(0);
-	dir1.Normalize();
-
-	found = 0;
-	for(INT i=2; i<c->VertexData.Num() && !found; i++)
-	{
-		dir2 = c->VertexData(i) - c->VertexData(0);
-		dir2.Normalize();
-
-		// If line are non-parallel, this vertex forms our plane
-		if((dir1 | dir2) < (1 - LOCAL_EPS))
-			found = 1;
-	}
-
-	if(!found)
-	{
-		outGeom->ConvexElems.Remove(ex);
-		return;
-	}
-
-	// Now we check that not all vertices lie on a plane, by checking at least one lies of the plane we have formed.
-	FVector normal = dir1 ^ dir2;
-	normal.Normalize();
-
-	FPlane plane(c->VertexData(0), normal);
-
-	found = 0;
-	for(INT i=2; i<c->VertexData.Num() && !found; i++)
-	{
-		if(plane.PlaneDot(c->VertexData(i)) > LOCAL_EPS)
-			found = 1;
-	}
-	
-	if(!found)
-	{
-		outGeom->ConvexElems.Remove(ex);
-		return;
-	}
-#endif
-
+	// Return if we succeeded or not
+	return bSuccess;
 }
 
 // Worker function for traversing collision mode/blocking volumes BSP.
 // At each node, we record, the plane at this node, and carry on traversing.
 // We are interested in 'inside' ie solid leafs.
-static void ModelToHullsWorker(FKAggregateGeom* outGeom,
-							   UModel* inModel, 
-							   INT nodeIx, 
-							   UBOOL bOutside, 
-							   TArray<FPlane> &planes, 
-							   const FVector& prePivot)
+/** Returns FALSE if ModelToHulls operation should halt because of vertex count overflow. */
+static UBOOL ModelToHullsWorker(FKAggregateGeom* outGeom,
+								UModel* inModel, 
+								INT nodeIx, 
+								UBOOL bOutside, 
+								TArray<FPlane> &planes)
 {
 	FBspNode* node = &inModel->Nodes(nodeIx);
+	if(node)
+	{
+		// BACK
+		if(node->iBack != INDEX_NONE) // If there is a child, recurse into it.
+		{
+			planes.AddItem(node->Plane);
+			if ( !ModelToHullsWorker(outGeom, inModel, node->iBack, node->ChildOutside(0, bOutside), planes) )
+			{
+				return FALSE;
+			}
+			planes.Remove(planes.Num()-1);
+		}
+		else if(!node->ChildOutside(0, bOutside)) // If its a leaf, and solid (inside)
+		{
+			planes.AddItem(node->Plane);
+			if ( !AddConvexPrim(outGeom, planes, inModel) )
+			{
+				return FALSE;
+			}
+			planes.Remove(planes.Num()-1);
+		}
 
-	// FRONT
-	if(node->iChild[0] != INDEX_NONE) // If there is a child, recurse into it.
-	{
-		planes.AddItem(node->Plane);
-		ModelToHullsWorker(outGeom, inModel, node->iChild[0], node->ChildOutside(0, bOutside), planes, prePivot);
-		planes.Remove(planes.Num()-1);
-	}
-	else if(!node->ChildOutside(0, bOutside)) // If its a leaf, and solid (inside)
-	{
-		planes.AddItem(node->Plane);
-		AddConvexPrim(outGeom, planes, inModel, prePivot);
-		planes.Remove(planes.Num()-1);
-	}
-
-	// BACK
-	if(node->iChild[1] != INDEX_NONE)
-	{
-		planes.AddItem(node->Plane.Flip());
-		ModelToHullsWorker(outGeom, inModel, node->iChild[1], node->ChildOutside(1, bOutside), planes, prePivot);
-		planes.Remove(planes.Num()-1);
-	}
-	else if(!node->ChildOutside(1, bOutside))
-	{
-		planes.AddItem(node->Plane.Flip());
-		AddConvexPrim(outGeom, planes, inModel, prePivot);
-		planes.Remove(planes.Num()-1);
+		// FRONT
+		if(node->iFront != INDEX_NONE)
+		{
+			planes.AddItem(node->Plane.Flip());
+			if ( !ModelToHullsWorker(outGeom, inModel, node->iFront, node->ChildOutside(1, bOutside), planes) )
+			{
+				return FALSE;
+			}
+			planes.Remove(planes.Num()-1);
+		}
+		else if(!node->ChildOutside(1, bOutside))
+		{
+			planes.AddItem(node->Plane.Flip());
+			if ( !AddConvexPrim(outGeom, planes, inModel) )
+			{
+				return FALSE;
+			}
+			planes.Remove(planes.Num()-1);
+		}
 	}
 
+	return TRUE;
 }
 
-// Function to create a set of convex geometries from a UModel.
-// Replaces any convex elements already in the FKAggregateGeom.
-// Create it around the model origin, and applies the UNreal->Karma scaling.
-void KModelToHulls(FKAggregateGeom* outGeom, UModel* inModel, const FVector& prePivot)
+// Converts a UModel to a set of convex hulls for.  If flag deleteContainedHull is set any convex elements already in
+// outGeom will be destroyed.  WARNING: the input model can have no single polygon or
+// set of coplanar polygons which merge to more than FPoly::MAX_VERTICES vertices.
+// Creates it around the model origin, and applies the Unreal->Physics scaling.
+UBOOL KModelToHulls(FKAggregateGeom* outGeom, UModel* inModel, UBOOL deleteContainedHulls/*=TRUE*/ )
 {
-	outGeom->ConvexElems.Empty();
+	UBOOL bSuccess = TRUE;
+
+	if ( deleteContainedHulls )
+	{
+		outGeom->ConvexElems.Empty();
+	}
+
+	const INT NumHullsAtStart = outGeom->ConvexElems.Num();
 	
-	if(!inModel)
-		return;
-
-	TArray<FPlane>	planes;
-	ModelToHullsWorker(outGeom, inModel, 0, inModel->RootOutside, planes, prePivot);
-
-}
-
-// Util for creating has keys from pairs of actors
-
-QWORD RBActorsToKey(AActor* a1, AActor* a2)
-{
-	check(sizeof(QWORD) == 2 * sizeof(AActor*));
-
-	// Make sure m1 is the 'lower' pointer.
-	if(a2 > a1)
+	if( inModel )
 	{
-		AActor* tmp = a2;
-		a2 = a1;
-		a1 = tmp;
+		TArray<FPlane>	planes;
+		bSuccess = ModelToHullsWorker(outGeom, inModel, 0, inModel->RootOutside, planes);
+		if ( !bSuccess )
+		{
+			// ModelToHulls failed.  Clear out anything that may have been created.
+			outGeom->ConvexElems.Remove( NumHullsAtStart, outGeom->ConvexElems.Num() - NumHullsAtStart );
+		}
 	}
 
-	QWORD Key;
-	AActor** actors = (AActor**)&Key;
-	actors[0] = a1;
-	actors[1] = a2;
-
-	return Key;
-
+	return bSuccess;
 }
 
-QWORD RigidBodyIndicesToKey(INT Body1Index, INT Body2Index)
+/** Set the status of a particular channel in the structure. */
+void FRBCollisionChannelContainer::SetChannel(ERBCollisionChannel Channel, UBOOL bNewState)
 {
-	check(sizeof(QWORD) == 2 * sizeof(INT));
+	INT ChannelShift = (INT)Channel;
 
-	if(Body1Index > Body2Index)
+#if !__INTEL_BYTE_ORDER__
+	DWORD ChannelBit = (1 << (31 - ChannelShift));
+#else
+	DWORD ChannelBit = (1 << ChannelShift);
+#endif
+
+	if(bNewState)
 	{
-		INT tmp = Body2Index;
-		Body2Index = Body1Index;
-		Body1Index = tmp;
+		Bitfield = Bitfield | ChannelBit;
+	}
+	else
+	{
+		Bitfield = Bitfield & ~ChannelBit;
+	}
+}
+
+/** This constructor will zero out the struct */
+FRBCollisionChannelContainer::FRBCollisionChannelContainer(INT)
+{
+	appMemzero(this, sizeof(FRBCollisionChannelContainer));
+}
+
+/**
+ * This is a helper function which will set the PhysicalMaterial based on
+ * whether or not we have a PhysMaterial set from a Skeletal Mesh or if we
+ * are getting it from the Environment.
+ *
+ **/
+UPhysicalMaterial* DetermineCorrectPhysicalMaterial( const FCheckResult& HitData )
+{
+	check(GEngine->DefaultPhysMaterial);
+
+	// check to see if this has a Physical Material Override.  If it does then use that
+	if( ( HitData.Component != NULL ) && ( HitData.Component->PhysMaterialOverride != NULL ) )
+	{
+		return HitData.Component->PhysMaterialOverride;
+	}
+	// if the physical material is already set then we know we hit a skeletal mesh and should return that PhysMaterial
+	else if( HitData.PhysMaterial != NULL )
+	{
+		return HitData.PhysMaterial;
+	}
+	// else we need to look at the Material and use that for our PhysMaterial.
+	// The GetPhysicalMaterial is virtual and will return the correct Material for all
+	// Material Types
+	// The PhysMaterial may still be null
+	else if( HitData.Material != NULL )
+	{
+		return HitData.Material->GetPhysicalMaterial();
+	}
+	else if( Cast<UMeshComponent>(HitData.Component) != NULL )
+	{
+		UMeshComponent* MeshComp = Cast<UMeshComponent>(HitData.Component);
+
+		// look at the materials until we find one that has a valid PhysMaterial.  And then use that.
+		// NOTE: this will only check LOD 0 due to how StaticMesh's GetMaterial(INT) works
+		for( INT MatIdx = 0; MatIdx < MeshComp->GetNumElements(); ++MatIdx )
+		{
+			if( MeshComp->GetMaterial(MatIdx) != NULL && MeshComp->GetMaterial(MatIdx)->GetPhysicalMaterial() )
+			{
+				return MeshComp->GetMaterial(MatIdx)->GetPhysicalMaterial();
+			}
+		}
 	}
 
-	QWORD Key;
-	INT* instances = (INT*)&Key;
-	instances[0] = Body1Index;
-	instances[1] = Body2Index;
-
-	return Key;
-
+	return GEngine->DefaultPhysMaterial;
 }

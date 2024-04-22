@@ -1,0 +1,56 @@
+/*=============================================================================
+	ShadowDepthPixelShader.usf: Pixel shader for writing shadow depth.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+#include "ShadowDepthCommon.usf"
+
+void Main( 
+	FShadowDepthVSToPS Inputs,
+#if !MATERIALBLENDING_SOLID
+	OPTIONAL_PixelShaderScreenPosition
+#elif MATERIAL_USE_SCREEN_DOOR_FADE
+	OPTIONAL_PixelShaderScreenPosition
+#endif
+	out float4 OutColor : COLOR0
+#if PERSPECTIVE_CORRECT_DEPTH
+	,out float OutDepth : DEPTH
+#endif
+	)
+{
+#if !MATERIALBLENDING_SOLID
+	// Evaluate the mask for masked materials
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(Inputs.FactoryInterpolants);
+	// Note: Using default values for camera vector and screen position to reduce interpolator cost.
+	// If the mask depends on either of these it will be subtly wrong.
+	CalcMaterialParameters(MaterialParameters, 1, float4(0,0,1,0), float4(0,0,.00001f,1));
+	GetMaterialClippingShadowDepth(MaterialParameters, PixelShaderScreenPosition.xy);
+
+#elif MATERIAL_USE_SCREEN_DOOR_FADE
+	// Apply screen door fade clip mask
+	ApplyScreenDoorFadeMask( PixelShaderScreenPosition.xy );
+#endif
+
+#if ONEPASS_POINTLIGHT_SHADOW
+	OutColor = 0;
+
+#elif PERSPECTIVE_CORRECT_DEPTH
+	Inputs.ShadowDepth *= InvMaxSubjectDepth;
+	Inputs.ShadowDepth += DepthBias;
+
+	OutDepth = saturate(Inputs.ShadowDepth);
+	// RETURN_COLOR not needed unless writing to SceneColor;	
+	OutColor = saturate(Inputs.ShadowDepth.xxxx);
+
+#else
+	#if SUPPORTS_DEPTH_TEXTURES
+		OutColor = 0;
+	#else
+		// Output depth as color
+		OutColor = Inputs.ShadowDepth.xxxx;
+	#endif
+#endif
+}

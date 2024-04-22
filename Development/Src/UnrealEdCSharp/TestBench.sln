@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnrealEdCSharp", "UnrealEdCSharp.csproj", "{4C3D7C5D-E45F-4B19-9A3E-3028E159A7CA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestBench", "TestBench.csproj", "{978482C8-C3E2-4B90-BC3B-8BC16F64265E}"
+EndProject
+Global
+	GlobalSection(SourceCodeControl) = preSolution
+		SccNumberOfProjects = 3
+		SccProjectUniqueName0 = UnrealEdCSharp.csproj
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = TestBench.csproj
+		SccLocalPath1 = .
+		SccLocalPath2 = .
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4C3D7C5D-E45F-4B19-9A3E-3028E159A7CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4C3D7C5D-E45F-4B19-9A3E-3028E159A7CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4C3D7C5D-E45F-4B19-9A3E-3028E159A7CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4C3D7C5D-E45F-4B19-9A3E-3028E159A7CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{978482C8-C3E2-4B90-BC3B-8BC16F64265E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{978482C8-C3E2-4B90-BC3B-8BC16F64265E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{978482C8-C3E2-4B90-BC3B-8BC16F64265E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{978482C8-C3E2-4B90-BC3B-8BC16F64265E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

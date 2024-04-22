@@ -1,12 +1,11 @@
 /*=============================================================================
 	UnDelphiInterface.cpp: Debugger Interface Interface
-	Copyright 1997-2001 Epic Games, Inc. All Rights Reserved.
-
-Revision history:
-	* Created by Lucas Alonso, Demiurge Studios
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
-#include "..\Src\EnginePrivate.h"
+#include "EnginePrivate.h"
+
+#if _WINDOWS && !CONSOLE
 
 #include "UnDebuggerCore.h"
 #include "UnDebuggerInterface.h"
@@ -24,10 +23,6 @@ DelphiInterface::DelphiInterface( const TCHAR* InDLLName )
 	DelphiBuildHierarchy(NULL),
 	DelphiClearHierarchy(NULL),
 	DelphiSetCallback(NULL),
-	DelphiEditorCommand(NULL),
-	DelphiEditorLoadTextBuffer(NULL),
-	DelphiClearWatch(NULL),
-	DelphiAddWatch(NULL),
 	DelphiAddBreakpoint(NULL),
 	DelphiRemoveBreakpoint(NULL),
 	DelphiEditorGotoLine(NULL),
@@ -40,16 +35,16 @@ DelphiInterface::DelphiInterface( const TCHAR* InDLLName )
 	DelphiAddAWatch(NULL),
 	DelphiLockList(NULL),
 	DelphiUnlockList(NULL),
-	DelphiSetCurrentObjectName(NULL)
+	DelphiSetCurrentObjectName(NULL),
+	LoadCount(0)
 {
 	DllName = InDLLName;
 	Debugger = NULL;
-	LoadCount = 0;
 }
 
 DelphiInterface::~DelphiInterface()
 {
-	Debugger = 0;
+	Debugger = NULL;
 }
 
 int DelphiInterface::AddAWatch(int watch, int ParentIndex, const TCHAR* ObjectName, const TCHAR* Data)
@@ -70,9 +65,9 @@ UBOOL DelphiInterface::Initialize( UDebuggerCore* DebuggerOwner )
 	{
 		BindToDll();
 		DelphiSetCallback( &DelphiCallback );
-		DelphiClearWatch( LOCAL_WATCH );
-		DelphiClearWatch( GLOBAL_WATCH );
-		DelphiClearWatch( WATCH_WATCH );
+		DelphiClearAWatch( LOCAL_WATCH );
+		DelphiClearAWatch( GLOBAL_WATCH );
+		DelphiClearAWatch( WATCH_WATCH );
 	}
 	Show();
 	return TRUE;
@@ -80,8 +75,10 @@ UBOOL DelphiInterface::Initialize( UDebuggerCore* DebuggerOwner )
 
 void DelphiInterface::Callback( const char* C )
 {
+	TCHAR Command[1024];
+	appStrcpy(Command,1024,ANSI_TO_TCHAR(C));
+	const TCHAR* command = Command;
 	// uncomment to log all callback mesages from the UI
-	const TCHAR* command = ANSI_TO_TCHAR(C);
 //	debugf(TEXT("Callback: %s"), command);
 
 	if(ParseCommand(&command, TEXT("addbreakpoint")))
@@ -134,6 +131,18 @@ void DelphiInterface::Callback( const char* C )
 		Debugger->SetCondition(*ConditionName,*Value);
 		return;
 	}
+	else if ( ParseCommand(&command,TEXT("changestack")) )
+	{
+		FString StackNum;
+		if ( !ParseToken(command,StackNum,1) )
+		{
+			debugf(TEXT("Callback error (changestack): Couldn't parse stacknum"));
+			return;
+		}
+
+		Debugger->ChangeStack( appAtoi(*StackNum) );
+		return;
+	}
 	else if (ParseCommand(&command,TEXT("setdatawatch")))
 	{
 		FString WatchText;
@@ -153,14 +162,20 @@ void DelphiInterface::Callback( const char* C )
 		Debugger->SetBreakOnNone(appAtoi(breakValueString));
 	}
 	else if(ParseCommand(&command, TEXT("break")))
-		Debugger->BreakASAP = 1;
-
+	{
+		Debugger->SetBreakASAP(TRUE);
+	}
 	else if(ParseCommand(&command, TEXT("stopdebugging")))
 	{
 		Debugger->Close();
 		return;
 	}
-	else if (Debugger->IsDebugging)
+	else if ( ParseCommand(&command,TEXT("clearbreaks")) )
+	{
+		// dunno what this is supposed to be for...
+		return;
+	}
+	else if ( Debugger->IsDebuggerActive() )
 	{
 		EUserAction Action = UA_None;
 		if(ParseCommand(&command, TEXT("go")))
@@ -230,7 +245,7 @@ void DelphiInterface::UpdateCallStack( TArray<FString>& StackNames )
 void DelphiInterface::SetBreakpoint( const TCHAR* ClassName, INT Line )
 {
 	FString upper(ClassName);
-	upper = upper.Caps();
+	upper = upper.ToUpper();
 	Debugger->GetBreakpointManager()->SetBreakpoint( ClassName, Line );
 	DelphiAddBreakpoint(TCHAR_TO_ANSI(*upper), Line);
 }
@@ -238,7 +253,7 @@ void DelphiInterface::SetBreakpoint( const TCHAR* ClassName, INT Line )
 void DelphiInterface::RemoveBreakpoint( const TCHAR* ClassName, INT Line )
 {
 	FString upper(ClassName);
-	upper = upper.Caps();
+	upper = upper.ToUpper();
 	Debugger->GetBreakpointManager()->RemoveBreakpoint( ClassName, Line );
 	DelphiRemoveBreakpoint(TCHAR_TO_ANSI(*upper), Line);
 }	
@@ -248,9 +263,11 @@ void DelphiInterface::UpdateClassTree()
 	ClassTree.Empty();
 	for (TObjectIterator<UClass> It; It; ++It)
 	{
-		UClass* ParentClass = Cast<UClass>(It->SuperField);
-		if (ParentClass)
-			ClassTree.Add( ParentClass, *It );
+		UClass* ParentClass = Cast<UClass>(It->SuperStruct);
+		if (ParentClass != NULL)
+		{
+			ClassTree.Add(ParentClass, *It);
+		}
 	}
 
 	DelphiClearHierarchy();
@@ -273,7 +290,7 @@ void DelphiInterface::RecurseClassTree( UClass* ParentClass )
 		// Extract the package name and chop off the 'Class' thing.
 		FString PackageName = FullName.Left( CutPos );
 		PackageName = PackageName.Right( PackageName.Len() - 6 );
-		DelphiAddClassToHierarchy( TCHAR_TO_ANSI(*FString::Printf( TEXT("%s.%s.%s"), *PackageName, ParentClass->GetName(), ChildClasses(i)->GetName() )) );
+		DelphiAddClassToHierarchy( TCHAR_TO_ANSI(*FString::Printf( TEXT("%s.%s.%s"), *PackageName, *ParentClass->GetName(), *ChildClasses(i)->GetName() )) );
 
 		RecurseClassTree( ChildClasses(i) );
 	}
@@ -312,16 +329,14 @@ void DelphiInterface::BindToDll()
 
 	LoadCount++;
 
+#pragma warning(push)
+#pragma warning(disable:4191) // disable: unsafe conversion from 'type of expression' to 'type required'
 	// Get pointers to the delphi functions
 	DelphiShowDllForm			= (DelphiVoidVoid)			GetProcAddress( hInterface, "ShowDllForm" );
-	DelphiEditorCommand			= (DelphiVoidChar)			GetProcAddress( hInterface, "EditorCommand" );
-	DelphiEditorLoadTextBuffer	= (DelphiVoidCharChar)		GetProcAddress( hInterface, "EditorLoadTextBuffer" );
 	DelphiAddClassToHierarchy	= (DelphiVoidChar)			GetProcAddress( hInterface, "AddClassToHierarchy" );
 	DelphiBuildHierarchy		= (DelphiVoidVoid)			GetProcAddress( hInterface, "BuildHierarchy" );
 	DelphiClearHierarchy		= (DelphiVoidVoid)			GetProcAddress( hInterface, "ClearHierarchy" );
 	DelphiBuildHierarchy		= (DelphiVoidVoid)			GetProcAddress( hInterface, "BuildHierarchy" );
-	DelphiClearWatch			= (DelphiVoidInt)			GetProcAddress( hInterface, "ClearWatch" );
-	DelphiAddWatch				= (DelphiVoidIntChar)		GetProcAddress( hInterface, "AddWatch" );
 	DelphiSetCallback			= (DelphiVoidVoidPtr)		GetProcAddress( hInterface, "SetCallback" );
 	DelphiAddBreakpoint			= (DelphiVoidCharInt)		GetProcAddress( hInterface, "AddBreakpoint" );
 	DelphiRemoveBreakpoint		= (DelphiVoidCharInt)		GetProcAddress( hInterface, "RemoveBreakpoint" );
@@ -336,6 +351,8 @@ void DelphiInterface::BindToDll()
 	DelphiLockList				= (DelphiVoidInt)			GetProcAddress( hInterface, "LockList" );
 	DelphiUnlockList			= (DelphiVoidInt)			GetProcAddress( hInterface, "UnlockList" );
 	DelphiSetCurrentObjectName	= (DelphiVoidChar)			GetProcAddress( hInterface, "SetCurrentObjectName" );
+#pragma warning(pop)
+
 }
 
 void DelphiInterface::UnbindDll()
@@ -365,3 +382,4 @@ void DelphiInterface::UnbindDll()
 	DelphiSetCurrentObjectName	= NULL;
 }
 
+#endif

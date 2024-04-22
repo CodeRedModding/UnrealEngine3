@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Keywords>
+  <Category Name="cpptext">
+    <Keyword>cpptext</Keyword>
+  </Category>
+
+  <Category Name="structcpptext">
+    <Keyword>structcpptext</Keyword>
+  </Category>
+
+  <Category Name="function">
+    <Keyword>client</Keyword>
+    <Keyword>exec</Keyword>
+    <Keyword>final</Keyword>
+    <Keyword>iterator</Keyword>
+    <Keyword>latent</Keyword>
+    <Keyword>noexport</Keyword>
+    <Keyword>noexportheader</Keyword>
+    <Keyword>private</Keyword>
+    <Keyword>protected</Keyword>
+    <Keyword>public</Keyword>
+    <Keyword>reliable</Keyword>
+    <Keyword>server</Keyword>
+    <Keyword>simulated</Keyword>
+    <Keyword>singular</Keyword>
+    <Keyword>unreliable</Keyword>
+    <Keyword>virtual</Keyword>
+  </Category>
+
+  <Category Name="parameter">
+    <Keyword>coerce</Keyword>
+    <Keyword>const</Keyword>
+    <Keyword>init</Keyword>
+    <Keyword>optional</Keyword>
+    <Keyword>out</Keyword>
+    <Keyword>skip</Keyword>
+  </Category>
+
+  <Category Name="state">
+    <Keyword>auto</Keyword>
+    <Keyword>simulated</Keyword>
+  </Category>
+
+  <Category Name="struct">
+    <Keyword>export</Keyword>
+    <Keyword>immutable</Keyword>
+    <Keyword>immutablewhencooked</Keyword>
+    <Keyword>transient</Keyword>
+  </Category>
+
+  <Category Name="type">
+    <Keyword>instanced</Keyword>
+  </Category>
+
+  <Category Name="var">
+    <Keyword>archetype</Keyword>
+    <Keyword>config</Keyword>
+    <Keyword>databinding</Keyword>
+    <Keyword>deprecated</Keyword>
+    <Keyword>duplicatetransient</Keyword>
+    <Keyword>editconst</Keyword>
+    <Keyword>editfixedsize</Keyword>
+    <Keyword>editinline</Keyword>
+    <Keyword>editinlineuse</Keyword>
+    <Keyword>editoronly</Keyword>
+    <Keyword>export</Keyword>
+    <Keyword>globalconfig</Keyword>
+    <Keyword>init</Keyword>
+    <Keyword>input</Keyword>
+    <Keyword>instanced</Keyword>
+    <Keyword>interp</Keyword>
+    <Keyword>localized</Keyword>
+    <Keyword>noclear</Keyword>
+    <Keyword>noexport</Keyword>
+    <Keyword>noimport</Keyword>
+    <Keyword>nontransactional</Keyword>
+    <Keyword>notforconsole</Keyword>
+    <Keyword>private</Keyword>
+    <Keyword>protected</Keyword>
+    <Keyword>public</Keyword>
+    <Keyword>repnotify</Keyword>
+    <Keyword>transient</Keyword>
+  </Category>
+</Keywords>

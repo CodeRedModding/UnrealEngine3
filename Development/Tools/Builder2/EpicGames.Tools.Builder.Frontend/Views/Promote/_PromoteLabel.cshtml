@@ -1,0 +1,53 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Database.SP_GetPromotableLabelsResult
+
+@{
+    Layout = null;
+}
+
+
+@{
+    string img;
+    string title;
+    
+    if (Model.BuildLabel != "NULL")
+    {
+        img = "tick.png";
+        title = "Last Build Succeeded";       
+    }
+    else
+    {
+        img = "cross.png";
+        title = "Last Build Failed";        
+    }
+    
+    
+    <tr class="@((Model.BuildLabel != "NULL") ? "good" : "bad") @((Model.BuildLabel == ViewBag.PromotedLabel) ? "current" : "")" title="@title">
+        <td class="string">
+            <img class="icon" src="~/Content/Themes/Base/Images/@img" alt="State" />
+            @Model.BuildLabel
+        </td>
+        <td class="enum">
+            @if (@Model.ChangeList.HasValue)
+            {
+                @Html.ActionLink("CL " + Model.ChangeList.Value.ToString(), "Changelist", "Build", new { id = Model.ChangeList.Value.ToString() }, null)
+            }
+            else
+            {
+                <text>n/a</text>
+            }
+        </td>
+        <td class="enum">
+            @Model.BuildEnded.Value.ToLocalTime().ToString()
+        </td>
+        <td class="numeric">
+            @if (Model.BuildLabel != ViewBag.PromotedLabel)
+            {
+                <button type="button" onclick="promoteLabel(@ViewBag.PromotionCommand, '@Model.BuildLabel')" title="Promote this label">Promote</button>
+            }
+            else
+            {
+                <text>Current &nbsp; &nbsp;</text>
+            }
+        </td>
+    </tr>
+}

@@ -1,0 +1,149 @@
+/*=============================================================================
+	FluidSurfaceSimulation.usf - Contains shaders for simulating a 2d fluid heightfield.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+void VertexMain(
+	in float4 InPosition : POSITION,
+	in float2 InTexCoord : TEXCOORD0,
+	out float2 OutTexCoord : TEXCOORD0,
+	out float4 OutPosition : POSITION
+	)
+{
+	OutPosition = InPosition;
+	OutTexCoord = InTexCoord;
+}
+
+/* Force Position in texture space */
+float2 ForcePosition;
+
+/* Force Radius in texture space */
+float ForceRadius;
+
+/* Amount to offset */
+float ForceMagnitude;
+
+sampler2D PreviousHeights1;
+
+/*
+ * Applies a force by offsetting previous heights, which are used to determine the velocity for the next simulation step.
+ * The force is proportional to distance from ForcePosition and ForceMagnitude.
+ */
+void ApplyForcePixelMain(
+	in float2 TexCoord : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	float DistanceFromForce = length(TexCoord - ForcePosition);
+	float DistanceFactor = max(ForceRadius - DistanceFromForce, 0.0f);
+	float NewHeight = DistanceFactor * ForceMagnitude;
+
+	// PC uses alpha blending to apply forces, other platforms have to fetch the current results and manually add
+#if !PC_D3D
+	float PreviousHeight = tex2D(PreviousHeights1, TexCoord).r;
+	NewHeight += PreviousHeight;
+#endif
+	OutColor = float4(NewHeight, 0, 0, 0);
+}
+
+/* 1.0f / GridSize */
+float2 CellSize;
+
+/* Amount to dampen the simulation */
+float DampFactor;
+
+/* Wave travel speed factor (0.0-1.0) */
+float TravelSpeed;
+
+/* Texture coordinate offsets to use when sampling previous heights, to take into account the simulation grid's movement. */
+float2 PreviousOffset1;
+float2 PreviousOffset2;
+
+sampler2D PreviousHeights2;
+
+/*
+ * Runs a step of the simulation
+ */
+void SimulatePixelMain(
+	in float2 TexCoord : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	float4 SurroundingHeights;
+	float2 PreviousCoord1	= TexCoord - PreviousOffset1;
+	SurroundingHeights.x	= tex2D(PreviousHeights1, PreviousCoord1 - float2(CellSize.x, 0.0f)).x;
+	SurroundingHeights.y	= tex2D(PreviousHeights1, PreviousCoord1 + float2(CellSize.x, 0.0f)).x;
+	SurroundingHeights.z	= tex2D(PreviousHeights1, PreviousCoord1 - float2(0.0f, CellSize.y)).x;
+	SurroundingHeights.w	= tex2D(PreviousHeights1, PreviousCoord1 + float2(0.0f, CellSize.y)).x;
+	float MidpointHeight	= tex2D(PreviousHeights1, PreviousCoord1).x * 4.0f;
+	float NeighborsHeight	= dot(SurroundingHeights, 1.0f);
+	float Curve = MidpointHeight + TravelSpeed * (NeighborsHeight - MidpointHeight);
+	float NewHeight = ( Curve * 0.5f - tex2D(PreviousHeights2, TexCoord - PreviousOffset2).x) * DampFactor;
+	OutColor = float4(NewHeight, 0, 0, 0);
+}
+
+sampler2D HeightTexture;
+float HeightScale;
+float SplineMargin;
+
+#define SplineParameter1 (0.5f - SplineMargin)
+#define SplineParameter2 (1.0f/SplineMargin)
+
+/*
+ * Calculates a normal based off of the heightmap
+ */
+void NormalPixelMain(
+	in float2 TexCoord : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	float4 SurroundingHeights = 0;
+#if XBOX
+	asm
+	{
+		tfetch2D SurroundingHeights.x___, TexCoord, HeightTexture, OffsetX=1.0f, OffsetY=0.0f
+		tfetch2D SurroundingHeights._x__, TexCoord, HeightTexture, OffsetX=-1.0f, OffsetY=0.0f
+		tfetch2D SurroundingHeights.__x_, TexCoord, HeightTexture, OffsetX=0.0f, OffsetY=1.0f
+		tfetch2D SurroundingHeights.___x, TexCoord, HeightTexture, OffsetX=0.0f, OffsetY=-1.0f
+	};
+#else
+	SurroundingHeights.x = tex2D(HeightTexture, TexCoord + float2(CellSize.x, 0.0f)).x;
+	SurroundingHeights.y = tex2D(HeightTexture, TexCoord - float2(CellSize.x, 0.0f)).x;
+	SurroundingHeights.z = tex2D(HeightTexture, TexCoord + float2(0.0f, CellSize.y)).x;
+	SurroundingHeights.w = tex2D(HeightTexture, TexCoord - float2(0.0f, CellSize.y)).x;
+#endif
+
+	//==== Attenuate the edges based on spline interpolation:
+	// Re-scale [0..0.1] and [0.9..1] to [0..1]
+	float2 T		= max(abs(TexCoord - 0.5f) - SplineParameter1, 0.0f) * SplineParameter2;
+	// Cubic interpolation
+	float2 F		= 2*T*T*T - 3*T*T + 1;
+	// Bilinear filter from 2D to 1D factor (making it zero at the edges)
+	float Scale		= HeightScale * F.x * F.y;
+
+	float2 HeightDeltas = (SurroundingHeights.xz - SurroundingHeights.yw) * Scale;
+	float3 Tangent = float3(CellSize.x * 2.0f, 0, HeightDeltas.x);
+	float3 Binormal = float3(0, CellSize.y * 2.0f, HeightDeltas.y);
+	//float3 Cross = cross(Tangent, Binormal);
+	// Cross product taking advantage of the 0's in Tangent and Binormal
+	float3 Cross = float3(-1, -1, 1) * Tangent.zxx * Binormal.yzy;
+	float3 Normal = normalize(Cross);
+	OutColor = float4(Normal, 0);
+}
+
+sampler2D NormalTexture;
+
+/*
+ * Used for debugging the simulation result
+ */
+void ApplyPixelMain(
+	in float2 TexCoord : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	float Scale = 10.0f;
+	//OutColor = float4(tex2D(HeightTexture, TexCoord).x * Scale, 0, 0, 0);
+	OutColor = tex2D(NormalTexture, TexCoord);
+}

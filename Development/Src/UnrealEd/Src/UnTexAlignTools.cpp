@@ -1,25 +1,24 @@
 /*=============================================================================
 	UnTexAlignTools.cpp: Tools for aligning textures on surfaces
-	Copyright 1997-2000 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Warren Marshall
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "UnrealEd.h"
+#include "UnTexAlignTools.h"
+#include "BSPOps.h"
 
-class FTexAlignTools;
+FTexAlignTools GTexAlignTools;
 
-INT GetMajorAxis( FVector InNormal, INT InForceAxis )
+static INT GetMajorAxis( FVector InNormal, INT InForceAxis )
 {
 	// Figure out the major axis information.
 	INT Axis = TAXIS_X;
-	if( ::fabs(InNormal.Y) >= 0.5f ) Axis = TAXIS_Y;
+	if( Abs(InNormal.Y) >= 0.5f ) Axis = TAXIS_Y;
 	else 
 	{
 		// Only check Z if we aren't aligned to walls
 		if( InForceAxis != TAXIS_WALLS )
-			if( ::fabs(InNormal.Z) >= 0.5f ) Axis = TAXIS_Z;
+			if( Abs(InNormal.Z) >= 0.5f ) Axis = TAXIS_Z;
 	}
 
 	return Axis;
@@ -27,7 +26,7 @@ INT GetMajorAxis( FVector InNormal, INT InForceAxis )
 }
 
 // Checks the normal of the major axis ... if it's negative, returns 1.
-UBOOL ShouldFlipVectors( FVector InNormal, INT InAxis )
+static UBOOL ShouldFlipVectors( FVector InNormal, INT InAxis )
 {
 	if( InAxis == TAXIS_X )
 		if( InNormal.X < 0 ) return 1;
@@ -51,25 +50,43 @@ IMPLEMENT_CLASS(UTexAligner);
 UTexAligner::UTexAligner()
 {
 	Desc = TEXT("N/A");
-
-	TAxisEnum = new( GetClass(), TEXT("TAxis") )UEnum( NULL );
-	new(TAxisEnum->Names)FName( TEXT("TAXIS_X") );
-	new(TAxisEnum->Names)FName( TEXT("TAXIS_Y") );
-	new(TAxisEnum->Names)FName( TEXT("TAXIS_Z") );
-	new(TAxisEnum->Names)FName( TEXT("TAXIS_WALLS") );
-	new(TAxisEnum->Names)FName( TEXT("TAXIS_AUTO") );
-
 	TAxis = TAXIS_AUTO;
 	UTile = VTile = 1.f;
-
 	DefTexAlign = TEXALIGN_Default;
 }
 
-void UTexAligner::InitFields()
+/**
+ * Perform any static initialization, such as adding UProperties to the class (for intrinsic classes), or initializing static variable values.
+ * It is not recommended to use this function to initialize member property values, since those values will be overwritten when the class's default
+ * object is re-initialized against its archetype.  Use InitializeInstrinsicPropertyValues instead.
+ */
+void UTexAligner::StaticConstructor()
 {
+	TArray<FName> EnumNames;
+	EnumNames.AddItem( FName( TEXT("TAXIS_X") ) );
+	EnumNames.AddItem( FName( TEXT("TAXIS_Y") ) );
+	EnumNames.AddItem( FName( TEXT("TAXIS_Z") ) );
+	EnumNames.AddItem( FName( TEXT("TAXIS_WALLS") ) );
+	EnumNames.AddItem( FName( TEXT("TAXIS_AUTO") ) );
+
+	TAxisEnum = new( GetClass(), TEXT("TAxis") ) UEnum();
+	TAxisEnum->SetEnums( EnumNames );
+
 	new(GetClass(),TEXT("VTile"),	RF_Public)UFloatProperty	(CPP_PROPERTY(VTile),	TEXT(""), CPF_Edit );
 	new(GetClass(),TEXT("UTile"),	RF_Public)UFloatProperty	(CPP_PROPERTY(UTile),	TEXT(""), CPF_Edit );
+
 }
+
+void UTexAligner::Align( ETexAlign InTexAlignType )
+{
+	for( INT LevelIndex = 0; LevelIndex < GWorld->Levels.Num(); ++LevelIndex )
+	{
+		ULevel* Level = GWorld->Levels(LevelIndex);
+		Align( InTexAlignType, Level->Model );
+	}
+}
+
+
 
 void UTexAligner::Align( ETexAlign InTexAlignType, UModel* InModel )
 {
@@ -90,17 +107,6 @@ void UTexAligner::Align( ETexAlign InTexAlignType, UModel* InModel )
 		if( Surf->PolyFlags & PF_Selected )
 		{
 			new(InitialSurfList)FBspSurfIdx( Surf, i );
-
-			switch( InTexAlignType )
-			{
-				case TEXALIGN_Face:
-				//case TEXALIGN_Cylinder:
-				{
-					for( INT x = 0 ; x < EdPoly.NumVertices ; x++ )
-						PolyBBox += (EdPoly.Vertex[x] + Surf->Actor->Location);
-				}
-				break;
-			}
 		}
 	}
 
@@ -146,8 +152,10 @@ void UTexAligner::Align( ETexAlign InTexAlignType, UModel* InModel )
 		GEditor->polyUpdateMaster( InModel, Surf->Idx, 1 );
 	}
 
-	GEditor->RedrawLevel( GEditor->Level );
+	GEditor->RedrawLevelEditingViewports();
 
+	GWorld->MarkPackageDirty();
+	GCallbackEvent->Send( CALLBACK_LevelDirtied );
 }
 
 // Aligns a specific BSP surface
@@ -165,13 +173,18 @@ IMPLEMENT_CLASS(UTexAlignerPlanar);
 
 UTexAlignerPlanar::UTexAlignerPlanar()
 {
-	Desc = TEXT("Planar");
+	Desc = *LocalizeUnrealEd("Planar");
 	DefTexAlign = TEXALIGN_Planar;
 }
 
-void UTexAlignerPlanar::InitFields()
+/**
+ * Perform any static initialization, such as adding UProperties to the class (for intrinsic classes), or initializing static variable values.
+ * It is not recommended to use this function to initialize member property values, since those values will be overwritten when the class's default
+ * object is re-initialized against its archetype.  Use InitializeInstrinsicPropertyValues instead.
+ */
+void UTexAlignerPlanar::StaticConstructor()
 {
-	UTexAligner::InitFields();
+	new(GetClass()->HideCategories) FName(NAME_Object);
 	new(GetClass(),TEXT("TAxis"),	RF_Public)UByteProperty		(CPP_PROPERTY(TAxis),	TEXT(""), CPF_Edit, TAxisEnum );
 }
 
@@ -214,29 +227,34 @@ void UTexAlignerPlanar::AlignSurf( ETexAlign InTexAlignType, UModel* InModel, FB
 	U *= UTile;
 	V *= VTile;
 
-	InSurfIdx->Surf->pBase = GEditor->bspAddPoint(InModel,&Base,0);
-	InSurfIdx->Surf->vTextureU = GEditor->bspAddVector( InModel, &U, 0);
-	InSurfIdx->Surf->vTextureV = GEditor->bspAddVector( InModel, &V, 0);
+	InSurfIdx->Surf->pBase = FBSPOps::bspAddPoint(InModel,&Base,0);
+	InSurfIdx->Surf->vTextureU = FBSPOps::bspAddVector( InModel, &U, 0);
+	InSurfIdx->Surf->vTextureV = FBSPOps::bspAddVector( InModel, &V, 0);
 
 }
 
 /*------------------------------------------------------------------------------
 	UTexAlignerDefault
 
-	Aligns to a default settting.
+	Aligns to a default setting.
 ------------------------------------------------------------------------------*/
 
 IMPLEMENT_CLASS(UTexAlignerDefault);
 
 UTexAlignerDefault::UTexAlignerDefault()
 {
-	Desc = TEXT("Default");
+	Desc = *LocalizeUnrealEd("Default");
 	DefTexAlign = TEXALIGN_Default;
 }
 
-void UTexAlignerDefault::InitFields()
+/**
+ * Perform any static initialization, such as adding UProperties to the class (for intrinsic classes), or initializing static variable values.
+ * It is not recommended to use this function to initialize member property values, since those values will be overwritten when the class's default
+ * object is re-initialized against its archetype.  Use InitializeInstrinsicPropertyValues instead.
+ */
+void UTexAlignerDefault::StaticConstructor()
 {
-	UTexAligner::InitFields();
+	new(GetClass()->HideCategories) FName(NAME_Object);
 }
 
 void UTexAlignerDefault::AlignSurf( ETexAlign InTexAlignType, UModel* InModel, FBspSurfIdx* InSurfIdx, FPoly* InPoly, FVector* InNormal )
@@ -250,8 +268,8 @@ void UTexAlignerDefault::AlignSurf( ETexAlign InTexAlignType, UModel* InModel, F
 	InPoly->TextureU *= UTile;
 	InPoly->TextureV *= VTile;
 
-	InSurfIdx->Surf->vTextureU = GEditor->bspAddVector( InModel, &InPoly->TextureU, 0);
-	InSurfIdx->Surf->vTextureV = GEditor->bspAddVector( InModel, &InPoly->TextureV, 0);
+	InSurfIdx->Surf->vTextureU = FBSPOps::bspAddVector( InModel, &InPoly->TextureU, 0);
+	InSurfIdx->Surf->vTextureV = FBSPOps::bspAddVector( InModel, &InPoly->TextureV, 0);
 
 }
 
@@ -265,13 +283,18 @@ IMPLEMENT_CLASS(UTexAlignerBox);
 
 UTexAlignerBox::UTexAlignerBox()
 {
-	Desc = TEXT("Box");
+	Desc = *LocalizeUnrealEd("Box");
 	DefTexAlign = TEXALIGN_Box;
 }
 
-void UTexAlignerBox::InitFields()
+/**
+ * Perform any static initialization, such as adding UProperties to the class (for intrinsic classes), or initializing static variable values.
+ * It is not recommended to use this function to initialize member property values, since those values will be overwritten when the class's default
+ * object is re-initialized against its archetype.  Use InitializeInstrinsicPropertyValues instead.
+ */
+void UTexAlignerBox::StaticConstructor()
 {
-	UTexAligner::InitFields();
+	new(GetClass()->HideCategories) FName(NAME_Object);
 }
 
 void UTexAlignerBox::AlignSurf( ETexAlign InTexAlignType, UModel* InModel, FBspSurfIdx* InSurfIdx, FPoly* InPoly, FVector* InNormal )
@@ -287,167 +310,198 @@ void UTexAlignerBox::AlignSurf( ETexAlign InTexAlignType, UModel* InModel, FBspS
 
 	FVector	Base = FVector(0,0,0);
 
-	InSurfIdx->Surf->pBase = GEditor->bspAddPoint(InModel,&Base,0);
-	InSurfIdx->Surf->vTextureU = GEditor->bspAddVector( InModel, &U, 0 );
-	InSurfIdx->Surf->vTextureV = GEditor->bspAddVector( InModel, &V, 0 );
+	InSurfIdx->Surf->pBase = FBSPOps::bspAddPoint(InModel,&Base,0);
+	InSurfIdx->Surf->vTextureU = FBSPOps::bspAddVector( InModel, &U, 0 );
+	InSurfIdx->Surf->vTextureV = FBSPOps::bspAddVector( InModel, &V, 0 );
 
 }
+
 
 /*------------------------------------------------------------------------------
-	UTexAlignerFace
-
-	Aligns the texture so it fits on the poly exactly.
+	UTexAlignerFit
 ------------------------------------------------------------------------------*/
 
-IMPLEMENT_CLASS(UTexAlignerFace);
+IMPLEMENT_CLASS(UTexAlignerFit);
 
-UTexAlignerFace::UTexAlignerFace()
+UTexAlignerFit::UTexAlignerFit()
 {
-	Desc = TEXT("Face");
-	DefTexAlign = TEXALIGN_Box;
+	Desc = *LocalizeUnrealEd("Fit");
+	DefTexAlign = TEXALIGN_Fit;
 }
 
-void UTexAlignerFace::InitFields()
+/**
+ * Perform any static initialization, such as adding UProperties to the class (for intrinsic classes), or initializing static variable values.
+ * It is not recommended to use this function to initialize member property values, since those values will be overwritten when the class's default
+ * object is re-initialized against its archetype.  Use InitializeInstrinsicPropertyValues instead.
+ */
+void UTexAlignerFit::StaticConstructor()
 {
-	UTexAligner::InitFields();
+	new(GetClass()->HideCategories) FName(NAME_Object);
 }
 
-static QSORT_RETURN CDECL CompareVerts( const FVector* A, const FVector* B )
+void UTexAlignerFit::AlignSurf( ETexAlign InTexAlignType, UModel* InModel, FBspSurfIdx* InSurfIdx, FPoly* InPoly, FVector* InNormal )
 {
-	return A->Size() < B->Size();
-}
+	// @todo: Support cycling between texture corners by FIT'ing again?  Each Ctrl+Shift+F would rotate texture.
+	// @todo: Consider making initial FIT match the texture's current orientation as close as possible?
+	// @todo: Handle subtractive brush polys differently?  (flip U texture direction)
+	// @todo: Option to ignore pixel aspect for quads (e.g. stretch full texture non-uniformly over quad)
 
-void UTexAlignerFace::AlignSurf( ETexAlign InTexAlignType, UModel* InModel, FBspSurfIdx* InSurfIdx, FPoly* InPoly, FVector* InNormal )
-{
-	UBOOL bSubtractive = (InSurfIdx->Surf->Actor->CsgOper == CSG_Subtract);
 
-	// Transform the polygons vertices so that the poly faces due East
-
-	FRotator NormalRot = InNormal->Rotation();
-	FRotator DiffRot = NormalRot * -1;
-
-	FVector NewVerts[FPoly::MAX_VERTICES];
-	appMemset( NewVerts, 0, sizeof(FVector)*FPoly::MAX_VERTICES );
-	FBox bboxWorld(0), bboxPlane(0);
-
-	for( INT x = 0 ; x < InPoly->NumVertices ; ++x )
+	// Compute world space vertex positions
+	TArray< FVector > WorldSpacePolyVertices;
+	for( INT VertexIndex = 0; VertexIndex < InPoly->Vertices.Num(); ++VertexIndex )
 	{
-		bboxWorld += InSurfIdx->Surf->Actor->LocalToWorld().TransformFVector( InPoly->Vertex[x] );
-
-		FVector vtx = FRotationMatrix( DiffRot ).TransformFVector( InPoly->Vertex[x] );
-		bboxPlane += vtx;
-
-		NewVerts[x] = vtx;
+		WorldSpacePolyVertices.AddItem( InSurfIdx->Surf->Actor->LocalToWorld().TransformFVector( InPoly->Vertices( VertexIndex ) ) );
 	}
 
-	// Find the lowest vertex (the one with the smallest values).  This will be tex coord 0,1
+			
+	// Create an orthonormal basis for the polygon
+	FMatrix WorldToPolyRotationMatrix;
+	const FVector& FirstPolyVertex = WorldSpacePolyVertices( 0 );
+	{
+		const FVector& VertexA = FirstPolyVertex;
+		const FVector& VertexB = WorldSpacePolyVertices( 1 );
+		FVector UpVec = ( VertexB - VertexA ).SafeNormal();
+		FVector RightVec = InPoly->Normal ^ UpVec;
+		WorldToPolyRotationMatrix.SetIdentity();
+		WorldToPolyRotationMatrix.SetAxes( &RightVec, &UpVec, &InPoly->Normal );
+	}
 
-	FVector SortedVtx[FPoly::MAX_VERTICES];
-	appMemcpy( SortedVtx, InPoly->Vertex, sizeof(FVector)*FPoly::MAX_VERTICES );
-	appQsort( SortedVtx, InPoly->NumVertices, sizeof(FVector), (QSORT_COMPARE)CompareVerts );
 
-	INT SortedVtxIdx = -1;
-	for( INT x = 0 ; x < InPoly->NumVertices ; ++x )
-		if( InPoly->Vertex[x] == SortedVtx[0] )
+	// Find a corner of the polygon that's closest to a 90 degree angle.  When there are multiple corners with
+	// similar angles, we'll use the one closest to the local space bottom-left along the polygon's plane
+	const FLOAT DesiredAbsDotProduct = 0.0f;
+	INT BestVertexIndex = INDEX_NONE;
+	FLOAT BestDotProductDiff = 10000.0f;
+	FLOAT BestPositivity = 10000.0f;
+	for( INT VertexIndex = 0; VertexIndex < WorldSpacePolyVertices.Num(); ++VertexIndex )
+	{
+		// Compute the previous and next vertex in the winding
+		const INT PrevWindingVertexIndex = ( VertexIndex > 0 ) ? ( VertexIndex - 1 ) : ( WorldSpacePolyVertices.Num() - 1 );
+		const INT NextWindingVertexIndex = ( VertexIndex < WorldSpacePolyVertices.Num() - 1 ) ? ( VertexIndex + 1 ) : 0;
+
+		const FVector& PrevVertex = WorldSpacePolyVertices( PrevWindingVertexIndex );
+		const FVector& CurVertex = WorldSpacePolyVertices( VertexIndex );
+		const FVector& NextVertex = WorldSpacePolyVertices( NextWindingVertexIndex );
+
+		// Compute the corner angle
+		FLOAT AbsDotProduct = Abs( ( PrevVertex - CurVertex ).SafeNormal() | ( NextVertex - CurVertex ).SafeNormal() );
+
+		// Compute how 'positive' this vertex is relative to the bottom left position in the polygon's plane
+		FVector PolySpaceVertex = WorldToPolyRotationMatrix.InverseTransformNormal( CurVertex - FirstPolyVertex );
+		const FLOAT Positivity = PolySpaceVertex.X + PolySpaceVertex.Y;
+
+		// Is the corner angle closer to 90 degrees than our current best?
+		const FLOAT DotProductDiff = Abs( AbsDotProduct - DesiredAbsDotProduct );
+		if( appIsNearlyEqual( DotProductDiff, BestDotProductDiff, 0.1f ) )
 		{
-			SortedVtxIdx = x;
-			break;
+			// This angle is just as good as the current best, so check to see which is closer to the local space
+			// bottom-left along the polygon's plane
+			if( Positivity < BestPositivity )
+			{
+				// This vertex is in a more suitable location for the bottom-left of the texture
+				BestVertexIndex = VertexIndex;
+				if( DotProductDiff < BestDotProductDiff )
+				{
+					// Only store the new dot product if it's actually better than the existing one
+					BestDotProductDiff = DotProductDiff;
+				}
+				BestPositivity = Positivity;
+			}
 		}
-		
-	// Figure out how large the polygon is in the U and V directions
-
-	FLOAT USz = ( FVector( 0, bboxPlane.Max.Y, 0 ) - FVector( 0, bboxPlane.Min.Y, 0 ) ).Size(),
-		VSz = ( FVector( 0, 0, bboxPlane.Max.Z ) - FVector( 0, 0, bboxPlane.Min.Z ) ).Size();
-
-	// Figure out how large the texture is in the U and V directions
-
-	FLOAT	MaterialUSize = 128,
-			MaterialVSize = 128;
-
-	// Compute useful U and V vectors to use for creating vertices.
-
-	FVector UVec = SortedVtx[1] - SortedVtx[0], VVec;
-	UVec.Normalize();
-	UVec *= (bSubtractive ? -1 : 1);
-	VVec = (UVec ^ *InNormal) * -1;
-
-	// Generate texture coordinates for the lowest-1, lowest and lowest+1 vertices
-
-	FVector Verts[3], UV[3];
-
-	Verts[0] = SortedVtx[0] + (VVec * VSz);
-	Verts[1] = SortedVtx[0];
-	Verts[2] = SortedVtx[0] + (UVec * USz);
-
-	UV[0] = FVector( 0,				MaterialVSize,	0 );
-	UV[1] = FVector( 0,				0,				0 );
-	UV[2] = FVector( MaterialUSize, 0,				0 );
-
-	// Convert those coordinates to vectors
-
-	FVector Base, U, V;
-	FTexCoordsToVectors(
-		Verts[0], UV[0],
-		Verts[1], UV[1],
-		Verts[2], UV[2],
-		&Base, &U, &V );
-
-	Base = bboxWorld.Min;
-
-	// Assign the vectors to the polygon
-
-	U *= UTile;
-	V *= VTile;
-	
-	InSurfIdx->Surf->pBase = GEditor->bspAddPoint(InModel,&Base,0);
-	InSurfIdx->Surf->vTextureU = GEditor->bspAddVector( InModel, &U, 0 );
-	InSurfIdx->Surf->vTextureV = GEditor->bspAddVector( InModel, &V, 0 );
-
-}
-
-/*
-	FRotator NormalRot = InNormal->Rotation();
-	FRotator DiffRot = NormalRot * -1;
-
-	FLOAT MaterialUSize = InPoly->Material ? InPoly->Material->MaterialUSize() : 128.f,
-		MaterialVSize = InPoly->Material ? InPoly->Material->MaterialVSize() : 128.f;
-
-	// Transform all the polys verts onto a 2D plane.  At the same time, get a worldspace and planespace bounding box.
-
-	TArray<FVector> NewVerts;
-	FBox bboxWorld(0), bboxPlane(0);
-
-	for( INT x = 0 ; x < InPoly->NumVertices ; ++x )
-	{
-		bboxWorld += InPoly->Vertex[x].TransformPointBy( InSurfIdx->Surf->Actor->LocalToWorld().Coords() );
-
-		FVector vtx = InPoly->Vertex[x].TransformPointBy( GMath.UnitCoords * DiffRot );
-		bboxPlane += vtx;
-
-		NewVerts.AddItem( vtx );
+		else if( DotProductDiff <= BestDotProductDiff )
+		{
+			// This angle is definitely better!
+			BestVertexIndex = VertexIndex;
+			BestDotProductDiff = DotProductDiff;
+			BestPositivity = Positivity;
+		}
 	}
 
-	FVector UDir = InPoly->Vertex[InPoly->NumVertices-1] - InPoly->Vertex[0];
-	//UDir.Normalize();
-	FVector VDir = InPoly->Vertex[1] - InPoly->Vertex[0];
-	//VDir.Normalize();
 
-	FVector v0, v1, v2;
-	v0 = bboxWorld.Min + (VDir * 1);
-	v1 = bboxWorld.Min;
-	v2 = bboxWorld.Min + (UDir * 1);
+	// Compute orthonormal basis for the 'best corner' of the polygon.  The texture will be positioned at the corner
+	// of the bounds of the poly in this coordinate system
+	const FVector& BestVertex = WorldSpacePolyVertices( BestVertexIndex );
+	const INT NextWindingVertexIndex = ( BestVertexIndex < WorldSpacePolyVertices.Num() - 1 ) ? ( BestVertexIndex + 1 ) : 0;
+	const FVector& NextVertex = WorldSpacePolyVertices( NextWindingVertexIndex );
 
-	FVector Base, U, V;
-	FTexCoordsToVectors(
-		v0,	FVector( 0,				0,				0),
-		v1,	FVector( 0,				MaterialVSize,	0),
-		v2,	FVector( MaterialUSize,	MaterialVSize,	0),
-		&Base, &U, &V );
+	FVector TextureUpVec = ( NextVertex - BestVertex ).SafeNormal();
+	FVector TextureRightVec = InPoly->Normal ^ TextureUpVec;
 
-	InSurfIdx->Surf->pBase = GEditor->bspAddPoint(InModel,&Base,0);
-	InSurfIdx->Surf->vTextureU = GEditor->bspAddVector( InModel, &U, 0 );
-	InSurfIdx->Surf->vTextureV = GEditor->bspAddVector( InModel, &V, 0 );
-*/
+	FMatrix WorldToTextureRotationMatrix;
+	WorldToTextureRotationMatrix.SetIdentity();
+	WorldToTextureRotationMatrix.SetAxes( &TextureRightVec, &TextureUpVec, &InPoly->Normal );
+
+
+	// Compute bounds of polygon along plane
+	FLOAT MinX = FLT_MAX;
+	FLOAT MaxX = -FLT_MAX;
+	FLOAT MinY = FLT_MAX;
+	FLOAT MaxY = -FLT_MAX;
+	for( INT VertexIndex = 0; VertexIndex < WorldSpacePolyVertices.Num(); ++VertexIndex )
+	{
+		const FVector& CurVertex = WorldSpacePolyVertices( VertexIndex );
+
+		// Transform vertex into the coordinate system of our texture
+		FVector TextureSpaceVertex = WorldToTextureRotationMatrix.InverseTransformNormal( CurVertex - BestVertex );
+
+		if( TextureSpaceVertex.X < MinX )
+		{
+			MinX = TextureSpaceVertex.X;
+		}
+		if( TextureSpaceVertex.X > MaxX )
+		{
+			MaxX = TextureSpaceVertex.X;
+		}
+
+		if( TextureSpaceVertex.Y < MinY )
+		{
+			MinY = TextureSpaceVertex.Y;
+		}
+		if( TextureSpaceVertex.Y > MaxY )
+		{
+			MaxY = TextureSpaceVertex.Y;
+		}
+	}
+
+
+	// We'll use the texture space corner of the bounds as the origin of the texture.  This ensures that
+	// the texture fits over the entire polygon without revealing any tiling
+	const FVector TextureSpaceBasePos( MinX, MinY, 0.0f );
+	FVector WorldSpaceBasePos = WorldToTextureRotationMatrix.TransformNormal( TextureSpaceBasePos ) + BestVertex;
+
+
+	// Apply scale to UV vectors.  We incorporate the parameterized tiling rations and scale by our texture size
+	const FLOAT WorldTexelScale = 128.0f;
+	const FLOAT TextureSizeU = Abs( MaxX - MinX );
+	const FLOAT TextureSizeV = Abs( MaxY - MinY );
+	FVector TextureUVector = UTile * TextureRightVec * WorldTexelScale / TextureSizeU;
+	FVector TextureVVector = VTile * TextureUpVec * WorldTexelScale / TextureSizeV;
+
+	// Flip the texture vertically if we want that
+	const UBOOL bFlipVertically = TRUE;
+	if( bFlipVertically )
+	{
+		WorldSpaceBasePos += TextureUpVec * TextureSizeV;
+		TextureVVector *= -1.0f;
+	}
+
+
+	// Apply texture base position
+	{
+		const UBOOL bExactMatch = FALSE;
+		InSurfIdx->Surf->pBase = FBSPOps::bspAddPoint( InModel, const_cast< FVector* >( &WorldSpaceBasePos ), bExactMatch );
+	}
+
+	// Apply texture UV vectors
+	{
+		const UBOOL bExactMatch = FALSE;
+		InSurfIdx->Surf->vTextureU = FBSPOps::bspAddVector( InModel, const_cast< FVector* >( &TextureUVector ), bExactMatch );
+		InSurfIdx->Surf->vTextureV = FBSPOps::bspAddVector( InModel, const_cast< FVector* >( &TextureVVector ), bExactMatch );
+	}
+}
+
+
 
 /*------------------------------------------------------------------------------
 	FTexAlignTools.
@@ -455,30 +509,30 @@ void UTexAlignerFace::AlignSurf( ETexAlign InTexAlignType, UModel* InModel, FBsp
 	A helper class to store the state of the various texture alignment tools.
 ------------------------------------------------------------------------------*/
 
-FTexAlignTools::FTexAlignTools()
-{
-}
-
-FTexAlignTools::~FTexAlignTools()
-{
-}
-
 void FTexAlignTools::Init()
 {
 	// Create the list of aligners.
 	Aligners.Empty();
-	Aligners.AddItem( CastChecked<UTexAligner>(GEditor->StaticConstructObject(UTexAlignerDefault::StaticClass(),GEditor->Level->GetOuter(),NAME_None,RF_Public|RF_Standalone) ) );
-	Aligners.AddItem( CastChecked<UTexAligner>(GEditor->StaticConstructObject(UTexAlignerPlanar::StaticClass(),GEditor->Level->GetOuter(),NAME_None,RF_Public|RF_Standalone) ) );
-	Aligners.AddItem( CastChecked<UTexAligner>(GEditor->StaticConstructObject(UTexAlignerBox::StaticClass(),GEditor->Level->GetOuter(),NAME_None,RF_Public|RF_Standalone) ) );
-	Aligners.AddItem( CastChecked<UTexAligner>(GEditor->StaticConstructObject(UTexAlignerFace::StaticClass(),GEditor->Level->GetOuter(),NAME_None,RF_Public|RF_Standalone) ) );
+	Aligners.AddItem( CastChecked<UTexAligner>(UObject::StaticConstructObject(UTexAlignerDefault::StaticClass(),UObject::GetTransientPackage(),NAME_None,RF_Public|RF_Standalone) ) );
+	Aligners.AddItem( CastChecked<UTexAligner>(UObject::StaticConstructObject(UTexAlignerPlanar::StaticClass(),UObject::GetTransientPackage(),NAME_None,RF_Public|RF_Standalone) ) );
+	Aligners.AddItem( CastChecked<UTexAligner>(UObject::StaticConstructObject(UTexAlignerBox::StaticClass(),UObject::GetTransientPackage(),NAME_None,RF_Public|RF_Standalone) ) );
+	Aligners.AddItem( CastChecked<UTexAligner>(UObject::StaticConstructObject(UTexAlignerFit::StaticClass(),UObject::GetTransientPackage(),NAME_None,RF_Public|RF_Standalone) ) );
 	
-	for( INT x = 0 ; x < Aligners.Num() ; ++x )
-	{
-		UTexAligner* Aligner = Aligners(x);
-		check(Aligner);
-		Aligner->InitFields();
-	}
+	GCallbackEvent->Register( CALLBACK_FitTextureToSurface, this );
+}
 
+
+FTexAlignTools::FTexAlignTools()
+{
+}
+
+
+FTexAlignTools::~FTexAlignTools()
+{
+	if(GCallbackEvent)
+	{
+		GCallbackEvent->UnregisterAll( this );
+	}
 }
 
 // Returns the most appropriate texture aligner based on the type passed in.
@@ -501,7 +555,7 @@ UTexAligner* FTexAlignTools::GetAligner( ETexAlign InTexAlign )
 			return Aligners(2);
 			break;
 
-		case TEXALIGN_Face:
+		case TEXALIGN_Fit:
 			return Aligners(3);
 			break;
 	}
@@ -511,10 +565,26 @@ UTexAligner* FTexAlignTools::GetAligner( ETexAlign InTexAlign )
 
 }
 
-FTexAlignTools GTexAlignTools;
 
-/*------------------------------------------------------------------------------
-	The End.
-------------------------------------------------------------------------------*/
-
+/**
+ * Routes the event to the appropriate handlers
+ *
+ * @param InType the event that was fired
+ */
+void FTexAlignTools::Send( ECallbackEventType InType )
+{
+	switch( InType )
+	{
+		case CALLBACK_FitTextureToSurface:
+			{
+				UTexAligner* FitAligner = GTexAlignTools.Aligners( 3 );
+				for ( INT LevelIndex = 0; LevelIndex < GWorld->Levels.Num() ; ++LevelIndex )
+				{
+					ULevel* Level = GWorld->Levels(LevelIndex);
+					FitAligner->Align( TEXALIGN_None, Level->Model );
+				}
+			}
+			break;
+	}
+}
 

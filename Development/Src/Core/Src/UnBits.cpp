@@ -1,12 +1,11 @@
 /*=============================================================================
 	UnBits.h: Unreal bitstream manipulation classes.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "CorePrivate.h" 
+
+#if WITH_UE3_NETWORKING
 
 // Table.
 static BYTE GShift[8]={0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80};
@@ -114,15 +113,38 @@ void appBitsCpy( BYTE* Dest, INT DestBit, BYTE* Src, INT SrcBit, INT BitCount )
 	FBitWriter.
 -----------------------------------------------------------------------------*/
 
+/**
+ * Constructor using known size the buffer needs to be
+ */
 FBitWriter::FBitWriter( INT InMaxBits )
-:	Num			( 0 )
+:   Buffer		( (InMaxBits+7)>>3 )
+,   Num			( 0 )
 ,	Max			( InMaxBits )
-,	Buffer		( (InMaxBits+7)>>3 )
 {
 	appMemzero( &Buffer(0), Buffer.Num() );
 	ArIsPersistent = ArIsSaving = 1;
 	ArNetVer |= 0x80000000;
 }
+
+/**
+ * Default constructor. Zeros everything.
+ */
+FBitWriter::FBitWriter(void) : Num(0), Max(0)
+{
+}
+
+/**
+ * Resets the bit writer back to its initial state
+ */
+void FBitWriter::Reset(void)
+{
+	FArchive::Reset();
+	Num = 0;
+	appMemzero( &Buffer(0), Buffer.Num() );
+	ArIsPersistent = ArIsSaving = 1;
+	ArNetVer |= 0x80000000;
+}
+
 void FBitWriter::SerializeBits( void* Src, INT LengthBits )
 {
 	if( Num+LengthBits<=Max )
@@ -157,7 +179,13 @@ void FBitWriter::Serialize( void* Src, INT LengthBytes )
 }
 void FBitWriter::SerializeInt( DWORD& Value, DWORD ValueMax )
 {
-	if( Num+appCeilLogTwo(ValueMax)<=Max )
+	if (Value > ValueMax)
+	{
+		debugf(NAME_Error, TEXT("FBitWriter::SerializeInt(): Value out of bounds (Value: %u, ValueMax: %u)"), Value, ValueMax);
+		appErrorfDebug(TEXT("FBitWriter::SerializeInt(): Value out of bounds (Value: %u, ValueMax: %u)"), Value, ValueMax);
+		Value = ValueMax;
+	}
+	if( Num+(INT)appCeilLogTwo(ValueMax)<=Max )
 	{
 		DWORD NewValue=0;
 		for( DWORD Mask=1; NewValue+Mask<ValueMax && Mask; Mask*=2,Num++ )
@@ -170,10 +198,15 @@ void FBitWriter::SerializeInt( DWORD& Value, DWORD ValueMax )
 		}
 	} else ArIsError = 1;
 }
-void FBitWriter::WriteInt( DWORD Value, DWORD ValueMax )
+/** serializes the specified value, but does not bounds check against Max; instead, it will wrap around if the value exceeds Max
+ * (this differs from SerializeInt(), which clamps)
+ * @param Result - the value to serialize
+ * @param Max - maximum value to write; wrap Result if it exceeds this
+ */
+void FBitWriter::WriteIntWrapped(DWORD Value, DWORD ValueMax)
 {
 	//warning: Copied and pasted from FBitWriter::SerializeInt
-	if( Num+appCeilLogTwo(ValueMax)<=Max )
+	if( Num+(INT)appCeilLogTwo(ValueMax)<=Max )
 	{
 		DWORD NewValue=0;
 		for( DWORD Mask=1; NewValue+Mask<ValueMax && Mask; Mask*=2,Num++ )
@@ -196,22 +229,6 @@ void FBitWriter::WriteBit( BYTE In )
 	}
 	else ArIsError = 1;
 }
-BYTE* FBitWriter::GetData()
-{
-	return &Buffer(0);
-}
-INT FBitWriter::GetNumBytes()
-{
-	return (Num+7)>>3;
-}
-INT FBitWriter::GetNumBits()
-{
-	return Num;
-}
-void FBitWriter::SetOverflowed()
-{
-	ArIsError = 1;
-}
 
 /*-----------------------------------------------------------------------------
 	FBitWriterMark.
@@ -223,11 +240,17 @@ void FBitWriterMark::Pop( FBitWriter& Writer )
 	checkSlow(Num<=Writer.Max);
 
 	if( Num&7 )
+	{
 		Writer.Buffer(Num>>3) &= GMask[Num&7];
+	}
 	INT Start = (Num       +7)>>3;
 	INT End   = (Writer.Num+7)>>3;
-	appMemzero( &Writer.Buffer(Start), End-Start );
-
+	if( End != Start )
+	{
+		checkSlow(Start<Writer.Buffer.Num());
+		checkSlow(End<=Writer.Buffer.Num());
+		appMemzero( &Writer.Buffer(Start), End-Start );
+	}
 	Writer.ArIsError = Overflowed;
 	Writer.Num       = Num;
 }
@@ -240,14 +263,16 @@ void FBitWriterMark::Pop( FBitWriter& Writer )
 // Reads bitstreams.
 //
 FBitReader::FBitReader( BYTE* Src, INT CountBits )
-:	Num			( CountBits )
-,	Buffer		( (CountBits+7)>>3 )
+:	Buffer		( (CountBits+7)>>3 )
+,   Num			( CountBits )
 ,	Pos			( 0 )
 {
 	ArIsPersistent = ArIsLoading = 1;
 	ArNetVer |= 0x80000000;
 	if( Src )
+	{
 		appMemcpy( &Buffer(0), Src, (CountBits+7)>>3 );
+	}
 }
 void FBitReader::SetData( FBitReader& Src, INT CountBits )
 {
@@ -337,7 +362,6 @@ INT FBitReader::GetPosBits()
 	return Pos;
 }
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
+#endif	//#if WITH_UE3_NETWORKING
+
 

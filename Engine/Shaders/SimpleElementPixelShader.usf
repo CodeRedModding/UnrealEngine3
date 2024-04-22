@@ -1,0 +1,200 @@
+/*=============================================================================
+	SimpleElementPixelShader.hlsl: Pixel shader for drawing simple elements.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+sampler2D InTexture;
+
+half4 TextureComponentReplicate;
+half4 TextureComponentReplicateAlpha;
+
+void ReplicateRChannel(inout float4 BaseColor)
+{
+#if SM5_PROFILE
+	//In SM5, doing a texture lookup from a G8 texture gives float4(value,0,0,0), so we need to replicate it to the other channels.  
+	//On all other platforms, the value is replicated automatically.
+	if(any(TextureComponentReplicate))
+	{
+		BaseColor = dot(BaseColor,TextureComponentReplicate);
+	}
+#endif
+	BaseColor.a = dot(BaseColor,TextureComponentReplicateAlpha);
+}
+
+void Main(
+	in float2 TextureCoordinate : TEXCOORD0,
+	in float4 Color : TEXCOORD1,
+	out float4 OutColor : COLOR0
+#if SM5_PROFILE
+	,out float4 OutWorldNormal : COLOR1 
+	,out float4 OutReflectionWorldNormal : COLOR2 
+	,out float4 OutSpecularColorAndPower : COLOR3
+#endif
+	)
+{
+	float4 BaseColor = tex2D(InTexture,TextureCoordinate);
+	ReplicateRChannel(BaseColor);
+	OutColor = RETURN_COLOR(BaseColor * Color);	
+
+#if SM5_PROFILE
+	// Set the G buffer bits that indicate that deferred lighting and image reflections are not enabled
+	OutWorldNormal = 0;
+	OutReflectionWorldNormal = 0;
+	OutSpecularColorAndPower = 0;
+#endif
+}
+
+half Gamma;
+
+void GammaMain(
+	in float2 TextureCoordinate : TEXCOORD0,
+	in float4 Color : TEXCOORD1,
+	out float4 OutColor : COLOR0
+#if SM5_PROFILE
+	,out float4 OutWorldNormal : COLOR1 
+	,out float4 OutReflectionWorldNormal : COLOR2 
+	,out float4 OutSpecularColorAndPower : COLOR3
+#endif
+	)
+{
+	float4 BaseColor = tex2D(InTexture,TextureCoordinate);
+	ReplicateRChannel(BaseColor);
+	OutColor = BaseColor * Color;
+	if( Gamma != 1.0 )
+	{
+		// Gamma correct the output color.
+		OutColor.rgb = pow(saturate(OutColor.rgb),Gamma);	
+	}
+	OutColor = RETURN_COLOR(OutColor);
+
+#if SM5_PROFILE
+	// Set the G buffer bits that indicate that deferred lighting and image reflections are not enabled
+	OutWorldNormal = 0;
+	OutReflectionWorldNormal = 0;
+	OutSpecularColorAndPower = 0;
+#endif
+}
+
+float ClipRef;
+
+void GammaMaskedMain(
+	in float2 TextureCoordinate : TEXCOORD0,
+	in float4 Color : TEXCOORD1,
+	in float4 HitProxyId : TEXCOORD2,
+	in float4 PixelPosition : TEXCOORD3,
+	out float4 OutColor : COLOR0
+#if SM5_PROFILE
+	,out float4 OutWorldNormal : COLOR1 
+	,out float4 OutReflectionWorldNormal : COLOR2 
+	,out float4 OutSpecularColorAndPower : COLOR3
+#endif
+	)
+{
+	float4 BaseColor = tex2D(InTexture,TextureCoordinate);
+	ReplicateRChannel(BaseColor);
+	clip(BaseColor.a - ClipRef);
+	OutColor.rgba = BaseColor * Color;
+	OutColor.a = EncodeFloatW(PixelPosition.z - MinZ_MaxZRatio[0]);
+	if( Gamma != 1.0 )
+	{
+		// Gamma correct the output color.
+		OutColor.rgb = pow(saturate(OutColor.rgb),Gamma);	
+	}
+	OutColor = RETURN_COLOR(OutColor);
+
+#if SM5_PROFILE
+	// Set the G buffer bits that indicate that deferred lighting and image reflections are not enabled
+	OutWorldNormal = 0;
+	OutReflectionWorldNormal = 0;
+	OutSpecularColorAndPower = 0;
+#endif
+}
+
+
+/** the width to smooth the edge the texture */
+float SmoothWidth;
+/** toggles drop shadow rendering */
+bool EnableShadow;
+/** 2d vector specifying the direction of shadow */
+float2 ShadowDirection;
+/** Color of the shadowed pixels */
+float4 ShadowColor;
+/** the width to smooth the edge the shadow of the texture */
+float ShadowSmoothWidth;
+/** toggles glow rendering */
+bool EnableGlow;
+/** base color to use for the glow */
+float4 GlowColor;
+/** outline glow outer radius */
+float2 GlowOuterRadius;
+/** outline glow inner radius */
+float2 GlowInnerRadius;
+
+/**
+* Distance field rendering of textured tile.
+* Alpha value represents distance to silhouette edge. A value of 0.5 is exactly on the edge.
+*
+* Based on the following paper:
+* http://www.valvesoftware.com/publications/2007/SIGGRAPH2007_AlphaTestedMagnification.pdf
+*/
+void GammaDistanceFieldMain(
+	in float2 TextureCoordinate : TEXCOORD0,
+	in float4 Color : TEXCOORD1,
+	out float4 OutColor : COLOR0
+	)
+{
+	float4 BaseTexture = tex2D(InTexture,TextureCoordinate);
+	ReplicateRChannel(BaseTexture);
+	float BaseDist = BaseTexture.a;
+	// smooth range between SmoothWidth texels around edge
+	// We want to control font edge smoothness in screen space, but the distance field is stored in texture space.
+	// Using ddx scales the smoothstep steepness based on texel-to-pixel scaling.
+	float TextureToScreenCompensation = ddx(TextureCoordinate.x);
+	float SmoothstepWidth = SmoothWidth * TextureToScreenCompensation;
+	float4 BaseColor = float4(Color.rgb, smoothstep(0.5-SmoothstepWidth, 0.5+SmoothstepWidth, BaseDist));
+	
+	if( EnableShadow )
+	{
+		// sample texture with shadow direction offset
+		float4 ShadowTexture = tex2D(InTexture,TextureCoordinate + ShadowDirection);
+		ReplicateRChannel(ShadowTexture);
+		float ShadowDist = ShadowTexture.a;
+		// smooth range between ShadowSmoothWidth texels around edge
+		float4 ShadowResult = ShadowColor * smoothstep(0.5-ShadowSmoothWidth, 0.5+ShadowSmoothWidth, ShadowDist);
+		BaseColor = lerp(ShadowResult,BaseColor,BaseColor.a);
+	}
+
+	if (EnableGlow)
+	{
+		// testing glow rendering
+		//GlowOuterRadius = float2(0.3,0.45);
+		//GlowInnerRadius = float2(0.45,0.5);	
+
+		if (BaseDist >= GlowOuterRadius[0] && BaseDist <= GlowInnerRadius[1])
+		{
+			float OutlineFactor=0.0;
+			if (BaseDist <= GlowOuterRadius[1])
+			{
+				OutlineFactor = smoothstep(GlowOuterRadius[0],GlowOuterRadius[1],BaseDist);
+			}
+			else
+			{
+				OutlineFactor = smoothstep(GlowInnerRadius[1],GlowInnerRadius[0],BaseDist);			
+			}
+			BaseColor = lerp(BaseColor,GlowColor,OutlineFactor);
+		}
+	}
+ 	
+	clip(BaseColor.a - ClipRef);
+	OutColor = BaseColor;
+	OutColor.a *= Color.a;
+	if( Gamma != 1.0 )
+	{
+		// Gamma correct the output color.
+		OutColor.rgb = pow(saturate(OutColor.rgb),Gamma);	
+	}	
+	OutColor = RETURN_COLOR(OutColor);
+}
+

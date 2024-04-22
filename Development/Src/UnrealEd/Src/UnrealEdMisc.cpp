@@ -1,9 +1,6 @@
 /*=============================================================================
 	UnrealEdMisc.cpp: Misc UnrealEd helper functions.
-	Copyright 1997-2002 Epic Games, Inc. All Rights Reserved.
-
-    Revision history:
-		* Created by Jack Porter.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "UnrealEd.h"
@@ -29,7 +26,7 @@ void FPolyBreaker::Process( TArray<FVector>* InPolyVerts, FVector InPolyNormal )
 	MakeConvexPoly( PolyVerts );
 	Optimize();
 	
-	FPlane testplane( FinalPolys(0).Vertex[0], FinalPolys(0).Vertex[1], FinalPolys(0).Vertex[2] );
+	FPlane testplane( FinalPolys(0).Vertices(0), FinalPolys(0).Vertices(1), FinalPolys(0).Vertices(2) );
 	if( InPolyNormal != testplane )
 	{
 		for( INT x = 0 ; x < FinalPolys.Num() ; ++x )
@@ -45,8 +42,8 @@ void FPolyBreaker::Process( TArray<FVector>* InPolyVerts, FVector InPolyNormal )
 UBOOL FPolyBreaker::IsPolyConvex( FPoly* InPoly )
 {
 	TArray<FVector> Verts;
-	for( INT x = 0 ; x < InPoly->NumVertices ; ++x )
-		new(Verts)FVector( (*InPoly).Vertex[x] );
+	for( INT x = 0 ; x < InPoly->Vertices.Num() ; ++x )
+		new(Verts)FVector( (*InPoly).Vertices(x) );
 	UBOOL Ret = IsPolyConvex( &Verts );
 	Verts.Empty();
 	return Ret;
@@ -96,36 +93,22 @@ void FPolyBreaker::MakeConvexPoly( TArray<FVector>* InVerts )
 	NewPoly.Init();
 	for( INT x = 0 ; x < InVerts->Num() ; ++x )
 	{
-		if( NewPoly.NumVertices == FPoly::MAX_VERTICES )
-		{
-			new(FinalPolys)FPoly( NewPoly );
-
-			NewPoly.Init();
-			NewPoly.Vertex[ NewPoly.NumVertices ] = (*InVerts)(0);
-			NewPoly.NumVertices++;
-			NewPoly.Vertex[ NewPoly.NumVertices ] = (*InVerts)(x-1);
-			NewPoly.NumVertices++;
-		}
-
-		NewPoly.Vertex[ NewPoly.NumVertices ] = (*InVerts)(x);
-		NewPoly.NumVertices++;
+		new(NewPoly.Vertices) FVector((*InVerts)(x));
 	}
 
-	if( NewPoly.NumVertices > 2 )
+	if( NewPoly.Vertices.Num() > 2 )
+	{
+		NewPoly.CalcNormal();
 		new(FinalPolys)FPoly( NewPoly );
-
+	}
 }
 INT FPolyBreaker::TryToMerge( FPoly *Poly1, FPoly *Poly2 )
 {
-	// Vertex count reasonable?
-	if( Poly1->NumVertices+Poly2->NumVertices > FPoly::MAX_VERTICES )
-		return 0;
-
 	// Find one overlapping point.
 	INT Start1=0, Start2=0;
-	for( Start1=0; Start1<Poly1->NumVertices; ++Start1 )
-		for( Start2=0; Start2<Poly2->NumVertices; ++Start2 )
-			if( FPointsAreSame(Poly1->Vertex[Start1], Poly2->Vertex[Start2]) )
+	for( Start1=0; Start1<Poly1->Vertices.Num(); ++Start1 )
+		for( Start2=0; Start2<Poly2->Vertices.Num(); ++Start2 )
+			if( FPointsAreSame(Poly1->Vertices(Start1), Poly2->Vertices(Start2)) )
 				goto FoundOverlap;
 	return 0;
 	FoundOverlap:
@@ -133,18 +116,18 @@ INT FPolyBreaker::TryToMerge( FPoly *Poly1, FPoly *Poly2 )
 	// Wrap around trying to merge.
 	INT End1  = Start1;
 	INT End2  = Start2;
-	INT Test1 = Start1+1; if (Test1>=Poly1->NumVertices) Test1 = 0;
-	INT Test2 = Start2-1; if (Test2<0)                   Test2 = Poly2->NumVertices-1;
-	if( FPointsAreSame(Poly1->Vertex[Test1],Poly2->Vertex[Test2]) )
+	INT Test1 = Start1+1; if (Test1>=Poly1->Vertices.Num()) Test1 = 0;
+	INT Test2 = Start2-1; if (Test2<0)                   Test2 = Poly2->Vertices.Num()-1;
+	if( FPointsAreSame(Poly1->Vertices(Test1),Poly2->Vertices(Test2)) )
 	{
 		End1   = Test1;
 		Start2 = Test2;
 	}
 	else
 	{
-		Test1 = Start1-1; if (Test1<0)                   Test1=Poly1->NumVertices-1;
-		Test2 = Start2+1; if (Test2>=Poly2->NumVertices) Test2=0;
-		if( FPointsAreSame(Poly1->Vertex[Test1],Poly2->Vertex[Test2]) )
+		Test1 = Start1-1; if (Test1<0)                   Test1=Poly1->Vertices.Num()-1;
+		Test2 = Start2+1; if (Test2>=Poly2->Vertices.Num()) Test2=0;
+		if( FPointsAreSame(Poly1->Vertices(Test1),Poly2->Vertices(Test2)) )
 		{
 			Start1 = Test1;
 			End2   = Test2;
@@ -154,32 +137,28 @@ INT FPolyBreaker::TryToMerge( FPoly *Poly1, FPoly *Poly2 )
 
 	// Build a new edpoly containing both polygons merged.
 	FPoly NewPoly = *Poly1;
-	NewPoly.NumVertices = 0;
+	NewPoly.Vertices.Empty();
 	INT Vertex = End1;
-	for( INT i=0; i<Poly1->NumVertices; ++i )
+	for( INT i=0; i<Poly1->Vertices.Num(); ++i )
 	{
-		NewPoly.Vertex[NewPoly.NumVertices++] = Poly1->Vertex[Vertex];
-		if( ++Vertex >= Poly1->NumVertices )
+		new(NewPoly.Vertices) FVector(Poly1->Vertices(Vertex));
+		if( ++Vertex >= Poly1->Vertices.Num() )
 			Vertex=0;
 	}
 	Vertex = End2;
-	for( INT i=0; i<(Poly2->NumVertices-2); ++i )
+	for( INT i=0; i<(Poly2->Vertices.Num()-2); ++i )
 	{
-		if( ++Vertex >= Poly2->NumVertices )
+		if( ++Vertex >= Poly2->Vertices.Num() )
 			Vertex=0;
-		NewPoly.Vertex[NewPoly.NumVertices++] = Poly2->Vertex[Vertex];
+		new(NewPoly.Vertices) FVector(Poly2->Vertices(Vertex));
 	}
 
 	// Remove colinear vertices and check convexity.
 	if( NewPoly.RemoveColinears() )
 	{
-		if( NewPoly.NumVertices <= FBspNode::MAX_NODE_VERTICES )
-		{
-			*Poly1 = NewPoly;
-			Poly2->NumVertices	= 0;
-			return 1;
-		}
-		else return 0;
+		*Poly1 = NewPoly;
+		Poly2->Vertices.Empty();
+		return TRUE;
 	}
 	else return 0;
 }
@@ -187,11 +166,7 @@ INT FPolyBreaker::TryToMerge( FPoly *Poly1, FPoly *Poly2 )
 // together.  This reduces the total number of polys in the final shape.
 void FPolyBreaker::Optimize()
 {
-	debugf(TEXT("======== FPolyBreaker::Optimize"));
-	while( OptimizeList( &FinalPolys ) )
-	{
-		debugf(TEXT("======== OptimizeList"));
-	}
+	while( OptimizeList( &FinalPolys ) );
 }
 // Returns 1 if any polys were merged
 UBOOL FPolyBreaker::OptimizeList( TArray<FPoly>* PolyList )
@@ -208,15 +183,12 @@ UBOOL FPolyBreaker::OptimizeList( TArray<FPoly>* PolyList )
 			if( TempPolys(x) != (*PolyList)(y) )
 			{
 				FPoly Poly1 = TempPolys(x);
-				debugf(TEXT("--------"));
-				debugf(TEXT("======== TryToMerge"));
 				bDidMergePolys = TryToMerge( &Poly1, &(*PolyList)(y) );
 				new(OptimizedPolys)FPoly(Poly1);
 			}
 		}
 	}
 
-	debugf(TEXT("======== bDidMergePolys : %d"), bDidMergePolys);
 	if( bDidMergePolys )
 		FinalPolys = OptimizedPolys;
 
@@ -362,6 +334,3 @@ INT FPolyBreaker::SplitWithPlane
 	}
 }
 
-/*-----------------------------------------------------------------------------
-	The end.
------------------------------------------------------------------------------*/

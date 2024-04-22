@@ -1,10 +1,11 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 /*============================================================================
 	UnGUID.cpp: Globally Unique IDentifiers.
-		
-	Revision history:
-		* Created by Mike Danylchuk
-		* Implementation by OSF/HP/DEC (See copyright notice below)
 ============================================================================*/
+
+#include "CorePrivate.h"
 
 /*
 ** Copyright (c) 1990- 1993, 1996 Open Software Foundation, Inc.
@@ -24,12 +25,11 @@
 ** this software for any purpose.
 */
 
-#if __GNUG__ || (__ICC && linux)
+#if !PS3 && !NGP && (__GNUC__ || (__ICC && linux)) && !WIIU
 
 #include <sys/types.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include "UnUnix.h"
 #include <string.h>
 
 /*----------------------------------------------------------------------------
@@ -44,14 +44,14 @@ typedef unsigned char   byte;
 #define CLOCK_SEQ_LAST	0x3FFF
 #define RAND_MASK		CLOCK_SEQ_LAST
 
-typedef struct _uuid_t {
+typedef struct _UUID_t {
   unsigned32          time_low;
   unsigned16          time_mid;
   unsigned16          time_hi_and_version;
   unsigned8           clock_seq_hi_and_reserved;
   unsigned8           clock_seq_low;
   byte                node[6];
-} uuid_t;
+} UUID_t;
 
 typedef struct _unsigned64_t {
   unsigned32          lo;
@@ -59,7 +59,7 @@ typedef struct _unsigned64_t {
 } unsigned64_t;
 
 // Forward declarations.
-void uuid_create(uuid_t *uuid);
+void uuid_create(UUID_t *uuid);
 static unsigned16 true_random(void);
 void uuid_init(void);
 
@@ -81,7 +81,7 @@ void appGetGUID( void* GUID )
 		uuid_init();
 		Init = 1;
 	}
-	uuid_create( (uuid_t*)GUID );
+	uuid_create( (UUID_t*)GUID );
 }
 	
 /*----------------------------------------------------------------------------
@@ -99,7 +99,8 @@ void get_ieee_node_identifier( byte* nodeid )
 	unsigned32 ip32;
 	unsigned16 random16;
 
-	ip32 = appGetLocalIP();
+	//ip32 = appGetLocalIP();
+	ip32 = (((unsigned32) true_random()) << 16) | ((unsigned32) true_random());
 	random16 = true_random();
 
     *(unsigned32*)(&nodeid[0]) = ip32;
@@ -273,7 +274,7 @@ static void new_clock_seq(void)
 #endif
 }
 
-void uuid_create(uuid_t *uuid)
+void uuid_create(UUID_t *uuid)
 {
   static unsigned64_t     time_now;
   static unsigned16       time_adjust;
@@ -323,7 +324,4 @@ void uuid_create(uuid_t *uuid)
 }
 
 #endif
-/*----------------------------------------------------------------------------
-	The End.
-----------------------------------------------------------------------------*/
 

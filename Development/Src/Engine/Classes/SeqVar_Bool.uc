@@ -1,17 +1,28 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class SeqVar_Bool extends SequenceVariable
 	native(Sequence);
 
 cpptext
 {
-	UBOOL* GetBoolRef()
+	virtual UBOOL* GetRef()
 	{
-		return &((UBOOL)bValue);
+		return (UBOOL*)&bValue;
 	}
 
 	FString GetValueStr()
 	{
-		return FString::Printf(TEXT("%s"),bValue?TEXT("True"):TEXT("False"));
+		return bValue ? GTrue : GFalse;
 	}
+
+	virtual UBOOL SupportsProperty(UProperty *Property)
+	{
+		return (Property->IsA(UBoolProperty::StaticClass()));
+	}
+
+	virtual void PublishValue(USequenceOp *Op, UProperty *Property, FSeqVarLink &VarLink);
+	virtual void PopulateValue(USequenceOp *Op, UProperty *Property, FSeqVarLink &VarLink);
 }
 
 var() int			bValue;
@@ -20,5 +31,5 @@ var() int			bValue;
 defaultproperties
 {
 	ObjName="Bool"
-	ObjColor=(R=255,G=0,B=0,A=255)
+	ObjColor=(R=255,G=0,B=0,A=255)		// red
 }

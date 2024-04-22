@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resource version="2.3.0.1" xmlns="http://www.wxwidgets.org/wxxrc">
+    <object class="wxPanel" name="ID_TaskBrowserPanel">
+        <style>wxTAB_TRAVERSAL</style>
+        <size>600,500</size>
+        <object class="wxBoxSizer">
+            <orient>wxVERTICAL</orient>
+            <object class="sizeritem">
+                <flag>wxGROW|wxALL</flag>
+                <border>5</border>
+                <option>1</option>
+                <object class="wxSplitterWindow" name="ID_TaskBrowser_SplitterWindow">
+                    <style>wxSP_3DBORDER|wxSP_3DSASH|wxNO_BORDER</style>
+                    <orientation>horizontal</orientation>
+                    <sashpos>150</sashpos>
+                    <minsize>0</minsize>
+                    <object class="wxPanel" name="ID_TaskBrowser_TopSplitterPanel">
+                        <style>wxSUNKEN_BORDER|wxTAB_TRAVERSAL</style>
+                        <object class="wxBoxSizer">
+                            <orient>wxVERTICAL</orient>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALL</flag>
+                                <border>0</border>
+                                <object class="wxBoxSizer">
+                                    <orient>wxVERTICAL</orient>
+                                    <object class="sizeritem">
+                                        <flag>wxALIGN_LEFT|wxALL</flag>
+                                        <border>0</border>
+                                        <object class="wxBoxSizer">
+                                            <orient>wxHORIZONTAL</orient>
+                                            <object class="sizeritem">
+                                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                <border>5</border>
+                                                <object class="wxButton" name="ID_TaskBrowser_FixButton">
+                                                    <style>wxBU_EXACTFIT</style>
+                                                    <label>TaskBrowser_FixButtonLabel</label>
+                                                </object>
+                                            </object>
+                                            <object class="sizeritem">
+                                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                <border>5</border>
+                                                <object class="wxButton" name="ID_TaskBrowser_RefreshButton">
+                                                    <label>TaskBrowser_RefreshButtonLabel</label>
+                                                </object>
+                                            </object>
+                                            <object class="spacer">
+                                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                <border>5</border>
+                                                <size>10,-1</size>
+                                            </object>
+                                            <object class="sizeritem">
+                                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                <border>5</border>
+                                                <object class="wxStaticText" name="wxID_STATIC">
+                                                    <style>wxALIGN_RIGHT</style>
+                                                    <label>TaskBrowser_DatabaseFilterLabel</label>
+                                                </object>
+                                            </object>
+                                            <object class="sizeritem">
+                                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                <border>5</border>
+                                                <object class="wxChoice" name="ID_TaskBrowser_DBFilterChoiceControl">
+                                                    <size>150,-1</size>
+                                                </object>
+                                            </object>
+                                        </object>
+                                    </object>
+                                    <object class="sizeritem">
+                                        <flag>wxALIGN_LEFT|wxALL</flag>
+                                        <border>0</border>
+                                        <object class="wxBoxSizer">
+                                            <orient>wxHORIZONTAL</orient>
+                                            <object class="sizeritem">
+                                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                <border>5</border>
+                                                <object class="wxStaticText" name="wxID_STATIC">
+                                                    <style>wxALIGN_RIGHT</style>
+                                                    <label>TaskBrowser_DisplayFilterLabel</label>
+                                                </object>
+                                            </object>
+                                            <object class="sizeritem">
+                                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                <border>5</border>
+                                                <object class="wxCheckBox" name="ID_TaskBrowser_FilterOnlyOpenCheckBox">
+                                                    <label>TaskBrowser_FilterOnlyOpenLabel</label>
+                                                    <checked>1</checked>
+                                                </object>
+                                            </object>
+                                            <object class="sizeritem">
+                                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                <border>5</border>
+                                                <object class="wxCheckBox" name="ID_TaskBrowser_FilterAssignedToMeCheckBox">
+                                                    <label>TaskBrowser_FilterAssignedToMeLabel</label>
+                                                    <checked>0</checked>
+                                                </object>
+                                            </object>
+                                            <object class="sizeritem">
+                                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                <border>5</border>
+                                                <object class="wxCheckBox" name="ID_TaskBrowser_FilterCreatedByMeCheckBox">
+                                                    <label>TaskBrowser_FilterCreatedByMeLabel</label>
+                                                    <checked>0</checked>
+                                                </object>
+                                            </object>
+                                            <object class="sizeritem">
+                                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                <border>5</border>
+                                                <object class="wxCheckBox" name="ID_TaskBrowser_FilterCurrentMapCheckBox">
+                                                    <label>TaskBrowser_FilterCurrentMapLabel</label>
+                                                    <checked>0</checked>
+                                                </object>
+                                            </object>
+                                        </object>
+                                    </object>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxGROW|wxALL</flag>
+                                <border>5</border>
+                                <option>1</option>
+                                <object class="wxListCtrl" name="ID_TaskBrowser_TaskListControl">
+                                    <style>wxLC_REPORT|wxLC_HRULES|wxLC_VRULES</style>
+                                </object>
+                            </object>
+                        </object>
+                    </object>
+                    <object class="wxPanel" name="ID_TaskBrowser_BottomSplitterPanel">
+                        <style>wxSUNKEN_BORDER|wxTAB_TRAVERSAL</style>
+                        <object class="wxBoxSizer">
+                            <orient>wxVERTICAL</orient>
+                            <object class="sizeritem">
+                                <flag>wxGROW|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxTextCtrl" name="ID_TaskBrowser_TaskNameText">
+                                    <style>wxTE_READONLY</style>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxGROW|wxALL</flag>
+                                <border>5</border>
+                                <option>1</option>
+                                <object class="wxTextCtrl" name="ID_TaskBrowser_TaskDescriptionControl">
+                                    <style>wxTE_MULTILINE|wxTE_READONLY|wxTE_RICH|wxTE_AUTO_URL</style>
+                                </object>
+                            </object>
+                        </object>
+                    </object>
+                </object>
+            </object>
+            <object class="sizeritem">
+                <flag>wxALIGN_LEFT|wxALL</flag>
+                <border>0</border>
+                <object class="wxBoxSizer">
+                    <orient>wxHORIZONTAL</orient>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                        <border>5</border>
+                        <object class="wxButton" name="ID_TaskBrowser_ConnectButton">
+                            <size>80,-1</size>
+                            <label>TaskBrowser_ConnectButtonLabel</label>
+                        </object>
+                    </object>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                        <border>5</border>
+                        <object class="wxButton" name="ID_TaskBrowser_SettingsButton">
+                            <size>80,-1</size>
+                            <label>TaskBrowser_SettingsButtonLabel</label>
+                        </object>
+                    </object>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                        <border>5</border>
+                        <object class="wxStaticText" name="ID_TaskBrowser_StatusMessageText">
+                            <label></label>
+                        </object>
+                    </object>
+                </object>
+            </object>
+        </object>
+    </object>
+</resource>

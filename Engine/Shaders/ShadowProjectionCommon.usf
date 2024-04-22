@@ -1,0 +1,279 @@
+/*=============================================================================
+	ShadowProjectionCommon.usf: Contains functions that uniformly filter a depth buffer.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#ifndef NUM_SAMPLE_CHUNKS
+#define NUM_SAMPLE_CHUNKS 1
+#endif
+
+#if SM5_PROFILE
+
+float GetPerSampleLightingChannelMask(float2 UV, int SampleIndex)
+{
+	float2 SurfaceDimensions;
+	int NumSurfaceSamples;
+	DiffuseGBufferTextureMS.GetDimensions(SurfaceDimensions.x, SurfaceDimensions.y, NumSurfaceSamples);
+
+	int2 IntUV = trunc(UV * SurfaceDimensions);
+
+	return DiffuseGBufferTextureMS.Load(IntUV, SampleIndex).w * 64;
+}
+
+float GetPerPixelLightingChannelMask(float2 UV)
+{
+	return tex2Dlod(DiffuseGBufferTexture, float4(UV, 0, 0)).w * 64;
+}
+
+#endif
+
+sampler2D ShadowDepthTexture;
+float4 SampleOffsets[NUM_SAMPLE_CHUNKS * 2];
+float3 ShadowBufferSizeAndSoftTransitionScale;
+float2 ShadowTexelSize;
+float LightingChannelMask;
+
+/** Returns an occlusion factor based on the depths. */
+float CalculateOcclusion(float SceneDepth, float ShadowmapDepth)
+{
+	// The standard comparison is SceneDepth < ShadowmapDepth
+	// Using a soft transition based on depth difference
+	// Offsets shadows a bit but reduces self shadowing artifacts considerably
+	float TransitionScale = ShadowBufferSizeAndSoftTransitionScale.z;
+	return saturate((ShadowmapDepth - SceneDepth) * TransitionScale + 1);
+}
+
+/** Vectorized version */
+float4 CalculateOcclusion(float SceneDepth, float4 ShadowmapDepth)
+{
+	float TransitionScale = ShadowBufferSizeAndSoftTransitionScale.z;
+	return saturate((ShadowmapDepth - SceneDepth) * TransitionScale + 1);
+}
+
+/**
+* Takes samples and compares and averages manually.
+*
+* @return a PCF value between 0 and 1
+*/
+half ManualPCF(float4 ShadowPosition)
+{
+#if NUM_SAMPLE_CHUNKS == 1
+
+	// Filter the shadow comparison using 9 point samples in a grid and 4 PCF calculations based on those 9 samples
+
+#if XBOX
+
+	float4 Weights;
+    float4 SampledDepths0;
+	float4 SampledDepths1;
+	float SampledDepth2;
+
+	// Using Xbox inline microcode to skip the work of neighbor sample coordinate calculations and bilinear weights
+	asm 
+	{
+        tfetch2D SampledDepths0.x___, ShadowPosition.xy, ShadowDepthTexture, OffsetX = -0.5, OffsetY = -0.5, UseComputedLOD = false
+        tfetch2D SampledDepths0._x__, ShadowPosition.xy, ShadowDepthTexture, OffsetX =  0.5, OffsetY = -0.5, UseComputedLOD = false
+        tfetch2D SampledDepths0.__x_, ShadowPosition.xy, ShadowDepthTexture, OffsetX = -0.5, OffsetY =  0.5, UseComputedLOD = false
+        tfetch2D SampledDepths0.___x, ShadowPosition.xy, ShadowDepthTexture, OffsetX =  0.5, OffsetY =  0.5, UseComputedLOD = false
+		tfetch2D SampledDepths1.x___, ShadowPosition.xy, ShadowDepthTexture, OffsetX =  1.5, OffsetY =  0.5, UseComputedLOD = false
+        tfetch2D SampledDepths1._x__, ShadowPosition.xy, ShadowDepthTexture, OffsetX =  1.5, OffsetY = -0.5, UseComputedLOD = false
+        tfetch2D SampledDepths1.__x_, ShadowPosition.xy, ShadowDepthTexture, OffsetX =  0.5, OffsetY = -1.5, UseComputedLOD = false
+        tfetch2D SampledDepths1.___x, ShadowPosition.xy, ShadowDepthTexture, OffsetX =  1.5, OffsetY = -1.5, UseComputedLOD = false
+		tfetch2D SampledDepth2.x___, ShadowPosition.xy, ShadowDepthTexture, OffsetX = -.5, OffsetY = -1.5, UseComputedLOD = false
+
+        getWeights2D Weights, ShadowPosition.xy, ShadowDepthTexture, MagFilter=linear, MinFilter=linear, UseComputedLOD = false
+    };
+
+    Weights = float4((1 - Weights.x) * (1 - Weights.y), Weights.x * (1 - Weights.y), (1 - Weights.x) * Weights.y, Weights.x * Weights.y);
+        
+    float4 Occlusion0 = CalculateOcclusion(ShadowPosition.z, SampledDepths0);
+	float4 Occlusion1 = CalculateOcclusion(ShadowPosition.z, SampledDepths1);
+	float Occlusion2 = CalculateOcclusion(ShadowPosition.z, SampledDepth2);
+    
+    float4 PCFResults;
+	PCFResults.x = dot(Occlusion0, Weights);
+	PCFResults.y = dot(float4(Occlusion0.y, Occlusion1.y, Occlusion0.w, Occlusion1.x), Weights);
+	PCFResults.z = dot(float4(Occlusion2.x, Occlusion1.z, Occlusion0.x, Occlusion0.y), Weights);
+	PCFResults.w = dot(float4(Occlusion1.z, Occlusion1.w, Occlusion0.y, Occlusion1.y), Weights);
+
+	return saturate(dot(PCFResults, .25f));
+
+#else // #if XBOX
+
+	float2 Fraction = frac(ShadowPosition.xy * ShadowBufferSizeAndSoftTransitionScale.xy);
+	float2 Sample00TexelCorner = floor(ShadowPosition.xy * ShadowBufferSizeAndSoftTransitionScale.xy - float2(1, 1));
+	float2 Sample00TexelCenter = Sample00TexelCorner + float2(.5, .5);
+
+	float Sample00Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4(Sample00TexelCenter * ShadowTexelSize, 0, 0)).x);
+	
+	float Sample01Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(0, 1)) * ShadowTexelSize, 0, 0)).x);
+	float Sample02Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(0, 2)) * ShadowTexelSize, 0, 0)).x);
+	float Sample10Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(1, 0)) * ShadowTexelSize, 0, 0)).x);
+	float Sample11Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(1, 1)) * ShadowTexelSize, 0, 0)).x);
+	
+	float Sample12Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(1, 2)) * ShadowTexelSize, 0, 0)).x);
+	float Sample20Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(2, 0)) * ShadowTexelSize, 0, 0)).x);
+	float Sample21Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(2, 1)) * ShadowTexelSize, 0, 0)).x);
+	float Sample22Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(2, 2)) * ShadowTexelSize, 0, 0)).x);
+	
+	float2 HorizontalLerp00 = lerp(float2(Sample00Value, Sample01Value), float2(Sample10Value, Sample11Value), Fraction.xx);
+	float PCFResult00 = lerp(HorizontalLerp00.x, HorizontalLerp00.y, Fraction.y); 
+	float2 HorizontalLerp01 = lerp(float2(Sample01Value, Sample02Value), float2(Sample11Value, Sample12Value), Fraction.xx);
+	float PCFResult01 = lerp(HorizontalLerp01.x, HorizontalLerp01.y, Fraction.y); 
+	float2 HorizontalLerp10 = lerp(float2(Sample10Value, Sample11Value), float2(Sample20Value, Sample21Value), Fraction.xx);
+	float PCFResult10 = lerp(HorizontalLerp10.x, HorizontalLerp10.y, Fraction.y); 
+	float2 HorizontalLerp11 = lerp(float2(Sample11Value, Sample12Value), float2(Sample21Value, Sample22Value), Fraction.xx);
+	float PCFResult11 = lerp(HorizontalLerp11.x, HorizontalLerp11.y, Fraction.y); 
+	
+	return saturate((PCFResult00 + PCFResult01 + PCFResult10 + PCFResult11) * .25);
+
+#endif // #if !XBOX
+
+#else
+
+	// Filter the shadow comparison using 16 point samples in a grid and 9 PCF calculations based on those 16 samples
+	float2 Fraction = frac(ShadowPosition.xy * ShadowBufferSizeAndSoftTransitionScale.xy);
+	float2 Sample00TexelCenter = floor(ShadowPosition.xy * ShadowBufferSizeAndSoftTransitionScale.xy - float2(1, 1));
+
+	float Sample00Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4(Sample00TexelCenter * ShadowTexelSize, 0, 0)).x);
+	float Sample10Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(1, 0)) * ShadowTexelSize, 0, 0)).x);
+	float Sample20Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(2, 0)) * ShadowTexelSize, 0, 0)).x);
+	float Sample30Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(3, 0)) * ShadowTexelSize, 0, 0)).x);
+	
+	float Sample01Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(0, 1)) * ShadowTexelSize, 0, 0)).x);
+	float Sample11Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(1, 1)) * ShadowTexelSize, 0, 0)).x);
+	float Sample21Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(2, 1)) * ShadowTexelSize, 0, 0)).x);
+	float Sample31Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(3, 1)) * ShadowTexelSize, 0, 0)).x);
+
+	float Sample02Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(0, 2)) * ShadowTexelSize, 0, 0)).x);
+	float Sample12Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(1, 2)) * ShadowTexelSize, 0, 0)).x);
+	float Sample22Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(2, 2)) * ShadowTexelSize, 0, 0)).x);
+	float Sample32Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(3, 2)) * ShadowTexelSize, 0, 0)).x);
+
+	float Sample03Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(0, 3)) * ShadowTexelSize, 0, 0)).x);
+	float Sample13Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(1, 3)) * ShadowTexelSize, 0, 0)).x);
+	float Sample23Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(2, 3)) * ShadowTexelSize, 0, 0)).x);
+	float Sample33Value = CalculateOcclusion(ShadowPosition.z, texDepth2Dlod(ShadowDepthTexture, float4((Sample00TexelCenter + float2(3, 3)) * ShadowTexelSize, 0, 0)).x);
+
+	float2 VerticalLerp00 = lerp(float2(Sample00Value, Sample01Value), float2(Sample10Value, Sample11Value), Fraction.xx);
+	float PCFResult00 = lerp(VerticalLerp00.x, VerticalLerp00.y, Fraction.y);
+	float2 VerticalLerp10 = lerp(float2(Sample10Value, Sample11Value), float2(Sample20Value, Sample21Value), Fraction.xx);
+	float PCFResult10 = lerp(VerticalLerp10.x, VerticalLerp10.y, Fraction.y);
+	float2 VerticalLerp20 = lerp(float2(Sample20Value, Sample21Value), float2(Sample30Value, Sample31Value), Fraction.xx);
+	float PCFResult20 = lerp(VerticalLerp20.x, VerticalLerp20.y, Fraction.y);
+
+	float2 VerticalLerp01 = lerp(float2(Sample01Value, Sample02Value), float2(Sample11Value, Sample12Value), Fraction.xx);
+	float PCFResult01 = lerp(VerticalLerp01.x, VerticalLerp01.y, Fraction.y);
+	float2 VerticalLerp11 = lerp(float2(Sample11Value, Sample12Value), float2(Sample21Value, Sample22Value), Fraction.xx);
+	float PCFResult11 = lerp(VerticalLerp11.x, VerticalLerp11.y, Fraction.y);
+	float2 VerticalLerp21 = lerp(float2(Sample21Value, Sample22Value), float2(Sample31Value, Sample32Value), Fraction.xx);
+	float PCFResult21 = lerp(VerticalLerp21.x, VerticalLerp21.y, Fraction.y);
+
+	float2 VerticalLerp02 = lerp(float2(Sample02Value, Sample03Value), float2(Sample12Value, Sample13Value), Fraction.xx);
+	float PCFResult02 = lerp(VerticalLerp02.x, VerticalLerp02.y, Fraction.y);
+	float2 VerticalLerp12 = lerp(float2(Sample12Value, Sample13Value), float2(Sample22Value, Sample23Value), Fraction.xx);
+	float PCFResult12 = lerp(VerticalLerp12.x, VerticalLerp12.y, Fraction.y);
+	float2 VerticalLerp22 = lerp(float2(Sample22Value, Sample23Value), float2(Sample32Value, Sample33Value), Fraction.xx);
+	float PCFResult22 = lerp(VerticalLerp22.x, VerticalLerp22.y, Fraction.y);
+
+	return saturate((PCFResult00 + PCFResult10 + PCFResult20 + PCFResult01 + PCFResult11 + PCFResult21 + PCFResult02 + PCFResult12 + PCFResult22) * .11111f);
+#endif
+}
+
+/**
+* Takes samples, compares and billinear filtering are done by hardware.
+*
+* @return a PCF value between 0 and 1
+*/
+half HardwarePCF(float4 ShadowPosition)
+{
+	half Shadow = 0;
+
+	UNROLL
+	for(int ChunkIndex = 0;ChunkIndex < NUM_SAMPLE_CHUNKS;ChunkIndex++)
+	{
+		half4 FinalOffset = ShadowPosition.xyxy + SampleOffsets[ChunkIndex * 2].xyzw;
+		
+		Shadow += texDepth2Dproj(ShadowDepthTexture,half4(FinalOffset.xy, ShadowPosition.z, 1)).r;
+		Shadow += texDepth2Dproj(ShadowDepthTexture,half4(FinalOffset.zw, ShadowPosition.z, 1)).r;
+		
+		FinalOffset = ShadowPosition.xyxy + SampleOffsets[ChunkIndex * 2 + 1].xyzw;
+		
+		Shadow += texDepth2Dproj(ShadowDepthTexture,half4(FinalOffset.xy, ShadowPosition.z, 1)).r;
+		Shadow += texDepth2Dproj(ShadowDepthTexture,half4(FinalOffset.zw, ShadowPosition.z, 1)).r;
+	}
+	return Shadow * .25 / NUM_SAMPLE_CHUNKS;
+}
+
+/**
+* Takes refining samples, retrieving 4 neighboring values in every texture lookup using Fetch4.  
+* The neighboring values are then bilinearly filtered in the shader.
+*
+* @return a PCF value between 0 and 1
+*/
+half Fetch4PCF(float4 ShadowPosition)
+{
+	half Shadow = 0;
+	
+	//used to normalize accumulated coverage, since there are 4 bilinearly filtered samples per chunk
+	half SampleWeight = .25 / NUM_SAMPLE_CHUNKS;
+
+	//Go through each chunk and take samples
+	UNROLL
+	for(int ChunkIndex = 0;ChunkIndex < NUM_SAMPLE_CHUNKS;ChunkIndex++)
+	{
+		/* first two bilinearly filtered lookups in this chunk */
+
+		//offset this pixel's position in lightspace
+		half4 FinalOffset = ShadowPosition.xyxy + SampleOffsets[ChunkIndex * 2].xyzw;
+		
+		//lookup 4 neighboring depth values using Fetch4 in each texDepth2Dlod
+		float4 ShadowDepthsOne = texDepth2D(ShadowDepthTexture,FinalOffset.xy);
+		float4 ShadowDepthsTwo = texDepth2D(ShadowDepthTexture,FinalOffset.zw);
+
+		half4 TopCoverageValues;
+		half4 BottomCoverageValues;
+		//Compare this pixel's depth, projected into lightspace, with the depths from the light's POV.
+		TopCoverageValues.xy = ShadowPosition.z < ShadowDepthsOne.wx;
+		TopCoverageValues.zw = ShadowPosition.z < ShadowDepthsTwo.wx;
+		BottomCoverageValues.xy = ShadowPosition.z < ShadowDepthsOne.yz;
+		BottomCoverageValues.zw = ShadowPosition.z < ShadowDepthsTwo.yz;
+
+		//calculate the fraction this pixel is between neighboring texels in the shadowmap
+		half4 fracCoordOne = frac(FinalOffset.xyzw * ShadowBufferSizeAndSoftTransitionScale.xyxy);
+
+		//linearly interpolate between the top four samples and the bottom four using the appropriate vertical fraction as a weight
+		half4 VerticalShadowPercentOne = lerp(TopCoverageValues, BottomCoverageValues, fracCoordOne.yyww);
+		
+		/* second two bilinearly filtered lookups in this chunk */
+
+		FinalOffset = ShadowPosition.xyxy + SampleOffsets[ChunkIndex * 2 + 1].xyzw;
+
+		//lookup 4 neighboring depth values using Fetch4 in each texDepth2Dlod
+		ShadowDepthsOne = texDepth2D(ShadowDepthTexture,FinalOffset.xy);
+		ShadowDepthsTwo = texDepth2D(ShadowDepthTexture,FinalOffset.zw);
+
+		//Compare this pixel's depth, projected into lightspace, with the depths from the light's POV.
+		TopCoverageValues.xy = ShadowPosition.z < ShadowDepthsOne.wx;
+		TopCoverageValues.zw = ShadowPosition.z < ShadowDepthsTwo.wx;
+		BottomCoverageValues.xy = ShadowPosition.z < ShadowDepthsOne.yz;
+		BottomCoverageValues.zw = ShadowPosition.z < ShadowDepthsTwo.yz;
+
+		//calculate the fraction this pixel is between neighboring texels in the shadowmap
+		half4 fracCoordTwo = frac(FinalOffset.xyzw * ShadowBufferSizeAndSoftTransitionScale.xyxy);
+
+		//linearly interpolate between the top four samples and the bottom four using the appropriate vertical fraction as a weight
+		half4 VerticalShadowPercentTwo = lerp(TopCoverageValues, BottomCoverageValues, fracCoordTwo.yyww);
+
+		half4 BillinearShadowPercent;
+		//linearly interpolate between the first two vertical results weighted with the appropriate horizontal fraction
+		BillinearShadowPercent.xy = lerp(VerticalShadowPercentOne.xz, VerticalShadowPercentOne.yw, fracCoordOne.xz);
+		//linearly interpolate between the second two vertical results weighted with the appropriate horizontal fraction
+		BillinearShadowPercent.zw = lerp(VerticalShadowPercentTwo.xz, VerticalShadowPercentTwo.yw, fracCoordTwo.xz);
+
+		//weight the 4 bilinearly filtered samples and accumulate
+		Shadow = Shadow + dot(BillinearShadowPercent, SampleWeight.xxxx);
+
+	}
+	return Shadow;
+}

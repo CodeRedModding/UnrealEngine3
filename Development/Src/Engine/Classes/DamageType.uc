@@ -1,29 +1,40 @@
-//=============================================================================
-// DamageType, the base class of all damagetypes.
-// this and its subclasses are never spawned, just used as information holders
-//=============================================================================
+/**
+ * DamageType, the base class of all damagetypes.
+ * this and its subclasses are never spawned, just used as information holders
+ *
+ * NOTE:  we can not do:  HideDropDown on this class as we need to be able to use it in SeqEvent_TakeDamage for objects taking
+ * damage from any DamageType!
+ *
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+
 class DamageType extends object
 	native
 	abstract;
 
-// Description of a type of damage.
-var() localized string     	DeathString;	 				// string to describe death by this type of damage
-var() localized string		FemaleSuicide, MaleSuicide;		// Strings to display when someone dies
-var() string			   	DamageWeaponName; 				// weapon that caused this damage
-var() bool					bArmorStops;					// does regular armor provide protection against this damage
-var() bool                  bAlwaysGibs;
-var() bool                  bLocationalHit;
-var() bool                  bSkeletize;         // swap model to skeleton
-var() bool					bCausesBlood;
-var() bool					bKUseOwnDeathVel;	// For ragdoll death. Rather than using default - use death velocity specified in this damage type.
+var() bool					bArmorStops;				// does regular armor provide protection against this damage
 
-var() float					GibModifier;
+var   bool					bCausedByWorld;				//this damage was caused by the world (falling off level, into lava, etc)
+var   bool					bExtraMomentumZ;			// Add extra Z to momentum on walking pawns to throw them up into the air
 
-var(RigidBody)	float		KDamageImpulse;		// magnitude of impulse applied to KActor due to this damage type.
-var(RigidBody)  float		KDeathVel;			// How fast ragdoll moves upon death
-var(RigidBody)  float		KDeathUpKick;		// Amount of upwards kick ragdolls get when they die
+/** Can break bits off FracturedStaticMeshActors. */
+var() bool					bCausesFracture;
 
-var float VehicleDamageScaling;		// multiply damage by this for vehicles
+var(RigidBody)	float		KDamageImpulse;				// magnitude of impulse applied to KActor due to this damage type.
+var(RigidBody)  float		KDeathVel;					// How fast ragdoll moves upon death
+var(RigidBody)  float		KDeathUpKick;				// Amount of upwards kick ragdolls get when they die
+
+/** Size of impulse to apply when doing radial damage. */
+var(RigidBody)	float		RadialDamageImpulse;
+
+/** When applying radial impulses, whether to treat as impulse or velocity change. */
+var(RigidBody)	bool		bRadialDamageVelChange;
+
+/** multiply damage by this for vehicles */
+var float VehicleDamageScaling;							
+
+/** multiply momentum by this for vehicles */
 var float VehicleMomentumScaling;
 
 /** The forcefeedback waveform to play when you take damage */
@@ -32,41 +43,20 @@ var ForceFeedbackWaveform DamagedFFWaveform;
 /** The forcefeedback waveform to play when you are killed by this damage type */
 var ForceFeedbackWaveform KilledFFWaveform;
 
-static function IncrementKills(Controller Killer);
+/** Damage imparted by this damage type to fracturable meshes.  Scaled by config WorldInfo.FracturedMeshWeaponDamage. */
+var float FracturedMeshDamage;
 
-static function ScoreKill(Controller Killer, Controller Killed)
+static function float VehicleDamageScalingFor(Vehicle V)
 {
-	IncrementKills(Killer);
-}
-
-static function string DeathMessage(PlayerReplicationInfo Killer, PlayerReplicationInfo Victim)
-{
-	return Default.DeathString;
-}
-
-static function string SuicideMessage(PlayerReplicationInfo Victim)
-{
-	if ( Victim.bIsFemale )
-		return Default.FemaleSuicide;
-	else
-		return Default.MaleSuicide;
-}
-
-static function string GetWeaponClass()
-{
-	return "";
+	return Default.VehicleDamageScaling;
 }
 
 defaultproperties
 {
-	DeathString="%o was killed by %k."
-	FemaleSuicide="%o killed herself."
-	MaleSuicide="%o killed himself."
 	bArmorStops=true
-	GibModifier=+1.0
-    bLocationalHit=true
-	bCausesBlood=true
 	KDamageImpulse=800
 	VehicleDamageScaling=+1.0
-    VehicleMomentumScaling=+1.0
+	VehicleMomentumScaling=+1.0
+	bExtraMomentumZ=true
+	FracturedMeshDamage=1.0
 }

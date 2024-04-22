@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	
+	<string name="Error">Errore</string>
+	<string name="Init_Failed">inizializzazione dell\'applicazione non riuscita. L\'applicazione verrà uscita.</string>
+	<string name="OpenGL_Failed">Inizializzazione di OpenGL fallito, probabilmente il dispositivo non supporta ES2.0 shader model, un requisito per i difensori dei Dungeon.</string>
+	<string name="NotEnoughSpace">Non Abbastanza SDCard spazio per l\'installazione</string>
+	<string name="NoSDCard">Nessun SDCard trovato montato</string>
+	<string name="DownloadManualURL">Errore durante il download di contenuti di gioco. Si prega di riprovare, o visitare http://dungeondefenders.com/androidmobile per le istruzioni per eseguire una installazione manuale.</string>
+	
+	<string name="MemNotEnough">Attenzione: questo dispositivo Android non soddisfa il requisito minimo di 512 MB di RAM. Difensori Dungeon: First Wave potrebbero non funzionare correttamente.</string>
+	
+	<string name="CheckLicense">Convalida di licenza...</string>
+	<string name="NoLicense">Impossibile ottenere una licenza!</string>
+	
+	<string name="Download_Failed">Scaricare file non riuscita</string>
+	<string name="Checksum_Failed">Checksum Impossibile Confronto</string>
+	<string name="SyncFile_Failed">Impossibile Generazione File Sync</string>
+	<string name="Composite_Failed">Impossibile checksum su file divisi Composited</string>	
+	
+	<string name="NoNetwork_Failed">Nessuna connessione di rete rilevata.</string>	
+	<string name="CouldntConnect_Failed">Impossibile connettersi all\'host remoto ai file.</string>	
+	<string name="UnknownError_Failed">Errore sconosciuto.</string>	
+	
+	<string name="Downloading">Caricare</string>
+	<string name="UpdateMessageBox">Aggiornamento Trovato, Vuoi aggiornare?</string>
+	<string name="Yes">Sì</string>
+	<string name="No">No</string>
+	
+	<string name="WifiMessageBox">No Found Wifi, cosa vorresti fare?</string>	
+	<string name="Retry">Riprova</string>
+	<string name="Exit">Esci</string>
+	<string name="BinaryUpdateMessage">Nuovo aggiornamento di mercato rilevati, volete scaricarlo?</string>
+	
+	<string name="WifiSettings">Wifi Impostazioni</string>
+	
+	<string name="File">File</string>	
+	<string name="SplitFile">Split File</string>	
+	<string name="Downloaded">Scaricato</string>	
+	<string name="InstallDirectory">Controllo / Installazione di Directory</string>	
+	
+</resources>

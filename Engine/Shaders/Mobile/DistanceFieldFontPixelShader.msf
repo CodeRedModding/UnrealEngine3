@@ -1,0 +1,91 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+OUT_BUILTIN(half4, gl_FragColor, COLOR0)
+
+////////////////////////
+// Variables
+////////////////////////
+
+UNIFORM_SAMPLER2D(TextureBase, TEXUNIT0);
+
+IN_VARYING_DEFAULT( vec2, UVBase, TEXCOORD0 );
+IN_VARYING_LOW( vec4, PrimColor, COLOR0 );
+IN_VARYING_DEFAULT( vec2, ShadowTexCoord, TEXCOORD1 );
+
+UNIFORM_MEDIUM(float, SmoothWidth);
+UNIFORM_MEDIUM(float, ShadowMultiplier);
+UNIFORM_LOW(vec4, ShadowColor);
+UNIFORM_MEDIUM(float, ShadowSmoothWidth);
+
+UNIFORM_MEDIUM(float, GlowMultiplier);
+UNIFORM_LOW(vec4, GlowColor);
+UNIFORM_MEDIUM(vec2, GlowOuterRadius);
+UNIFORM_MEDIUM(vec2, GlowInnerRadius);
+
+////////////////////////
+// Implementation
+////////////////////////
+
+PIXEL_MAIN
+{
+	lowp vec4 BaseTextureColor = texture2D(TextureBase, UVBase);
+	
+	float BaseDist = BaseTextureColor.r;
+
+	// smooth range between SmoothWidth texels around edge
+	// We want to control font edge smoothness in screen space, but the distance field is stored in texture space.
+	// Using ddx scales the smoothstep steepness based on texel-to-pixel scaling.
+	float TextureToScreenCompensation = DUDX(UVBase.r, 1.0, 0.0);
+
+	float SmoothstepWidth = SmoothWidth * TextureToScreenCompensation;
+	lowp vec4 PolyColor = float4(PrimColor.rgb, smoothstep(0.5-SmoothstepWidth, 0.5+SmoothstepWidth, BaseDist));
+
+	//Shadow
+	//if( EnableShadow )
+	{
+		// sample texture with shadow direction offset
+		lowp vec4 ShadowTexture = texture2D(TextureBase, ShadowTexCoord);
+		float ShadowDist = ShadowTexture.r;
+		// smooth range between ShadowSmoothWidth texels around edge
+		float4 ShadowResult = ShadowColor * smoothstep(0.5-ShadowSmoothWidth, 0.5+ShadowSmoothWidth, ShadowDist);
+		ShadowResult = lerp(ShadowResult,PolyColor,PolyColor.a);
+
+		PolyColor = lerp(PolyColor, ShadowResult, ShadowMultiplier);
+	}
+
+	//Glow
+	//if (EnableGlow)
+	{
+		// testing glow rendering
+		//GlowOuterRadius = float2(0.3,0.45);
+		//GlowInnerRadius = float2(0.45,0.5);
+		//GlowColor = vec4(1.0, 0.0, 0.0, 1.0);
+
+		if (BaseDist >= GlowOuterRadius.x && BaseDist <= GlowInnerRadius.y)
+		{
+			float OutlineFactor=0.0;
+			if (BaseDist <= GlowOuterRadius.y)
+			{
+				OutlineFactor = smoothstep(GlowOuterRadius.x,GlowOuterRadius.y,BaseDist);
+			}
+			else
+			{
+				OutlineFactor = smoothstep(GlowInnerRadius.y,GlowInnerRadius.x,BaseDist);			
+			}
+			vec4 GlowMixColor = lerp(PolyColor,GlowColor,OutlineFactor);
+			PolyColor = lerp(PolyColor, GlowMixColor, GlowMultiplier);
+		}
+	}
+
+	ALPHAKILL(PolyColor.a);
+	PolyColor.a *= PrimColor.a;
+	
+	// Convert to gamma 2.2 space
+	PolyColor.xyz = HANDLE_SRGB_WRITE( PolyColor.xyz );
+	gl_FragColor = AlphaBlend( PolyColor );
+}
+
+
+

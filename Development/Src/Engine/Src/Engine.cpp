@@ -1,20 +1,14 @@
 /*=============================================================================
 	Engine.cpp: Unreal engine package.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "EnginePrivate.h"
+
 
 /*-----------------------------------------------------------------------------
 	Globals.
 -----------------------------------------------------------------------------*/
 
-// Global subsystems in the engine.
-FMemStack		GEngineMem;
-FRebuildTools	GRebuildTools;
-FSelectionTools	GSelectionTools;
-
-/*-----------------------------------------------------------------------------
-	The end.
------------------------------------------------------------------------------*/
-
+// Suppress linker warning "warning LNK4221: no public symbols found; archive member will be inaccessible"
+INT EngineLinkerHelper;

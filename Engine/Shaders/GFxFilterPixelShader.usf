@@ -1,0 +1,493 @@
+#include "Common.usf"
+#if !SM4_PROFILE && !SM5_PROFILE
+	#define int float
+#endif
+
+float2 DecalOffset;
+float2 srctexscale;
+float2 texscale;
+float4 OverlayColor;
+float4 ColorScale;
+float4 fsize;
+float4 scolor;
+float4 scolor2;
+sampler2D TextureDetail;
+sampler2D TextureBase;
+
+
+void FBox2InnerShadowKnockout(float2 tc : TEXCOORD0,
+                              out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f));
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E InnerShadow
+  float4 base = tex2Dlod(TextureDetail,float4( tc * srctexscale,0, 0.0f));
+      fcolor = lerp(scolor, base, fcolor.a) * base.a;
+  // E Knockout
+  fcolor -= base;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+}
+
+void FBox2InnerShadowKnockoutHighlight(float2 tc : TEXCOORD0,
+                                       out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color.a += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f)).a;
+       color.r += tex2Dlod(TextureBase,float4( tc - (DecalOffset + i) * texscale,0, 0.0f)).a;
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E InnerShadow
+  float4 base = tex2Dlod(TextureDetail,float4( tc * srctexscale,0, 0.0f));
+      fcolor.ar = clamp((1.0f - fcolor.ar) - (1.0f - fcolor.ra) * 0.5f, 0.0f, 1.0f);
+    fcolor = (scolor * fcolor.a + scolor2 * fcolor.r
+              + base * (1.0f - fcolor.a - fcolor.r)) * base.a;
+  // E Knockout
+  fcolor -= base;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+}
+
+void FBox2InnerShadowKnockoutMul(float2 tc : TEXCOORD0,
+                                 out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f));
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E InnerShadow
+  float4 base = tex2Dlod(TextureDetail,float4( tc * srctexscale,0, 0.0f));
+      fcolor = lerp(scolor, base, fcolor.a) * base.a;
+  // E Knockout
+  fcolor -= base;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+}
+
+void FBox2InnerShadowKnockoutMulHighlight(float2 tc : TEXCOORD0,
+                                          out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color.a += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f)).a;
+       color.r += tex2Dlod(TextureBase,float4( tc - (DecalOffset + i) * texscale,0, 0.0f)).a;
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E InnerShadow
+  float4 base = tex2Dlod(TextureDetail,float4( tc * srctexscale,0, 0.0f));
+      fcolor.ar = clamp((1.0f - fcolor.ar) - (1.0f - fcolor.ra) * 0.5f, 0.0f, 1.0f);
+    fcolor = (scolor * fcolor.a + scolor2 * fcolor.r
+              + base * (1.0f - fcolor.a - fcolor.r)) * base.a;
+  // E Knockout
+  fcolor -= base;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+}
+
+void FBox2InnerShadow(float2 tc : TEXCOORD0,
+                      out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f));
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E InnerShadow
+  float4 base = tex2Dlod(TextureDetail,float4( tc * srctexscale,0, 0.0f));
+      fcolor = lerp(scolor, base, fcolor.a) * base.a;
+  // E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+}
+
+void FBox2InnerShadowHighlight(float2 tc : TEXCOORD0,
+                               out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color.a += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f)).a;
+       color.r += tex2Dlod(TextureBase,float4( tc - (DecalOffset + i) * texscale,0, 0.0f)).a;
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E InnerShadow
+  float4 base = tex2Dlod(TextureDetail,float4( tc * srctexscale,0, 0.0f));
+      fcolor.ar = clamp((1.0f - fcolor.ar) - (1.0f - fcolor.ra) * 0.5f, 0.0f, 1.0f);
+    fcolor = (scolor * fcolor.a + scolor2 * fcolor.r
+              + base * (1.0f - fcolor.a - fcolor.r)) * base.a;
+  // E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+}
+
+void FBox2InnerShadowMul(float2 tc : TEXCOORD0,
+                         out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f));
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E InnerShadow
+  float4 base = tex2Dlod(TextureDetail,float4( tc * srctexscale,0, 0.0f));
+      fcolor = lerp(scolor, base, fcolor.a) * base.a;
+  // E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+}
+
+void FBox2InnerShadowMulHighlight(float2 tc : TEXCOORD0,
+                                  out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color.a += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f)).a;
+       color.r += tex2Dlod(TextureBase,float4( tc - (DecalOffset + i) * texscale,0, 0.0f)).a;
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E InnerShadow
+  float4 base = tex2Dlod(TextureDetail,float4( tc * srctexscale,0, 0.0f));
+      fcolor.ar = clamp((1.0f - fcolor.ar) - (1.0f - fcolor.ra) * 0.5f, 0.0f, 1.0f);
+    fcolor = (scolor * fcolor.a + scolor2 * fcolor.r
+              + base * (1.0f - fcolor.a - fcolor.r)) * base.a;
+  // E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+}
+
+void FBox2ShadowKnockout(float2 tc : TEXCOORD0,
+                         out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f));
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E Shadow
+  float4 base = tex2D(TextureDetail, tc * srctexscale);
+
+      fcolor = scolor * fcolor.a * (1.0f-base.a) + base;
+  // E Knockout
+  fcolor -= base;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+}
+
+void FBox2ShadowKnockoutHighlight(float2 tc : TEXCOORD0,
+                                  out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color.a += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f)).a;
+       color.r += tex2Dlod(TextureBase,float4( tc - (DecalOffset + i) * texscale,0, 0.0f)).a;
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E Shadow
+  float4 base = tex2D(TextureDetail, tc * srctexscale);
+
+      fcolor = (scolor * fcolor.a + scolor2 * fcolor.r) * (1.0f-base.a) + base;
+  // E Knockout
+  fcolor -= base;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+}
+
+void FBox2ShadowKnockoutMul(float2 tc : TEXCOORD0,
+                            out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f));
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E Shadow
+  float4 base = tex2D(TextureDetail, tc * srctexscale);
+
+      fcolor = scolor * fcolor.a * (1.0f-base.a) + base;
+  // E Knockout
+  fcolor -= base;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+}
+
+void FBox2ShadowKnockoutMulHighlight(float2 tc : TEXCOORD0,
+                                     out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color.a += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f)).a;
+       color.r += tex2Dlod(TextureBase,float4( tc - (DecalOffset + i) * texscale,0, 0.0f)).a;
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E Shadow
+  float4 base = tex2D(TextureDetail, tc * srctexscale);
+
+      fcolor = (scolor * fcolor.a + scolor2 * fcolor.r) * (1.0f-base.a) + base;
+  // E Knockout
+  fcolor -= base;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+}
+
+void FBox2Shadow(float2 tc : TEXCOORD0,
+                 out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f));
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E Shadow
+  float4 base = tex2D(TextureDetail, tc * srctexscale);
+
+      fcolor = scolor * fcolor.a * (1.0f-base.a) + base;
+  // E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+}
+
+void FBox2ShadowHighlight(float2 tc : TEXCOORD0,
+                          out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color.a += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f)).a;
+       color.r += tex2Dlod(TextureBase,float4( tc - (DecalOffset + i) * texscale,0, 0.0f)).a;
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E Shadow
+  float4 base = tex2D(TextureDetail, tc * srctexscale);
+
+      fcolor = (scolor * fcolor.a + scolor2 * fcolor.r) * (1.0f-base.a) + base;
+  // E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+}
+
+void FBox2ShadowMul(float2 tc : TEXCOORD0,
+                    out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f));
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E Shadow
+  float4 base = tex2D(TextureDetail, tc * srctexscale);
+
+      fcolor = scolor * fcolor.a * (1.0f-base.a) + base;
+  // E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+}
+
+void FBox2ShadowMulHighlight(float2 tc : TEXCOORD0,
+                             out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color.a += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f)).a;
+       color.r += tex2Dlod(TextureBase,float4( tc - (DecalOffset + i) * texscale,0, 0.0f)).a;
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E Shadow
+  float4 base = tex2D(TextureDetail, tc * srctexscale);
+
+      fcolor = (scolor * fcolor.a + scolor2 * fcolor.r) * (1.0f-base.a) + base;
+  // E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+}
+
+void FBox2Shadowonly(float2 tc : TEXCOORD0,
+                     out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f));
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E Shadowonly
+  fcolor = scolor * fcolor.a;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+}
+
+void FBox2ShadowonlyHighlight(float2 tc : TEXCOORD0,
+                              out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color.a += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f)).a;
+       color.r += tex2Dlod(TextureBase,float4( tc - (DecalOffset + i) * texscale,0, 0.0f)).a;
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E Shadowonly
+  fcolor = scolor * fcolor.a;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+}
+
+void FBox2ShadowonlyMul(float2 tc : TEXCOORD0,
+                        out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f));
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E Shadowonly
+  fcolor = scolor * fcolor.a;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+}
+
+void FBox2ShadowonlyMulHighlight(float2 tc : TEXCOORD0,
+                                 out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E shadow1
+  {           color.a += tex2Dlod(TextureBase,float4( tc + (DecalOffset + i) * texscale,0, 0.0f)).a;
+       color.r += tex2Dlod(TextureBase,float4( tc - (DecalOffset + i) * texscale,0, 0.0f)).a;
+      }  fcolor = color * fsize.w;
+  fcolor.a = fcolor.a * fsize.z;
+// E Shadowonly
+  fcolor = scolor * fcolor.a;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+}
+
+void FBox1Blur(float2 tc : TEXCOORD0,
+               out float4 fcolor : COLOR) {
+// E Box1
+  float4 color = half4(0,0,0,0);
+  float  i = 0;
+  for (i = -fsize.x; i <= fsize.x; i++)
+// E Blur
+    color += tex2Dlod(TextureBase,float4( tc + i * texscale,0, 0.0f));
+  fcolor = color * fsize.w;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+}
+
+void FBox1BlurMul(float2 tc : TEXCOORD0,
+                  out float4 fcolor : COLOR) {
+// E Box1
+  float4 color = half4(0,0,0,0);
+  float  i = 0;
+  for (i = -fsize.x; i <= fsize.x; i++)
+// E Blur
+    color += tex2Dlod(TextureBase,float4( tc + i * texscale,0, 0.0f));
+  fcolor = color * fsize.w;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+}
+
+void FBox2Blur(float2 tc : TEXCOORD0,
+               out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E Blur
+    color += tex2Dlod(TextureBase,float4( tc + i * texscale,0, 0.0f));
+  fcolor = color * fsize.w;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+}
+
+void FBox2BlurMul(float2 tc : TEXCOORD0,
+                  out float4 fcolor : COLOR) {
+// E Box2
+  float4 color = half4(0,0,0,0);
+  float2 i = 0;
+  for (i.x = -fsize.x; i.x <= fsize.x; i.x++)
+    for (i.y = -fsize.y; i.y <= fsize.y; i.y++)
+// E Blur
+    color += tex2Dlod(TextureBase,float4( tc + i * texscale,0, 0.0f));
+  fcolor = color * fsize.w;
+// E cxformac
+  fcolor = (fcolor * half4(ColorScale.rgb,1)) * ColorScale.a + OverlayColor * fcolor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+}
+

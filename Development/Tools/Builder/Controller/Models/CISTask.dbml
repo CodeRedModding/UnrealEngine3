@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="Builder" Class="CISTaskDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="AppSettings" ConnectionString="Data Source=db-09;Initial Catalog=Builder;Integrated Security=True" SettingsObjectName="Controller.Properties.Settings" SettingsPropertyName="BuilderConnectionString" Provider="System.Data.SqlClient" />
+  <Table Name="dbo.CISJobStates" Member="CISJobStates">
+    <Type Name="CISJobState">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="ChangelistID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="CISTaskID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="JobState" Type="System.Byte" DbType="TinyInt NOT NULL" CanBeNull="false" />
+      <Column Name="Error" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+      <Association Name="CISTask_CISJobState" Member="CISTask" ThisKey="CISTaskID" OtherKey="ID" Type="CISTask" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.CISTasks" Member="CISTasks">
+    <Type Name="CISTask">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Name" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="BranchConfigID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Mask" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttempted" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastGood" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastFail" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="GameSpecific" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="PlatformSpecific" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Remote" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="CompileAllowed" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Folders" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="DependentPlatforms" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="AlternateFolders" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Association Name="CISTask_CISJobState" Member="CISJobStates" ThisKey="ID" OtherKey="CISTaskID" Type="CISJobState" />
+    </Type>
+  </Table>
+</Database>

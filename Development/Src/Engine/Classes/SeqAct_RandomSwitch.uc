@@ -1,27 +1,28 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class SeqAct_RandomSwitch extends SeqAct_Switch
 	native(Sequence);
 
+/** List of indices we've already used once and disabled (for when bLooping and bAutoDisableLinks are both checked) **/
+var array<INT> AutoDisabledIndices; 
+
 cpptext
 {
-	virtual void Activated()
-	{
-		// pick a random link to activate
-		INT outIdx = appRand() % OutputLinks.Num();
-		OutputLinks(outIdx).bHasImpulse = 1;
-		// fill any variables attached
-		TArray<INT*> intVars;
-		GetIntVars(intVars,TEXT("Active Link"));
-		for (INT idx = 0; idx < intVars.Num(); idx++)
-		{
-			// offset by 1 for non-programmer friendliness
-			*(intVars(idx)) = outIdx + 1;
-		}
-	}
+	virtual void Activated();
 };
+
+static event int GetObjClassVersion()
+{
+	return Super.GetObjClassVersion() + 1;
+}
 
 defaultproperties
 {
-	ObjName="Switch - Random"
+	ObjName="Random"
+	ObjCategory="Switch"
 	VariableLinks.Empty
-	VariableLinks(0)=(ExpectedType=class'SeqVar_Int',LinkDesc="Active Link",bWriteable=true,MinVars=0)
+	VariableLinks(0)=(ExpectedType=class'SeqVar_Int',LinkDesc="Active Link",bWriteable=true,MinVars=0,PropertyName=Indices)
+
+	InputLinks(1)=(LinkDesc="Reset")
 }

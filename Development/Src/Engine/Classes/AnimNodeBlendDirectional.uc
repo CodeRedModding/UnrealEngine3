@@ -1,3 +1,6 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 // This special blend node will use the LookDir and Acceleration from the Actor that
 // owns the SkeletalMeshComponent to blend the four directional animations together.
 
@@ -11,12 +14,26 @@ class AnimNodeBlendDirectional extends AnimNodeBlendBase
 var()	float			DirDegreesPerSecond;
 
 /** In radians. Between -PI and PI. 0.0 is running the way we are looking. */
-var		float			DirAngle; 
+var		float			DirAngle;
+
+/** If the LOD for the mesh is at or above this LOD level, only use a single directional animation instead of blending. */
+var()	int				SingleAnimAtOrAboveLOD;
+
+/** Rotational offset to apply */
+var		Rotator			RotationOffset;
+
+/** Use acceleration instead of Velocity to determine speed */
+var() bool	bUseAcceleration;
 
 cpptext
 {
 	// AnimNode interface
-	virtual	void TickAnim( FLOAT DeltaSeconds, FLOAT TotalWeight );
+	virtual	void TickAnim(FLOAT DeltaSeconds);
+
+	virtual INT GetNumSliders() const { return 1; }
+	virtual FLOAT GetSliderPosition(INT SliderIndex, INT ValueIndex);
+	virtual void HandleSliderMove(INT SliderIndex, INT ValueIndex, FLOAT NewSliderValue);
+	virtual FString GetSliderDrawValue(INT SliderIndex);
 }
 
 defaultproperties
@@ -27,7 +44,9 @@ defaultproperties
 	Children(3)=(Name="Right")
 	bFixNumChildren=true
 
-	DebugIcon=Texture2D'EngineResources.AnimBlendDirIcon'
-
 	DirDegreesPerSecond=360.0
+
+	SingleAnimAtOrAboveLOD=1000
+
+	CategoryDesc = "Directional"
 }

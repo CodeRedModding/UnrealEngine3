@@ -1,0 +1,407 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Launch">
+      <UniqueIdentifier>{5a6f80fe-d405-4900-9fd2-1a5495608100}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Launch\Src">
+      <UniqueIdentifier>{da0b79cc-1112-42ba-86a6-c103c4df71ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Launch\Inc">
+      <UniqueIdentifier>{6b77743b-0ad0-42fd-99f8-1dc2708f79b6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CPUSolver">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="CPUSolver\Inc">
+      <UniqueIdentifier>{7ee53aee-349c-4ef7-8ec5-1640cfd868e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CPUSolver\Src">
+      <UniqueIdentifier>{01d9ecc5-f1a0-4767-bbde-de7e29901847}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ImportExport">
+      <UniqueIdentifier>{fc581bcf-8498-45b2-bd87-bbcdd46e776b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ImportExport\Inc">
+      <UniqueIdentifier>{9ffb1a87-41e3-42b4-b4b0-2c3446131a1d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ImportExport\Src">
+      <UniqueIdentifier>{c7f69bc3-00cf-4aba-9cbc-87482b96665d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="LightmassCore">
+      <UniqueIdentifier>{4bf96f6f-c254-4ac6-a4d1-7408782fc46a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="LightmassCore\Inc">
+      <UniqueIdentifier>{f42395b2-7790-4b61-ac75-8cef2b8cbb70}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="LightmassCore\Inc\Types">
+      <UniqueIdentifier>{36821cbc-1b76-4995-b144-3919864bf419}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="LightmassCore\Inc\Math">
+      <UniqueIdentifier>{e0f7fae4-625c-4ea2-8182-880bb68fa4fa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="LightmassCore\Inc\Templates">
+      <UniqueIdentifier>{d97f5c3e-a344-4537-997a-e1c7e198b2bb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="LightmassCore\Inc\Misc">
+      <UniqueIdentifier>{56d0c5eb-aa5c-4066-83c1-4ca7dfd6b1d5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="LightmassCore\Src">
+      <UniqueIdentifier>{9e2a7392-acae-47d2-ab06-3e6c5bcc6519}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lighting">
+      <UniqueIdentifier>{7a204b08-2717-4f2f-a0f1-b25dfd987d63}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lighting\Inc">
+      <UniqueIdentifier>{fb28735d-87c4-4b9b-ba30-7bbdce2a9332}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lighting\Src">
+      <UniqueIdentifier>{1dbb78c2-0359-41de-bdde-4eaddf04768c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Public">
+      <UniqueIdentifier>{e6236d5e-a9a6-4750-93dc-a44c443b6e38}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource">
+      <UniqueIdentifier>{05336196-153a-41b8-940a-68ed4c352499}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\stdafx.cpp">
+      <Filter>Launch\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnitTest.cpp">
+      <Filter>Launch\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnrealLightmass.cpp">
+      <Filter>Launch\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\CPUSolver.cpp">
+      <Filter>CPUSolver\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\3DVisualizer.cpp">
+      <Filter>ImportExport\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Exporter.cpp">
+      <Filter>ImportExport\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Importer.cpp">
+      <Filter>ImportExport\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\LightmassSwarm.cpp">
+      <Filter>ImportExport\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Material.cpp">
+      <Filter>ImportExport\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Mesh.cpp">
+      <Filter>ImportExport\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Scene.cpp">
+      <Filter>ImportExport\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Terrain.cpp">
+      <Filter>ImportExport\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="LightmassCore\Src\LMCore.cpp">
+      <Filter>LightmassCore\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="LightmassCore\Src\LMDebug.cpp">
+      <Filter>LightmassCore\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="LightmassCore\Src\LMMallocProfiler.cpp">
+      <Filter>LightmassCore\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="LightmassCore\Src\LMMath.cpp">
+      <Filter>LightmassCore\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="LightmassCore\Src\LMMemory.cpp">
+      <Filter>LightmassCore\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="LightmassCore\Src\LMSHMath.cpp">
+      <Filter>LightmassCore\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="LightmassCore\Src\LMTemplates.cpp">
+      <Filter>LightmassCore\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="LightmassCore\Src\LMThreading.cpp">
+      <Filter>LightmassCore\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="LightmassCore\Src\SFMT.cpp">
+      <Filter>LightmassCore\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\BSP.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\Cache.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\Collision.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\FluidSurface.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\Landscape.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\LightingMesh.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\LightingSystem.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\LightmapData.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\Mappings.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\MonteCarlo.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\PhotonMapping.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\PrecomputedVisibility.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\SampleVolume.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\SpeedTree.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\StaticMesh.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\TerrainLighting.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\TextureMapping.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\VertexMapping.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Lighting\Src\VolumeDistanceField.cpp">
+      <Filter>Lighting\Src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\stdafx.h">
+      <Filter>Launch\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnitTest.h">
+      <Filter>Launch\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\CPUSolver.h">
+      <Filter>CPUSolver\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\3DVisualizer.h">
+      <Filter>ImportExport\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\Exporter.h">
+      <Filter>ImportExport\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\Importer.h">
+      <Filter>ImportExport\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\LightmassSwarm.h">
+      <Filter>ImportExport\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\Material.h">
+      <Filter>ImportExport\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\Mesh.h">
+      <Filter>ImportExport\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\Scene.h">
+      <Filter>ImportExport\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\Terrain.h">
+      <Filter>ImportExport\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMCore.h">
+      <Filter>LightmassCore\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMColor.h">
+      <Filter>LightmassCore\Inc\Types</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMGuid.h">
+      <Filter>LightmassCore\Inc\Types</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMTypes.h">
+      <Filter>LightmassCore\Inc\Types</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMCollision.h">
+      <Filter>LightmassCore\Inc\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMkDOP.h">
+      <Filter>LightmassCore\Inc\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMMath.h">
+      <Filter>LightmassCore\Inc\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMMathSSE.h">
+      <Filter>LightmassCore\Inc\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMMatrix.h">
+      <Filter>LightmassCore\Inc\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMOctree.h">
+      <Filter>LightmassCore\Inc\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMArray.h">
+      <Filter>LightmassCore\Inc\Templates</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMMap.h">
+      <Filter>LightmassCore\Inc\Templates</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMQueue.h">
+      <Filter>LightmassCore\Inc\Templates</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMSet.h">
+      <Filter>LightmassCore\Inc\Templates</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMSorting.h">
+      <Filter>LightmassCore\Inc\Templates</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMString.h">
+      <Filter>LightmassCore\Inc\Templates</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMTemplates.h">
+      <Filter>LightmassCore\Inc\Templates</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMBuild.h">
+      <Filter>LightmassCore\Inc\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMDebug.h">
+      <Filter>LightmassCore\Inc\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMHelpers.h">
+      <Filter>LightmassCore\Inc\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMMallocProfiler.h">
+      <Filter>LightmassCore\Inc\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMMemory.h">
+      <Filter>LightmassCore\Inc\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMStats.h">
+      <Filter>LightmassCore\Inc\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMStringConv.h">
+      <Filter>LightmassCore\Inc\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMThreading.h">
+      <Filter>LightmassCore\Inc\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="LightmassCore\Inc\LMWindows.h">
+      <Filter>LightmassCore\Inc\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\BSP.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\BuildOptions.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\Cache.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\Collision.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\FluidSurface.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\Landscape.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\Lighting.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\LightingMesh.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\LightingSystem.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\LightmapData.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\Mappings.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\MonteCarlo.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\Raster.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\SpeedTree.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\StaticMesh.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\TerrainLighting.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Lighting\Inc\Texture.h">
+      <Filter>Lighting\Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\FluidExport.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\FoliageExport.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\ImportExport.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\LightmassPublic.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\MaterialExport.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\MeshExport.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\PublicStructs.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\PublicTypes.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\SceneExport.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\TerrainExport.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Resource</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="Debug-Win32.manifest">
+      <Filter>Resource</Filter>
+    </Manifest>
+    <Manifest Include="Debug-Win64.manifest">
+      <Filter>Resource</Filter>
+    </Manifest>
+    <Manifest Include="Win32.manifest">
+      <Filter>Resource</Filter>
+    </Manifest>
+    <Manifest Include="Win64.manifest">
+      <Filter>Resource</Filter>
+    </Manifest>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc">
+      <Filter>Resource</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

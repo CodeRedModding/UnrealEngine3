@@ -1,3 +1,6 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 //=============================================================================
 // GenericBrowserType_TerrainLayer: TerrainLayers
 //=============================================================================
@@ -13,5 +16,5 @@ cpptext
 	
 defaultproperties
 {
-	Description="Terrain Layer"
+	Description="Terrain Layers"
 }

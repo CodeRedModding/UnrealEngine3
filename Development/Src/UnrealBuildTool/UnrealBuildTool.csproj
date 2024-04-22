@@ -1,0 +1,282 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{FD7C5E1A-CFE4-4FD5-A525-1EB1599A39AC}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>UnrealBuildTool</RootNamespace>
+    <AssemblyName>UnrealBuildTool</AssemblyName>
+    <SccProjectName>
+    </SccProjectName>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccProvider>
+    </SccProvider>
+    <RunPostBuildEvent>OnOutputUpdated</RunPostBuildEvent>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <OldToolsVersion>3.5</OldToolsVersion>
+    <UpgradeBackupLocation />
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\..\Intermediate\UnrealBuildTool\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <OutputPath>..\..\Intermediate\UnrealBuildTool\Debug\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Shipping|AnyCPU' ">
+    <OutputPath>..\..\Intermediate\UnrealBuildTool\Shipping\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'ShippingDebugConsole|AnyCPU' ">
+    <OutputPath>..\..\Intermediate\UnrealBuildTool\ShippingDebugConsole\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="RPCUtility">
+      <HintPath>..\..\..\Binaries\RPCUtility.exe</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Runtime.Remoting" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <Choose>
+    <When Condition="Exists('..\PS3\UnrealBuildTool\Scripts\UE3BuildPS3.cs')">
+      <ItemGroup>
+        <Compile Include="..\PS3\UnrealBuildTool\Scripts\UE3BuildPS3.cs">
+          <Link>Configuration\UE3BuildPS3.cs</Link>
+        </Compile>
+        <Compile Include="..\PS3\UnrealBuildTool\System\PS3ToolChain.cs">
+          <Link>ToolChain\PS3ToolChain.cs</Link>
+        </Compile>
+        <Compile Include="..\PS3\UnrealBuildTool\System\SPUToolChain.cs">
+          <Link>ToolChain\SPUToolChain.cs</Link>
+        </Compile>
+      </ItemGroup>
+    </When>
+    <Otherwise />
+  </Choose>
+  <Choose>
+    <When Condition="Exists('..\NGP\UnrealBuildTool\Scripts\UE3BuildNGP.cs')">
+      <ItemGroup>
+        <Compile Include="..\NGP\UnrealBuildTool\Scripts\UE3BuildNGP.cs">
+          <Link>Configuration\UE3BuildNGP.cs</Link>
+        </Compile>
+        <Compile Include="..\NGP\UnrealBuildTool\System\NGPToolChain.cs">
+          <Link>ToolChain\NGPToolChain.cs</Link>
+        </Compile>
+      </ItemGroup>
+    </When>
+    <Otherwise />
+  </Choose>
+  <Choose>
+    <When Condition="Exists('..\Xenon\UnrealBuildTool\Scripts\UE3BuildXbox360.cs')">
+      <ItemGroup>
+        <Compile Include="..\Xenon\UnrealBuildTool\Scripts\UE3BuildXbox360.cs">
+          <Link>Configuration\UE3BuildXbox360.cs</Link>
+        </Compile>
+        <Compile Include="..\Xenon\UnrealBuildTool\System\Xbox360ToolChain.cs">
+          <Link>ToolChain\Xbox360ToolChain.cs</Link>
+        </Compile>
+      </ItemGroup>
+    </When>
+    <Otherwise />
+  </Choose>
+  <Choose>
+    <When Condition="Exists('..\IPhone\UnrealBuildTool\Scripts\UE3BuildIPhone.cs')">
+      <ItemGroup>
+        <Compile Include="..\IPhone\UnrealBuildTool\Scripts\UE3BuildIPhone.cs">
+          <Link>Configuration\UE3BuildIPhone.cs</Link>
+        </Compile>
+        <Compile Include="..\IPhone\UnrealBuildTool\System\IPhoneToolChain.cs">
+          <Link>ToolChain\IPhoneToolChain.cs</Link>
+        </Compile>
+        <Compile Include="..\IPhone\UnrealBuildTool\System\XcodeToolChain.cs">
+          <Link>ToolChain\XcodeToolChain.cs</Link>
+        </Compile>
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <Compile Include="Configuration\UE3BuildIPhoneStub.cs" />
+        <Compile Include="ToolChain\IPhoneToolChainStub.cs" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+  <Choose>
+    <When Condition="Exists('..\Android\UnrealBuildTool\Scripts\UE3BuildAndroid.cs')">
+      <ItemGroup>
+        <Compile Include="..\Android\UnrealBuildTool\Scripts\UE3BuildAndroid.cs">
+          <Link>Configuration\UE3BuildAndroid.cs</Link>
+        </Compile>
+        <Compile Include="..\Android\UnrealBuildTool\System\AndroidToolChain.cs">
+          <Link>ToolChain\AndroidToolChain.cs</Link>
+        </Compile>
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <Compile Include="Configuration\UE3BuildAndroidStub.cs" />
+        <Compile Include="ToolChain\AndroidToolChainStub.cs" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+  <Choose>
+    <When Condition="Exists('..\WiiU\UnrealBuildTool\Scripts\UE3BuildWiiU.cs')">
+      <ItemGroup>
+        <Compile Include="..\WiiU\UnrealBuildTool\Scripts\UE3BuildWiiU.cs">
+          <Link>Configuration\UE3BuildWiiU.cs</Link>
+        </Compile>
+        <Compile Include="..\WiiU\UnrealBuildTool\System\WiiUToolChain.cs">
+          <Link>ToolChain\WiiUToolChain.cs</Link>
+        </Compile>
+      </ItemGroup>
+    </When>
+    <Otherwise />
+  </Choose>
+  <Choose>
+    <When Condition="Exists('..\Flash\UnrealBuildTool\Scripts\UE3BuildFlash.cs')">
+      <ItemGroup>
+        <Compile Include="..\Flash\UnrealBuildTool\Scripts\UE3BuildFlash.cs">
+          <Link>Configuration\UE3BuildFlash.cs</Link>
+        </Compile>
+        <Compile Include="..\Flash\UnrealBuildTool\System\FlashToolChain.cs">
+          <Link>ToolChain\FlashToolChain.cs</Link>
+        </Compile>
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <Compile Include="Configuration\UE3BuildFlashStub.cs" />
+        <Compile Include="ToolChain\FlashToolChainStub.cs" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+  <ItemGroup>
+    <Compile Include="..\Launch\Resources\MetaData.cs">
+      <Link>Properties\MetaData.cs</Link>
+    </Compile>
+    <Compile Include="Configuration\UE3BuildDukeGame.cs" />
+    <Compile Include="Configuration\UE3BuildExoGame.cs" />
+    <Compile Include="Configuration\UE3BuildMac.cs" />
+    <Compile Include="Configuration\UE3BuildSwordGame.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Configuration\DebugInfoHeuristic.cs" />
+    <Compile Include="Configuration\UE3BuildConfiguration.cs" />
+    <Compile Include="Configuration\UE3BuildExampleGame.cs" />
+    <Compile Include="Configuration\UE3BuildExternal.cs" />
+    <Compile Include="Configuration\UE3BuildTarget.cs" />
+    <Compile Include="Configuration\UE3BuildUTGame.cs" />
+    <Compile Include="Configuration\UE3BuildWin32.cs" />
+    <Compile Include="System\ActionGraph.cs" />
+    <Compile Include="System\BuildException.cs" />
+    <Compile Include="Configuration\BuildConfiguration.cs" />
+    <Compile Include="System\CPPEnvironment.cs" />
+    <Compile Include="System\CPPHeaders.cs" />
+    <Compile Include="System\DependencyCache.cs" />
+    <Compile Include="System\DataBase.cs" />
+    <Compile Include="System\FileItem.cs" />
+    <Compile Include="System\RPCUtilHelper.cs" />
+    <Compile Include="ToolChain\IntelToolChain.cs" />
+    <Compile Include="System\LinkEnvironment.cs" />
+    <Compile Include="System\LocalExecutor.cs" />
+    <Compile Include="System\ResponseFile.cs" />
+    <Compile Include="System\Unity.cs" />
+    <Compile Include="System\UnrealBuildTool.cs" />
+    <Compile Include="System\Utils.cs" />
+    <Compile Include="System\VCProject.cs" />
+    <Compile Include="ToolChain\MacToolChain.cs" />
+    <Compile Include="ToolChain\VCToolChain.cs" />
+    <Compile Include="System\XGE.cs" />
+    <Compile Include="ToolChain\XcodeMacToolChain.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+    <PreBuildEvent>
+    </PreBuildEvent>
+  </PropertyGroup>
+</Project>

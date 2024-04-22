@@ -1,0 +1,20 @@
+/*=============================================================================
+	DistortApplyScreenVertexShader.usf: Vertex shader for rendering screen distortion pass
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+float4x4 Transform;
+
+/** just output stream components for screen space quad */
+void Main(
+	in float4 InPosition : POSITION,
+	in float2 InTexCoord : TEXCOORD0,
+	out float2 OutTexCoord : TEXCOORD0,
+	out float4 OutPosition : POSITION
+	)
+{
+	OutPosition = MulMatrix(Transform,InPosition);
+	OutTexCoord = InTexCoord;
+}

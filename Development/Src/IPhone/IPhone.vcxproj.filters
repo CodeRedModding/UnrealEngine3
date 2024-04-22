@@ -1,0 +1,287 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Inc">
+      <UniqueIdentifier>{c40c9f8f-54b4-47b1-a6dc-73f6a717f005}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src">
+      <UniqueIdentifier>{df9393a6-abd4-4b21-b902-17198e4f584c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MiscSearchable">
+      <UniqueIdentifier>{4eaf3cc2-c79c-4da7-ba13-9bfdb16066ad}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Inis">
+      <UniqueIdentifier>{af36a9ce-7b82-495d-a38a-1f571d81810a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Facebook">
+      <UniqueIdentifier>{61a1c056-8cb6-4412-bc96-334b797cef1b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Facebook\JSON">
+      <UniqueIdentifier>{5bd72bae-e027-4796-a436-07d319770ead}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TapJoy">
+      <UniqueIdentifier>{c57e3dff-ceb8-4ff2-9b77-aa5a7c72c170}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\AsyncLoadingIPhone.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\EAGLView.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\FFileManagerIPhone.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\FMallocIPhone.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\FullScreenMovieIPhone.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IPhone.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IPhoneAppDelegate.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IPhoneAsyncTask.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IPhoneClient.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IPhoneCrashDefines.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IPhoneDrv.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IPhoneHome.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IPhoneInput.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IPhoneObjCWrapper.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IPhoneThreading.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IPhoneViewport.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\LaunchPrivate.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnMathNeon.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnSocketBSD.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\Facebook.h">
+      <Filter>Facebook</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\FBConnect.h">
+      <Filter>Facebook</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\FBDialog.h">
+      <Filter>Facebook</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\FBLoginDialog.h">
+      <Filter>Facebook</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\FBRequest.h">
+      <Filter>Facebook</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\JSON.h">
+      <Filter>Facebook\JSON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\NSObject+SBJSON.h">
+      <Filter>Facebook\JSON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\NSString+SBJSON.h">
+      <Filter>Facebook\JSON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\SBJSON.h">
+      <Filter>Facebook\JSON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\SBJsonBase.h">
+      <Filter>Facebook\JSON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\SBJsonParser.h">
+      <Filter>Facebook\JSON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\SBJsonWriter.h">
+      <Filter>Facebook\JSON</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\AudioDeviceIPhone.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\NSStringExtensions.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\AppNotificationsIPhone.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="External\Tapjoy\TapjoyConnect.h">
+      <Filter>TapJoy</Filter>
+    </ClInclude>
+    <ClInclude Include="External\Tapjoy\TapjoyConnectConstants.h">
+      <Filter>TapJoy</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Inc\IPhone_Prefix.pch">
+      <Filter>Inc</Filter>
+    </None>
+    <None Include="Inc\UnMallocDLIPhone.inl">
+      <Filter>Inc</Filter>
+    </None>
+    <None Include="Src\EAGLView.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\FacebookIPhone.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\FullScreenMovieIPhone.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\IPhoneAppDelegate.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\IPhoneAsyncTask.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\IPhoneHome.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\IPhoneInput.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\IPhoneObjCWrapper.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\main.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Resources\IPhone-Info.plist">
+      <Filter>MiscSearchable</Filter>
+    </None>
+    <None Include="Resources\ResourceRules.plist">
+      <Filter>MiscSearchable</Filter>
+    </None>
+    <None Include="..\..\..\Binaries\IPhone\Targets.txt">
+      <Filter>MiscSearchable</Filter>
+    </None>
+    <None Include="..\..\..\Engine\Config\IPhone\IPhoneEngine.ini">
+      <Filter>Inis</Filter>
+    </None>
+    <None Include="..\..\..\Engine\Config\IPhone\IPhoneGame.ini">
+      <Filter>Inis</Filter>
+    </None>
+    <None Include="..\..\..\Engine\Config\IPhone\IPhoneInput.ini">
+      <Filter>Inis</Filter>
+    </None>
+    <None Include="..\..\..\Engine\Config\IPhone\IPhoneUI.ini">
+      <Filter>Inis</Filter>
+    </None>
+    <None Include="..\..\External\Facebook\IPhone\src\Facebook.m">
+      <Filter>Facebook</Filter>
+    </None>
+    <None Include="..\..\External\Facebook\IPhone\src\facebook_ios_sdk_Prefix.pch">
+      <Filter>Facebook</Filter>
+    </None>
+    <None Include="..\..\External\Facebook\IPhone\src\FBDialog.m">
+      <Filter>Facebook</Filter>
+    </None>
+    <None Include="..\..\External\Facebook\IPhone\src\FBLoginDialog.m">
+      <Filter>Facebook</Filter>
+    </None>
+    <None Include="..\..\External\Facebook\IPhone\src\FBRequest.m">
+      <Filter>Facebook</Filter>
+    </None>
+    <None Include="..\..\External\Facebook\IPhone\src\JSON\NSObject+SBJSON.m">
+      <Filter>Facebook\JSON</Filter>
+    </None>
+    <None Include="..\..\External\Facebook\IPhone\src\JSON\NSString+SBJSON.m">
+      <Filter>Facebook\JSON</Filter>
+    </None>
+    <None Include="..\..\External\Facebook\IPhone\src\JSON\SBJSON.m">
+      <Filter>Facebook\JSON</Filter>
+    </None>
+    <None Include="..\..\External\Facebook\IPhone\src\JSON\SBJsonBase.m">
+      <Filter>Facebook\JSON</Filter>
+    </None>
+    <None Include="..\..\External\Facebook\IPhone\src\JSON\SBJsonParser.m">
+      <Filter>Facebook\JSON</Filter>
+    </None>
+    <None Include="..\..\External\Facebook\IPhone\src\JSON\SBJsonWriter.m">
+      <Filter>Facebook\JSON</Filter>
+    </None>
+    <None Include="Src\CloudStorageIPhone.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\IPhoneClient.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\MicroTransactionIPhone.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\TwitterIntegrationIPhone.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\AudioDeviceIPhone.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\NSStringExtensions.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\AppNotificationsIPhone.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\ApsalarAnalyticsIPhone.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\InAppMessageIPhone.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="External\Tapjoy\TapjoyConnect.m">
+      <Filter>TapJoy</Filter>
+    </None>
+    <None Include="Src\SwrveAnalyticsProviderIPhone.mm">
+      <Filter>Src</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\AsyncLoadingIPhone.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\FFileManagerIPhone.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\FMallocIPhone.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\IPhone.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\IPhoneThreading.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\IPhoneViewport.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnSocketBSD.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\HttpRequestIPhone.mm">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SwrveIntegrationIPhone.c">
+      <Filter>Src</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

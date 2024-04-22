@@ -1,0 +1,32 @@
+UNIFORM( mat4, BatchMatrix[15] );
+UNIFORM( vec4, BatchFloat[90] );
+ATTRIBUTE( vec4, Position, POSITION );
+ATTRIBUTE( vec4, Color, COLOR0 );
+ATTRIBUTE( vec2, TexCoords0, TEXCOORD0 );
+ATTRIBUTE( float, vbatch, BLENDINDICES0 );
+OUT_VARYING_DEFAULT( vec4, fuDFShadowColor, TEXCOORD4 );
+OUT_VARYING_DEFAULT( float, fuDFShadowEnable, TEXCOORD2 );
+OUT_VARYING_DEFAULT( vec4, fuDFShadowOffset, TEXCOORD5 );
+OUT_VARYING_DEFAULT( vec4, fuDFSize, TEXCOORD3 );
+OUT_VARYING_DEFAULT( vec2, tc, TEXCOORD0 );
+OUT_VARYING_LOW( vec4, vcolor, COLOR0 );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// E TextDFA
+
+   vcolor = Color * BatchFloat[int(0.1+6.0*vbatch+2.0)] + BatchFloat[int(0.1+6.0*vbatch+5.0)];
+  tc = TexCoords0;
+// E Position3d
+
+  gl_Position = MulMatrix(Position, BatchMatrix[int(0.1+1.0*vbatch)]);
+// E 
+  fuDFShadowColor = BatchFloat[int(0.1+6.0*vbatch)];
+// E 
+  fuDFShadowEnable = BatchFloat[int(0.1+6.0*vbatch+3.0)].r;
+// E 
+  fuDFShadowOffset = BatchFloat[int(0.1+6.0*vbatch+4.0)];
+// E 
+  fuDFSize = BatchFloat[int(0.1+6.0*vbatch+1.0)];
+
+}
+

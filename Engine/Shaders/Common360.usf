@@ -1,0 +1,11 @@
+/*=============================================================================
+	Common360.usf: Xbox360 specific common, not named Xbox360Common.usf to not get filtered by Perforce 
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+// This file is needed to generate a .bin file as the real Xbox360 file is in a subfolder
+// which is not supported for the .bin file generation.
+
+#if XBOX
+	#include "Xbox360/Common360.usf"
+#endif

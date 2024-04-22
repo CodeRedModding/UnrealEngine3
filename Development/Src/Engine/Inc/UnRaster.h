@@ -1,68 +1,22 @@
 /*=============================================================================
 	UnRaster.h: Generic triangle rasterization code.
-	Copyright 2003 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Andrew Scheidecker
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
+
+#ifndef __UNRASTER_H__
+#define __UNRASTER_H__
 
 //
 //	FTriangleRasterizer - A generic 2d triangle rasterizer which linearly interpolates vertex parameters and calls a virtual function for each pixel.
 //
 
-template<class InterpolantType> struct FTriangleRasterizer
+template<class RasterPolicyType> class FTriangleRasterizer : public RasterPolicyType
 {
-	// ProcessPixel
+public:
 
-	virtual void ProcessPixel(INT X,INT Y,InterpolantType Interpolant) = 0;
+	typedef typename RasterPolicyType::InterpolantType InterpolantType;
 
-	// DrawTriangleTrapezoid
-
-	void DrawTriangleTrapezoid(
-		InterpolantType TopMinInterpolant,
-		InterpolantType DeltaMinInterpolant,
-		InterpolantType TopMaxInterpolant,
-		InterpolantType DeltaMaxInterpolant,
-		FLOAT TopMinX,
-		FLOAT DeltaMinX,
-		FLOAT TopMaxX,
-		FLOAT DeltaMaxX,
-		FLOAT MinY,
-		FLOAT MaxY
-		)
-	{
-		INT	IntMinY = appCeil(MinY),
-			IntMaxY = appCeil(MaxY);
-
-		for(INT IntY = IntMinY;IntY < IntMaxY;IntY++)
-		{
-			FLOAT			Y = IntY - MinY,
-							MinX = TopMinX + DeltaMinX * Y,
-							MaxX = TopMaxX + DeltaMaxX * Y;
-			InterpolantType	MinInterpolant = TopMinInterpolant + DeltaMinInterpolant * Y,
-							MaxInterpolant = TopMaxInterpolant + DeltaMaxInterpolant * Y;
-
-			if(MinX > MaxX)
-			{
-				Exchange(MinX,MaxX);
-				Exchange(MinInterpolant,MaxInterpolant);
-			}
-
-			if(MaxX > MinX)
-			{
-				INT				IntMinX = appCeil(MinX),
-								IntMaxX = appCeil(MaxX);
-				InterpolantType	DeltaInterpolant = (MaxInterpolant - MinInterpolant) / (MaxX - MinX);
-
-				for(INT X = IntMinX;X < IntMaxX;X++)
-					ProcessPixel(X,IntY,MinInterpolant + DeltaInterpolant * (X - MinX));
-			}
-		}
-	}
-
-	// DrawTriangle
-
-	void DrawTriangle(const InterpolantType& I0,const InterpolantType& I1,const InterpolantType& I2,const FVector2D& P0,const FVector2D& P1,const FVector2D& P2)
+	void DrawTriangle(const InterpolantType& I0,const InterpolantType& I1,const InterpolantType& I2,const FVector2D& P0,const FVector2D& P1,const FVector2D& P2,UBOOL BackFacing)
 	{
 		InterpolantType	Interpolants[3] = { I0, I1, I2 };
 		FVector2D		Points[3] = { P0, P1, P2 };
@@ -110,7 +64,8 @@ template<class InterpolantType> struct FTriangleRasterizer
 			Points[0].X,
 			TopMaxDiffX,
 			Points[0].Y,
-			Points[1].Y
+			Points[1].Y,
+			BackFacing
 			);
 
 		DrawTriangleTrapezoid(
@@ -123,7 +78,59 @@ template<class InterpolantType> struct FTriangleRasterizer
 			Points[0].X + TopMaxDiffX * (Points[1].Y - Points[0].Y),
 			BottomMaxDiffX,
 			Points[1].Y,
-			Points[2].Y
+			Points[2].Y,
+			BackFacing
 			);
 	}
+
+	FTriangleRasterizer(const RasterPolicyType& InRasterPolicy): RasterPolicyType(InRasterPolicy) {}
+
+private:
+
+	void DrawTriangleTrapezoid(
+		const InterpolantType& TopMinInterpolant,
+		const InterpolantType& DeltaMinInterpolant,
+		const InterpolantType& TopMaxInterpolant,
+		const InterpolantType& DeltaMaxInterpolant,
+		FLOAT TopMinX,
+		FLOAT DeltaMinX,
+		FLOAT TopMaxX,
+		FLOAT DeltaMaxX,
+		FLOAT MinY,
+		FLOAT MaxY,
+		UBOOL BackFacing
+		)
+	{
+		INT	IntMinY = Clamp(appCeil(MinY),RasterPolicyType::GetMinY(),RasterPolicyType::GetMaxY() + 1),
+			IntMaxY = Clamp(appCeil(MaxY),RasterPolicyType::GetMinY(),RasterPolicyType::GetMaxY() + 1);
+
+		for(INT IntY = IntMinY;IntY < IntMaxY;IntY++)
+		{
+			FLOAT			Y = IntY - MinY,
+							MinX = TopMinX + DeltaMinX * Y,
+							MaxX = TopMaxX + DeltaMaxX * Y;
+			InterpolantType	MinInterpolant = TopMinInterpolant + DeltaMinInterpolant * Y,
+							MaxInterpolant = TopMaxInterpolant + DeltaMaxInterpolant * Y;
+
+			if(MinX > MaxX)
+			{
+				Exchange(MinX,MaxX);
+				Exchange(MinInterpolant,MaxInterpolant);
+			}
+
+			if(MaxX > MinX)
+			{
+				INT				IntMinX = Clamp(appCeil(MinX),RasterPolicyType::GetMinX(),RasterPolicyType::GetMaxX() + 1),
+								IntMaxX = Clamp(appCeil(MaxX),RasterPolicyType::GetMinX(),RasterPolicyType::GetMaxX() + 1);
+				InterpolantType	DeltaInterpolant = (MaxInterpolant - MinInterpolant) / (MaxX - MinX);
+
+				for(INT X = IntMinX;X < IntMaxX;X++)
+				{
+					RasterPolicyType::ProcessPixel(X,IntY,MinInterpolant + DeltaInterpolant * (X - MinX),BackFacing);
+				}
+			}
+		}
+	}
 };
+
+#endif

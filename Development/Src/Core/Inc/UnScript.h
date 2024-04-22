@@ -1,19 +1,18 @@
 /*=============================================================================
 	UnScript.h: UnrealScript execution engine.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 /*-----------------------------------------------------------------------------
 	Native functions.
 -----------------------------------------------------------------------------*/
 
+/** The type of a native function callable by script */
+typedef void (UObject::*Native)( FFrame& TheStack, RESULT_DECL );
+
 //
 // Native function table.
 //
-typedef void (UObject::*Native)( FFrame& TheStack, RESULT_DECL );
 extern Native GNatives[];
 BYTE GRegisterNative( INT iNative, const Native& Func );
 
@@ -24,79 +23,39 @@ BYTE GRegisterCast( INT CastCode, const Native& Func );
 //
 // Registering a native function.
 //
-#if _MSC_VER
-	#define IMPLEMENT_FUNCTION(cls,num,func) \
-		extern "C" Native int##cls##func = (Native)&cls::func; \
-		static BYTE cls##func##Temp = GRegisterNative( num, int##cls##func );
-#else
-	#define IMPLEMENT_FUNCTION(cls,num,func) \
-		extern "C" { Native int##cls##func = (Native)&cls::func; } \
-		static BYTE cls##func##Temp = GRegisterNative( num, int##cls##func );
-#endif
+#define IMPLEMENT_FUNCTION(cls,num,func) \
+	extern "C" { Native int##cls##func = (Native)&cls::func; } \
+	static BYTE cls##func##Temp = GRegisterNative( num, int##cls##func );
 
-/*-----------------------------------------------------------------------------
-	Macros.
------------------------------------------------------------------------------*/
 
-//
-// Macros for grabbing parameters for native functions.
-//
-#define P_GET_UBOOL(var)              DWORD var=0;                         Stack.Step( Stack.Object, &var    );
-#define P_GET_UBOOL_OPTX(var,def)     DWORD var=def;                       Stack.Step( Stack.Object, &var    );
-#define P_GET_STRUCT(typ,var)         typ   var;                           Stack.Step( Stack.Object, &var    );
-#define P_GET_STRUCT_OPTX(typ,var,def)typ   var=def;                       Stack.Step( Stack.Object, &var    );
-#define P_GET_STRUCT_REF(typ,var)     typ   var##T; GPropAddr=0;           Stack.Step( Stack.Object, &var##T ); if( GPropObject )GPropObject->NetDirty(GProperty); typ*     var = GPropAddr ? (typ    *)GPropAddr:&var##T;
-#define P_GET_INT(var)                INT   var=0;                         Stack.Step( Stack.Object, &var    );
-#define P_GET_INT_OPTX(var,def)       INT   var=def;                       Stack.Step( Stack.Object, &var    );
-#define P_GET_INT_REF(var)            INT   var##T=0; GPropAddr=0;         Stack.Step( Stack.Object, &var##T ); if( GPropObject )GPropObject->NetDirty(GProperty); INT*     var = GPropAddr ? (INT    *)GPropAddr:&var##T;
-#define P_GET_FLOAT(var)              FLOAT var=0.f;                       Stack.Step( Stack.Object, &var    );
-#define P_GET_FLOAT_OPTX(var,def)     FLOAT var=def;                       Stack.Step( Stack.Object, &var    );
-#define P_GET_FLOAT_REF(var)          FLOAT var##T=0.f; GPropAddr=0;       Stack.Step( Stack.Object, &var##T ); if( GPropObject )GPropObject->NetDirty(GProperty); FLOAT*   var = GPropAddr ? (FLOAT  *)GPropAddr:&var##T;
-#define P_GET_BYTE(var)               BYTE  var=0;                         Stack.Step( Stack.Object, &var    );
-#define P_GET_BYTE_OPTX(var,def)      BYTE  var=def;                       Stack.Step( Stack.Object, &var    );
-#define P_GET_BYTE_REF(var)           BYTE  var##T=0; GPropAddr=0;         Stack.Step( Stack.Object, &var##T ); if( GPropObject )GPropObject->NetDirty(GProperty); BYTE*    var = GPropAddr ? (BYTE   *)GPropAddr:&var##T;
-#define P_GET_NAME(var)               FName var=NAME_None;                 Stack.Step( Stack.Object, &var    );
-#define P_GET_NAME_OPTX(var,def)      FName var=def;                       Stack.Step( Stack.Object, &var    );
-#define P_GET_NAME_REF(var)           FName var##T=NAME_None; GPropAddr=0; Stack.Step( Stack.Object, &var##T ); if( GPropObject )GPropObject->NetDirty(GProperty); FName*   var = GPropAddr ? (FName  *)GPropAddr:&var##T;
-#define P_GET_STR(var)                FString var;                         Stack.Step( Stack.Object, &var    );
-#define P_GET_STR_OPTX(var,def)       FString var(def);                    Stack.Step( Stack.Object, &var    );
-#define P_GET_STR_REF(var)            FString var##T; GPropAddr=0;         Stack.Step( Stack.Object, &var##T ); if( GPropObject )GPropObject->NetDirty(GProperty); FString* var = GPropAddr ? (FString*)GPropAddr:&var##T;
-#define P_GET_OBJECT(cls,var)         cls*  var=NULL;                      Stack.Step( Stack.Object, &var    );
-#define P_GET_OBJECT_OPTX(cls,var,def)cls*  var=def;                       Stack.Step( Stack.Object, &var    );
-#define P_GET_OBJECT_REF(cls,var)     cls*  var##T=NULL; GPropAddr=0;      Stack.Step( Stack.Object, &var##T ); if( GPropObject )GPropObject->NetDirty(GProperty); cls**    var = GPropAddr ? (cls   **)GPropAddr:&var##T;
-#define P_GET_ARRAY_REF(typ,var)      typ   var##T[256]; GPropAddr=0;      Stack.Step( Stack.Object,  var##T ); if( GPropObject )GPropObject->NetDirty(GProperty); typ*     var = GPropAddr ? (typ    *)GPropAddr: var##T;
-#define P_GET_SKIP_OFFSET(var)        _WORD var; {checkSlow(*Stack.Code==EX_Skip); Stack.Code++; var=*(_WORD*)Stack.Code; Stack.Code+=2; }
-//DEBUGGER
-#define P_FINISH                      Stack.Code++; if ( *Stack.Code == EX_DebugInfo ) Stack.Step( Stack.Object, NULL );
+/**
+ * Property data type enums.
+ * @warning: if values in this enum are modified, you must update:
+ * - these are also used in the GConversions table, indexed by enum value
+ * - FPropertyBase::GetSize() hardcodes the sizes for each property type
+ */
+enum EPropertyType
+{
+	CPT_None			= 0,
+	CPT_Byte			= 1,
+	CPT_Int				= 2,
+	CPT_Bool			= 3,
+	CPT_Float			= 4,
+	CPT_ObjectReference	= 5,
+	CPT_Name			= 6,
+	CPT_Delegate		= 7,
+	CPT_Interface		= 8,
+	CPT_Range           = 9,
+	CPT_Struct			= 10,
+	CPT_Vector          = 11,
+	CPT_Rotation        = 12,
+	CPT_String          = 13,
+	CPT_Map				= 14,
 
-//
-// Convenience macros.
-//
-#define P_GET_VECTOR(var)           P_GET_STRUCT(FVector,var)
-#define P_GET_VECTOR_OPTX(var,def)  P_GET_STRUCT_OPTX(FVector,var,def)
-#define P_GET_VECTOR_REF(var)       P_GET_STRUCT_REF(FVector,var)
-#define P_GET_ROTATOR(var)          P_GET_STRUCT(FRotator,var)
-#define P_GET_ROTATOR_OPTX(var,def) P_GET_STRUCT_OPTX(FRotator,var,def)
-#define P_GET_ROTATOR_REF(var)      P_GET_STRUCT_REF(FRotator,var)
-#define P_GET_ACTOR(var)            P_GET_OBJECT(AActor,var)
-#define P_GET_ACTOR_OPTX(var,def)   P_GET_OBJECT_OPTX(AActor,var,def)
-#define P_GET_ACTOR_REF(var)        P_GET_OBJECT_REF(AActor,var)
-#define P_GET_TARRAY_REF(var,type)	TArray<type> var##T; GPropAddr=0;		Stack.Step( Stack.Object, &var##T ); if( GPropObject )GPropObject->NetDirty(GProperty); TArray<type>* var = GPropAddr ? (TArray<type>*)GPropAddr:&var##T;
-
-//
-// Iterator macros.
-//
-#define PRE_ITERATOR \
-	INT wEndOffset = Stack.ReadWord(); \
-	BYTE B=0, Buffer[MAX_CONST_SIZE]; \
-	BYTE *StartCode = Stack.Code; \
-	do {
-#define POST_ITERATOR \
-		while( (B=*Stack.Code)!=EX_IteratorPop && B!=EX_IteratorNext ) \
-			Stack.Step( Stack.Object, Buffer ); \
-		if( *Stack.Code++==EX_IteratorNext ) \
-			Stack.Code = StartCode; \
-	} while( B != EX_IteratorPop );
+	// when you add new property types, make sure you add the corresponding entry
+	// in the PropertyTypeToNameMap array in UnScrCom.cpp!!
+	CPT_MAX				= 15,
+};
 
 /*-----------------------------------------------------------------------------
 	FFrame implementation.
@@ -107,6 +66,8 @@ inline FFrame::FFrame( UObject* InObject )
 ,	Object		(InObject)
 ,	Code		(NULL)
 ,	Locals		(NULL)
+,	PreviousFrame	(NULL)
+,	OutParms	(NULL)
 {}
 inline FFrame::FFrame( UObject* InObject, UStruct* InNode, INT CodeOffset, void* InLocals, FFrame* InPreviousFrame )
 :	Node		(InNode)
@@ -114,16 +75,12 @@ inline FFrame::FFrame( UObject* InObject, UStruct* InNode, INT CodeOffset, void*
 ,	Code		(&InNode->Script(CodeOffset))
 ,	Locals		((BYTE*)InLocals)
 ,	PreviousFrame	(InPreviousFrame)
+,	OutParms	(NULL)
 {}
-FORCEINLINE void FFrame::Step( UObject* Context, RESULT_DECL )
-{
-	INT B = *Code++;
-	(Context->*GNatives[B])( *this, Result );
-}
 inline INT FFrame::ReadInt()
 {
 	INT Result;
-#ifdef REQUIRES_ALIGNED_ACCESS
+#ifdef REQUIRES_ALIGNED_INT_ACCESS
 	appMemcpy(&Result, Code, sizeof(INT));
 #else
 	Result = *(INT*)Code;
@@ -133,19 +90,18 @@ inline INT FFrame::ReadInt()
 }
 inline UObject* FFrame::ReadObject()
 {
-	UObject* Result;
-#if SERIAL_POINTER_INDEX
-	INT idx = *(INT*)Code;
-	check(idx < GTotalSerializedPointers);
-	Result = (UObject*) GSerializedPointers[idx];
+	// we always pull 64-bits of data out, which is really a UObject* in some representation (depending on platform)
+	ScriptPointerType TempCode;
+
+#ifdef REQUIRES_ALIGNED_INT_ACCESS
+	appMemcpy(&TempCode, Code, sizeof(ScriptPointerType));
 #else
-#ifdef REQUIRES_ALIGNED_ACCESS
-	appMemcpy(&Result, Code, sizeof(INT));
-#else
-	Result = *(UObject**)Code;
+	TempCode = *(ScriptPointerType*)Code;
 #endif
-#endif
-	Code += sizeof(INT);
+
+	// turn that DWORD into a UObject pointer
+	UObject* Result = (UObject*)appSPtrToPointer(TempCode);
+	Code += sizeof(ScriptPointerType);
 	return Result;
 }
 inline FLOAT FFrame::ReadFloat()
@@ -162,14 +118,99 @@ inline FLOAT FFrame::ReadFloat()
 inline INT FFrame::ReadWord()
 {
 	INT Result;
-#ifdef REQUIRES_ALIGNED_ACCESS
-	_WORD Temporary;
-	appMemcpy(&Temporary, Code, sizeof(_WORD));
+#ifdef REQUIRES_ALIGNED_INT_ACCESS
+	WORD Temporary;
+	appMemcpy(&Temporary, Code, sizeof(WORD));
 	Result = Temporary;
 #else
-	Result = *(_WORD*)Code;
+	Result = *(WORD*)Code;
 #endif
-	Code += sizeof(_WORD);
+	Code += sizeof(WORD);
+	return Result;
+}
+/**
+ * Reads a value from the bytestream, which represents the number of bytes to advance
+ * the code pointer for certain expressions.
+ */
+inline CodeSkipSizeType FFrame::ReadCodeSkipCount()
+{
+	CodeSkipSizeType Result;
+
+#ifdef REQUIRES_ALIGNED_INT_ACCESS
+	appMemcpy(&Result, Code, sizeof(CodeSkipSizeType));
+#else
+	Result = *(CodeSkipSizeType*)Code;
+#endif
+
+	Code += sizeof(CodeSkipSizeType);
+	return Result;
+}
+
+inline VariableSizeType FFrame::ReadVariableSize( UField** ExpressionField/*=NULL*/ )
+{
+	VariableSizeType Result=0;
+
+	UObject* Field = ReadObject();
+	BYTE NullPropertyType=*Code++;
+
+	if ( Field != NULL )
+	{
+		UProperty* Property = Cast<UProperty>(Field);
+		if ( Property != NULL )
+		{
+			Result = Property->GetSize();
+		}
+		else
+		{
+			UEnum* ExplicitEnumValue = Cast<UEnum>(Field);
+			if ( ExplicitEnumValue != NULL )
+			{
+				Result = 1;
+			}
+			else
+			{
+				UFunction* FunctionRef = Cast<UFunction>(Field);
+				if ( FunctionRef != NULL )
+				{
+					Result = sizeof(ScriptPointerType);
+				}
+			}
+		}
+	}
+	else
+	{
+		switch ( NullPropertyType )
+		{
+		case CPT_None:
+			// nothing...
+			break;
+		case CPT_Byte:		Result = sizeof(BYTE);
+			break;
+		case CPT_Int:		Result = sizeof(INT);
+			break;
+		case CPT_Bool:		Result = sizeof(UBOOL);
+			break;
+		case CPT_Float:		Result = sizeof(FLOAT);
+			break;
+		case CPT_Name:		Result = sizeof(FName);
+			break;
+		case CPT_Vector:	Result = sizeof(FVector);
+			break;
+		case CPT_Rotation:	Result = sizeof(FRotator);
+			break;
+		case CPT_Delegate:	Result = sizeof(FScriptDelegate);
+			break;
+		default:
+			appErrorf(TEXT("Unhandled property type in FFrame::ReadVariableSize(): %u"), NullPropertyType);
+			break;
+		}
+	}
+
+	if ( ExpressionField != NULL )
+	{
+		*ExpressionField = Cast<UField>(Field);
+	}
+
 	return Result;
 }
 inline FName FFrame::ReadName()
@@ -183,7 +224,41 @@ inline FName FFrame::ReadName()
 	Code += sizeof(FName);
 	return Result;
 }
+
 void GInitRunaway();
+FORCEINLINE void FFrame::Step(UObject *Context, RESULT_DECL)
+{
+	INT B = *Code++;
+	(Context->*GNatives[B])(*this,Result);
+}
+
+
+/**
+ * This will return the StackTrace of the current callstack from .uc land
+ **/
+inline FString FFrame::GetStackTrace() const
+{
+	FString Retval;
+
+	// travel down the stack recording the frames
+	TArray<const FFrame*> FrameStack;
+	const FFrame* CurrFrame = this;
+	while( CurrFrame != NULL )
+	{
+		FrameStack.AddItem(CurrFrame);
+		CurrFrame = CurrFrame->PreviousFrame;
+	}
+	
+	// and then dump them to a string
+	Retval += FString( TEXT("Script call stack:\n") );
+	for( INT idx = FrameStack.Num() - 1; idx >= 0; idx-- )
+	{
+		Retval += FString::Printf( TEXT("\t%s\n"), *FrameStack(idx)->Node->GetFullName() );
+	}
+
+	return Retval;
+}
+
 
 /*-----------------------------------------------------------------------------
 	FStateFrame implementation.
@@ -192,7 +267,9 @@ void GInitRunaway();
 inline FStateFrame::FStateFrame(UObject* InObject)
 :	FFrame		( InObject )
 ,	StateNode	( InObject->GetClass() )
-,	ProbeMask	( ~(QWORD)0 )
+,	ProbeMask	( ~(DWORD)0 )
+,	bContinuedState(FALSE)
+,	LocalVarsOwner(NULL)
 {}
 
 inline FString FStateFrame::Describe()
@@ -200,7 +277,53 @@ inline FString FStateFrame::Describe()
 	return Node ? Node->GetFullName() : TEXT("None");
 }
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
+/**
+ * Allocate space for all state local variables.
+ *
+ * @param	InClass		Class object in which the states for this StateFrame reside in
+ */
+inline void FStateFrame::InitLocalVars(UClass* InClass)
+{
+	checkSlow(InClass != NULL);
+	checkSlow(LocalVarsOwner == NULL || InClass == LocalVarsOwner);
+	if (Locals == NULL)
+	{
+		INT LocalVarSize = 0;
 
+		for (TFieldIterator<UState> State(InClass); State; ++State)
+		{
+			if (State->StateFlags & STATE_HasLocals)
+			{
+				LocalVarSize += State->PropertiesSize;
+			}
+		}
+
+		if (LocalVarSize > 0)
+		{
+			Locals = (BYTE*)appMalloc(LocalVarSize);
+			appMemzero(Locals, LocalVarSize);
+			LocalVarsOwner = InClass;
+		}
+	}
+}
+
+inline void FStateFrame::ClearLocalVars()
+{
+	// during the exit purge, classes may be destroyed before their instances, so we cannot safely iterate states/properties
+	if (Locals != NULL && !GExitPurge)
+	{
+		INT LocalVarSize = 0;
+		for (TFieldIterator<UState> State(LocalVarsOwner); State; ++State)
+		{
+			if (State->StateFlags & STATE_HasLocals)
+			{
+				for (UProperty* Prop = State->ConstructorLink; Prop != NULL; Prop = Prop->ConstructorLinkNext)
+				{
+					Prop->DestroyValue(Locals + Prop->Offset);
+				}
+				LocalVarSize += State->PropertiesSize;
+			}
+		}
+		appMemzero(Locals, LocalVarSize);
+	}
+}

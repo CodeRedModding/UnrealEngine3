@@ -1,0 +1,89 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="BuiltWithUnrealBuildTool|Win32">
+      <Configuration>BuiltWithUnrealBuildTool</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{AE2B1A55-E493-4E93-8416-7144201E183E}</ProjectGuid>
+    <RootNamespace>WinDrv</RootNamespace>
+    <SccProjectName>
+    </SccProjectName>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+    <Keyword>MakeFileProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</IntDir>
+    <NMakeBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeReBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeCleanCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeOutput Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\External\OpenAutomateSDK-1.0-7\src\OpenAutomate.c" />
+    <ClCompile Include="Src\HttpImplementationWinInet.cpp" />
+    <ClCompile Include="Src\HttpRequestWindows.cpp" />
+    <ClCompile Include="Src\HttpResponseWindows.cpp" />
+    <ClCompile Include="Src\OpenAutomate.cpp" />
+    <ClCompile Include="Src\SwrveAnalyticsProviderWindows.cpp" />
+    <ClCompile Include="Src\WinClient.cpp" />
+    <ClCompile Include="Src\WinDrv.cpp" />
+    <ClCompile Include="Src\FacebookWindows.cpp" />
+    <ClCompile Include="Src\WinViewport.cpp" />
+    <ClCompile Include="Src\XnaForceFeedbackManager.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\External\OpenAutomateSDK-1.0-7\inc\OpenAutomate.h" />
+    <ClInclude Include="..\..\External\OpenAutomateSDK-1.0-7\inc\OpenAutomate_Internal.h" />
+    <ClInclude Include="Inc\OpenAutomate.h" />
+    <ClInclude Include="Inc\HttpImplementationWinInet.h" />
+    <ClInclude Include="Inc\UFacebookWindows.h" />
+    <ClInclude Include="Inc\UHttpRequestWindows.h" />
+    <ClInclude Include="Inc\UHttpResponseWindows.h" />
+    <ClInclude Include="Inc\WinDrvClasses.h" />
+    <ClInclude Include="Inc\WinDrvNames.h" />
+    <ClInclude Include="Src\WinDrvPrivate.h" />
+    <ClInclude Include="Inc\MinWindows.h" />
+    <ClInclude Include="Inc\PostWindowsApi.h" />
+    <ClInclude Include="Inc\PreWindowsApi.h" />
+    <ClInclude Include="Inc\WinDrv.h" />
+    <ClInclude Include="Inc\WintabSupport.h" />
+    <ClInclude Include="Inc\XnaForceFeedbackManager.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Classes\FacebookWindows.uc" />
+    <None Include="Classes\HttpRequestWindows.uc" />
+    <None Include="Classes\HttpRequestWindowsMcp.uc" />
+    <None Include="Classes\HttpResponseWindows.uc" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

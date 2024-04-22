@@ -1,0 +1,350 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Src">
+      <UniqueIdentifier>{ea542f81-c631-4fcf-90d3-5be513553e51}</UniqueIdentifier>
+      <Extensions>*.cpp;*.h</Extensions>
+    </Filter>
+    <Filter Include="Classes">
+      <UniqueIdentifier>{c1a5d366-960b-4d2e-b81d-a8bb8c70e5a3}</UniqueIdentifier>
+      <Extensions>*.uc</Extensions>
+    </Filter>
+    <Filter Include="Inc">
+      <UniqueIdentifier>{384c910d-330c-4863-a37b-e4be82c1fd18}</UniqueIdentifier>
+      <Extensions>*.h</Extensions>
+    </Filter>
+    <Filter Include="Classes\MCP">
+      <UniqueIdentifier>{9e41b33b-0fe7-4120-a36c-f6012c5c58ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Classes\MCP\ClashMob">
+      <UniqueIdentifier>{c0695359-795f-4bd2-98a4-7438ac4732ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Classes\MCP\Groups">
+      <UniqueIdentifier>{17014256-f75d-4977-bd54-b68fad465cb2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Classes\MCP\Message">
+      <UniqueIdentifier>{456eed6e-c0fd-47b4-a566-e15e0534a9ab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Classes\MCP\User">
+      <UniqueIdentifier>{6a279272-2b7c-4d9c-aec4-bff3bfb3f202}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Classes\MCP\ManagedValue">
+      <UniqueIdentifier>{9351739a-57ab-49e2-8b90-4fdea3518b52}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Classes\MCP\Inventory">
+      <UniqueIdentifier>{714f3283-f60b-4cfe-a401-fc6cc7447c8f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\ClientBeaconAddressResolver.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\FDebugServer.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\FFileManagerNetwork.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\FMultiThreadedRingBuffer.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\FRemotePropagator.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\FRemotePropagatorNet.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\HardwareSurvey.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\HTTPDownload.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\InternetLink.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\IpDrv.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\OnlineAsyncTaskManager.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\OnlineAuthInterfaceImpl.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\OnlineGameInterfaceImpl.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\OnlineSubsystemCommonImpl.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\TcpLink.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\TcpNetDriver.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UMeshBeacon.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnSocket.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnSocketWin.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnStatsNotifyProviders_UDP.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UOnlineEventsInterfaceMcp.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UOnlineNewsInterfaceMcp.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UOnlinePlaylistManager.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UOnlineTitleFileDownloadMcp.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UPartyBeacon.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\WebServer.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UOnlineTitleFileDownloadWeb.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\TitleFileDownloadCache.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\McpMessages.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\McpUserCloudFileDownload.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Classes\ClientBeaconAddressResolver.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\HelloWeb.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\ImageServer.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\InternetLink.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineAuthInterfaceImpl.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineEventsInterfaceMcp.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineGameInterfaceImpl.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineNewsInterfaceMcp.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlinePlaylistManager.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlinePlaylistProvider.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineSubsystemCommonImpl.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineTitleFileDownloadMcp.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\PartyBeacon.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\PartyBeaconClient.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\PartyBeaconHost.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\TcpLink.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\UIDataStore_OnlinePlaylists.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\WebApplication.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\WebConnection.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\WebRequest.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\WebResponse.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\WebServer.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineTitleFileDownloadWeb.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineTitleFileDownloadBase.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\TitleFileDownloadCache.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineImageDownloaderWeb.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\MCPBase.uc">
+      <Filter>Classes\MCP</Filter>
+    </None>
+    <None Include="Classes\McpServerTimeBase.uc">
+      <Filter>Classes\MCP</Filter>
+    </None>
+    <None Include="Classes\McpServerTimeManager.uc">
+      <Filter>Classes\MCP</Filter>
+    </None>
+    <None Include="Classes\McpServiceBase.uc">
+      <Filter>Classes\MCP</Filter>
+    </None>
+    <None Include="Classes\McpServiceConfig.uc">
+      <Filter>Classes\MCP</Filter>
+    </None>
+    <None Include="Classes\McpUserCloudFileDownload.uc">
+      <Filter>Classes\MCP</Filter>
+    </None>
+    <None Include="Classes\McpClashMobManager.uc">
+      <Filter>Classes\MCP\ClashMob</Filter>
+    </None>
+    <None Include="Classes\McpClashMobBase.uc">
+      <Filter>Classes\MCP\ClashMob</Filter>
+    </None>
+    <None Include="Classes\McpClashMobFileDownload.uc">
+      <Filter>Classes\MCP\ClashMob</Filter>
+    </None>
+    <None Include="Classes\McpGroupsBase.uc">
+      <Filter>Classes\MCP\Groups</Filter>
+    </None>
+    <None Include="Classes\McpGroupsManager.uc">
+      <Filter>Classes\MCP\Groups</Filter>
+    </None>
+    <None Include="Classes\McpMessageBase.uc">
+      <Filter>Classes\MCP\Message</Filter>
+    </None>
+    <None Include="Classes\McpMessageManager.uc">
+      <Filter>Classes\MCP\Message</Filter>
+    </None>
+    <None Include="Classes\McpUserManagerBase.uc">
+      <Filter>Classes\MCP\User</Filter>
+    </None>
+    <None Include="Classes\McpUserManager.uc">
+      <Filter>Classes\MCP\User</Filter>
+    </None>
+    <None Include="Classes\MeshBeacon.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\MeshBeaconHost.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\MeshBeaconClient.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\McpIdMappingBase.uc">
+      <Filter>Classes\MCP\User</Filter>
+    </None>
+    <None Include="Classes\McpIdMappingManager.uc">
+      <Filter>Classes\MCP\User</Filter>
+    </None>
+    <None Include="Classes\McpManagedValueManager.uc">
+      <Filter>Classes\MCP\ManagedValue</Filter>
+    </None>
+    <None Include="Classes\McpManagedValueManagerBase.uc">
+      <Filter>Classes\MCP\ManagedValue</Filter>
+    </None>
+    <None Include="Classes\McpUserInventoryManager.uc">
+      <Filter>Classes\MCP\Inventory</Filter>
+    </None>
+    <None Include="Classes\McpUserInventoryBase.uc">
+      <Filter>Classes\MCP\Inventory</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\FDebugServer.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\FFileManagerNetwork.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\FMultiThreadedRingBuffer.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\FRemotePropagator.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\GameType.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\HTTPDownload.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\InternetLink.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IpDrvClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IpDrvNames.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\IpDrvUIPrivateClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\OnlineAsyncTaskManager.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\OnlineSubsystemUtilities.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnIpDrv.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnIpDrvCommandlets.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnSocket.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnSocketArchive.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnSocketWin.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnStatsNotifyProviders_UDP.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnTcpNetDriver.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UOnlineAuthInterfaceImpl.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UOnlineGameInterfaceImpl.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UOnlineSubsystemCommonImpl.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

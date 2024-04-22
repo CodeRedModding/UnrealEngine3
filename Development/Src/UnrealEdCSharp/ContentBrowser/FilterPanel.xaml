@@ -1,0 +1,239 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+<UserControl
+	x:Class="ContentBrowser.FilterPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:cc="clr-namespace:CustomControls"
+	xmlns:cb="clr-namespace:ContentBrowser"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="220"
+	Background="{DynamicResource Slate_FilterPanelBackground}">
+
+    <UserControl.Resources>
+		<cb:NegatingConverter x:Key="NegatingConverter"/>
+    	<BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
+		<!-- Double up arrow: signifies collpasing the filter panel -->
+		<Canvas Width="16" Height="16" RenderTransformOrigin="0.5,0.5" x:Key="CollapseArrow">
+			<Path Stretch="Fill" Stroke="#FF000000" StrokeEndLineCap="Round" StrokeStartLineCap="Round" StrokeThickness="2" Width="12" Height="7" Data="M0,1L1,0 2,1" StrokeLineJoin="Round" Canvas.Left="2" Canvas.Top="2"/>
+			<Path Stretch="Fill" Stroke="#FFFFFFFF" StrokeEndLineCap="Round" StrokeStartLineCap="Round" StrokeThickness="2" Width="12" Height="7" Data="M0,1L1,0 2,1" StrokeLineJoin="Round" Canvas.Left="2" Canvas.Top="1"/>
+			<Path Stretch="Fill" Stroke="#FF000000" StrokeEndLineCap="Round" StrokeStartLineCap="Round" StrokeThickness="2" Width="12" Height="7" Data="M0,1L1,0 2,1" Canvas.Left="2" Canvas.Top="8" StrokeLineJoin="Round"/>
+			<Path Stretch="Fill" Stroke="#FFFFFFFF" StrokeEndLineCap="Round" StrokeStartLineCap="Round" StrokeThickness="2" Width="12" Height="7" Data="M0,1L1,0 2,1" StrokeLineJoin="Round" Canvas.Left="2" Canvas.Top="7"/>
+		</Canvas>
+
+		<!-- Double down arrow: signifies expanding the filter panel -->
+		<Canvas Width="16" Height="16" RenderTransformOrigin="0.5,0.5" x:Key="ExpandArrow">
+			<Path Stretch="Fill" Stroke="#FF000000" StrokeEndLineCap="Round" StrokeStartLineCap="Round" StrokeThickness="2" Width="12" Height="7" Data="M0,0L1,1 2,0" StrokeLineJoin="Round" Canvas.Left="2" Canvas.Top="2"/>
+			<Path Stretch="Fill" Stroke="#FFFFFFFF" StrokeEndLineCap="Round" StrokeStartLineCap="Round" StrokeThickness="2" Width="12" Height="7" Data="M0,0L1,1 2,0" StrokeLineJoin="Round" Canvas.Left="2" Canvas.Top="1"/>
+			<Path Stretch="Fill" Stroke="#FF000000" StrokeEndLineCap="Round" StrokeStartLineCap="Round" StrokeThickness="2" Width="12" Height="7" Data="M0,0L1,1 2,0" Canvas.Left="2" Canvas.Top="8" StrokeLineJoin="Round"/>
+			<Path Stretch="Fill" Stroke="#FFFFFFFF" StrokeEndLineCap="Round" StrokeStartLineCap="Round" StrokeThickness="2" Width="12" Height="7" Data="M0,0L1,1 2,0" StrokeLineJoin="Round" Canvas.Left="2" Canvas.Top="7"/>
+		</Canvas>
+
+		<!--															-->
+		<!-- Toolbar button: shows border when hovered and pressed.		-->
+		<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  -->
+		<Style x:Key="ExpanderButton" TargetType="{x:Type ToggleButton}">
+			<Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisualStyle}"/>
+			<Setter Property="HorizontalContentAlignment" Value="Center"/>
+			<Setter Property="VerticalContentAlignment" Value="Center"/>
+			<Setter Property="Padding" Value="0"/>
+			<Setter Property="Content" Value="{StaticResource ExpandArrow}"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="{x:Type ToggleButton}">
+						<cc:SlateBorder x:Name="ContentContainer" SnapsToDevicePixels="true" Padding="0" BorderStyle="ToolbarButton" Focusable="False">
+							<ContentPresenter x:Name="ContentSite" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" RecognizesAccessKey="True" />
+						</cc:SlateBorder>
+						<ControlTemplate.Triggers>
+							<Trigger Property="IsKeyboardFocused" Value="true">
+								<Setter Property="BorderStyle" TargetName="ContentContainer" Value="ToolbarButtonHover"/>
+							</Trigger>
+							<Trigger Property="ToggleButton.IsChecked" Value="true">
+								<!--<Setter Property="BorderStyle" TargetName="ContentContainer" Value="ToolbarButtonPressed"/>-->
+								<Setter Property="Content" Value="{StaticResource CollapseArrow}"/>
+							</Trigger>
+							<Trigger Property="IsMouseOver" Value="true">
+								<Setter Property="BorderStyle" TargetName="ContentContainer" Value="ToolbarButtonHover"/>
+							</Trigger>
+							<Trigger Property="IsPressed" Value="true">
+								<Setter Property="BorderStyle" TargetName="ContentContainer" Value="ToolbarButtonPressed"/>
+							</Trigger>
+							<Trigger Property="IsEnabled" Value="false">
+								<Setter Property="Opacity" Value="0.5"/>
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+
+	</UserControl.Resources>
+
+	<Border>
+		<DockPanel>
+			<!-- SEARCH BAR -->
+			<DockPanel DockPanel.Dock="Top">
+
+				<!-- Toggle to expand the filter lists -->
+				<cc:SlateBorder x:Name="mExpanderButtonBackground" BorderStyle="FilterHeader">
+					<ToggleButton Style="{StaticResource ExpanderButton}" x:Name="mShowExpandedButton" />
+				</cc:SlateBorder>
+
+				<!-- Button to clear all filters -->
+				<cc:SlateBorder x:Name="mClearButtonBackground" BorderStyle="FilterHeader" DockPanel.Dock="Right">
+					<Button Style="{DynamicResource ToolbarButton}" x:Name="mClearFilterButton" Content="{DynamicResource ContentBrowser_FilterPanel_Clear}" Padding="2"/>
+				</cc:SlateBorder>
+
+
+				<!-- TEXT SEARCH -->
+				<cc:SlateBorder x:Name="mSearchBorder" BorderStyle="FilterHeader" Padding="2" >
+					<DockPanel>
+						<!-- Select which fields we want to search -->
+						<Button DockPanel.Dock="Right" x:Name="mShowSearchFieldsButton" Style="{StaticResource FauxComboBox}" Margin="3,0">
+							<Image Source="{DynamicResource imgWrench}" Width="16" Height="16" />
+						</Button>
+						<Popup x:Name="mSearchFieldsList" PlacementTarget="{Binding ElementName=mShowSearchFieldsButton}"
+							   Placement="Bottom" StaysOpen="False" PopupAnimation="Slide" AllowsTransparency="True">
+							<Border Background="{StaticResource Slate_FilterListHeaderBackground}">
+								<cc:SlateBorder Background="{StaticResource Slate_Control_Background}"
+												InnerBorderThickness="1,1,0,0"
+												InnerBorderBrush="{DynamicResource Slate_Control_Highlight}"
+												OuterBorderThickness="1"
+												OuterBorderBrush="{DynamicResource Slate_Control_Shadow}">
+									<StackPanel Orientation="Vertical" MinWidth="90" Margin="5">
+										<CheckBox x:Name="mShouldSearchField_Name" IsChecked="True" Content="{DynamicResource ContentBrowser_SearchField_Name}" />
+										<CheckBox x:Name="mShouldSearchField_Path" IsChecked="True" Content="{DynamicResource ContentBrowser_SearchField_Path}" />
+										<CheckBox x:Name="mShouldSearchField_Tags" IsChecked="True" Content="{DynamicResource ContentBrowser_SearchField_Tags}" />
+										<CheckBox x:Name="mShouldSearchField_Type" IsChecked="True" Content="{DynamicResource ContentBrowser_SearchField_Type}"  />
+
+										<Separator />
+										
+										<!-- Select whether we need to mach any or all of the tags -->
+										<ComboBox x:Name="mAllAnySwitch" SelectedIndex="0" Margin="5,0,0,0" >
+											<ComboBoxItem Content="{DynamicResource ContentBrowser_SearchField_MatchAll}" />
+											<ComboBoxItem Content="{DynamicResource ContentBrowser_SearchField_MatchAny}" />
+										</ComboBox>
+
+										<Separator />
+
+										<!-- Toggle Quarantine Mode -->
+										<ToggleButton Style="{DynamicResource ToolbarToggleButton}" Focusable="False" x:Name="mQuarantineMode" VerticalAlignment="Center" Content="{StaticResource ContentBrowser_AssetView_ToggleQuarantineMode}" Margin="5,0" />
+										
+									</StackPanel>
+								</cc:SlateBorder>
+							</Border>
+						</Popup>
+
+						<cc:Autocomplete x:Name="mSearchFieldAutocomplete" TextBoxControl="{Binding ElementName=mSearchTextBox}" />
+						
+						<!-- The textbox where users enter search queries -->
+						<cc:UnrealTextBox  Margin="5,0,0,0" x:Name="mSearchTextBox" HintText="{DynamicResource ContentBrowser_FilterPanel_SearchHint}" VerticalContentAlignment="Center">
+							<cc:UnrealTextBox.Style>
+							<!-- Background="{StaticResource Slate_FilterPanel_TextBackground}" Slate_FilterPanel_TextBackgroundHover -->								
+								<Style TargetType="{x:Type cc:UnrealTextBox}" >
+									<Setter Property="Background" Value="{StaticResource Slate_FilterPanel_TextBackground}" />
+									<Style.Triggers>
+										<Trigger Property="IsMouseOver" Value="true">
+											<Setter Property="Background" Value="{DynamicResource Slate_FilterPanel_TextBackgroundHover}" />
+										</Trigger>
+									</Style.Triggers>									
+								</Style>								
+							</cc:UnrealTextBox.Style>
+						</cc:UnrealTextBox>
+
+					</DockPanel>
+				</cc:SlateBorder>
+			</DockPanel>
+
+			<cc:CellSizer x:Name="mExpandingPanel" IsCollapsed="{Binding ElementName=mShowExpandedButton, Path=IsChecked, Converter={StaticResource NegatingConverter}}" ResizeDirection="South" MaxHeight="500" MinHeight="50">
+				<cc:CellSizer.Resources>
+				<!-- Style the thumb to appear as a splitter -->
+					<Style TargetType="{x:Type Thumb}" >
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="{x:Type Thumb}">
+                                    <cc:SlateBorder BorderStyle="Splitter" />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </cc:CellSizer.Resources>
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto"/>
+						<ColumnDefinition Width="1*"/>
+						<ColumnDefinition x:Name="mTagTier0_GridColumn" Width="1*"/>
+						<ColumnDefinition x:Name="mTagTier1_GridColumn" Width="1*"/>
+						<ColumnDefinition x:Name="mTagTier2_GridColumn" Width="1*"/>
+					</Grid.ColumnDefinitions>
+					<!-- TAGGED & LOADED FILTER PANEL -->
+					<Border Grid.Column="0" Style="{StaticResource FilterSubpanel}">
+						<!-- STATUS SEARCH -->
+						<DockPanel DockPanel.Dock="Top" >
+							<cc:SlateBorder x:Name="mStatusFilterBorder" DockPanel.Dock="Top" Padding="2" BorderStyle="FilterHeader">
+								<Label DockPanel.Dock="Left"  Content="{DynamicResource ContentBrowser_FilterPanel_StatusFilter}" Padding="0" />
+							</cc:SlateBorder>
+							<Border Background="{StaticResource Slate_FilterListBackground}" Padding="3">
+								<ScrollViewer VerticalScrollBarVisibility="Auto" >
+									<StackPanel>
+										<!-- In use filter: current level | loaded levels | visible levels | off -->
+										<StackPanel DockPanel.Dock="Top" Orientation="Vertical" >
+											<TextBlock Text="{StaticResource ContentBrowser_FilterOptions_InUseBy}" />
+											<RadioButton x:Name="mInUseCurrentLevel" Content="{StaticResource ContentBrowser_FilterOptions_InUseCurrentLevel}" />
+											<RadioButton x:Name="mInUseLoadedLevels" Content="{StaticResource ContentBrowser_FilterOptions_InUseLoadedLevels}" />
+											<RadioButton x:Name="mInUseVisibleLevels" Content="{StaticResource ContentBrowser_FilterOptions_InUseVisibleLevels}" />
+											<RadioButton x:Name="mInUseOff" Content="{StaticResource ContentBrowser_FilterOptions_InUseOff}" IsChecked="True"/>
+										</StackPanel>
+
+										<Path DockPanel.Dock="Top" Data="M0,0 L1,0" Stroke="{StaticResource Slate_FilterListShadow}" Stretch="Fill" Width="Auto" SnapsToDevicePixels="True" HorizontalAlignment="Stretch" StrokeDashArray="2" Margin="2,7"/>
+									
+										<!-- both | tagged | untagged -->
+										<StackPanel DockPanel.Dock="Top" Orientation="Vertical" >
+											<RadioButton x:Name="mShowTaggedOnly" Content="{StaticResource ContentBrowser_FilterOptions_TaggedOnly}" />
+											<RadioButton x:Name="mShowUntaggedOnly" Content="{StaticResource ContentBrowser_FilterOptions_UntaggedOnly}" />
+											<RadioButton x:Name="mShowTaggedAndUntagged" Content="{StaticResource ContentBrowser_FilterOptions_TaggedAndUntagged}" />
+										</StackPanel>
+									
+										<Path DockPanel.Dock="Top" Data="M0,0 L1,0" Stroke="{StaticResource Slate_FilterListShadow}" Stretch="Fill" Width="Auto" SnapsToDevicePixels="True" HorizontalAlignment="Stretch" StrokeDashArray="2" Margin="2,7"/>
+
+										<!-- both | loaded | unloaded -->
+										<StackPanel DockPanel.Dock="Top" Orientation="Vertical" >
+											<RadioButton x:Name="mShowLoadedOnly" Content="{StaticResource ContentBrowser_FilterOptions_LoadedOnly}" />
+											<RadioButton x:Name="mShowUnloadedOnly" Content="{StaticResource ContentBrowser_FilterOptions_UnloadedOnly}" />
+											<RadioButton x:Name="mShowLoadedAndUnloaded" Content="{StaticResource ContentBrowser_FilterOptions_LoadedAndUnloaded}" />
+										</StackPanel>
+										
+										<Path DockPanel.Dock="Top" Data="M0,0 L1,0" Stroke="{StaticResource Slate_FilterListShadow}" Stretch="Fill" Width="Auto" SnapsToDevicePixels="True" HorizontalAlignment="Stretch" StrokeDashArray="2" Margin="2,7"/>
+										
+										<!-- recent -->
+										<StackPanel DockPanel.Dock="Top" Orientation="Vertical" >
+											<CheckBox x:Name="mShowRecentOnly" Content="{StaticResource ContentBrowser_FilterOptions_Recent}" />
+											<CheckBox x:Name="mShowQuarantinedOnly" Visibility="Collapsed" IsChecked="false" Content="{StaticResource ContentBrowser_FilterOptions_Quarantined}" />
+											<CheckBox x:Name="mShowFlattenedTextures" IsChecked="false" Content="{StaticResource ContentBrowser_FilterOptions_ShowFlattenedTextures}" />
+										</StackPanel>
+									</StackPanel>
+								</ScrollViewer>
+							</Border>
+						</DockPanel>
+					</Border>
+
+
+					<!-- OBJECT TYPE FILTER -->
+					<cb:TypeFilterTier Grid.Column="1" x:Name="mObjectTypeFilterTier" />
+					
+					<!-- TAG FILTER -->
+					<cb:TagFilterTier Grid.Column="2" x:Name="mTagFilterTier0" Title="{DynamicResource ContentBrowser_TagsFilterLabel}" />
+
+					<!-- TAG FILTER -->
+					<cb:TagFilterTier Grid.Column="3" x:Name="mTagFilterTier1" Title="" />
+
+					<!-- TAG FILTER -->
+					<cb:TagFilterTier Grid.Column="4" x:Name="mTagFilterTier2" Title="" />
+					
+				</Grid>
+			</cc:CellSizer>
+		</DockPanel>
+	</Border>
+	
+</UserControl>

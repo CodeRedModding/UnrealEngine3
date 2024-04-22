@@ -1,0 +1,226 @@
+/*=============================================================================
+	DOFAndBloomGatherPixelShader.usf: Pixel shader for gathering the combined depth of field and bloom samples for blurring.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+// also includes Common.usf
+#include "PostProcessCommon.usf"
+// for CalcUnfocusedPercent()
+#include "DepthOfFieldCommon.usf"
+
+
+/** [x] CustomColorScale */
+half4 GatherParams;
+
+/** [x,y] The amount bloomed colors are scaled by. [z,w] The min depth and max depth for clamping */
+half4 BloomScaleAndThreshold;
+
+/** Min clamping distance for DoF. */
+static half MinDoFDistance = BloomScaleAndThreshold.z;
+
+/** Max clamping distance for DoF. */
+static half MaxDoFDistance = BloomScaleAndThreshold.w;
+
+
+// half resolution with depth DeviceZ in alpha
+sampler2D SmallSceneColorTexture;
+
+// full resolution separate translucency
+sampler2D SeparateTranslucencyTexture;
+
+// image space pixel motion vectors
+sampler2D VelocityTexture;
+
+// ---------------------------------------------
+
+/** Computes a pixel's luminance for bloom */
+half ComputeLuminanceForBloom( half3 InSceneColor )
+{
+	// Compute the luminance for this pixel
+	half TotalLuminance;
+	if( 1 )
+	{
+		// Compute luminance as the maximum of RGB.  This is a bit more intuitive for artists as they know
+		// that any pixel with either of the RGB channels above 1.0 will begin to bloom.
+		TotalLuminance = max( InSceneColor.r, max( InSceneColor.g, InSceneColor.b ) );
+	}
+	else
+	{
+		// RGB scale factor to calculated pixel luminance using a weight average
+		half3 LuminanceFactor = half3( 0.3, 0.59, 0.11 );
+
+		// Compute true luminance
+		TotalLuminance = dot( LuminanceFactor, InSceneColor );
+	}
+
+	return TotalLuminance;
+}
+
+
+/** Computes bloomed amount for the specified scene color */
+half ComputeBloomAmount( half3 InSceneColor )
+{
+	// Compute the luminance for this pixel
+	half TotalLuminance = ComputeLuminanceForBloom( InSceneColor );
+
+	// Size of the bloom "ramp".  This value specifies the amount of light beyond the bloom threshold required
+	// before a pixel's bloom will be 100% of the original color.
+	// NOTE: Any value above 0.8 looks pretty good here (and 1.0 is often fastest), but a value of 2.0 here
+	//	     minimizes artifacts: the bloom ramp-up will closely match the linear ascent of additive color
+	half BloomRampSize = 2.0f;
+
+	// Figure out how much luminance is beyond the bloom threshold.  Note that this value could be negative but
+	// we handle that in the next step.
+	half BloomLuminance = TotalLuminance - BloomScaleAndThreshold.y;
+
+	// Note that we clamp the bloom amount between 0.0 and 1.0, but pixels beyond our bloom ramp will still 
+	// bloom brighter because we'll use 100% of the original scene color as bloom
+	half BloomAmount = saturate( BloomLuminance / BloomRampSize );
+	
+	return BloomAmount;
+}
+
+
+/** Computes bloomed color for the specified scene color */
+half3 ComputeBloomColor( half3 InSceneColor )
+{
+	// Multiply with the scene color to get the final bloom amount
+	return InSceneColor * ComputeBloomAmount( InSceneColor );
+}
+
+
+// RGB is half resolution scene color, A is depth
+half4 CalcSceneColorAndDepthDOFBloomInput(float2 ScreenUV)
+{
+	// scene color and depth lookup in half resolution
+	float4 FetchColor = tex2D(SmallSceneColorTexture, ScreenUV);
+
+	bool bMotionBlurObject;
+
+	// bring from texture usable range to worldspace range
+	FetchColor.a = DecompressSceneDepthFromHalfResTextureChannel(FetchColor.a, bMotionBlurObject);
+
+	return (half4)FetchColor;
+}
+
+/** The number of float4s the 2D sample offsets are packed into. */
+#define NUM_CHUNKS ((NUM_SAMPLES + 1) / 2)
+
+/**
+ * Entry point for the gather pass, which downsamples from scene color to the filter buffer. 
+ * Unfocused DOF color is stored in OutColor.rgb.
+ */
+void MainGatherDOF(
+	in float4 OffsetUVs[NUM_CHUNKS] : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	// RGB:scene color, A:depth
+	half4 AvgSceneColorAndDepth = 0;
+
+	//Go through each chunk and take samples.  NUM_SAMPLES must be a factor of 2.
+	for(int ChunkIndex = 0;ChunkIndex < NUM_SAMPLES / 2;ChunkIndex++)
+	{
+		// Sample scene color/depth (1) and accumulate average
+		half4 SceneColorAndDepth1 = CalcSceneColorAndDepthDOFBloomInput(OffsetUVs[ChunkIndex].xy);
+		AvgSceneColorAndDepth += SceneColorAndDepth1;
+		
+		// Sample scene color/depth (2) and accumulate average
+		half4 SceneColorAndDepth2 = CalcSceneColorAndDepthDOFBloomInput(OffsetUVs[ChunkIndex].wz);
+		AvgSceneColorAndDepth += SceneColorAndDepth2;
+	}
+
+	//normalize and scale
+	AvgSceneColorAndDepth = AvgSceneColorAndDepth / NUM_SAMPLES;
+
+	half ClampedUnfocusedPercent = CalcUnfocusedPercent(AvgSceneColorAndDepth.a);
+
+	//scale output down to fit in the [0-1] range of the fixed point filter buffer
+	OutColor = float4(AvgSceneColorAndDepth.rgb * ClampedUnfocusedPercent, ClampedUnfocusedPercent) / MAX_SCENE_COLOR;
+
+#if PS3
+	OutColor = isnan(OutColor) ? half4(0,0,0,0) : OutColor;
+#elif OPENGL
+	OutColor = saturate(OutColor);
+#endif
+}
+
+/**
+ * Entry point for the gather pass, which downsamples from scene color to the filter buffer. 
+ * Bloom color is stored in OutColor.rgb.
+ */
+ void MainGatherBloom(
+	in float4 OffsetUVs[NUM_CHUNKS] : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	half3 AvgBloomColor = 0;
+
+	// Go through each chunk and take samples, two at a time (NUM_SAMPLES must be a factor of 2).
+	//
+	// The bloom color is the scaled scene color if it has a component outside the displayable range [0,1].
+	// Only bloom if (SceneColor > 1), instead of (0 > SceneColor > 1), in order to mimic XBOX behavior due to having unsigned SceneColor values
+	// this comparison is done per scene color sample to reduce aliasing on high frequency bright patterns
+
+	for(int ChunkIndex = 0; ChunkIndex < NUM_SAMPLES / 2; ChunkIndex++)
+	{
+		half3 SceneColor1 = tex2D(SmallSceneColorTexture, OffsetUVs[ChunkIndex].xy).rgb * GatherParams.x;
+		half3 SceneColor2 = tex2D(SmallSceneColorTexture, OffsetUVs[ChunkIndex].wz).rgb * GatherParams.x;
+
+#if USE_SEPARATE_TRANSLUCENCY
+		half4 TranslColor1 = tex2D(SeparateTranslucencyTexture, OffsetUVs[ChunkIndex].xy);
+		half4 TranslColor2 = tex2D(SeparateTranslucencyTexture, OffsetUVs[ChunkIndex].wz);
+
+		SceneColor1 = SceneColor1 * TranslColor1.a + TranslColor1.rgb;
+		SceneColor2 = SceneColor2 * TranslColor2.a + TranslColor2.rgb;
+#endif
+
+		AvgBloomColor += ComputeBloomColor(SceneColor1);
+		AvgBloomColor += ComputeBloomColor(SceneColor2);
+	}
+
+	//normalize and scale
+	AvgBloomColor = AvgBloomColor * BloomScaleAndThreshold.x / NUM_SAMPLES;
+
+	//scale output down to fit in the [0-1] range of the fixed point filter buffer, alpha is unused
+	OutColor = float4(AvgBloomColor, 0.0f) / MAX_SCENE_COLOR;
+
+#if PS3
+	OutColor = isnan(OutColor) ? half4(0,0,0,0) : OutColor;
+#elif OPENGL
+	OutColor = saturate(OutColor);
+#endif
+}
+
+half3 ExtractMotionBlur(half4 DynamicVelocity)
+{
+	bool SelectorOpaque = DynamicVelocity.x + DynamicVelocity.y > 0;
+	
+	// 0.25f as we have 4 samples
+	half Weight = 0.25f;
+
+	return half3(DynamicVelocity.xy * 2 - 1, 1) * Weight * SelectorOpaque;
+}
+
+/**
+ * Entry point for the gather pass, which downsamples from motion blur to the filter buffer. 
+ * MotioBlur color is stored in OutColor.rgb.
+ */
+void MainGatherMotionBlur(
+	in float4 OffsetUVs[NUM_CHUNKS] : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	// static small bias to avoid division by 0
+	half3 VelocitySum = half3(0, 0, 0.01f); 
+
+	//Go through each chunk and take samples.  NUM_SAMPLES must be a factor of 2.
+	for(int ChunkIndex = 0;ChunkIndex < NUM_SAMPLES / 2;ChunkIndex++)
+	{
+		VelocitySum += ExtractMotionBlur(tex2D(VelocityTexture, OffsetUVs[ChunkIndex].xy));	
+		VelocitySum += ExtractMotionBlur(tex2D(VelocityTexture, OffsetUVs[ChunkIndex].wz));	
+	}
+
+	// *0.5+0.5 as we store in a texture in the range 0..1
+	OutColor = float4(VelocitySum.xy * 0.5f + 0.5f, VelocitySum.z, 1);
+}

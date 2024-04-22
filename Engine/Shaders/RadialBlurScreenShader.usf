@@ -1,0 +1,165 @@
+/*=============================================================================
+	RadialBlurScreenShader.usf: Renders radial blur.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+
+float4 WorldCenterPos;
+
+struct FRadialBlurVertexOutput
+{
+	float2 TexCoord				: TEXCOORD0;
+	float4 ScreenPosition		: TEXCOORD1;
+	float4 ScreenPositionCenter	: TEXCOORD2;
+}; 
+
+/**
+ * Vertex shader for rendering radial blur screen quad
+ */
+void MainRadialBlurVS(
+	in float4 InPosition : POSITION,
+	in float2 InTexCoord : TEXCOORD0,
+	out FRadialBlurVertexOutput Output,
+	out float4 OutPosition : POSITION
+	)
+{
+	OutPosition = InPosition;
+	Output.TexCoord = InTexCoord;
+	Output.ScreenPosition = OutPosition;
+#if WITH_REALD
+	FDepthAllocateOutput DBAResult = DepthAllocate(WorldCenterPos);
+	Output.ScreenPositionCenter = DBAResult.DBAPixelPosition;
+#else
+	Output.ScreenPositionCenter = MulMatrix( ViewProjectionMatrix, WorldCenterPos );
+#endif
+	Output.ScreenPositionCenter.w = abs(Output.ScreenPositionCenter.w);		
+}
+
+float RadialBlurScale;
+float RadialBlurFalloffExp;
+float RadialBlurOpacity;
+
+/**
+ * Calculates the screen space 2d offset vector for radial blur
+ * based on the current pixel screen positon and the object origin screen position.
+ */
+float2 CalcScreenOffsetVec(float4 CurScreenPosition, float4 ScreenPositionCenter)
+{
+	float2 ScreenPositionN = clamp(CurScreenPosition.xy / CurScreenPosition.w,-1,1);
+	float2 ScreenPositionCenterN = clamp(ScreenPositionCenter.xy / ScreenPositionCenter.w,-1,1);
+	float2 RadialVector = ScreenPositionCenterN - ScreenPositionN;
+	float RadialVectorLen = length(RadialVector);
+	float2 RadialVectorN = RadialVector / RadialVectorLen;	
+	return RadialVectorN * pow(RadialVectorLen,RadialBlurFalloffExp) * RadialBlurScale;
+}
+
+/**
+ * Center UVs on world space actor 
+ */
+float2 CalcWorldCenteredUVs(float2 TexCoord, float4 ScreenPositionCenter)
+{
+	float2 ScreenPositionN = clamp(ScreenPositionCenter.xy / ScreenPositionCenter.w,-1,1);
+	return ((TexCoord.xy * 2.0 - 1.0) - ScreenPositionN * float2(1.0,-1.0)) * 0.5 + 0.5;
+}
+
+/**
+ * Pixel shader for rendering radial blur screen quad. 
+ * Samples scene color multiple times for the blur.
+ */
+void MainRadialBlurPS(in FRadialBlurVertexOutput Input, out float4 OutColor : COLOR0)
+{
+	float2 OffsetUV = CalcScreenOffsetVec(Input.ScreenPosition,Input.ScreenPositionCenter);
+
+	FMaterialPixelParameters MaterialParameters;
+#if NUM_MATERIAL_TEXCOORDS
+	for(int CoordinateIndex = 0;CoordinateIndex < NUM_MATERIAL_TEXCOORDS;CoordinateIndex++)
+	{
+		MaterialParameters.TexCoords[CoordinateIndex] = CalcWorldCenteredUVs(Input.TexCoord.xy,Input.ScreenPositionCenter);
+		#if NUM_TEXCOORD_SAMPLES
+			for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+			{
+				MaterialParameters.SampleTexCoords[SampleIndex][CoordinateIndex] = MaterialParameters.TexCoords[CoordinateIndex];
+			}
+		#endif
+	}
+#endif
+	MaterialParameters.MipBias = 0;
+
+	MaterialParameters.VertexColor = 1;
+	MaterialParameters.TangentNormal = 0;
+	MaterialParameters.TangentCameraVector = 0;
+	MaterialParameters.TangentReflectionVector = 0;
+	MaterialParameters.ScreenPosition = Input.ScreenPosition;
+	MaterialParameters.TangentLightVector = 0;
+#if WORLD_COORDS
+	MaterialParameters.TangentToWorld = 0;
+#endif
+#if WORLD_POS
+	MaterialParameters.WorldPosition = 0;
+#endif
+	OffsetUV *= GetMaterialOpacity(MaterialParameters);
+
+	OutColor = float4(0,0,0,RadialBlurOpacity);
+	const int MAX_ITERATIONS=5;
+	for(int i=0; i<MAX_ITERATIONS; i++)
+	{
+		OutColor.rgb += CalcSceneColor( ((Input.ScreenPosition.xy / Input.ScreenPosition.w) + OffsetUV*i/(FLOAT)MAX_ITERATIONS) * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz );
+	}
+	OutColor.rgb /= MAX_ITERATIONS;	
+	OutColor = RETURN_COLOR(OutColor);
+}
+
+/**
+ * Pixel shader for rendering radial blur screen quad. 
+ * Renders to the velocity buffer for the blur.
+ */
+void MainRadialBlurVelocityPS(in FRadialBlurVertexOutput Input, out float4 OutColor : COLOR0)
+{
+	float2 OffsetUV = CalcScreenOffsetVec(Input.ScreenPosition,Input.ScreenPositionCenter);		
+
+	FMaterialPixelParameters MaterialParameters;
+#if NUM_MATERIAL_TEXCOORDS
+	for(int CoordinateIndex = 0;CoordinateIndex < NUM_MATERIAL_TEXCOORDS;CoordinateIndex++)
+	{
+		MaterialParameters.TexCoords[CoordinateIndex] = CalcWorldCenteredUVs(Input.TexCoord.xy,Input.ScreenPositionCenter);
+		#if NUM_TEXCOORD_SAMPLES
+			for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+			{
+				MaterialParameters.SampleTexCoords[SampleIndex][CoordinateIndex] = MaterialParameters.TexCoords[CoordinateIndex];
+			}
+		#endif
+	}
+#endif
+	MaterialParameters.MipBias = 0;
+
+	MaterialParameters.VertexColor = 1;
+	MaterialParameters.TangentNormal = 0;
+	MaterialParameters.TangentCameraVector = 0;
+	MaterialParameters.TangentReflectionVector = 0;
+	MaterialParameters.ScreenPosition = Input.ScreenPosition;
+	MaterialParameters.TangentLightVector = 0;
+#if WORLD_COORDS
+	MaterialParameters.TangentToWorld = 0;
+#endif
+#if WORLD_POS
+	MaterialParameters.WorldPosition = 0;
+#endif
+	OffsetUV *= GetMaterialOpacity(MaterialParameters);	
+
+	OffsetUV = OffsetUV * 0.5f + 0.5f;
+
+	// clamp to valid velocity range	
+	// (0/255) is a special value that represents no velocity based blur
+	const float MinVelocity = 1.0/255.0;
+ 	const float MaxVelocity = 1.0;
+	OffsetUV = clamp(OffsetUV,MinVelocity,MaxVelocity);
+
+	OutColor = 0;
+	// blue|alpha channels used for translucent velocities
+	OutColor.ba = OffsetUV.xy;
+}
+
+
+

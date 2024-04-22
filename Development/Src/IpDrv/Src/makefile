@@ -1,8 +1,8 @@
 #=============================================================================
 # Unreal IpDrv makefile for Linux.
 #
-# Revision history:
-# 	* Created by Brandon Reinhart 
+# Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+# 
 #=============================================================================
 
 # Unreal directory. (Required by makefile-header.)

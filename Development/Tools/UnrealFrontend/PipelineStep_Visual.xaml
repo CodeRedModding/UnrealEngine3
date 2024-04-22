@@ -1,0 +1,73 @@
+﻿<!--
+  Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+-->
+
+<UserControl x:Class="UnrealFrontend.PipelineStep_Visual"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:ufe2="clr-namespace:UnrealFrontend"
+	x:Name="This">
+	<UserControl.DataContext>
+		<!-- We look for all the data relative to the this control -->
+		<Binding ElementName="This" />
+	</UserControl.DataContext>
+
+	<StackPanel Orientation="Horizontal">
+
+		<Button VerticalAlignment="Top"  Style="{DynamicResource UFE2ToolbarButton}" Margin="4,0" Click="OnRunFromHere" IsEnabled="{Binding Path=IsWorking, Converter={StaticResource Negator}}"
+						ToolTip="Run from here">
+			<StackPanel>
+				<Image Source="{StaticResource Arrow_png}" Width="16" Height="48" />
+				<TextBlock HorizontalAlignment="Center"></TextBlock>
+			</StackPanel>
+		</Button>
+
+	        <StackPanel>
+			<ufe2:ComboButton x:Name="mStepComboButton" ToolTip="{Binding PipelineStep.StepNameToolTip}" >
+				<!-- The button part of the pipeline step; it pops down extended options -->
+				<ufe2:ComboButton.Header>
+					<StackPanel>
+						<Grid>
+							<Image Source="{Binding Icon}" Width="48" Height="48" />
+
+							<Canvas Width="20" Height="20" VerticalAlignment="Bottom" HorizontalAlignment="Left" Visibility="{Binding PipelineStep.SupportsReboot, Converter={StaticResource BoolToVis}}">
+								<Ellipse Height="19" Width="19" StrokeThickness="2" Stroke="#DD880000" />
+								<Image Source="{StaticResource Reset_20_png}" Width="20" Height="20"
+									   Opacity="{Binding Path=PipelineStep.RebootBeforeStep, Converter={StaticResource BoolToOpacity}}"
+									   VerticalAlignment="Bottom" HorizontalAlignment="Left"/>
+							</Canvas>
+
+							<Border Visibility="{Binding Path=PipelineStep.ShouldSkipThisStep, Converter={StaticResource BoolToVis}}">
+								<StaticResource ResourceKey="SkipOverlay" />
+							</Border>
+						</Grid>
+						<StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+							<TextBlock Text="{Binding PipelineStep.StepName}" VerticalAlignment="Center" />
+                            <Path Data="{StaticResource DownArrow_path}" Stretch="Fill" Width="8" Height="6" Margin="3,2,0,0" Fill="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+                            <!--<StaticResource ResourceKey="DownArrow"/>-->
+                        </StackPanel>
+					</StackPanel>
+				</ufe2:ComboButton.Header>
+				<!-- The extended options that pop up -->
+				<StackPanel x:Name="mMenuItemsContainer" >
+					<MenuItem Header="{Binding ExecuteDesc}" Click="OnExecute" >
+						<MenuItem.Icon>
+							<Image Source="{Binding Icon}" Width="16" Height="16" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem Header="{Binding CleanAndExecuteDesc}" Click="OnCleanAndExecute" Visibility="{Binding Path=PipelineStep.SupportsClean, Converter={StaticResource BoolToVis}}" >
+						<MenuItem.Icon>
+							<Image Source="{Binding Icon}" Width="16" Height="16" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<Separator Margin="3"/>
+					<MenuItem Header="Reboot Before Step?" IsCheckable="True" IsChecked="{Binding Path=PipelineStep.RebootBeforeStep}"
+							  Visibility="{Binding PipelineStep.SupportsReboot, Converter={StaticResource BoolToVis}}"/>
+					<MenuItem Header="Step Enabled" IsCheckable="True" IsChecked="{Binding Path=PipelineStep.ShouldSkipThisStep, Converter={StaticResource Negator}}" />
+				</StackPanel>
+			</ufe2:ComboButton>
+		</StackPanel>
+
+	</StackPanel>
+	
+</UserControl>

@@ -1,0 +1,22 @@
+/*=============================================================================
+	ShadowProjectionVertexShader.usf: Vertex shader for projecting a shadow depth buffer onto the scene.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+void Main(
+	in float4 InPosition : POSITION,
+	out float4 OutScreenPosition : TEXCOORD0,
+	out float4 OutPosition : POSITION
+	)
+{
+#if WITH_REALD
+	FDepthAllocateOutput DBAResult = DepthAllocate(InPosition);
+	OutPosition = DBAResult.DBAPixelPosition;
+	OutScreenPosition = DBAResult.PixelPosition;
+#else
+	OutPosition = OutScreenPosition = MulMatrix(ViewProjectionMatrix,InPosition);
+#endif
+}
+

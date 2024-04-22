@@ -1,0 +1,887 @@
+#include "Common.usf"
+#if !SM4_PROFILE && !SM5_PROFILE
+	#define int float
+#endif
+
+float4 OverlayColor;
+float4 ColorScale;
+float4 TextureTransform2D[4];
+float4 BatchFloat[144];
+float4x4 Transform;
+float4x4 BatchMatrix[24];
+
+
+void VBatchPosition3dCxformVacolorVafactor(float4 Position : POSITION,
+                                           half4 Color : COLOR0,
+                                           float4 VertexColor : COLOR1,
+                                           out half4 color : COLOR0,
+                                           out float4 factor : COLOR1,
+                                           out float4 fucxadd : TEXCOORD3,
+                                           out float4 fucxmul : TEXCOORD4,
+                                           out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*int(255.01f*float(VertexColor.b))+0]);
+// E Cxform
+  ;
+// E Vacolor
+  color = Color;
+// E Vafactor
+  factor = VertexColor;
+// E 
+  fucxadd = BatchFloat[2*int(255.01f*float(VertexColor.b))+0];
+// E 
+  fucxmul = BatchFloat[2*int(255.01f*float(VertexColor.b))+1];
+}
+
+void VBatchPosition3dCxformVacolor(float4 Position : POSITION,
+                                   half4 Color : COLOR0,
+                                   int vbatch : BLENDINDICES0,
+                                   out half4 color : COLOR0,
+                                   out float4 fucxadd : TEXCOORD3,
+                                   out float4 fucxmul : TEXCOORD4,
+                                   out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*vbatch+0]);
+// E Cxform
+  ;
+// E Vacolor
+  color = Color;
+// E 
+  fucxadd = BatchFloat[2*vbatch+0];
+// E 
+  fucxmul = BatchFloat[2*vbatch+1];
+}
+
+void VBatchPosition3dVacolor(float4 Position : POSITION,
+                             half4 Color : COLOR0,
+                             int vbatch : BLENDINDICES0,
+                             out half4 color : COLOR0,
+                             out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*vbatch+0]);
+// E Vacolor
+  color = Color;
+}
+
+void VBatchPosition3dVacolorVafactor(float4 Position : POSITION,
+                                     half4 Color : COLOR0,
+                                     float4 VertexColor : COLOR1,
+                                     out half4 color : COLOR0,
+                                     out float4 factor : COLOR1,
+                                     out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*int(255.01f*float(VertexColor.b))+0]);
+// E Vacolor
+  color = Color;
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VPosition3dCxformVacolor(float4 Position : POSITION,
+                              half4 Color : COLOR0,
+                              out half4 color : COLOR0,
+                              out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Cxform
+  ;
+// E Vacolor
+  color = Color;
+}
+
+void VPosition3dCxformVacolorVafactor(float4 Position : POSITION,
+                                      half4 Color : COLOR0,
+                                      float4 VertexColor : COLOR1,
+                                      out half4 color : COLOR0,
+                                      out float4 factor : COLOR1,
+                                      out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Cxform
+  ;
+// E Vacolor
+  color = Color;
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VPosition3dVacolor(float4 Position : POSITION,
+                        half4 Color : COLOR0,
+                        out half4 color : COLOR0,
+                        out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Vacolor
+  color = Color;
+}
+
+void VPosition3dVacolorVafactor(float4 Position : POSITION,
+                                half4 Color : COLOR0,
+                                float4 VertexColor : COLOR1,
+                                out half4 color : COLOR0,
+                                out float4 factor : COLOR1,
+                                out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Vacolor
+  color = Color;
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VTexTGBatchPosition3d(float4 Position : POSITION,
+                           int vbatch : BLENDINDICES0,
+                           out float2 TexCoords0 : TEXCOORD0,
+                           out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, BatchFloat[2*vbatch+0+(0)]);
+  TexCoords0.y = dot(Position, BatchFloat[2*vbatch+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*vbatch+0]);
+}
+
+void VTexTGBatchPosition3dCxformVacolorVafactor(float4 Position : POSITION,
+                                                half4 Color : COLOR0,
+                                                float4 VertexColor : COLOR1,
+                                                out half4 color : COLOR0,
+                                                out float4 factor : COLOR1,
+                                                out float4 fucxadd : TEXCOORD3,
+                                                out float4 fucxmul : TEXCOORD4,
+                                                out float2 TexCoords0 : TEXCOORD0,
+                                                out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, BatchFloat[4*int(255.01f*float(VertexColor.b))+0+(0)]);
+  TexCoords0.y = dot(Position, BatchFloat[4*int(255.01f*float(VertexColor.b))+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*int(255.01f*float(VertexColor.b))+0]);
+// E Cxform
+  ;
+// E Vacolor
+  color = Color;
+// E Vafactor
+  factor = VertexColor;
+// E 
+  fucxadd = BatchFloat[4*int(255.01f*float(VertexColor.b))+2];
+// E 
+  fucxmul = BatchFloat[4*int(255.01f*float(VertexColor.b))+3];
+}
+
+void VTexTGBatchPosition3dCxformVafactor(float4 Position : POSITION,
+                                         float4 VertexColor : COLOR1,
+                                         out float4 factor : COLOR1,
+                                         out float4 fucxadd : TEXCOORD3,
+                                         out float4 fucxmul : TEXCOORD4,
+                                         out float2 TexCoords0 : TEXCOORD0,
+                                         out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, BatchFloat[4*int(255.01f*float(VertexColor.b))+0+(0)]);
+  TexCoords0.y = dot(Position, BatchFloat[4*int(255.01f*float(VertexColor.b))+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*int(255.01f*float(VertexColor.b))+0]);
+// E Cxform
+  ;
+// E Vafactor
+  factor = VertexColor;
+// E 
+  fucxadd = BatchFloat[4*int(255.01f*float(VertexColor.b))+2];
+// E 
+  fucxmul = BatchFloat[4*int(255.01f*float(VertexColor.b))+3];
+}
+
+void VTexTGBatchPosition3dCxform(float4 Position : POSITION,
+                                 int vbatch : BLENDINDICES0,
+                                 out float4 fucxadd : TEXCOORD3,
+                                 out float4 fucxmul : TEXCOORD4,
+                                 out float2 TexCoords0 : TEXCOORD0,
+                                 out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, BatchFloat[4*vbatch+0+(0)]);
+  TexCoords0.y = dot(Position, BatchFloat[4*vbatch+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*vbatch+0]);
+// E Cxform
+  ;
+// E 
+  fucxadd = BatchFloat[4*vbatch+2];
+// E 
+  fucxmul = BatchFloat[4*vbatch+3];
+}
+
+void VTexTGBatchPosition3dVacolorVafactor(float4 Position : POSITION,
+                                          half4 Color : COLOR0,
+                                          float4 VertexColor : COLOR1,
+                                          out half4 color : COLOR0,
+                                          out float4 factor : COLOR1,
+                                          out float2 TexCoords0 : TEXCOORD0,
+                                          out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, BatchFloat[2*int(255.01f*float(VertexColor.b))+0+(0)]);
+  TexCoords0.y = dot(Position, BatchFloat[2*int(255.01f*float(VertexColor.b))+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*int(255.01f*float(VertexColor.b))+0]);
+// E Vacolor
+  color = Color;
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VTexTGBatchPosition3dVafactor(float4 Position : POSITION,
+                                   float4 VertexColor : COLOR1,
+                                   out float4 factor : COLOR1,
+                                   out float2 TexCoords0 : TEXCOORD0,
+                                   out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, BatchFloat[2*int(255.01f*float(VertexColor.b))+0+(0)]);
+  TexCoords0.y = dot(Position, BatchFloat[2*int(255.01f*float(VertexColor.b))+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*int(255.01f*float(VertexColor.b))+0]);
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VTexTGPosition3d(float4 Position : POSITION,
+                      out float2 TexCoords0 : TEXCOORD0,
+                      out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, TextureTransform2D[0]);
+  TexCoords0.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+}
+
+void VTexTGPosition3dCxform(float4 Position : POSITION,
+                            out float2 TexCoords0 : TEXCOORD0,
+                            out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, TextureTransform2D[0]);
+  TexCoords0.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Cxform
+  ;
+}
+
+void VTexTGPosition3dCxformVacolorVafactor(float4 Position : POSITION,
+                                           half4 Color : COLOR0,
+                                           float4 VertexColor : COLOR1,
+                                           out half4 color : COLOR0,
+                                           out float4 factor : COLOR1,
+                                           out float2 TexCoords0 : TEXCOORD0,
+                                           out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, TextureTransform2D[0]);
+  TexCoords0.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Cxform
+  ;
+// E Vacolor
+  color = Color;
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VTexTGPosition3dCxformVafactor(float4 Position : POSITION,
+                                    float4 VertexColor : COLOR1,
+                                    out float4 factor : COLOR1,
+                                    out float2 TexCoords0 : TEXCOORD0,
+                                    out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, TextureTransform2D[0]);
+  TexCoords0.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Cxform
+  ;
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VTexTGPosition3dVacolorVafactor(float4 Position : POSITION,
+                                     half4 Color : COLOR0,
+                                     float4 VertexColor : COLOR1,
+                                     out half4 color : COLOR0,
+                                     out float4 factor : COLOR1,
+                                     out float2 TexCoords0 : TEXCOORD0,
+                                     out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, TextureTransform2D[0]);
+  TexCoords0.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Vacolor
+  color = Color;
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VTexTGPosition3dVafactor(float4 Position : POSITION,
+                              float4 VertexColor : COLOR1,
+                              out float4 factor : COLOR1,
+                              out float2 TexCoords0 : TEXCOORD0,
+                              out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, TextureTransform2D[0]);
+  TexCoords0.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VTexTGTexTGBatchPosition3dCxformVafactor(float4 Position : POSITION,
+                                              float4 VertexColor : COLOR1,
+                                              out float4 factor : COLOR1,
+                                              out float4 fucxadd : TEXCOORD3,
+                                              out float4 fucxmul : TEXCOORD4,
+                                              out float2 TexCoords0 : TEXCOORD0,
+                                              out float2 TexCoords1 : TEXCOORD1,
+                                              out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, BatchFloat[6*int(255.01f*float(VertexColor.b))+0+(0)]);
+  TexCoords0.y = dot(Position, BatchFloat[6*int(255.01f*float(VertexColor.b))+0+(1)]);
+// S TexTG
+
+  TexCoords1.x = dot(Position, BatchFloat[6*int(255.01f*float(VertexColor.b))+0+(2+0)]);
+  TexCoords1.y = dot(Position, BatchFloat[6*int(255.01f*float(VertexColor.b))+0+(2+1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*int(255.01f*float(VertexColor.b))+0]);
+// E Cxform
+  ;
+// E Vafactor
+  factor = VertexColor;
+// E 
+  fucxadd = BatchFloat[6*int(255.01f*float(VertexColor.b))+4];
+// E 
+  fucxmul = BatchFloat[6*int(255.01f*float(VertexColor.b))+5];
+}
+
+void VTexTGTexTGBatchPosition3dVafactor(float4 Position : POSITION,
+                                        float4 VertexColor : COLOR1,
+                                        out float4 factor : COLOR1,
+                                        out float2 TexCoords0 : TEXCOORD0,
+                                        out float2 TexCoords1 : TEXCOORD1,
+                                        out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, BatchFloat[4*int(255.01f*float(VertexColor.b))+0+(0)]);
+  TexCoords0.y = dot(Position, BatchFloat[4*int(255.01f*float(VertexColor.b))+0+(1)]);
+// S TexTG
+
+  TexCoords1.x = dot(Position, BatchFloat[4*int(255.01f*float(VertexColor.b))+0+(2+0)]);
+  TexCoords1.y = dot(Position, BatchFloat[4*int(255.01f*float(VertexColor.b))+0+(2+1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*int(255.01f*float(VertexColor.b))+0]);
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VTexTGTexTGPosition3dCxformVafactor(float4 Position : POSITION,
+                                         float4 VertexColor : COLOR1,
+                                         out float4 factor : COLOR1,
+                                         out float2 TexCoords0 : TEXCOORD0,
+                                         out float2 TexCoords1 : TEXCOORD1,
+                                         out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, TextureTransform2D[0]);
+  TexCoords0.y = dot(Position, TextureTransform2D[1]);
+// S TexTG
+
+  TexCoords1.x = dot(Position, TextureTransform2D[2+0]);
+  TexCoords1.y = dot(Position, TextureTransform2D[2+1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Cxform
+  ;
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VTexTGTexTGPosition3dVafactor(float4 Position : POSITION,
+                                   float4 VertexColor : COLOR1,
+                                   out float4 factor : COLOR1,
+                                   out float2 TexCoords0 : TEXCOORD0,
+                                   out float2 TexCoords1 : TEXCOORD1,
+                                   out float4 vpos : POSITION) {
+// S TexTG
+
+  TexCoords0.x = dot(Position, TextureTransform2D[0]);
+  TexCoords0.y = dot(Position, TextureTransform2D[1]);
+// S TexTG
+
+  TexCoords1.x = dot(Position, TextureTransform2D[2+0]);
+  TexCoords1.y = dot(Position, TextureTransform2D[2+1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VBatchPosition3dCxformVatc(float4 Position : POSITION,
+                                float2 TexCoords0 : TEXCOORD0,
+                                int vbatch : BLENDINDICES0,
+                                out float4 fucxadd : TEXCOORD3,
+                                out float4 fucxmul : TEXCOORD4,
+                                out float2 tc : TEXCOORD0,
+                                out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*vbatch+0]);
+// E Cxform
+  ;
+// E Vatc
+  tc = TexCoords0;
+// E 
+  fucxadd = BatchFloat[2*vbatch+0];
+// E 
+  fucxmul = BatchFloat[2*vbatch+1];
+}
+
+void VBatchPosition3dVatc(float4 Position : POSITION,
+                          float2 TexCoords0 : TEXCOORD0,
+                          int vbatch : BLENDINDICES0,
+                          out float2 tc : TEXCOORD0,
+                          out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*vbatch+0]);
+// E Vatc
+  tc = TexCoords0;
+}
+
+void VBatchPosition3d(float4 Position : POSITION,
+                      int vbatch : BLENDINDICES0,
+                      out float4 fucxmul : TEXCOORD4,
+                      out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*vbatch+0]);
+// E 
+  fucxmul = BatchFloat[1*vbatch+0];
+}
+
+void VPosition3d(float4 Position : POSITION,
+                 out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+}
+
+void VPosition3dCxformVatc(float4 Position : POSITION,
+                           float2 TexCoords0 : TEXCOORD0,
+                           out float2 tc : TEXCOORD0,
+                           out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Cxform
+  ;
+// E Vatc
+  tc = TexCoords0;
+}
+
+void VPosition3dVatc(float4 Position : POSITION,
+                     float2 TexCoords0 : TEXCOORD0,
+                     out float2 tc : TEXCOORD0,
+                     out float4 vpos : POSITION) {
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Vatc
+  tc = TexCoords0;
+}
+
+void VTextBatchPosition3d(float4 Position : POSITION,
+                          half4 Color : COLOR0,
+                          float2 TexCoords0 : TEXCOORD0,
+                          int vbatch : BLENDINDICES0,
+                          out float2 tc : TEXCOORD0,
+                          out half4 vcolor : COLOR0,
+                          out float4 vpos : POSITION) {
+// S Text
+  vcolor = Color * BatchFloat[2*vbatch+1] + BatchFloat[2*vbatch+0];
+  tc = TexCoords0;
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*vbatch+0]);
+}
+
+void VTextPosition3d(float4 Position : POSITION,
+                     half4 Color : COLOR0,
+                     float2 TexCoords0 : TEXCOORD0,
+                     out float2 tc : TEXCOORD0,
+                     out half4 vcolor : COLOR0,
+                     out float4 vpos : POSITION) {
+// S Text
+  vcolor = Color * ColorScale + OverlayColor;
+  tc = TexCoords0;
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+}
+
+void VTextDFABatchPosition3d(float4 Position : POSITION,
+                             half4 Color : COLOR0,
+                             float2 TexCoords0 : TEXCOORD0,
+                             int vbatch : BLENDINDICES0,
+                             out float4 fuDFShadowColor : TEXCOORD4,
+                             out float4 fuDFShadowEnable : TEXCOORD2,
+                             out float4 fuDFShadowOffset : TEXCOORD5,
+                             out float4 fuDFSize : TEXCOORD3,
+                             out float2 tc : TEXCOORD0,
+                             out half4 vcolor : COLOR0,
+                             out float4 vpos : POSITION) {
+// E TextDFA
+
+   vcolor = Color * BatchFloat[6*vbatch+2] + BatchFloat[6*vbatch+5];
+  tc = TexCoords0;
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*vbatch+0]);
+// E 
+  fuDFShadowColor = BatchFloat[6*vbatch+0];
+// E 
+  fuDFShadowEnable = BatchFloat[6*vbatch+3].x;
+// E 
+  fuDFShadowOffset = BatchFloat[6*vbatch+4];
+// E 
+  fuDFSize = BatchFloat[6*vbatch+1];
+}
+
+void VTextDFAPosition3d(float4 Position : POSITION,
+                        half4 Color : COLOR0,
+                        float2 TexCoords0 : TEXCOORD0,
+                        out float2 tc : TEXCOORD0,
+                        out half4 vcolor : COLOR0,
+                        out float4 vpos : POSITION) {
+// E TextDFA
+
+   vcolor = Color * ColorScale + OverlayColor;
+  tc = TexCoords0;
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+}
+
+void VYUVBatchPosition3d(float4 Position : POSITION,
+                         int vbatch : BLENDINDICES0,
+                         out float2 tc : TEXCOORD0,
+                         out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, BatchFloat[2*vbatch+0+(0)]);
+  tc.y = dot(Position, BatchFloat[2*vbatch+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*vbatch+0]);
+}
+
+void VYUVBatchPosition3dCxformVafactor(float4 Position : POSITION,
+                                       float4 VertexColor : COLOR1,
+                                       out float4 factor : COLOR1,
+                                       out float4 fucxadd : TEXCOORD3,
+                                       out float4 fucxmul : TEXCOORD4,
+                                       out float2 tc : TEXCOORD0,
+                                       out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, BatchFloat[4*int(255.01f*float(VertexColor.b))+0+(0)]);
+  tc.y = dot(Position, BatchFloat[4*int(255.01f*float(VertexColor.b))+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*int(255.01f*float(VertexColor.b))+0]);
+// E Cxform
+  ;
+// E Vafactor
+  factor = VertexColor;
+// E 
+  fucxadd = BatchFloat[4*int(255.01f*float(VertexColor.b))+2];
+// E 
+  fucxmul = BatchFloat[4*int(255.01f*float(VertexColor.b))+3];
+}
+
+void VYUVBatchPosition3dCxform(float4 Position : POSITION,
+                               int vbatch : BLENDINDICES0,
+                               out float4 fucxadd : TEXCOORD3,
+                               out float4 fucxmul : TEXCOORD4,
+                               out float2 tc : TEXCOORD0,
+                               out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, BatchFloat[4*vbatch+0+(0)]);
+  tc.y = dot(Position, BatchFloat[4*vbatch+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*vbatch+0]);
+// E Cxform
+  ;
+// E 
+  fucxadd = BatchFloat[4*vbatch+2];
+// E 
+  fucxmul = BatchFloat[4*vbatch+3];
+}
+
+void VYUVBatchPosition3dVafactor(float4 Position : POSITION,
+                                 float4 VertexColor : COLOR1,
+                                 out float4 factor : COLOR1,
+                                 out float2 tc : TEXCOORD0,
+                                 out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, BatchFloat[2*int(255.01f*float(VertexColor.b))+0+(0)]);
+  tc.y = dot(Position, BatchFloat[2*int(255.01f*float(VertexColor.b))+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*int(255.01f*float(VertexColor.b))+0]);
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VYUVBatchPosition3dYUVA(float4 Position : POSITION,
+                             int vbatch : BLENDINDICES0,
+                             out float2 tc : TEXCOORD0,
+                             out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, BatchFloat[2*vbatch+0+(0)]);
+  tc.y = dot(Position, BatchFloat[2*vbatch+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*vbatch+0]);
+// E YUVA
+  ;
+}
+
+void VYUVBatchPosition3dYUVACxformVafactor(float4 Position : POSITION,
+                                           float4 VertexColor : COLOR1,
+                                           out float4 factor : COLOR1,
+                                           out float4 fucxadd : TEXCOORD3,
+                                           out float4 fucxmul : TEXCOORD4,
+                                           out float2 tc : TEXCOORD0,
+                                           out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, BatchFloat[4*int(255.01f*float(VertexColor.b))+0+(0)]);
+  tc.y = dot(Position, BatchFloat[4*int(255.01f*float(VertexColor.b))+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*int(255.01f*float(VertexColor.b))+0]);
+// E YUVA
+  ;
+// E Cxform
+  ;
+// E Vafactor
+  factor = VertexColor;
+// E 
+  fucxadd = BatchFloat[4*int(255.01f*float(VertexColor.b))+2];
+// E 
+  fucxmul = BatchFloat[4*int(255.01f*float(VertexColor.b))+3];
+}
+
+void VYUVBatchPosition3dYUVACxform(float4 Position : POSITION,
+                                   int vbatch : BLENDINDICES0,
+                                   out float4 fucxadd : TEXCOORD3,
+                                   out float4 fucxmul : TEXCOORD4,
+                                   out float2 tc : TEXCOORD0,
+                                   out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, BatchFloat[4*vbatch+0+(0)]);
+  tc.y = dot(Position, BatchFloat[4*vbatch+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*vbatch+0]);
+// E YUVA
+  ;
+// E Cxform
+  ;
+// E 
+  fucxadd = BatchFloat[4*vbatch+2];
+// E 
+  fucxmul = BatchFloat[4*vbatch+3];
+}
+
+void VYUVBatchPosition3dYUVAVafactor(float4 Position : POSITION,
+                                     float4 VertexColor : COLOR1,
+                                     out float4 factor : COLOR1,
+                                     out float2 tc : TEXCOORD0,
+                                     out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, BatchFloat[2*int(255.01f*float(VertexColor.b))+0+(0)]);
+  tc.y = dot(Position, BatchFloat[2*int(255.01f*float(VertexColor.b))+0+(1)]);
+// E Position3d
+
+  vpos = MulMatrix(Position, BatchMatrix[1*int(255.01f*float(VertexColor.b))+0]);
+// E YUVA
+  ;
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VYUVPosition3d(float4 Position : POSITION,
+                    out float2 tc : TEXCOORD0,
+                    out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, TextureTransform2D[0]);
+  tc.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+}
+
+void VYUVPosition3dCxform(float4 Position : POSITION,
+                          out float2 tc : TEXCOORD0,
+                          out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, TextureTransform2D[0]);
+  tc.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Cxform
+  ;
+}
+
+void VYUVPosition3dCxformVafactor(float4 Position : POSITION,
+                                  float4 VertexColor : COLOR1,
+                                  out float4 factor : COLOR1,
+                                  out float2 tc : TEXCOORD0,
+                                  out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, TextureTransform2D[0]);
+  tc.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Cxform
+  ;
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VYUVPosition3dVafactor(float4 Position : POSITION,
+                            float4 VertexColor : COLOR1,
+                            out float4 factor : COLOR1,
+                            out float2 tc : TEXCOORD0,
+                            out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, TextureTransform2D[0]);
+  tc.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VYUVPosition3dYUVA(float4 Position : POSITION,
+                        out float2 tc : TEXCOORD0,
+                        out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, TextureTransform2D[0]);
+  tc.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E YUVA
+  ;
+}
+
+void VYUVPosition3dYUVACxform(float4 Position : POSITION,
+                              out float2 tc : TEXCOORD0,
+                              out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, TextureTransform2D[0]);
+  tc.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E YUVA
+  ;
+// E Cxform
+  ;
+}
+
+void VYUVPosition3dYUVACxformVafactor(float4 Position : POSITION,
+                                      float4 VertexColor : COLOR1,
+                                      out float4 factor : COLOR1,
+                                      out float2 tc : TEXCOORD0,
+                                      out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, TextureTransform2D[0]);
+  tc.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E YUVA
+  ;
+// E Cxform
+  ;
+// E Vafactor
+  factor = VertexColor;
+}
+
+void VYUVPosition3dYUVAVafactor(float4 Position : POSITION,
+                                float4 VertexColor : COLOR1,
+                                out float4 factor : COLOR1,
+                                out float2 tc : TEXCOORD0,
+                                out float4 vpos : POSITION) {
+// E YUV
+
+  tc.x = dot(Position, TextureTransform2D[0]);
+  tc.y = dot(Position, TextureTransform2D[1]);
+// E Position3d
+
+  vpos = MulMatrix(Position, Transform);
+// E YUVA
+  ;
+// E Vafactor
+  factor = VertexColor;
+}
+

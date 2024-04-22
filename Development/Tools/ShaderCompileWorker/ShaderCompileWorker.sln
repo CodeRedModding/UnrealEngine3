@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ShaderCompileWorker", "ShaderCompileWorker.vcxproj", "{3293F64B-7550-4A7A-8396-BCE8F6AA3CDF}"
+EndProject
+Global
+	GlobalSection(SourceCodeControl) = preSolution
+		SccNumberOfProjects = 2
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = ShaderCompileWorker.vcxproj
+		SccLocalPath1 = .
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Debug|Win64 = Debug|Win64
+		Release|Win32 = Release|Win32
+		Release|Win64 = Release|Win64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3293F64B-7550-4A7A-8396-BCE8F6AA3CDF}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3293F64B-7550-4A7A-8396-BCE8F6AA3CDF}.Debug|Win32.Build.0 = Debug|Win32
+		{3293F64B-7550-4A7A-8396-BCE8F6AA3CDF}.Debug|Win64.ActiveCfg = Debug|x64
+		{3293F64B-7550-4A7A-8396-BCE8F6AA3CDF}.Debug|Win64.Build.0 = Debug|x64
+		{3293F64B-7550-4A7A-8396-BCE8F6AA3CDF}.Release|Win32.ActiveCfg = Release|Win32
+		{3293F64B-7550-4A7A-8396-BCE8F6AA3CDF}.Release|Win32.Build.0 = Release|Win32
+		{3293F64B-7550-4A7A-8396-BCE8F6AA3CDF}.Release|Win64.ActiveCfg = Release|x64
+		{3293F64B-7550-4A7A-8396-BCE8F6AA3CDF}.Release|Win64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

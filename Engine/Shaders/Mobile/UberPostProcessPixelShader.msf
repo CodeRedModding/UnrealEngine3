@@ -1,0 +1,237 @@
+/*=============================================================================
+	UberPostProcessBlendPixelShader.usf: Pixel shader for blending multiple post processing results with the scene color.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#define REFERENCE_DOF		0
+#define USE_IMAGEGRAIN		0
+#define USE_TONEMAPPERTYPE	0
+
+#define USE_DOF_BLUR_BUFFER	0
+
+#define MAX_SCENE_COLOR		1.0
+
+#define RETURN_COLOR( Color ) ( Color )
+
+
+UNIFORM_SAMPLER2D(SceneColorTexture, TEXUNIT0);
+UNIFORM_SAMPLER2D(FilterColor2Texture, TEXUNIT1);
+
+//@TODO: Support depth values
+//	UNIFORM(vec4, MinZ_MaxZRatio);
+
+
+/** bring from texture usable range to worldspace range */
+float DecompressSceneDepthFromHalfResTextureChannel(float In, out bool bMotionBlurObject)
+{
+	bMotionBlurObject = false;
+
+	// remove the bit that identifies objects/background for motionblur 
+	return abs(In);
+}
+
+
+float ConvertFromDeviceZ(half DeviceZ)
+{
+//	return 1.0 / (DeviceZ * MinZ_MaxZRatio[2] - MinZ_MaxZRatio[3]);	
+	return 1.0;
+}
+
+#define SUPPORTS_DEPTH_TEXTURES 0
+
+#if UNUSED
+	// Commented out entirely since many ImgTec GPUs fail on the " character even if it should be preprocessed out
+	//#include "PostProcessCommon.usf"
+	//#include "DepthOfFieldCommon.usf"
+	//#include "MotionBlurCommon.usf"
+
+	sampler2D BlurredImage;
+#endif
+
+
+// rgb: BloomTint * BloomScale, a: BloomScreenBlendThreshold
+UNIFORM(vec4, BloomTintAndScreenBlendThreshold);
+
+// xy=Grain Offset to have animated noise, z=unused, w=ImageGrainScale
+// Note: ImageAdjustments1.xy is a random integer offsets in the range 0..127
+UNIFORM(vec4, ImageAdjustments1);
+// TonemapperFunction(x) = x / (x + A) * B
+// x=A, y=B, z=split pos, w=LinearSteepness
+UNIFORM(vec4, ImageAdjustments2);
+// x=tonemapper toe factor (0=linear..1=full toe)
+UNIFORM(vec4, ImageAdjustments3);
+
+// minv, minv, maxu,maxu
+// to clamp the half resolution lookup inside it's content to avoid leaking in content from outside through bilinear filtering
+UNIFORM(vec4, HalfResMaskRect);
+
+// X = BlurKernelSize, YZW unused
+UNIFORM(vec4, ReferenceDOFKernelSize);
+
+#if USE_DOF_BLUR_BUFFER
+UNIFORM_SAMPLER2D(DoFBlurBuffer, TEXUNIT2);
+#endif
+
+UNIFORM_SAMPLER2D(ColorGradingLUT, TEXUNIT3);
+
+
+//  @param InLDRColor in gamma space, has to be in 0..1 range
+half3 ColorLookupTable(half3 InLDRColor)
+{
+	// requires a volume texture 16x16x16 unwrapped in a 2d texture 256x16
+	// can be optimized by using a volume texture
+	vec2 Offset = vec2(0.5 / 256.0, 0.5 / 16.0);
+	float Scale = 15.0 / 16.0; 
+
+	// Also consider blur value in the blur buffer written by translucency
+	half IntB = floor(InLDRColor.b * 14.9999) / 16.0;
+	half FracB = InLDRColor.b * 15.0 - IntB * 16.0;
+
+	float U = IntB + InLDRColor.r * Scale / 16.0;
+	float V = InLDRColor.g * Scale;
+
+	half3 RG0 = texture2D(ColorGradingLUT, Offset + vec2(U             , V)).bgra.rgb;
+	half3 RG1 = texture2D(ColorGradingLUT, Offset + vec2(U + 1.0 / 16.0, V)).bgra.rgb;
+
+	return mix(RG0, RG1, FracB);
+}
+
+
+// xy should be a integer position (e.g. pixel position on the screen)
+// similar to a texture lookup but is only ALU
+float PseudoRandom(vec2 xy)
+{
+	// ImageAdjustments1.xy is animated over time
+	vec2 pos = frac(xy / 128.0 + ImageAdjustments1.xy) * 128.0 + vec2(-64.340622, -72.465622);
+	
+	// found by experimentation
+	return frac(dot(pos.xyx * pos.xyy, vec3(20.390625, 60.703125, 2.4281209)));
+}
+
+
+half3 TonemapAndGammaCorrect(half3 LinearColor)
+{
+	half A = ImageAdjustments2.x;
+	half B = ImageAdjustments2.y;
+
+	half3 GammaColor;
+	
+	GammaColor = HANDLE_SRGB_WRITE(LinearColor);
+
+#if UNUSED
+#if USE_TONEMAPPERTYPE == 0
+	// no tonemapper
+	{
+		GammaColor = pow(LinearColor, 1.0 / 2.2);
+	}
+	
+#elif USE_TONEMAPPERTYPE == 1
+	// filmic approximation (s-curve, contrast enhances, small toe, changes saturation and hue)
+	// simple but effective tonemapper
+	// outputs in 0..1 range (saturate())
+	// clamps negataive colors to 0 (abs())
+	{
+		GammaColor = LinearColor / abs(LinearColor + A) * B;
+	}
+
+#elif USE_TONEMAPPERTYPE == 2
+	// neutral soft white clamp (experimental, not optimized yet)
+	// outputs in 0..1 range (saturate())
+	// clamps negataive colors to 0 (abs())
+	{
+		// ToeFactor 0 = non means linear .. 1 = full (filmic look)
+		half ToeFactor = (half)ImageAdjustments3.x;
+		half LinearSteepness = (half)ImageAdjustments2.w;
+		// value below we have linear adjustments to the sigmoid curve that we don't to above the value
+		half FunctionSplitPos = ImageAdjustments2.z;
+
+		half3 GammaColorOldTonemapperTonemapperStartingFromLinear = LinearColor / abs(LinearColor + A) * B;
+
+		// efficient 3 component implementation of: LinearColor >= FunctionSplitPos
+		half3 SplitMask = saturate((LinearColor - FunctionSplitPos) * 10000.0);
+
+		const half3 GammaColorNotTonemapped = pow(LinearColor * LinearSteepness, 1.0 / 2.2);
+
+		half3 FlatGammaColor = lerp(GammaColorNotTonemapped, GammaColorOldTonemapperTonemapperStartingFromLinear, SplitMask);
+
+		GammaColor = lerp(FlatGammaColor, GammaColorOldTonemapperTonemapperStartingFromLinear, ToeFactor);
+	}
+#endif
+#endif // UNUSED
+
+	// in all cases it's good to clamp into the 0..1 range (e.g for LUT color grading)
+	GammaColor = saturate(GammaColor);
+
+	return GammaColor;
+}
+
+/** return the scene lighting texture */
+half3 CalcSceneColorNoMip(vec2 ScreenUV)
+{
+	return USE_SCENECOLOR(texture2DLod(SceneColorTexture, ScreenUV, 0.0)).rgb;
+}
+
+/** return the depth */
+half GetSceneDeviceZNoMip( vec2 ScreenUV )
+{
+#if SUPPORTS_DEPTH_TEXTURES
+	/** return the depth value stored in the depth buffer - but convert it to w first */
+	// get depth buffer z value
+	return texDepth2Dlod(SceneDepthTexture, vec4(ScreenUV, 0, 0)).r;
+#else
+	/** return the depth value stored in lighting target's alpha */
+	// depth stored in alpha
+	// clamp to fp 16 max to avoid INF on Geforce 6, 7 and RSX
+	return min(USE_SCENECOLOR(texture2DLod(SceneColorTexture, ScreenUV, 0.0)).a, 65503.0);
+#endif
+}
+
+/** return the world space converted depth (float precision needed for distances >65000, can affect fog) */
+float CalcSceneDepthNoMip( vec2 ScreenUV )
+{
+	return ConvertFromDeviceZ(GetSceneDeviceZNoMip(ScreenUV));
+}
+
+/** Returns scene color in rgb, depth in a */
+half4 CalcSceneColorAndDepthNoMip(vec2 ScreenUV)
+{
+	return half4(CalcSceneColorNoMip(ScreenUV), CalcSceneDepthNoMip(ScreenUV));
+}
+
+
+/*=============================================================================
+ * Pixel Shader
+ *============================================================================*/
+
+// full resolution 
+IN_VARYING_DEFAULT(vec2, ScreenPosition, TEXCOORD0);
+// quarter resolution
+IN_VARYING_DEFAULT(vec2, FilterBufferUV, TEXCOORD1);
+
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+half3 ScreenBlend( half3 Color1, half3 Color2 )
+{
+	// Original:    1-(1-a)*(1-b)
+	// Alternative: b + a*(1-b)
+	return 1.0 - (1.0 - Color1) * (1.0 - Color2);
+}
+ 
+PIXEL_MAIN
+{
+	// full resolution 
+	half2 FullResUV = ScreenPosition;
+	// quarter resolution
+	half2 QuarterResUV = FilterBufferUV;
+
+	half3 SceneColor = USE_SCENECOLOR(texture2D(SceneColorTexture, FullResUV)).rgb;
+	half3 BloomColor = USE_SCENECOLOR(texture2D(FilterColor2Texture, QuarterResUV)).rgb;
+	BloomColor *= BloomTintAndScreenBlendThreshold.rgb;
+	
+	half3 Color = ScreenBlend( SceneColor, BloomColor );
+
+//@TODO: Optimize coloration. It's very slow (5-7 ms).
+//	Color = ColorLookupTable(saturate(Color));
+	
+	gl_FragColor = vec4(Color, 1.0);
+}

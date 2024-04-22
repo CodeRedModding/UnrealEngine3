@@ -1,0 +1,21 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Database.SP_GetLatestBuildsResult
+
+@{
+    Layout = null;
+}
+
+
+<tr>
+    <td class="string">@Model.Build</td>
+    <td class="string">@Model.Label</td>
+    <td class="enum">
+        @if (Model.ChangeList.HasValue)
+        {
+            @Html.ActionLink("CL " + Model.ChangeList.Value.ToString(), "Changelist", "Build", new { id = Model.ChangeList.Value.ToString() }, null);
+        }
+        else
+        {
+            <text>n/a</text>
+        }
+    </td>
+</tr>

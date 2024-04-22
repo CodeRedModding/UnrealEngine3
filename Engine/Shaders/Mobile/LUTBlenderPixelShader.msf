@@ -1,0 +1,124 @@
+/*=============================================================================
+	LUTBlenderPixelShader.usf: Filter pixel shader source.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+// scene material parameters
+
+//BLENDCOUNT MUST be set somewhere.  Move into code when we need this functionality
+#define BLENDCOUNT 0
+
+
+UNIFORM(vec4, SceneShadowsAndDesaturation);	// RGB = SceneShadows, A = (1-SceneDesaturation)
+UNIFORM(vec4, SceneInverseHighLights);		// RGB = 1 / SceneHighLights
+UNIFORM(vec4, SceneMidTones);					// RGB = SceneMidTones
+UNIFORM(vec4, SceneScaledLuminanceWeights);	// RGB = LuminanceWeights * SceneDesaturation
+UNIFORM(vec4, SceneColorize);					// RGB = SceneColorize
+
+#define SceneShadows  SceneShadowsAndDesaturation.rgb
+#define SceneDesaturation SceneShadowsAndDesaturation.a
+
+// gamma correction parameters
+
+UNIFORM(vec4, GammaColorScaleAndInverse);
+// W unused
+UNIFORM(vec4, GammaOverlayColor);
+
+// width, height, 1.0/width, 1.0/height useful to access neighbor pixels (useful for Sharpen/SoftEdge)
+UNIFORM(vec4, RenderTargetExtent);
+
+#define GammaColorScale GammaColorScaleAndInverse.rgb
+// not used, might be useful later on
+#define GammaInverse    GammaColorScaleAndInverse.a
+
+//   ideally there should be no need for the max but as pow(x,y) is implemented as exp2(log2(x)*y) 0 is not defined
+//   the pow with 0.000001 made black appear grey so locally we use a smaller value. Later we can try to get rid of the max
+//   or use the smaller value in other places as well.
+#define SmallPowConst 0.00000001
+
+
+// @param InLDRColor needs to be LDR (0..1) and in linear space
+half3 ColorCorrection(half3 InLDRColor)
+{
+	half3 Color = pow(max(saturate(InLDRColor - SceneShadows) * SceneInverseHighLights.rgb, SmallPowConst), SceneMidTones.rgb);
+	
+	half3 ScaledLuminance = half3(dot(Color.rgb, SceneScaledLuminanceWeights.rgb));
+
+	half3 MaterialResult = Color * SceneDesaturation + ScaledLuminance;
+
+	half3 LinearColor = MaterialResult.rgb * GammaColorScale.rgb + GammaOverlayColor.rgb;
+
+	return LinearColor * SceneColorize.rgb;
+}
+
+
+// Texture0 is the neutral one and is computed in the shader
+UNIFORM_SAMPLER2D(Texture1, TEXUNIT0);
+UNIFORM_SAMPLER2D(Texture2, TEXUNIT1);
+UNIFORM_SAMPLER2D(Texture3, TEXUNIT2);
+UNIFORM_SAMPLER2D(Texture4, TEXUNIT3);
+
+// 0 is for neutral, 1 for Texture1, 2 for ...
+UNIFORM(float, LUTWeights[5]);
+
+IN_VARYING_DEFAULT(vec2, PolyUV, TEXCOORD0);
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+
+// todo: Weight[0] should be used for neutral, Texture* name should start with 1, color correction should apply on top of that
+PIXEL_MAIN
+{
+	vec4 Neutral;
+	{
+		vec2 UV = PolyUV;
+
+		UV -= vec2(0.5 / 256.0, 0.5 / 16.0);
+
+		float Scale = 16.0 / 15.0;
+
+		vec3 RGB;
+		
+		RGB.r = frac(UV.x * 16.0);
+		RGB.b = UV.x - RGB.r / 16.0;
+		RGB.g = UV.y;
+
+		Neutral = vec4(RGB * Scale, 0);
+	}
+
+    vec4 BlendColor = LUTWeights[0] * Neutral;
+
+	// BLENDCOUNT is the number of LUT that are blended together including the neutral one
+
+#if BLENDCOUNT >= 2
+	BlendColor += LUTWeights[1] * texture2D(Texture1, PolyUV);
+#endif
+
+#if BLENDCOUNT >= 3
+	BlendColor += LUTWeights[2] * texture2D(Texture2, PolyUV);
+#endif
+
+#if BLENDCOUNT >= 4
+	BlendColor += LUTWeights[3] * texture2D(Texture3, PolyUV);
+#endif
+
+#if BLENDCOUNT >= 5
+	BlendColor += LUTWeights[4] * texture2D(Texture4, PolyUV);
+#endif
+
+	BlendColor.rgb = ColorCorrection(BlendColor.rgb);
+
+	BlendColor.a = 1.0;
+
+#if UNUSED
+	// needed for d3d10 and if custom gamma is specified
+	// could be integrated into the uberpostprocess but here it is much cheaper
+	// max() clamp to get nice behavior for negative colors (see level sm2test)
+	BlendColor = pow(max(SmallPowConst, BlendColor), 2.2 * GammaInverse);
+#endif
+	BlendColor.r = 1.0;
+
+	gl_FragColor = BlendColor;
+}
+
+
+

@@ -1,0 +1,306 @@
+/*=============================================================================
+	LightShaftShader.usf: Shaders for rendering light shafts
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+/** If this is defined to 0, the apply will occur uniformly, ignoring the
+    original scene brightnesss, which saves a sample from the full-sized
+    texture and some math at the cost of some oversaturation in bright areas. */
+#define APPLY_USES_SCENE_COLOR_TO_AVOID_OVERSATURATION 1
+
+/** Transform from [-1, 1] screen space to world. */
+float4x4 ScreenToWorld;
+//@BEGIN - JTM - Aug 23, 2012 02:50PM - Added shader parameter for multi-viewport lightshafts
+float4x4 ScreenToViewport;
+//@END
+
+void DownsampleLightShaftsVertexMain(
+	in float2 InPosition : POSITION,
+	in float2 InUV       : TEXCOORD0,
+	out float2 OutTexCoord : TEXCOORD0,
+	out float3 OutScreenVector : TEXCOORD1,
+	out float4 OutPosition : POSITION
+	)
+{	
+	OutPosition = float4(InPosition, 0, 1);
+	OutTexCoord = InUV;
+
+	//@BEGIN - JTM - Aug 23, 2012 02:50PM - Added shader parameter for multi-viewport lightshafts
+	float2 ViewportPosition = MulMatrix(ScreenToViewport, float4(InPosition, 0, 1)).xy;
+	OutScreenVector = MulMatrix(ScreenToWorld, float4(ViewportPosition, 1, 0)).xyz;
+	//@END
+}
+
+/** Origin in texture coordinates in xy. */
+float2 TextureSpaceBlurOrigin;
+
+float4 WorldSpaceBlurOriginAndRadius;
+
+/** Spot light direction. */
+float3 WorldSpaceSpotDirection;
+
+/** SpotLightInfo->CosOuterCone in x, SpotLightInfo->InvCosConeDifference in y. */
+float2 SpotAngles;
+
+float4 WorldSpaceCameraPositionAndDistance;
+
+/** Mins in xy, Maxes in zw. */
+float4 UVMinMax;
+
+float4 AspectRatioAndInvAspectRatio;
+
+/** 1.0f / OcclusionDepthRange in x, BloomScale in y, RadialBlurPercent / 100 in z, OcclusionMaskDarkness in w. */
+float4 LightShaftParameters;
+
+/** Tint in rgb, threshold in a. */
+float4 BloomTintAndThreshold;
+
+/** Transitions to 1 when the light shafts should no longer be seen. */
+float DistanceFade;
+
+/** Result of the previous pass, rgb contains bloom color and a contains an occlusion mask. */
+sampler2D SourceTexture;
+
+/** Scene color source on Xbox 360. */
+sampler2D SmallSceneColorTexture;
+
+/** Offsets for downsampling by a factor of 4 in each dimension. */
+float4 SampleOffsets[2];
+
+void DownsampleLightShaftsPixelMain(
+	float2 InUV : TEXCOORD0,
+	float3 ScreenVector : TEXCOORD1,
+	out float4 OutColor : COLOR0
+	)
+{
+#if XBOX
+	// 4 bilinear samples
+	float4 SceneColorAndDepth00; 
+	// Get scene color from the already downsampled color texture
+	// Scale up by a tweaked factor to make the scene color stored in SmallSceneColorTexture match up with the actual floating point full res SceneColor
+	SceneColorAndDepth00.rgb = tex2D(SmallSceneColorTexture, InUV) * 2.0f;
+	SceneColorAndDepth00.a = CalcSceneDepth(InUV);
+	float4 SceneColorAndDepth10;
+	SceneColorAndDepth10.rgb = tex2D(SmallSceneColorTexture, InUV - SampleOffsets[0].zw) * 2.0f;
+	SceneColorAndDepth10.a = CalcSceneDepth(InUV - SampleOffsets[0].zw);
+	float4 SceneColorAndDepth01;
+	SceneColorAndDepth01.rgb = tex2D(SmallSceneColorTexture, InUV - SampleOffsets[1].xy) * 2.0f;
+	SceneColorAndDepth01.a = CalcSceneDepth(InUV - SampleOffsets[1].xy);
+	float4 SceneColorAndDepth11;
+	SceneColorAndDepth11.rgb = tex2D(SmallSceneColorTexture, InUV - SampleOffsets[1].zw) * 2.0f;
+	SceneColorAndDepth11.a = CalcSceneDepth(InUV - SampleOffsets[1].zw);
+#elif PS3
+	// 1 bilinear sample
+	float4 SceneColorAndDepth00 = CalcSceneColorAndDepth(InUV);
+	float4 SceneColorAndDepth10 = SceneColorAndDepth00;
+	float4 SceneColorAndDepth01 = SceneColorAndDepth00;
+	float4 SceneColorAndDepth11 = SceneColorAndDepth00;
+#else
+	// 4 bilinear samples
+	float4 SceneColorAndDepth00 = CalcSceneColorAndDepth(InUV);
+	float4 SceneColorAndDepth10 = CalcSceneColorAndDepth(InUV - SampleOffsets[0].zw);
+	float4 SceneColorAndDepth01 = CalcSceneColorAndDepth(InUV - SampleOffsets[1].xy);
+	float4 SceneColorAndDepth11 = CalcSceneColorAndDepth(InUV - SampleOffsets[1].zw);
+#endif
+	
+#if OPENGL
+	SceneColorAndDepth00 = min(SceneColorAndDepth00, 65503.0f);
+	SceneColorAndDepth10 = min(SceneColorAndDepth10, 65503.0f);
+	SceneColorAndDepth01 = min(SceneColorAndDepth01, 65503.0f);
+	SceneColorAndDepth11 = min(SceneColorAndDepth11, 65503.0f);
+#endif
+
+	float4 SceneDepths = float4(SceneColorAndDepth00.a, SceneColorAndDepth10.a, SceneColorAndDepth01.a, SceneColorAndDepth11.a);
+
+	float2 NormalizedCoordinates = (InUV - UVMinMax.xy) / UVMinMax.zw;
+	// Setup a mask that is 1 at the edges of the screen and 0 at the center
+	float EdgeMask = 1.0f - NormalizedCoordinates.x * (1.0f - NormalizedCoordinates.x) * NormalizedCoordinates.y * (1.0f - NormalizedCoordinates.y) * 8.0f;
+	EdgeMask = EdgeMask * EdgeMask * EdgeMask * EdgeMask;
+	// Downsample scene color
+	half3 DownsampledColor = .25f * (SceneColorAndDepth00.rgb + SceneColorAndDepth10.rgb + SceneColorAndDepth01.rgb + SceneColorAndDepth11.rgb);
+	// Only bloom colors over BloomThreshold
+	half Luminance = max(dot(DownsampledColor, half3(.3f, .59f, .11f)), 6.10352e-5);
+	half AdjustedLuminance = max(Luminance - BloomTintAndThreshold.a, 0.0f);
+	half3 BloomColor = LightShaftParameters.y * DownsampledColor / Luminance * AdjustedLuminance * 2.0f;
+
+#if POINT_LIGHT_SHAFTS
+	float3 WorldPosition00 = ScreenVector * SceneColorAndDepth00.a + WorldSpaceCameraPositionAndDistance.xyz;
+	float3 WorldPosition10 = ScreenVector * SceneColorAndDepth10.a + WorldSpaceCameraPositionAndDistance.xyz;
+	float3 WorldPosition01 = ScreenVector * SceneColorAndDepth01.a + WorldSpaceCameraPositionAndDistance.xyz;
+	float3 WorldPosition11 = ScreenVector * SceneColorAndDepth11.a + WorldSpaceCameraPositionAndDistance.xyz;
+
+	float3 WorldLightVector00 = WorldPosition00 - WorldSpaceBlurOriginAndRadius.xyz;
+	float3 WorldLightVector10 = WorldPosition10 - WorldSpaceBlurOriginAndRadius.xyz;
+	float3 WorldLightVector01 = WorldPosition01 - WorldSpaceBlurOriginAndRadius.xyz;
+	float3 WorldLightVector11 = WorldPosition11 - WorldSpaceBlurOriginAndRadius.xyz;
+	
+	float InvOcclusionDepthRange = LightShaftParameters.x;
+
+	// 1 at the radius of the light, 0 at the center of the light
+	float4 Distances = float4(
+		length(WorldLightVector00),
+		length(WorldLightVector10),
+		length(WorldLightVector01),
+		length(WorldLightVector11));
+
+	float4 NormalizedDistances = Distances / WorldSpaceBlurOriginAndRadius.w;
+	// Setup a mask that only allows occlusion between the camera and the light's center
+	// This prevents pixels behind the light from occluding light shafts
+	float InFrontOfLightMask = 1.0f - saturate((WorldSpaceCameraPositionAndDistance.w - length(WorldPosition00 - WorldSpaceCameraPositionAndDistance.xyz)) / WorldSpaceBlurOriginAndRadius.w);
+	// Filter the occlusion mask instead of the depths
+	float OcclusionMask = max(dot(saturate(NormalizedDistances), .25f), InFrontOfLightMask);
+
+	float SpotLightAttenuation = 1.0f;
+#if SPOT_LIGHT_SHAFTS
+	
+	// Setup a mask that only allows occlusion or blooming from pixels in the spotlight's cone
+	float4 SpotDotProducts = float4(
+		dot(WorldLightVector00, WorldSpaceSpotDirection),
+		dot(WorldLightVector10, WorldSpaceSpotDirection),
+		dot(WorldLightVector01, WorldSpaceSpotDirection),
+		dot(WorldLightVector11, WorldSpaceSpotDirection));
+
+	// Filter the spotlight mask instead of the depths
+	SpotLightAttenuation = Square(dot(saturate((SpotDotProducts / Distances - SpotAngles.xxxx) * SpotAngles.yyyy), .25f));
+
+#endif
+	
+	// Apply the edge mask to the occlusion factor
+    OutColor.a = max(max(OcclusionMask * OcclusionMask * OcclusionMask * OcclusionMask, EdgeMask), max(DistanceFade * DistanceFade, 1.0f - SpotLightAttenuation));
+
+	// Only allow blooming from pixels within 1/3rd of the light's radius
+	//@todo - this excludes translucency which may be composing the majority of the light's emissive component
+	float BlurOriginDistanceMask = 1.0f - dot(saturate(NormalizedDistances * 3.0f), .25f);
+	// Calculate bloom color with masks applied
+	OutColor.rgb = BloomColor * (1.0f - EdgeMask) * (1.0f - DistanceFade) * BlurOriginDistanceMask * BlurOriginDistanceMask * SpotLightAttenuation;
+#else
+	float InvOcclusionDepthRange = LightShaftParameters.x;
+	// Filter the occlusion mask instead of the depths
+	float OcclusionMask = dot(saturate(SceneDepths * InvOcclusionDepthRange), .25f);
+	// Apply the edge mask to the occlusion factor
+    OutColor.a = max(OcclusionMask, EdgeMask);
+
+	// Only allow bloom from pixels whose depth are in the far half of OcclusionDepthRange
+	float BloomDistanceMask = dot(saturate((SceneDepths - .5f / InvOcclusionDepthRange) * InvOcclusionDepthRange), .25f);
+	// Setup a mask that is 0 at TextureSpaceBlurOrigin and increases to 1 over distance
+	float BlurOriginDistanceMask = 1.0f - saturate(length(TextureSpaceBlurOrigin.xy - InUV * AspectRatioAndInvAspectRatio.zw) * 5.0f);
+	// Calculate bloom color with masks applied
+	OutColor.rgb = BloomColor * BloomDistanceMask * (1.0f - EdgeMask) * BlurOriginDistanceMask * BlurOriginDistanceMask;
+#endif
+
+	// Using a fixed point or low-precision float filter buffer, so we compress into [0, 1] to avoid clamping
+	OutColor.rgb /= MAX_SCENE_COLOR;
+}
+
+float BlurPassIndex;
+
+/** Number of radial blur samples, must be a multiple of 2. */
+#if XBOX
+	static const float NumSamples = 48;
+#elif PS3
+	static const float NumSamples = 48;
+#else
+	static const float NumSamples = 64;
+#endif
+
+void BlurLightShaftsMain(
+	float2 InUV : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	float4 BlurredValues = float4(0,0,0,0);
+	// Scale the UVs so that the blur will be the same pixel distance in x and y
+	float2 AspectCorrectedUV = InUV * AspectRatioAndInvAspectRatio.zw;
+	float2 BlurVector = (TextureSpaceBlurOrigin.xy - AspectCorrectedUV);
+	float BlurLength = length(BlurVector) * 0.5f;
+	// Shorten the length of the vector to limit undersampling
+	BlurVector = BlurVector / BlurLength * min(sqrt(BlurLength) * .5f, BlurLength);
+	BlurVector *= LightShaftParameters.z / (float)(NumSamples);
+
+	float2 LinearWeight = 2 *(NumSamples.xx - float2(0, 1)) / (float)(NumSamples.xx);
+	float2 LinearWeightDelta = -float2(4, 4) / (float)(NumSamples.xx);
+	
+	float4 SampleUVs = AspectCorrectedUV.xyxy + BlurVector.xyxy * float4(0, 0, 1, 1);
+	float4 SampleUVsDelta = BlurVector.xyxy * 2;
+	SampleUVs *= AspectRatioAndInvAspectRatio.xyxy;
+	SampleUVsDelta *= AspectRatioAndInvAspectRatio.xyxy;
+	// Operate on two samples at a time to minimize ALU instructions
+	for (int i = 0; i < NumSamples; i += 2)
+	{
+		// Use a weight that is linearly increasing away from the blur origin
+		// This allows the tail of an occluder to blend out smoothly
+		float2 Weight = min(4.0f * LinearWeight * LinearWeight, LinearWeight);
+		// Clamp the sample position to make sure we only sample valid parts of the texture
+		// Note: the result of the texture lookup is compressed to fit in the fixed point buffer,
+		// But we don't need to expand it since we're just averaging and not compressing the result
+		// Undo the aspect ratio scaling before sampling
+		float4 ClampedUVs = clamp(SampleUVs, UVMinMax.xyxy, UVMinMax.zwzw);
+		BlurredValues += tex2D(SourceTexture, ClampedUVs.xy) * float4(Weight.xxx, LinearWeight.x);
+		BlurredValues += tex2D(SourceTexture, ClampedUVs.zw) * float4(Weight.yyy, LinearWeight.y);
+
+		LinearWeight += LinearWeightDelta;
+		SampleUVs += SampleUVsDelta;
+	}
+	
+	OutColor = BlurredValues / NumSamples;
+}
+
+float4 SourceTextureScaleBias;
+float4 SceneColorScaleBias;
+
+void ApplyLightShaftsVertexMain(
+	in float2 InPosition : POSITION,
+	out float2 OutSourceUV : TEXCOORD0,
+	out float2 OutSceneColorUV : TEXCOORD1,
+	out float4 OutPosition : POSITION
+	)
+{	
+	OutPosition = float4(InPosition, 0, 1);
+	OutSourceUV = InPosition * SourceTextureScaleBias.xy + SourceTextureScaleBias.wz;
+	OutSceneColorUV = InPosition * SceneColorScaleBias.xy + SceneColorScaleBias.wz;
+}
+
+float BloomScreenBlendThreshold;
+
+void ApplyLightShaftsPixelMain(
+	float2 InSourceUV : TEXCOORD0,
+	float2 InSceneColorUV : TEXCOORD1,
+	out float4 OutColor : COLOR0
+	)
+{
+	half4 LightShaftColorAndMask = tex2D(SourceTexture, InSourceUV);
+
+	// Expand from the [0, 1] range stored by the radial blur step
+	LightShaftColorAndMask.rgb *= MAX_SCENE_COLOR;
+
+	// LightShaftParameters.w is OcclusionMaskDarkness, use that to control what an occlusion value of 0 maps to
+	// Lerp an occlusion value of 1 to a multiplier greater than one to balance out the brightness of the scene
+	float SceneColorMultiplier = lerp(LightShaftParameters.w, 1.5 - .5f * LightShaftParameters.w, LightShaftColorAndMask.w * LightShaftColorAndMask.w);
+	// Setup a mask based on where the blur origin is
+	float BlurOriginDistanceMask = saturate(length(TextureSpaceBlurOrigin.xy - InSourceUV * AspectRatioAndInvAspectRatio.zw) * 0.5f);
+	// Fade out occlusion over distance away from the blur origin
+	SceneColorMultiplier = lerp(SceneColorMultiplier, 1, BlurOriginDistanceMask);
+	// Fade to no darkening based on distance from the light for point lights
+	SceneColorMultiplier = lerp(SceneColorMultiplier, 1, DistanceFade * DistanceFade * DistanceFade);
+
+#if APPLY_USES_SCENE_COLOR_TO_AVOID_OVERSATURATION
+
+#if XBOX
+	half3 SceneColor = tex2D(SmallSceneColorTexture, InSceneColorUV) * 2.0f;
+#else
+	half3 SceneColor = CalcSceneColor(InSceneColorUV);
+#endif
+
+	half Luminance = dot(SceneColor, half3(.3f, .59f, .11f));
+	// Use an exponential function that converges on 0 slowly
+	// This minimizes the halo created by the screen blend when the source image is a bright gradient
+	half BloomScreenBlendFactor = saturate(BloomScreenBlendThreshold * exp2(-3 * Luminance));
+#else
+	half BloomScreenBlendFactor = BloomScreenBlendThreshold; // The other path does Luminance=1, /8, Luminance=0, /1
+#endif
+
+	// Use a screen blend to apply bloom to scene color, darken scene color by the occlusion factor
+	OutColor = RETURN_COLOR(half4(LightShaftColorAndMask.rgb * BloomTintAndThreshold.rgb * BloomScreenBlendFactor, SceneColorMultiplier));
+}

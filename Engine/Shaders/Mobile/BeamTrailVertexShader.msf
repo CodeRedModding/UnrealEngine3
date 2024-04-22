@@ -1,0 +1,152 @@
+//	BeamTrailVertexShader
+//	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+
+////////////////////////
+// Conditions
+////////////////////////
+
+#define NEED_MASK_TEXTURE 0
+#define NEED_PIXEL_WORLD_POSITION 0
+
+#if (ALPHA_VALUE_SOURCE >= ALPHA_VALUE_SOURCE_MASK_RED) && (ALPHA_VALUE_SOURCE <= ALPHA_VALUE_SOURCE_MASK_BLUE)
+	#undef NEED_MASK_TEXTURE
+	#define NEED_MASK_TEXTURE 1
+#endif
+
+#if USE_EMISSIVE
+	#if (EMISSIVE_MASK_SOURCE >= EMISSIVE_MASK_SOURCE_MASK_TEXTURE_RED) && (EMISSIVE_MASK_SOURCE <= EMISSIVE_MASK_SOURCE_MASK_TEXTURE_ALPHA)
+		#undef NEED_MASK_TEXTURE
+		#define NEED_MASK_TEXTURE 1
+	#endif
+#endif
+
+#if USE_HEIGHT_FOG
+	#undef NEED_PIXEL_WORLD_POSITION
+	#define NEED_PIXEL_WORLD_POSITION 1
+#endif
+
+#if USE_SPECULAR
+	#if (SPECULAR_MASK >= SPECMASK_MASK_TEXTURE_RGB) && (SPECULAR_MASK <= SPECMASK_MASK_TEXTURE_ALPHA)
+	    #undef NEED_MASK_TEXTURE
+	    #define NEED_MASK_TEXTURE 1
+	#endif
+#endif
+
+#if USE_UNIFORM_COLOR_MULTIPLY
+	#if (COLOR_MULTIPLY_SOURCE >= COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_RED)&& (COLOR_MULTIPLY_SOURCE <= COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_ALPHA)
+		#undef NEED_MASK_TEXTURE
+		#define NEED_MASK_TEXTURE 1
+	#endif
+#endif
+
+
+////////////////////////
+// Variables
+////////////////////////
+
+UNIFORM(mat4, LocalToWorld);
+UNIFORM(mat4, ViewProjection);
+UNIFORM(vec4, FadeColorAndAmount);
+
+ATTRIBUTE(vec4, Position, POSITION);
+ATTRIBUTE(vec3, Size, TANGENT);
+ATTRIBUTE(float2, Rotation, BLENDWEIGHT);
+ATTRIBUTE(vec2, TexCoords0, TEXCOORD0);
+ATTRIBUTE(vec4, ParticleColor, TEXCOORD1);
+
+OUT_VARYING_DEFAULT( vec4, Interp_TexCoord, TEXCOORD0 );
+OUT_VARYING_MEDIUM( vec4, Interp_Color, COLOR0 );
+OUT_VARYING_LOW( vec4, GlobalEffectColorAndAmount, COLOR1 );
+
+#if USE_GRADIENT_FOG
+	UNIFORM(float, FogOneOverSquaredRange);
+	UNIFORM(float, FogStartSquared);
+	UNIFORM(vec4, FogColor);
+#endif
+
+#if NEED_MASK_TEXTURE
+    OUT_VARYING_HIGH( vec2, UVMask, TEXCOORD6 );
+#endif
+
+#if NEED_PIXEL_WORLD_POSITION
+    OUT_VARYING_MEDIUM(vec3, VarWorldPosition, TODO);
+#endif
+
+#if USE_UNIFORM_COLOR_MULTIPLY
+	UNIFORM(vec4, UniformMultiplyColor);
+	OUT_VARYING_LOW( vec4, ColorMultiply, TEXCOORD5 );
+#endif
+
+
+////////////////////////
+// Implementation
+////////////////////////
+
+void main()
+{
+	// Calculate position
+	vec4 Pos = MulMatrix( LocalToWorld, Position );
+	gl_Position = MulMatrix( ViewProjection, Pos );
+		
+	#if NEED_PIXEL_WORLD_POSITION
+    {
+        VarWorldPosition = Pos.xyz;
+    }
+    #endif
+		
+	// Texture coordinates
+	Interp_TexCoord.xy = TexCoords0.xy;
+
+	#if USE_BASE_TEX_COORD_XFORM || USE_NORMAL_TEX_COORD_XFORM || USE_EMISSIVE_TEX_COORD_XFORM
+	    Interp_TexCoord.zw = XFORM_TEX_COORD(TexCoords0.xy);
+	#else
+		Interp_TexCoord.zw = TexCoords0.xy;
+	#endif
+
+	// Calculate color
+	Interp_Color = ParticleColor;
+
+#if USE_PREMULTIPLIED_OPACITY
+	Interp_Color.rgb *= Interp_Color.a;
+#endif
+
+	// Color multiply
+	#if USE_UNIFORM_COLOR_MULTIPLY
+		ColorMultiply = UniformMultiplyColor;
+
+		#if USE_PREMULTIPLIED_OPACITY
+			ColorMultiply.rgb *= UniformMultiplyColor.a;
+			ColorMultiply.w = 1.0;
+		#endif
+	#endif
+
+	// Texture masking
+	#if NEED_MASK_TEXTURE
+        vec2 MaskTexCoords;
+        MaskTexCoords = TexCoords0;
+        // Store the mask offset UVs.  Note that we do not transform these UVs.
+        UVMask = MASK_TEX_COORD_XFORM(MaskTexCoords);
+	#endif
+
+	// Fog
+    #if !USE_HEIGHT_FOG && USE_GRADIENT_FOG
+        // Compute the fog factor (a lerped value between 0 and 1) for each vertex
+
+        // We determine the fog factor by getting the vertex distance and then interpolating
+        // that between the start and end ranges for fog.
+        float VertDistSquared = dot(Pos.xyz, Pos.xyz);
+        float FogColorAmount = FogColor.w * clamp( ( VertDistSquared - FogStartSquared ) * FogOneOverSquaredRange, 0.0, 1.0);
+
+        // Finally, fold in the fade color here to avoid the additional mix in the pixel shader
+        GlobalEffectColorAndAmount.xyz = mix(FogColor.xyz * FogColorAmount, FadeColorAndAmount.xyz, FadeColorAndAmount.w);
+        GlobalEffectColorAndAmount.w = 1.0 - (FogColorAmount + FadeColorAndAmount.w - (FogColorAmount * FadeColorAndAmount.w));
+    #else
+        // If we're not in the gadient fog case, the fade color and any potentially fully saturated fog color have
+        // already been folded into the FadeColorAndAmount uniform, so pre-multiply and pass that through 
+        GlobalEffectColorAndAmount.xyz = FadeColorAndAmount.xyz * FadeColorAndAmount.w;
+        GlobalEffectColorAndAmount.w = 1.0 - FadeColorAndAmount.w;
+    #endif
+}

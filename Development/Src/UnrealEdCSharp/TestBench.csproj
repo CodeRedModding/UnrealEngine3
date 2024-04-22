@@ -1,0 +1,183 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <AssemblyName>TestBench</AssemblyName>
+    <TargetType>winexe</TargetType>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <ProjectGuid>{978482C8-C3E2-4B90-BC3B-8BC16F64265E}</ProjectGuid>
+    <RootNamespace>TestBench</RootNamespace>
+    <SccProjectName>Perforce Project</SccProjectName>
+    <SccLocalPath>.</SccLocalPath>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccProvider>MSSCCI:Perforce SCM</SccProvider>
+    <OutputType>WinExe</OutputType>
+    <StartupObject>TestBench.App</StartupObject>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <OldToolsVersion>2.0</OldToolsVersion>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <ExpressionBlendVersion>3.0.1927.0</ExpressionBlendVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <OutputPath>..\..\..\Binaries\Editor\Debug\</OutputPath>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <DebugType>full</DebugType>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\..\..\Binaries\Editor\Release\</OutputPath>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Optimize>true</Optimize>
+    <DefineConstants>TRACE</DefineConstants>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="PresentationFramework.Classic" />
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Data" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\MeshPaintWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>MeshPaintWindow.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Localized\UnrealEd.INT.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>UnrealEd.INT.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Localized\UnrealEdCSharp.INT.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>UnrealEdCSharp.INT.xaml</Link>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="CustomWidgetTestWindow.xaml.cs">
+      <DependentUpon>CustomWidgetTestWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="TestWindow.xaml.cs">
+      <DependentUpon>TestWindow.xaml</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="UnrealEdCSharp.csproj">
+      <Project>{4C3D7C5D-E45F-4B19-9A3E-3028E159A7CA}</Project>
+      <Name>UnrealEdCSharp</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\ColorPickerWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>ColorPickerWindow.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\EmptyFrame.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>EmptyFrame.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\FoliageEditWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>FoliageEditWindow.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\LandscapeEditWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>LandscapeEditWindow.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\LightingToolsWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>LightingToolsWindow.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\LightmapResRatioWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>LightmapResRatioWindow.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\MatineeDirectorControls.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>Matinee\MatineeDirectorControls.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\MatineeDirectorLayout.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>Matinee\MatineeDirectorLayout.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\MatineeDirectorPreview.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>Matinee\MatineeDirectorPreview.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\MatineeDirectorViewport.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>Matinee\MatineeDirectorViewport.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\MatineeRecordControls.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>Matinee\MatineeRecordControls.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\MatineeRecordLayout.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>Matinee\MatineeRecordLayout.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\MatineeRecordViewport.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>Matinee\MatineeRecordViewport.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\PerforceLoginWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>PerforceLoginWindow.xaml</Link>
+    </Page>
+    <Page Include="..\..\..\Engine\EditorResources\WPF\Controls\SourceControlSubmitWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+      <Link>SourceControlSubmitWindow.xaml</Link>
+    </Page>
+    <Page Include="CustomWidgetTestWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="TestWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TestBench.exe.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\Expression\Blend\3.0\WPF\Microsoft.Expression.Blend.WPF.targets" />
+</Project>

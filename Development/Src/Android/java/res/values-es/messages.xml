@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	
+	<string name="Error">Error</string>
+	<string name="Init_Failed">inicialización de la aplicación ha fallado. La aplicación se cerrará.</string>
+	<string name="OpenGL_Failed">Inizializzazione di OpenGL fallito, probabilmente il dispositivo non supporta ES2.0 shader model, un requisito per i difensori dei Dungeon.</string>
+	<string name="NotEnoughSpace">No hay suficiente espacio para la instalación SDCard</string>
+	<string name="NoSDCard">No SDCard se encuentran montados</string>
+	<string name="DownloadManualURL">Error al descargar el contenido del juego. Por favor, inténtelo de nuevo, o visite http://dungeondefenders.com/androidmobile para obtener instrucciones para realizar una instalación manual.</string>
+	
+	<string name="MemNotEnough">Advertencia: Este dispositivo Android no cumple con el requisito mínimo de 512 MB de RAM. Defensores de Dungeon: la primera ola no se ejecute correctamente.</string>
+	
+	<string name="CheckLicense">Validación de Licencia...</string>
+	<string name="NoLicense">No se puede obtener una licencia!</string>
+	
+	<string name="Download_Failed">No se pudo descargar el archivo</string>
+	<string name="Checksum_Failed">Error de suma de comprobación Comparar</string>
+	<string name="SyncFile_Failed">Generación de error de sincronización de archivos</string>
+	<string name="Composite_Failed">Error de suma de comprobación en los archivos de Split de Composited</string>	
+	
+	<string name="NoNetwork_Failed">No hay conexión de red detectada.</string>	
+	<string name="CouldntConnect_Failed">No se pudo conectar al servidor de archivos remoto.</string>	
+	<string name="UnknownError_Failed">Error desconocido.</string>	
+	
+	<string name="Downloading">Descargar</string>
+	<string name="UpdateMessageBox">Actualizar encontrados, ¿Te gustaría poner al día?</string>
+	<string name="Yes">Sí</string>
+	<string name="No">No</string>
+	
+	<string name="WifiMessageBox">No se han encontrado Wifi, ¿Qué te gustaría hacer?</string>	
+	<string name="Retry">Reintentar</string>
+	<string name="Exit">Salir</string>
+	<string name="BinaryUpdateMessage">Nueva actualización de mercado online, ¿le gustaría que lo descargue?</string>
+	
+	<string name="WifiSettings">Configuración de Wi-Fi</string>
+	
+	<string name="File">Archivo</string>	
+	<string name="SplitFile">Segmentar archivo</string>	
+	<string name="Downloaded">Descargados</string>	
+	<string name="InstallDirectory">Comprobación / Instalación de Directorio</string>	
+
+</resources>

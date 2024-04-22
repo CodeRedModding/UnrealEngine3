@@ -1,0 +1,93 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Classes">
+      <UniqueIdentifier>{5edee289-810f-4d77-9130-c5350f8b6c21}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Inc">
+      <UniqueIdentifier>{51955895-b2ea-4bb3-b8ad-fc4754da9f94}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src">
+      <UniqueIdentifier>{2ebcccd7-109b-49f1-aeac-f89bbb57c608}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Classes\OnlineAuthInterfaceSteamworks.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineGameInterfaceSteamworks.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineSubsystemSteamworks.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\OnlineLobbyInterfaceSteamworks.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Globals.uci" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\OnlineAsyncTaskManagerSteam.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\OnlineSubsystemSteamworks.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\OnlineSubsystemSteamworksClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\OnlineSubsystemSteamworksNames.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnNetSteamworks.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnSocketSteamworks.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UOnlineAuthInterfaceSteamworks.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UOnlineGameInterfaceSteamworks.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UOnlineSubsystemSteamworks.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\VoiceInterfaceSteamworks.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UOnlineLobbyInterfaceSteamworks.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\OnlineAsyncTaskManagerSteam.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\OnlineSubsystemSteamworks.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\OnlineSubsystemSteamworksPackage.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnNetSteamworks.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnSocketSteamworks.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UOnlineAuthInterfaceSteamworks.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UOnlineGameInterfaceSteamworks.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UOnlineLobbyInterfaceSteamworks.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\VoiceInterfaceSteamworks.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

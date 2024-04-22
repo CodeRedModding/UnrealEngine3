@@ -1,0 +1,11 @@
+<locale language="en">
+	<s key="CC_LBL_BUTTON"><![CDATA[Apply]]></s>
+	<s key="CC_LBL_TITLE"><![CDATA[Component Creator]]></s>
+	<s key="LP_LBL_TITLE"><![CDATA[Launcher]]></s>
+	<s key="LP_LBL_PROFILES"><![CDATA[Profiles:]]></s>
+	<s key="LP_BTN_OK"><![CDATA[Ok]]></s>
+	<s key="LP_BTN_CANCEL"><![CDATA[Cancel]]></s>
+	<s key="LP_LBL_PLAYER"><![CDATA[player EXE:]]></s>
+	<s key="LP_LBL_PROFILE_NAME"><![CDATA[profile name:]]></s>
+	<s key="LP_LBL_COMMAND_PARAS"><![CDATA[command params:]]></s>
+</locale>

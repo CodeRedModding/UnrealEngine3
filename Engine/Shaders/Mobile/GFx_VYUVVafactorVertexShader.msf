@@ -1,0 +1,23 @@
+UNIFORM( vec4, Transform2D[2] );
+UNIFORM( vec4, TextureTransform2D[4] );
+ATTRIBUTE( vec4, Position, POSITION );
+ATTRIBUTE( vec4, VertexColor, COLOR1 );
+OUT_VARYING_DEFAULT( vec4, factor, COLOR1 );
+OUT_VARYING_DEFAULT( vec2, tc, TEXCOORD0 );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// E YUV
+
+  tc.x = dot(Position, TextureTransform2D[int(0.1+0.0)]);
+  tc.y = dot(Position, TextureTransform2D[int(0.1+1.0)]);
+// E position
+
+
+  gl_Position = Position;
+  gl_Position.x = dot(Position, Transform2D[int(0.1+0.0)]);
+  gl_Position.y = dot(Position, Transform2D[int(0.1+1.0)]);  
+// E Vafactor
+  factor = VertexColor;
+
+}
+

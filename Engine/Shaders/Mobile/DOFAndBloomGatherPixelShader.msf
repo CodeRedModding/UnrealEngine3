@@ -1,0 +1,146 @@
+/*=============================================================================
+	DOFAndBloomGatherPixelShader.usf: Pixel shader for gathering the combined depth of field and bloom samples for blurring.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+// also includes Common.usf
+//#include "PostProcessCommon.usf"
+// for CalcUnfocusedPercent()
+//#include "DepthOfFieldCommon.usf"
+
+#define NUM_SAMPLES 4
+// macros fall over with the (NUM_SAMPLES + 1)/2 stuff, so, just use a number
+// 4 + 1 / 2 = 2
+#define NUM_VARYINGS 2
+
+//the largest value any color component is allowed to have, scene color is clamped to this in DOFAndBloomGatherPixelShader.usf
+//also used to pack color into the fixed point filter buffer, which requires a range of [0-1]
+#define MAX_SCENE_COLOR 1.0
+ 
+
+/** The amount bloomed colors are scaled by. */
+UNIFORM(half4, BloomScaleAndThreshold);
+
+// half resolution with depth DeviceZ in alpha
+UNIFORM_SAMPLER2D(TextureBase, TEXUNIT0);
+
+// ---------------------------------------------
+
+/** Computes a pixel's luminance for bloom */
+half ComputeLuminanceForBloom( half3 InSceneColor )
+{
+	// Compute the luminance for this pixel
+	half TotalLuminance;
+	if ( true )
+	{
+		// Compute luminance as the maximum of RGB.  This is a bit more intuitive for artists as they know
+		// that any pixel with either of the RGB channels above 1.0 will begin to bloom.
+		TotalLuminance = max( InSceneColor.r, max( InSceneColor.g, InSceneColor.b ) );
+	}
+	else
+	{
+		// RGB scale factor to calculated pixel luminance using a weight average
+		half3 LuminanceFactor = half3( 0.3, 0.59, 0.11 );
+
+		// Compute true luminance
+		TotalLuminance = dot( LuminanceFactor, InSceneColor );
+	}
+
+	return TotalLuminance;
+}
+
+
+
+/** Computes bloomed amount for the specified scene color */
+half ComputeBloomAmount( half3 InSceneColor, half InLuminance )
+{
+	// Size of the bloom "ramp".  This value specifies the amount of light beyond the bloom threshold required
+	// before a pixel's bloom will be 100% of the original color.
+	// NOTE: Any value above 0.8 looks pretty good here (and 1.0 is often fastest), but a value of 2.0 here
+	//	     minimizes artifacts: the bloom ramp-up will closely match the linear ascent of additive color
+	half BloomRampSize = 2.0;
+
+	// Figure out how much luminance is beyond the bloom threshold.  Note that this value could be negative but
+	// we handle that in the next step.
+	half BloomLuminance = InLuminance - BloomScaleAndThreshold.y;
+
+	// Note that we clamp the bloom amount between 0.0 and 1.0, but pixels beyond our bloom ramp will still 
+	// bloom brighter because we'll use 100% of the original scene color as bloom
+	half BloomAmount = saturate( BloomLuminance / BloomRampSize );
+	
+	return BloomAmount;
+}
+
+
+
+/** Computes bloomed amount for the specified scene color */
+half ComputeBloomAmount( half3 InSceneColor )
+{
+	// Compute the luminance for this pixel
+	half TotalLuminance = ComputeLuminanceForBloom( InSceneColor );
+
+	return ComputeBloomAmount( InSceneColor, TotalLuminance );
+}
+
+
+
+/** Computes bloomed color for the specified scene color */
+half3 ComputeBloomColor( half3 InSceneColor, half InLuminance )
+{
+	// Multiply with the scene color to get the final bloom amount
+	return InSceneColor * ComputeBloomAmount( InSceneColor, InLuminance );
+}
+
+
+/** Computes bloomed color for the specified scene color */
+half3 ComputeBloomColor( half3 InSceneColor )
+{
+	// Multiply with the scene color to get the final bloom amount
+	return InSceneColor * ComputeBloomAmount( InSceneColor );
+}
+
+
+
+IN_VARYING_ARRAY_DEFAULT(vec4, OffsetUVs, NUM_VARYINGS, TEXCOORD0);
+
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+/**
+ * Entry point for the gather pass, which downsamples from scene color to the filter buffer. 
+ * Bloom color is stored in OutColor.rgb.
+ */
+// void MainGatherBloom()
+PIXEL_MAIN
+{
+	half3 AvgBloomColor = half3(0); 
+
+	//Go through each chunk and take samples.  NUM_SAMPLES must be a factor of 2.
+	for(int ChunkIndex = 0;ChunkIndex < NUM_SAMPLES / 2;ChunkIndex++)
+	{
+		//store UV coordinates in temporary variables to avoid compile issues
+		half2 UV1 = OffsetUVs[ChunkIndex].xy;
+		half2 UV2 = OffsetUVs[ChunkIndex].wz;
+		
+		// Sample scene color (1) and accumulate average
+		half3 SceneColorAndDepth1 = USE_SCENECOLOR(texture2D(TextureBase, UV1)).rgb;
+		
+		// Sample scene color (2) and accumulate average
+		half3 SceneColorAndDepth2 = USE_SCENECOLOR(texture2D(TextureBase, UV2)).rgb;
+
+		// The bloom color is the scaled scene color if it has a component outside the displayable range [0,1].
+		// Only bloom if (SceneColor > 1), instead of (0 > SceneColor > 1), in order to mimic XBOX behavior due to having unsigned SceneColor values
+		// this comparison is done per scene color sample to reduce aliasing on high frequency bright patterns
+
+		// Compute bloom amount (1) and accumulate average
+		AvgBloomColor += ComputeBloomColor( SceneColorAndDepth1 );
+
+		// Compute bloom amount (2) and accumulate average
+		AvgBloomColor += ComputeBloomColor( SceneColorAndDepth2 );
+	}
+
+	//normalize and scale
+	AvgBloomColor = AvgBloomColor * BloomScaleAndThreshold.x / float(NUM_SAMPLES);
+
+	//scale output down to fit in the [0-1] range of the fixed point filter buffer, alpha is unused
+	gl_FragColor = vec4(AvgBloomColor, 0.0) / MAX_SCENE_COLOR;
+}

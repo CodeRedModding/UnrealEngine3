@@ -1,16 +1,16 @@
 /*=============================================================================
 	UnDebuggerCore.cpp: Debugger Core Logic
-	Copyright 1997-2001 Epic Games, Inc. All Rights Reserved.
-
-Revision history:
-	* Created by Lucas Alonso, Demiurge Studios
-	* Revised by Ron Prestenback
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
-#include "..\Src\EnginePrivate.h"
+#include "EnginePrivate.h"
+
+#if _WINDOWS && !CONSOLE
+
 #include "UnDebuggerCore.h"
 #include "UnDebuggerInterface.h"
 #include "UnDelphiInterface.h"
+#include "UnWTInterface.h"
 #include "OpCode.h"
 
 /*-----------------------------------------------------------------------------
@@ -20,91 +20,139 @@ Revision history:
 static TCHAR GDebuggerIni[1024] = TEXT("");
 
 UDebuggerCore::UDebuggerCore()
-:	IsDebugging(0), 
-	IsClosing(0), 
+:	bIsDebugging(FALSE), 
+	bIsClosing(FALSE), 
 	CurrentState(NULL), 
 	PendingState(NULL), 
-	BreakpointManager(NULL),
+	BreakpointManager(new FBreakpointManager),
 	CallStack(NULL), 
 	Interface(NULL),
-	AccessedNone(0), 
-	BreakOnNone(0), 
-	BreakASAP(0), 
-	ProcessDebugInfo(0),
+	bAccessedNone(FALSE), 
+	bBreakOnNone(FALSE), 
+	bBreakASAP(FALSE),
+	bAttached(FALSE),
+	bProcessDebugInfo(FALSE),
 	ArrayMemberIndex(INDEX_NONE)
 {
+	GDebugger = this;
+
 	appStrcpy( GDebuggerIni, *(appGameConfigDir() + TEXT("Debugger.ini")) );
 
+	FFilename InterfaceDllName;
 	if ( !GConfig->GetString(TEXT("DEBUGGER.DEBUGGER"), TEXT("InterfaceFilename"), InterfaceDllName, GDebuggerIni) )
+	{
 		InterfaceDllName = TEXT("DebuggerInterface.dll");
+	}
 
-	if ( InterfaceDllName.Right(4) != TEXT(".dll") )
+	if ( InterfaceDllName.GetExtension() == TEXT("") )
+	{
 		InterfaceDllName += TEXT(".dll");
+	}
 
-	Interface = new DelphiInterface(*InterfaceDllName);
+	if( ParseParam(appCmdLine(),TEXT("VADEBUG")) )
+	{
+		Interface = new WTInterface(*InterfaceDllName);
+	}
+	else
+	{
+		Interface = new DelphiInterface(*InterfaceDllName);
+	}
+
 	if ( !Interface->Initialize( this ))
+	{
 		appErrorf( TEXT("Could not initialize the debugger interface!") );
+	}
 
 	DebuggerLog = new FDebuggerLog();
 	GLog->AddOutputDevice( DebuggerLog );
 
 	CallStack = new FCallStack( this );
 	ChangeState(new DSIdleState(this));
-	BreakpointManager = new FBreakpointManager();
 
 	debugf( NAME_Init, TEXT("UnrealScript Debugger Core Initialized.") );
 
 	// Init recursion limits
+	MaxObjectRecursion = 1;
+	MaxStructRecursion = INDEX_NONE;
+	MaxClassRecursion = 1;
+	MaxStaticArrayRecursion = 2;
+	MaxDynamicArrayRecursion = 1;
+
 	FString Value;
 	if ( GConfig->GetString(TEXT("DEBUGGER.RECURSION"), TEXT("OBJECTMAX"), Value, GDebuggerIni) )
+	{
 		MaxObjectRecursion = appAtoi(*Value);
-	else MaxObjectRecursion = 1;
+	}
 
 	if ( GConfig->GetString(TEXT("DEBUGGER.RECURSION"),TEXT("STRUCTMAX"),Value,GDebuggerIni) )
+	{
 		MaxStructRecursion = appAtoi(*Value);
-	else MaxStructRecursion = INDEX_NONE;
+	}
 
 	if ( GConfig->GetString(TEXT("DEBUGGER.RECURSION"),TEXT("CLASSMAX"),Value,GDebuggerIni) )
+	{
 		MaxClassRecursion = appAtoi(*Value);
-	else MaxClassRecursion = 1;
+	}
 
 	if ( GConfig->GetString(TEXT("DEBUGGER.RECURSION"),TEXT("STATICARRAYMAX"),Value,GDebuggerIni) )
+	{
 		MaxStaticArrayRecursion = appAtoi(*Value);
-	else MaxStaticArrayRecursion = 2;
+	}
 
 	if ( GConfig->GetString(TEXT("DEBUGGER.RECURSION"),TEXT("DYNAMICARRAYMAX"),Value,GDebuggerIni) )
+	{
 		MaxDynamicArrayRecursion = appAtoi(*Value);
-	else MaxDynamicArrayRecursion = 1;
+	}
 
 	CurrentObjectRecursion = CurrentStructRecursion = CurrentClassRecursion = CurrentStaticArrayRecursion = CurrentDynamicArrayRecursion = 0;
 }
 
 UDebuggerCore::~UDebuggerCore()
 {
-	debugf( NAME_Init, TEXT("UnrealScript Debugger Core Exit.") );
+	if ( DebuggerLog != NULL )
+	{
+		DebuggerLog->Logf( TEXT("UnrealScript Debugger Core Exit.") );
+	}
+	debugf( TEXT("UnrealScript Debugger Core Exit.") );
 	
-	GConfig->SetString(TEXT("DEBUGGER.RECURSION"),TEXT("OBJECTMAX"),appItoa(MaxObjectRecursion),GDebuggerIni);
-	GConfig->SetString(TEXT("DEBUGGER.RECURSION"),TEXT("STRUCTMAX"),appItoa(MaxStructRecursion),GDebuggerIni);
-	GConfig->SetString(TEXT("DEBUGGER.RECURSION"),TEXT("CLASSMAX"),appItoa(MaxClassRecursion),GDebuggerIni);
-	GConfig->SetString(TEXT("DEBUGGER.RECURSION"),TEXT("STATICARRAYMAX"),appItoa(MaxStaticArrayRecursion),GDebuggerIni);
-	GConfig->SetString(TEXT("DEBUGGER.RECURSION"),TEXT("DYNAMICARRAYMAX"),appItoa(MaxDynamicArrayRecursion),GDebuggerIni);
+	GConfig->SetString(TEXT("DEBUGGER.RECURSION"),TEXT("OBJECTMAX"),*appItoa(MaxObjectRecursion),GDebuggerIni);
+	GConfig->SetString(TEXT("DEBUGGER.RECURSION"),TEXT("STRUCTMAX"),*appItoa(MaxStructRecursion),GDebuggerIni);
+	GConfig->SetString(TEXT("DEBUGGER.RECURSION"),TEXT("CLASSMAX"),*appItoa(MaxClassRecursion),GDebuggerIni);
+	GConfig->SetString(TEXT("DEBUGGER.RECURSION"),TEXT("STATICARRAYMAX"),*appItoa(MaxStaticArrayRecursion),GDebuggerIni);
+	GConfig->SetString(TEXT("DEBUGGER.RECURSION"),TEXT("DYNAMICARRAYMAX"),*appItoa(MaxDynamicArrayRecursion),GDebuggerIni);
 	GConfig->Flush(0, GDebuggerIni);
 
-	delete CurrentState;
+	SetDebuggerClosing(TRUE);
+	if ( CurrentState )
+	{
+		delete CurrentState;
+	}
 	CurrentState = NULL;
 
-	delete PendingState;
+	if(PendingState)
+	{
+		delete PendingState;
+	}
 	PendingState = NULL;
 
-	delete BreakpointManager;
+	if(BreakpointManager)
+	{
+		delete BreakpointManager;
+	}
 	BreakpointManager = NULL;
 	
-	delete CallStack;
+	if ( CallStack )
+	{
+		delete CallStack;
+	}
 	CallStack = NULL;
 	
-	if( Interface )
+	if ( Interface )
 	{
-		Interface->Close();
+		if ( Interface->IsLoaded() )
+		{
+			Interface->Close();
+		}
 		delete Interface;
 	}
 	Interface = NULL;
@@ -114,26 +162,92 @@ UDebuggerCore::~UDebuggerCore()
 	DebuggerLog = NULL;
 }
 
-void UDebuggerCore::Close()
+/**
+ * Early initialization of the script debugger
+ */
+void UDebuggerCore::InitializeDebugger()
 {
-	if ( IsClosing )
-		return;
+	if (GDebugger)
+	{
+		appErrorf(TEXT("The debugger can only be initialized once."));
+	}
 
-	IsClosing = 1;
+	new UDebuggerCore();
+}
+
+/**
+ * Detach the UDebugger from the engine.
+ *
+ * @param	bUnbindInterfaceImmediately		specify TRUE to cleanup and unbind the interface .dll as well.  If calling this method
+ *											from the interface .dll's code, should NEVER specify TRUE.
+ */
+void UDebuggerCore::Close( UBOOL bUnbindInterfaceImmediately/*=FALSE*/ )
+{
+	if ( IsDebuggerClosing() )
+	{
+		if ( bUnbindInterfaceImmediately && Interface != NULL && Interface->IsLoaded() )
+		{
+			Interface->Close();
+		}
+		return;
+	}
+
+	bAttached = FALSE;
+	SetDebuggerClosing(TRUE);
 	if ( CallStack )
+	{
 		CallStack->Empty();
+	}
 
 	StackChanged(NULL);
 
 	if ( CurrentState )
+	{
 		CurrentState->SetCurrentNode(NULL);
+	}
 
 	ChangeState(new DSIdleState(this));
+
+	if ( bUnbindInterfaceImmediately && Interface != NULL && Interface->IsLoaded() )
+	{
+		Interface->Close();
+	}
+}
+
+FORCEINLINE void UDebuggerCore::AttachScriptDebugger( UBOOL bShouldAttach )
+{
+	const UBOOL bWasAttached = IsDebuggerAttached();
+
+	bAttached = bShouldAttach;
+	if ( bAttached )
+	{
+		SetDebuggerClosing(FALSE);
+
+		// don't process any opcodes until the beginning of the next tick
+		if ( !bWasAttached )
+		{
+			EnableDebuggerProcessing(FALSE);
+		}
+
+		if ( Interface != NULL && !Interface->IsLoaded() )
+		{
+			Interface->Initialize(this);
+		}
+	}
+	else if ( !IsDebuggerClosing() )
+	{
+		Close();
+	}
 }
 
 void UDebuggerCore::NotifyBeginTick()
 {
-	ProcessDebugInfo = 1;
+	if ( Interface != NULL )
+	{
+		Interface->NotifyBeginTick();
+	}
+
+	EnableDebuggerProcessing(TRUE);
 }
 
 void UDebuggerCore::ProcessInput( enum EUserAction UserAction )
@@ -144,8 +258,10 @@ void UDebuggerCore::ProcessInput( enum EUserAction UserAction )
 const FStackNode* UDebuggerCore::GetCurrentNode() const
 {
 	const FStackNode* Node = CurrentState ? CurrentState->GetCurrentNode() : NULL;
-	if ( !Node )
+	if ( Node == NULL )
+	{
 		Node = CallStack->GetTopNode();
+	}
 
 	return Node;
 }
@@ -156,9 +272,12 @@ void UDebuggerCore::AddWatch(const TCHAR* watchName)
 
 	FDebuggerState* State = GetCurrentState();
 
-	if ( IsDebugging && State && NewWatch )
+	if ( IsDebuggerActive() && State && NewWatch )
 	{
-		const FStackNode* Node = State->GetCurrentNode();
+		const FStackNode* Node = CallStack->Stack.IsValidIndex(CurrentStackPosition)
+			? CallStack->GetNode(CurrentStackPosition)
+			: State->GetCurrentNode();
+
 		if ( Node )
 		{
 			NewWatch->Refresh( Node->Object, Node->StackNode );
@@ -194,7 +313,9 @@ void UDebuggerCore::ClearWatches()
 void UDebuggerCore::BuildParentChain( INT WatchType, TMap<UClass*,INT>& ParentChain, UClass* BaseClass, INT ParentIndex )
 {
 	if ( !BaseClass )
+	{
 		return;
+	}
 
 	ParentChain.Empty();
 	SETPARENT(ParentChain,BaseClass,ParentIndex);
@@ -203,12 +324,23 @@ void UDebuggerCore::BuildParentChain( INT WatchType, TMap<UClass*,INT>& ParentCh
 	{
 		if ( ParentChain.Find(Parent) == NULL )
 		{
-			ParentIndex = Interface->AddAWatch( WatchType, ParentIndex, *FString::Printf(TEXT("[[ %s ]]"), Parent->GetName()), TEXT("[[ Base Class ]]") );
+			ParentIndex = Interface->AddAWatch( WatchType, ParentIndex, *FString::Printf(TEXT("[[ %s ]]"), *Parent->GetName()), TEXT("[[ Base Class ]]") );
 			SETPARENT(ParentChain,Parent,ParentIndex);
 		}
 	}
 }
-	
+
+static UBOOL IsValidObject( UObject* Obj )
+{
+	if( !Obj )
+	{
+		return 0;
+	}
+
+	UObject* IndexedObject = UObject::GetIndexedObject(Obj->GetIndex());
+	return ( IndexedObject != NULL && IndexedObject == Obj );
+}
+
 // Insert a given property into the watch window. 
 void UDebuggerCore::PropertyToWatch( UProperty* Prop, BYTE* PropAddr, UBOOL bResetIndex, INT watch, const TCHAR* PropName )
 {
@@ -218,9 +350,13 @@ void UDebuggerCore::PropertyToWatch( UProperty* Prop, BYTE* PropAddr, UBOOL bRes
 	if ( bResetIndex )
 	{
 		if ( watch == Interface->GLOBAL_WATCH )
+		{
 			BuildParentChain(watch, InheritanceChain, ((UObject*)(PropAddr - Prop->Offset))->GetClass());
+		}
 		else
+		{
 			InheritanceChain.Empty();
+		}
 	}
 
 	ArrayMemberIndex = INDEX_NONE;
@@ -234,13 +370,15 @@ void UDebuggerCore::PropertyToWatch(UProperty* Prop, BYTE* PropAddr, INT Current
 	// This SHOULD be sufficient.
 	FString VarName, VarValue;
 	if ( ArrayMemberIndex < INDEX_NONE )
+	{
 		ArrayMemberIndex = INDEX_NONE;
+	}
 
 	if ( Prop->ArrayDim > 1 && ArrayMemberIndex < 0 )
 	{
 		if ( CurrentStaticArrayRecursion < MaxStaticArrayRecursion || MaxStaticArrayRecursion == INDEX_NONE )
 		{
-			VarName = PropName ? PropName : FString::Printf( TEXT("%s ( Static %s Array )"), Prop->GetName(), GetShortName(Prop) );
+			VarName = PropName ? PropName : FString::Printf( TEXT("%s ( Static %s Array )"), *Prop->GetName(), GetShortName(Prop) );
 			VarValue = FString::Printf(TEXT("%i Elements"), Prop->ArrayDim);
 
 			INT WatchID = Interface->AddAWatch(watch, watchParent, *VarName, *VarValue);
@@ -258,28 +396,59 @@ void UDebuggerCore::PropertyToWatch(UProperty* Prop, BYTE* PropAddr, INT Current
 		return;
 	}
 
-	VarName = PropName 
-		? PropName : (ArrayMemberIndex >= 0
-		? FString::Printf(TEXT("%s[%i]"), (Prop->IsA(UDelegateProperty::StaticClass()) ? Cast<UDelegateProperty>(Prop)->Function->GetName() : Prop->GetName()), ArrayMemberIndex)
-		: (FString::Printf(TEXT("%s ( %s )"), (Prop->IsA(UDelegateProperty::StaticClass()) ? Cast<UDelegateProperty>(Prop)->Function->GetName() : Prop->GetName()), GetShortName(Prop))));
-
+	if ( PropName )
+	{
+		const TCHAR* Format = TEXT("%s ( %s,%p,%p )");
+		const TCHAR* Type = GetShortName(Prop);
+		VarName = FString::Printf( Format, PropName, Type, Prop, PropAddr );
+	}
+	else if ( ArrayMemberIndex >= 0 )
+	{
+		const TCHAR* Format = TEXT("%s[%i]");
+		FString Name = Prop->IsA(UDelegateProperty::StaticClass()) ? Cast<UDelegateProperty>(Prop)->Function->GetName() : Prop->GetName();
+		VarName = FString::Printf( Format, *Name, ArrayMemberIndex );
+	}
+	else
+	{
+		const TCHAR* Format = TEXT("%s ( %s,%p,%p )");
+		FString Name = Prop->IsA(UDelegateProperty::StaticClass()) ? Cast<UDelegateProperty>(Prop)->Function->GetName() : Prop->GetName();
+		const TCHAR* Type = GetShortName(Prop);
+		VarName = FString::Printf( Format, *Name, Type, Prop, PropAddr );
+	}
 
 	if ( Prop->IsA(UStructProperty::StaticClass()) )
+	{
 		VarValue = GetShortName(Prop);
+	}
 
 	else if ( Prop->IsA(UArrayProperty::StaticClass()) )
-		VarValue = FString::Printf(TEXT("%i %s %s"), ((FArray*)PropAddr)->Num(), GetShortName(Cast<UArrayProperty>(Prop)->Inner), ((FArray*)PropAddr)->Num() != 1 ? TEXT("Elements") : TEXT("Element"));
+	{
+		VarValue = FString::Printf(TEXT("%i %s %s"), ((FScriptArray*)PropAddr)->Num(), GetShortName(Cast<UArrayProperty>(Prop)->Inner), ((FScriptArray*)PropAddr)->Num() != 1 ? TEXT("Elements") : TEXT("Element"));
+	}
 
 	else if ( Prop->IsA(UObjectProperty::StaticClass()) )
 	{
-		if ( *(UObject**)PropAddr )
-			VarValue = (*(UObject**)PropAddr)->GetName();
-		else VarValue = TEXT("None");
+		UObject* Obj = *(UObject**)PropAddr;
+		if ( Obj )
+		{
+			if ( !IsValidObject(Obj) )
+			{
+				VarValue = TEXT("** Destroyed **");
+			}
+			else
+			{
+				VarValue = Obj->GetName();
+			}
+		}
+		else
+		{
+			VarValue = TEXT("None");
+		}
 	}
 	else
 	{
 		VarValue = TEXT("");
-		Prop->ExportTextItem( VarValue, PropAddr, PropAddr, PPF_Delimited );
+		Prop->ExportTextItem( VarValue, PropAddr, NULL, NULL, PPF_Delimited );
 	}
 
 	int ID = Interface->AddAWatch(watch, watchParent, *VarName, *VarValue);
@@ -292,7 +461,10 @@ void UDebuggerCore::PropertyToWatch(UProperty* Prop, BYTE* PropAddr, INT Current
 		// Recurse every property in this struct, and copy it's value into Result;
 		for( TFieldIterator<UProperty> It(Cast<UStructProperty>(Prop)->Struct); It; ++It )
 		{
-			if (Prop == *It) continue;
+			if (Prop == *It)
+			{
+				continue;
+			}
 
 			// Special case for nested stuff, don't leave it up to VarName/VarValue since we need to recurse
 			PropertyToWatch(*It, PropAddr + It->Offset, CurrentDepth + 1, watch, ID);
@@ -305,7 +477,9 @@ void UDebuggerCore::PropertyToWatch(UProperty* Prop, BYTE* PropAddr, INT Current
 	{
 		UClass* ClassResult = *(UClass**)PropAddr;
 		if ( !ClassResult )
+		{
 			return;
+		}
 
 		INT CurrentIndex = ArrayMemberIndex, CurrentID;
 		ArrayMemberIndex = INDEX_NONE;
@@ -317,13 +491,19 @@ void UDebuggerCore::PropertyToWatch(UProperty* Prop, BYTE* PropAddr, INT Current
 		CurrentClassRecursion++;
 		for ( TFieldIterator<UProperty> It(ClassResult); It; ++It )
 		{
-			if ( Prop == *It ) continue;
+			if ( Prop == *It )
+			{
+				continue;
+			}
 
 			PropOwner = It->GetOwnerClass();
-			if ( PropOwner == UObject::StaticClass() ) continue;
+			if ( PropOwner == UObject::StaticClass() )
+			{
+				continue;
+			}
 
 			CurrentID = GETPARENT(ParentChain,PropOwner);
-			PropertyToWatch(*It, (BYTE*) &ClassResult->Defaults(It->Offset), CurrentDepth + 1, watch, CurrentID);
+			PropertyToWatch(*It, ClassResult->GetDefaults() + It->Offset, CurrentDepth + 1, watch, CurrentID);
 		}
 		CurrentClassRecursion--;
 
@@ -334,7 +514,14 @@ void UDebuggerCore::PropertyToWatch(UProperty* Prop, BYTE* PropAddr, INT Current
 	{
 		UObject* ObjResult = *(UObject**)PropAddr;
 		if ( !ObjResult )
+		{
 			return;
+		}
+
+		if ( !IsValidObject(ObjResult) )
+		{
+			return;
+		}
 
 		INT CurrentIndex = ArrayMemberIndex, CurrentID;
 		ArrayMemberIndex = INDEX_NONE;
@@ -347,10 +534,16 @@ void UDebuggerCore::PropertyToWatch(UProperty* Prop, BYTE* PropAddr, INT Current
 		UClass* PropOwner = NULL;
 		for( TFieldIterator<UProperty> It( ObjResult->GetClass() ); It; ++It )
 		{
-			if (Prop == *It) continue;
+			if (Prop == *It)
+			{
+				continue;
+			}
 
 			PropOwner = It->GetOwnerClass();
-			if ( PropOwner == UObject::StaticClass() ) continue;
+			if ( PropOwner == UObject::StaticClass() )
+			{
+				continue;
+			}
 
 			CurrentID = GETPARENT(ParentChain,PropOwner);
 			PropertyToWatch( *It, (BYTE*)ObjResult + It->Offset, CurrentDepth + 1, watch, CurrentID );
@@ -362,7 +555,7 @@ void UDebuggerCore::PropertyToWatch(UProperty* Prop, BYTE* PropAddr, INT Current
 	else if (Prop->IsA( UArrayProperty::StaticClass() ) && (CurrentDynamicArrayRecursion < MaxDynamicArrayRecursion || MaxDynamicArrayRecursion == INDEX_NONE) )
 	{
 		const INT Size		= Cast<UArrayProperty>(Prop)->Inner->ElementSize;
-		FArray* Array		= ((FArray*)PropAddr);
+		FScriptArray* Array		= ((FScriptArray*)PropAddr);
 
 		INT CurrentIndex = ArrayMemberIndex;
 		ArrayMemberIndex = INDEX_NONE;
@@ -379,29 +572,23 @@ void UDebuggerCore::PropertyToWatch(UProperty* Prop, BYTE* PropAddr, INT Current
 	}
 }
 
-void UDebuggerCore::NotifyAccessedNone()
-{
-	AccessedNone=1;
-}
-
-void UDebuggerCore::SetBreakOnNone(UBOOL inBreakOnNone)
-{
-	BreakOnNone = inBreakOnNone;
-	AccessedNone = 0;
-}
 
 void UDebuggerCore::SetCondition( const TCHAR* ConditionName, const TCHAR* ConditionValue )
 {
-	if ( GIsRequestingExit || IsClosing )
+	if ( IsGameExiting() || IsDebuggerClosing() )
+	{
 		return;
+	}
 
 //	ChangeState( new DSCondition(this,ConditionName,ConditionValue,CurrentState) );
 }
 
 void UDebuggerCore::SetDataBreakpoint( const TCHAR* BreakpointName )
 {
-	if ( GIsRequestingExit || IsClosing )
+	if ( IsGameExiting() || IsDebuggerClosing() )
+	{
 		return;
+	}
 
 	ChangeState( new DSBreakOnChange(this,BreakpointName,CurrentState) );
 }
@@ -412,28 +599,55 @@ void UDebuggerCore::NotifyGC()
 
 UBOOL UDebuggerCore::NotifyAssertionFailed( const INT LineNumber )
 {
-	if ( GIsRequestingExit || IsClosing )
+	if ( IsGameExiting() || IsDebuggerClosing() )
+	{
 		return 0;
+	}
 
 	debugf(TEXT("Assertion failed, line %i"), LineNumber);
 
-	ChangeState( new DSWaitForInput(this), 1 );
-	return !(GIsRequestingExit || IsClosing);
+	Break();
+
+	return !(IsGameExiting() || IsDebuggerClosing());
 }
 
 UBOOL UDebuggerCore::NotifyInfiniteLoop()
 {
-	if ( GIsRequestingExit || IsClosing )
+	if ( IsGameExiting() || IsDebuggerClosing() )
+	{
 		return 0;
+	}
 
 	debugf(TEXT("Recursion limit reached...breaking UDebugger"));
 
-	ChangeState( new DSWaitForInput(this), 1 );
-	return !(GIsRequestingExit || IsClosing);
+	Break();
+
+	return !(IsGameExiting() || IsDebuggerClosing());
+}
+
+void UDebuggerCore::ChangeStack( INT StackNodeIndex )
+{
+	if ( CurrentState == NULL || !CallStack->Stack.IsValidIndex(StackNodeIndex) )
+	{
+		return;
+	}
+
+	FStackNode* Node = CallStack->GetNode(CallStack->Stack.Num() - StackNodeIndex - 1);
+	StackChanged(Node);
+	Interface->Update(	*Node->GetClass()->GetName(),
+						*Node->GetClass()->GetOuter()->GetName(),
+						Node->GetLine(),
+						Node->GetInfo(),
+						*Node->GetObject()->GetName()
+					 );
+
+	RefreshWatch( Node );
 }
 
 void UDebuggerCore::StackChanged( const FStackNode* CurrentNode )
 {
+	CurrentStackPosition = CurrentNode ? CallStack->Stack.FindItemIndex(*CurrentNode) : INDEX_NONE;
+
 	// For now, simply refresh user watches
 	// later, we can modify this to work for all watches, allowing the ability to view values from anywhere on the callstack
 
@@ -441,27 +655,31 @@ void UDebuggerCore::StackChanged( const FStackNode* CurrentNode )
 	const FFrame* Node = CurrentNode ? CurrentNode->StackNode : NULL;
 
 	for ( INT i = 0; i < Watches.Num(); i++ )
+	{
 		Watches(i).Refresh(Obj, Node);
+	}
 }
 
 // Update the interface
 void UDebuggerCore::UpdateInterface()
 {
-	if ( IsDebugging && CallStack)
+	if ( IsDebuggerActive() && CallStack)
 	{
 		const FStackNode* TopNode = CallStack->GetTopNode();
 		if ( !TopNode )
+		{
 			return;
+		}
 		
 		// Get package name
-		const TCHAR* cName = TopNode->GetClass()->GetName(),
-			*pName = TopNode->GetClass()->GetOuter()->GetName();
+		FString cName = TopNode->GetClass()->GetName(),
+				pName = TopNode->GetClass()->GetOuter()->GetName();
 
-		Interface->Update(	cName, 
-							pName,
+		Interface->Update(	*cName, 
+							*pName,
 							TopNode->GetLine(),
 							TopNode->GetInfo(),
-							TopNode->Object->GetName());
+							*TopNode->Object->GetName());
 		RefreshWatch( TopNode );
 
 		TArray<FString> StackNames;
@@ -469,7 +687,9 @@ void UDebuggerCore::UpdateInterface()
 		{
 			const FStackNode* TestNode = CallStack->GetNode(i);
 			if (TestNode && TestNode->StackNode && TestNode->StackNode->Node)
+			{
 				new(StackNames) FString( TestNode->StackNode->Node->GetFullName() );
+			}
 		}
 		Interface->UpdateCallStack( StackNames );
 	}
@@ -481,7 +701,9 @@ void UDebuggerCore::RefreshWatch( const FStackNode* CNode )
 	TArray<INT> foundWatchNamesIndicies;
 
 	if ( CNode == NULL )
+	{
 		return;
+	}
 
 	Interface->LockWatch(Interface->GLOBAL_WATCH);
 	Interface->LockWatch(Interface->LOCAL_WATCH);
@@ -497,14 +719,32 @@ void UDebuggerCore::RefreshWatch( const FStackNode* CNode )
 	// Setup the local variable watch
 	if ( Function )
 	{
+		const FFrame* StackFrame = CNode->GetFrame();
 		for ( Parm = Function->PropertyLink; Parm; Parm = Parm->PropertyLinkNext )
-			PropertyToWatch( Parm, CNode->GetFrame()->Locals + Parm->Offset, Parm == Function->PropertyLink, Interface->LOCAL_WATCH );
+		{
+			BYTE* PropertyAddress = StackFrame->Locals + Parm->Offset;
+			if ( Parm->HasAnyPropertyFlags(CPF_OutParm) && !Parm->HasAnyPropertyFlags(CPF_ReturnParm) )
+			{
+				for ( const FOutParmRec* OutParm = StackFrame->OutParms; OutParm; OutParm = OutParm->NextOutParm )
+				{
+					if ( OutParm->Property == Parm )
+					{
+						PropertyAddress = OutParm->PropAddr;
+						break;
+					}
+				}
+			}
+
+			PropertyToWatch( Parm, PropertyAddress, Parm == Function->PropertyLink, Interface->LOCAL_WATCH );
+		}
 	}
 
 	// Setup the global vars watch
-	TFieldIterator<UProperty,CLASS_IsAUProperty> PropertyIt(ContextObject->GetClass());
+	TFieldIterator<UProperty> PropertyIt(ContextObject->GetClass());
 	for( Parm = *PropertyIt; PropertyIt; ++PropertyIt )
+	{
 		PropertyToWatch( *PropertyIt, (BYTE*)ContextObject + PropertyIt->Offset, *PropertyIt == Parm, Interface->GLOBAL_WATCH );
+	}
 
 	RefreshUserWatches();
 
@@ -525,48 +765,19 @@ void UDebuggerCore::RefreshUserWatches()
 		FDebuggerWatch& Watch = Watches(i);
 
 		if ( Watch.GetWatchValue((const UProperty *&) Prop, (const BYTE *&) PropAddr, ArrayMemberIndex) )
+		{
 			PropertyToWatch(Prop, PropAddr, 0, Interface->WATCH_WATCH, INDEX_NONE, *Watch.WatchText);
-		else Interface->AddAWatch( Interface->WATCH_WATCH, -1, *Watch.WatchText, *ErrorDevice );
+		}
+		else
+		{
+			Interface->AddAWatch( Interface->WATCH_WATCH, -1, *Watch.WatchText, *ErrorDevice );
+		}
 	}
 }
 
-void UDebuggerCore::LoadEditPackages()
-{
-	TArray<FString> EditPackages;
-	TMultiMap<FString,FString>* Sec = GConfig->GetSectionPrivate( TEXT("Editor.EditorEngine"), 0, 1, GEngineIni );
-	Sec->MultiFind( FString(TEXT("EditPackages")), EditPackages );
-	TObjectIterator<UEngine> EngineIt;
-	if ( EngineIt )
-		for( INT i=0; i<EditPackages.Num(); i++ )
-		{
-			if(appStrcmp(*EditPackages(i), TEXT("UnrealEd"))) // don't load the UnrealEd 
-			{
-				if( !EngineIt->LoadPackage( NULL, *EditPackages(i), LOAD_NoWarn ) )
-					appErrorf( TEXT("Can't find edit package '%s'"), *EditPackages(i) );
-			}
-		}
-	Interface->UpdateClassTree();
-}
-
-
 UClass* UDebuggerCore::GetStackOwnerClass( const FFrame* Stack ) const
 {
-	UClass* RClass;
-	
-	// Function?
-	RClass = Cast<UClass>( Stack->Node->GetOuter() ); 
-	
-	// Nope, a state, we need to go one level higher to get the class
-	if ( RClass == NULL )
-		RClass = Cast<UClass>( Stack->Node->GetOuter()->GetOuter() );
-
-	if ( RClass == NULL )
-		RClass = Cast<UClass>( Stack->Node );
-	
-	// Make sure it's a real class
-	check(RClass!=NULL);
-
-	return RClass;
+	return Stack->Node->GetOwnerClass();
 }
 
 
@@ -578,12 +789,12 @@ UClass* UDebuggerCore::GetStackOwnerClass( const FFrame* Stack ) const
  */
 void FDebuggerLog::Serialize( const TCHAR* Msg, EName Event )
 {
-	if ( Event != NAME_Title )
+	if ( Event != NAME_Title && Event != NAME_Color )
 	{
 		UDebuggerCore* Debugger = (UDebuggerCore*)GDebugger;
 		if ( Debugger && Debugger->Interface && Debugger->Interface->IsLoaded() )
 		{
-			Debugger->Interface->AddToLog( *FString::Printf(TEXT("%s: %s"), FName::SafeString(Event), Msg) );
+			Debugger->Interface->AddToLog( *FString::Printf(TEXT("%s: %s"), *FName::SafeString(Event), Msg) );
 		}
 	}
 }
@@ -615,7 +826,7 @@ void FCallStack::Empty()
 -----------------------------------------------------------------------------*/
 
 FStackNode::FStackNode( const UObject* Debugee, const FFrame* Stack, UClass* InClass, INT CurrentDepth, INT InLineNumber, INT InPos, BYTE InCode )
-: Object(Debugee), StackNode(Stack), Class(InClass)
+: Object(Debugee), StackNode(Stack), Class(InClass), BreakpointMutex(0)
 {
 	Lines.AddItem(InLineNumber);
 	Positions.AddItem(InPos);
@@ -630,12 +841,25 @@ const TCHAR* FStackNode::GetInfo() const
 
 void FStackNode::Show() const
 {
-	debugf(TEXT("Object:%s  Class:%s  Line:%i  Code:%s"),
-		Object ? Object->GetName() : TEXT("NULL"),
-		Class  ? Class->GetName()  : TEXT("NULL"),
-		GetLine(), GetInfo());
+	debugf(TEXT("Object:%s  Class:%s  Line:%i  Pos:%i  Code:%s"),
+		Object ? *Object->GetName() : TEXT("NULL"),
+		Class  ? *Class->GetName()  : TEXT("NULL"),
+		GetLine(), GetPos(), GetInfo());
 }
 
+void FStackNode::Update( INT LineNumber, INT InputPos, BYTE OpCode, INT CurrentDepth )
+{
+	// allow breakpoints to be hit again once we move on to the next line
+	if (HasBreakpoint() && LineNumber != BreakpointMutex)
+	{
+		BreakpointMutex = 0;
+	}
+
+	Lines.AddItem(LineNumber);
+	Positions.AddItem(InputPos);
+	Depths.AddItem(CurrentDepth);
+	OpCodes.AddItem(OpCode);
+}
 /*-----------------------------------------------------------------------------
 	FDebuggerWatch
 -----------------------------------------------------------------------------*/
@@ -650,15 +874,21 @@ static TCHAR* ParseNextName( TCHAR*& o )
 	while ( c && *c )
 	{
 		if ( *c == '[' )
+		{
 			count++;
+		}
 
 		else if ( *c == ']')
+		{
 			count--;
+		}
 
 		else if ( count == 0 )
 		{
 			if ( *c == '\'' )
+			{
 				literal = !literal;
+			}
 			else if ( !literal )
 			{
 				if ( *c == '(' )
@@ -667,7 +897,9 @@ static TCHAR* ParseNextName( TCHAR*& o )
 					*o++ = 0;
 				}
 				else if ( *c == ')' )
+				{
 					*c = 0;
+				}
 
 				else if ( *c == '.' )
 				{
@@ -692,20 +924,26 @@ FDebuggerWatch::FDebuggerWatch(FStringOutputDevice& ErrorHandler, const TCHAR* W
 void FDebuggerWatch::Refresh( const UObject* CurrentObject, const FFrame* CurrentFrame )
 {
 	if ( !CurrentObject || !CurrentFrame )
+	{
 		return;
+	}
 
 	Object = CurrentObject;
 	Class = CurrentObject->GetClass();
 	Function = Cast<UFunction>(CurrentFrame->Node);
 
 	if ( WatchNode )
-		WatchNode->ResetBase(Class, Object, Function, (BYTE*)Object, CurrentFrame->Locals);
+	{
+		WatchNode->ResetBase(Class, Object, Function, (BYTE*)Object, CurrentFrame);
+	}
 }
 
 UBOOL FDebuggerWatch::GetWatchValue( const UProperty*& OutProp, const BYTE*& OutPropAddr, INT& ArrayIndexOverride )
 {
 	if ( WatchNode && WatchNode->Refresh(Class, Object, (BYTE*)Object ) )
+	{
 		return WatchNode->GetWatchValue(OutProp, OutPropAddr, ArrayIndexOverride);
+	}
 
 	return 0;
 }
@@ -713,7 +951,9 @@ UBOOL FDebuggerWatch::GetWatchValue( const UProperty*& OutProp, const BYTE*& Out
 FDebuggerWatch::~FDebuggerWatch()
 {
 	if ( WatchNode )
+	{
 		delete WatchNode;
+	}
 
 	WatchNode = NULL;
 }
@@ -749,7 +989,7 @@ UBOOL FDebuggerDataWatch::Modified() const
 -----------------------------------------------------------------------------*/
 FDebuggerWatchNode::FDebuggerWatchNode( FStringOutputDevice& ErrorHandler, const TCHAR* NodeText )
 : NextNode(NULL), ArrayNode(NULL), PropAddr(NULL), Property(NULL), GlobalData(NULL), Base(NULL), LocalData(NULL),
-  Function(NULL), TopObject(NULL), ContextObject(NULL), TopClass(NULL), ContextClass(NULL), Error(ErrorHandler)
+  Function(NULL), TopObject(NULL), ContextObject(NULL), TopClass(NULL), ContextClass(NULL), Error(ErrorHandler), ArrayIndex(INDEX_NONE)
 {
 	TCHAR* Buffer = new TCHAR [ appStrlen(NodeText) + 1 ];
 	appStrncpy(Buffer, NodeText, appStrlen(NodeText) + 1);
@@ -757,13 +997,17 @@ FDebuggerWatchNode::FDebuggerWatchNode( FStringOutputDevice& ErrorHandler, const
 	TCHAR* NodeName = Buffer;
 	TCHAR* Next = ParseNextName(NodeName);
 	if ( Next )
+	{
 		NextNode = new FDebuggerWatchNode(Error, Next);
+	}
 
 	PropertyName = NodeName;
 
 	FString ArrayDelim;
 	if ( GetArrayDelimiter(PropertyName, ArrayDelim) )
+	{
 		AddArrayNode(*ArrayDelim);
+	}
 
 	delete[] Buffer;
 }
@@ -771,10 +1015,14 @@ FDebuggerWatchNode::FDebuggerWatchNode( FStringOutputDevice& ErrorHandler, const
 FDebuggerWatchNode::~FDebuggerWatchNode()
 {
 	if ( NextNode )
+	{
 		delete NextNode;
+	}
 
 	if ( ArrayNode )
+	{
 		delete ArrayNode;
+	}
 
 	NextNode = NULL;
 	ArrayNode = NULL;
@@ -791,7 +1039,9 @@ UBOOL FDebuggerWatchNode::GetArrayDelimiter( FString& Test, FString& Result ) co
 
 		pos = Result.InStr(TEXT("]"),1);
 		if ( pos != INDEX_NONE )
+		{
 			Result = Result.Left(pos);
+		}
 	}
 
 	return Result.Len();
@@ -800,24 +1050,31 @@ UBOOL FDebuggerWatchNode::GetArrayDelimiter( FString& Test, FString& Result ) co
 void FDebuggerWatchNode::AddArrayNode( const TCHAR* ArrayText )
 {
 	if ( !ArrayText || !(*ArrayText) )
+	{
 		return;
+	}
 
 	ArrayNode = new FDebuggerArrayNode(Error, ArrayText);
 }
 
-void FDebuggerWatchNode::ResetBase( const UClass* CurrentClass, const UObject* CurrentObject, const UFunction* CurrentFunction, const BYTE* CurrentBase, const BYTE* CurrentLocals )
+void FDebuggerWatchNode::ResetBase( const UClass* CurrentClass, const UObject* CurrentObject, const UFunction* CurrentFunction, const BYTE* CurrentBase, const FFrame* CurrentFrame )
 {
 	TopClass   = CurrentClass;
 	TopObject  = CurrentObject;
 	Function   = CurrentFunction;
+	StackFrame = CurrentFrame;
 	GlobalData = CurrentBase;
-	LocalData  = CurrentLocals;
+	LocalData  = CurrentFrame->Locals;
 
 	if ( NextNode )
-		NextNode->ResetBase(CurrentClass, CurrentObject, CurrentFunction, CurrentBase, CurrentLocals);
+	{
+		NextNode->ResetBase(CurrentClass, CurrentObject, CurrentFunction, CurrentBase, CurrentFrame);
+	}
 
 	if ( ArrayNode )
-		ArrayNode->ResetBase(CurrentClass, CurrentObject, CurrentFunction, CurrentBase, CurrentLocals);
+	{
+		ArrayNode->ResetBase(CurrentClass, CurrentObject, CurrentFunction, CurrentBase, CurrentFrame);
+	}
 }
 
 UBOOL FDebuggerWatchNode::Refresh( const UStruct* RelativeClass, const UObject* RelativeObject, const BYTE* Data )
@@ -829,10 +1086,14 @@ UBOOL FDebuggerWatchNode::Refresh( const UStruct* RelativeClass, const UObject* 
 
 	if ( !Data )
 	{
-		if ( appIsDebuggerPresent() )
+		if ( IsDebuggerPresent() )
+		{
 			appDebugBreak();
+		}
 		else
-			appErrorf(NAME_FriendlyError, TEXT("Corrupted data found in user watch %s (class:%s function:%s)"), *PropertyName, ContextClass->GetName(), Function->GetName());
+		{
+			appErrorf(NAME_FriendlyError, TEXT("Corrupted data found in user watch %s (class:%s function:%s)"), *PropertyName, *ContextClass->GetName(), *Function->GetName());
+		}
 
 		return 0;
 	}
@@ -846,14 +1107,32 @@ UBOOL FDebuggerWatchNode::Refresh( const UStruct* RelativeClass, const UObject* 
 		// Current context is the current function - allow searching the local parameters for properties
 		Property = FindField<UProperty>( const_cast<UFunction*>(Function), *PropertyName);
 		if ( Property )
-			PropAddr = LocalData + Property->Offset;
+		{
+			if (Property->PropertyFlags & CPF_OutParm)
+			{
+				for (const FOutParmRec* OutParm = StackFrame->OutParms; OutParm != NULL; OutParm = OutParm->NextOutParm)
+				{
+					if (OutParm->Property == Property)
+					{
+						PropAddr = OutParm->PropAddr;
+						break;
+					}
+				}
+			}
+			else
+			{
+				PropAddr = LocalData + Property->Offset;
+			}
+		}
 	}
 
 	if ( !Property )
 	{
 		Property = FindField<UProperty>( const_cast<UStruct*>(ContextClass), *PropertyName);
 		if ( Property )
+		{
 			PropAddr = Base + Property->Offset;
+		}
 	}
 
 /*	if ( !Property )
@@ -870,12 +1149,14 @@ UBOOL FDebuggerWatchNode::Refresh( const UStruct* RelativeClass, const UObject* 
 
 	if ( !Property )
 	{
-		Error.Logf(TEXT("Member '%s' couldn't be found in local or global scope '%s'"), *PropertyName, ContextClass->GetName());
+		Error.Logf(TEXT("Member '%s' couldn't be found in local or global scope '%s'"), *PropertyName, *ContextClass->GetName());
 		return 0;
 	}
 
 	if ( ArrayIndex < INDEX_NONE )
+	{
 		return 0;
+	}
 
 	return 1;
 }
@@ -883,7 +1164,9 @@ UBOOL FDebuggerWatchNode::Refresh( const UStruct* RelativeClass, const UObject* 
 INT FDebuggerWatchNode::GetArrayIndex() const
 {
 	if ( ArrayNode )
+	{
 		return ArrayNode->GetArrayIndex();
+	}
 
 	return INDEX_NONE;
 }
@@ -891,20 +1174,16 @@ INT FDebuggerWatchNode::GetArrayIndex() const
 
 // ArrayIndexOverride is to prevent PropertyToWatch from incorrectly interpreting individual elements of static arrays as the entire array
 
-UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*& OutPropAddr, INT& ArrayIndexOverride )
+UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*& OutPropAddr, INT& ArrayIndexOverride ) const
 {
 	if ( Property == NULL )
 	{
-//		if ( PropAddr == NULL )
-//		{
-			Error.Logf(TEXT("Member '%s' couldn't be found in local or global scope '%s'"), *PropertyName, ContextClass->GetName());
-			return 0;
-//		}
-	}
-	
+		Error.Logf(TEXT("Member '%s' couldn't be found in local or global scope '%s'"), *PropertyName, *ContextClass->GetName());
+		return 0;
+	}	
 	else if ( PropAddr == NULL )
 	{
-		Error.Logf(TEXT("Member '%s' couldn't be found in local or global scope '%s'"), *PropertyName, ContextClass->GetName());
+		Error.Logf(TEXT("Member '%s' couldn't be found in local or global scope '%s'"), *PropertyName, *ContextClass->GetName());
 		return 0;
 	}
 
@@ -919,13 +1198,23 @@ UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*&
 		{
 			ArrayProperty = ConstCast<UArrayProperty>(Property);
 			if ( !ArrayProperty )
+			{
 				StructProperty = ConstCast<UStructProperty>(Property);
+			}
 		}
 	}
 
 	if ( ObjProperty )
 	{
-		const BYTE* Data = PropAddr + Max(ArrayIndex,0) * Property->ElementSize;
+		INT Index = Max(ArrayIndex,0);
+
+		if ( Index >= ObjProperty->ArrayDim )
+		{
+			Error.Logf(TEXT("Index (%i) out of bounds: %s array only has %i elements"), Index, *ObjProperty->GetName(), ObjProperty->ArrayDim);
+			return 0;
+		}
+
+		const BYTE* Data = PropAddr + Max(ArrayIndex, 0) * Property->ElementSize;
 		const UObject* Obj = *(UObject**)Data;
 
 		if ( NextNode )
@@ -937,7 +1226,9 @@ UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*&
 			}
 
 			if ( !NextNode->Refresh( Obj ? Obj->GetClass() : ObjProperty->PropertyClass, Obj, (BYTE*)Obj ) )
+			{
 				return 0;
+			}
 
 			return NextNode->GetWatchValue( OutProp, OutPropAddr, ArrayIndexOverride );
 		}
@@ -950,7 +1241,14 @@ UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*&
 
 	else if ( ClassProperty )
 	{
-		const BYTE* Data = PropAddr + Max(ArrayIndex,0) * Property->ElementSize;
+		INT Index = Max(ArrayIndex,0);
+		if ( Index >= ClassProperty->ArrayDim )
+		{
+			Error.Logf(TEXT("Index (%i) out of bounds: %s array only has %i elements"), Index, *ClassProperty->GetName(), ClassProperty->ArrayDim);
+			return 0;
+		}
+
+		const BYTE* Data = PropAddr + Index * Property->ElementSize;
 		UClass* Cls = *(UClass**)Data;
 		if ( NextNode )
 		{
@@ -960,8 +1258,10 @@ UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*&
 				return 0;
 			}
 
-			if ( !NextNode->Refresh( Cls ? Cls : ClassProperty->MetaClass, Cls ? Cls->GetDefaultObject() : NULL, (BYTE*)&Cls->Defaults(0)) )
+			if ( !NextNode->Refresh(Cls ? Cls : ClassProperty->MetaClass, Cls ? Cls->GetDefaultObject() : NULL, Cls->GetDefaults()) )
+			{
 				return 0;
+			}
 
 			return NextNode->GetWatchValue( OutProp, OutPropAddr, ArrayIndexOverride );
 		}
@@ -974,14 +1274,23 @@ UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*&
 
 	else if ( StructProperty )
 	{
-		const BYTE* Data = PropAddr + Max(ArrayIndex,0) * Property->ElementSize;
+		INT Index = Max(ArrayIndex,0);
+		if ( Index >= StructProperty->ArrayDim )
+		{
+			Error.Logf(TEXT("Index (%i) out of bounds: %s array only has %i elements"), Index, *StructProperty->GetName(), StructProperty->ArrayDim);
+			return 0;
+		}
+
+		const BYTE* Data = PropAddr + Index * Property->ElementSize;
 		UStruct* Struct = StructProperty->Struct;
 		if ( Struct )
 		{
 			if ( NextNode )
 			{
 				if ( !NextNode->Refresh( Struct, ContextObject, Data ) )
+				{
 					return 0;
+				}
 
                 return NextNode->GetWatchValue(OutProp, OutPropAddr, ArrayIndexOverride);
 			}
@@ -992,13 +1301,13 @@ UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*&
 			return 1;
 		}
 
-		Error.Logf(TEXT("No data could be found for struct '%s'"), Property->GetName());
+		Error.Logf(TEXT("No data could be found for struct '%s'"), *Property->GetName());
 		return 0;
 	}
 
 	else if ( ArrayProperty )
 	{
-		const FArray* Array = (FArray*)PropAddr;
+		const FScriptArray* Array = (FScriptArray*)PropAddr;
 		if ( Array )
 		{
 			// If the array index is -1, then we want the entire array, not just a single element
@@ -1006,7 +1315,7 @@ UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*&
 			{
 				if ( ArrayIndex < 0 || ArrayIndex >= Array->Num() )
 				{
-					Error.Logf(TEXT("Index (%i) out of bounds: %s array only has %i element%s"), ArrayIndex, Property->GetName(), Array->Num(), Array->Num() == 1 ? TEXT("") : TEXT("s"));
+					Error.Logf(TEXT("Index (%i) out of bounds: %s array only has %i element%s"), ArrayIndex, *Property->GetName(), Array->Num(), Array->Num() == 1 ? TEXT("") : TEXT("s"));
 					return 0;
 				}
 
@@ -1017,25 +1326,28 @@ UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*&
 				{
 					ObjProperty = Cast<UObjectProperty>(ArrayProperty->Inner);
 					if ( !ObjProperty )
-                        StructProperty = ConstCast<UStructProperty>(ArrayProperty->Inner);
+					{
+						StructProperty = ConstCast<UStructProperty>(ArrayProperty->Inner);
+					}
 				}
 
 				if ( ObjProperty )
 				{
-					const BYTE* Data = ((BYTE*)Array->GetData() + ArrayIndex * ObjProperty->ElementSize);
-					const UObject* Obj = *(UObject**) Data;
+					UObject* Obj = *(UObject**)((BYTE*)Array->GetData() + ArrayIndex * ObjProperty->ElementSize);
 
 					// object is none
 					if ( NextNode )
 					{
 						if ( !NextNode->Refresh( Obj ? Obj->GetClass() : ObjProperty->PropertyClass, Obj, (BYTE*)Obj ) )
+						{
 							return 0;
+						}
 
 						return NextNode->GetWatchValue( OutProp, OutPropAddr, ArrayIndexOverride );
 					}
 
 					OutProp = ObjProperty;
-					OutPropAddr = Data;
+					OutPropAddr = (BYTE*)Array->GetData() + ArrayIndex * ObjProperty->ElementSize;
 					ArrayIndexOverride = ArrayIndex;
 					return 1;
 				}
@@ -1047,8 +1359,10 @@ UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*&
 
 					if ( NextNode )
 					{
-						if ( !NextNode->Refresh( Cls ? Cls : ClassProperty->MetaClass, Cls ? Cls->GetDefaultObject() : NULL, Cls ? (BYTE*)&Cls->Defaults(0) : NULL ) )
+						if ( !NextNode->Refresh( Cls ? Cls : ClassProperty->MetaClass, Cls ? Cls->GetDefaultObject() : NULL, Cls ? Cls->GetDefaults() : NULL ) )
+						{
 							return 0;
+						}
 
 						return NextNode->GetWatchValue(OutProp, OutPropAddr, ArrayIndexOverride);
 					}
@@ -1068,7 +1382,9 @@ UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*&
 						if ( NextNode )
 						{
 							if ( !NextNode->Refresh( Struct, NULL, Data ) )
+							{
 								return 0;
+							}
 
 							return NextNode->GetWatchValue(OutProp, OutPropAddr, ArrayIndexOverride);
 						}
@@ -1079,7 +1395,7 @@ UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*&
 						return 1;
 					}
 
-					Error.Logf(TEXT("No data could be found for struct '%s'"), StructProperty->GetName());
+					Error.Logf(TEXT("No data could be found for struct '%s'"), *StructProperty->GetName());
 					return 0;
 				}
 
@@ -1095,7 +1411,7 @@ UBOOL FDebuggerWatchNode::GetWatchValue( const UProperty*& OutProp, const BYTE*&
 
 		else
 		{
-			Error.Logf(TEXT("No data could be found for array '%s'"), Property->GetName());
+			Error.Logf(TEXT("No data could be found for array '%s'"), *Property->GetName());
 			return 0;
 		}
 	}
@@ -1120,7 +1436,7 @@ FDebuggerArrayNode::~FDebuggerArrayNode()
 {
 }
 
-void FDebuggerArrayNode::ResetBase( const UClass* CurrentClass, const UObject* CurrentObject, const UFunction* CurrentFunction, const BYTE* CurrentBase, const BYTE* CurrentLocals )
+void FDebuggerArrayNode::ResetBase( const UClass* CurrentClass, const UObject* CurrentObject, const UFunction* CurrentFunction, const BYTE* CurrentBase, const FFrame* CurrentFrame )
 {
 	Value = INDEX_NONE;
 
@@ -1130,15 +1446,17 @@ void FDebuggerArrayNode::ResetBase( const UClass* CurrentClass, const UObject* C
 		return;
 	}
 
-	FDebuggerWatchNode::ResetBase(CurrentClass, CurrentObject, CurrentFunction, CurrentBase, CurrentLocals);
+	FDebuggerWatchNode::ResetBase(CurrentClass, CurrentObject, CurrentFunction, CurrentBase, CurrentFrame);
 	Refresh(CurrentClass, CurrentObject, CurrentBase);
 }
 
-INT FDebuggerArrayNode::GetArrayIndex()
+INT FDebuggerArrayNode::GetArrayIndex() const
 {
 	// if the property is simply a number, just return that
 	if ( Value != INDEX_NONE && PropertyName.IsNumeric() )
+	{
 		return Value;
+	}
 
 	const UProperty* Prop = NULL;
 	const BYTE* Data = NULL;
@@ -1149,10 +1467,13 @@ INT FDebuggerArrayNode::GetArrayIndex()
 		FString Buffer = TEXT("");
 
 		// Must const_cast here because ExportTextItem isn't made const even though it doesn't modify the property value.
-		Prop->ExportTextItem(Buffer, const_cast<BYTE*>(Data), NULL, NULL);
+		Prop->ExportTextItem(Buffer, const_cast<BYTE*>(Data), NULL, NULL, 0);
 		Value = appAtoi(*Buffer);
 	}
-	else return INDEX_NONE - 1;
+	else
+	{
+		return INDEX_NONE - 1;
+	}
 
 	return Value;
 }
@@ -1188,7 +1509,9 @@ void FBreakpointManager::SetBreakpoint( const TCHAR* sClassName, INT sLine )
 	for(int i=0;i<Breakpoints.Num();i++)
 	{
 		if ( Breakpoints(i).ClassName == sClassName && Breakpoints(i).Line == sLine )
+		{
 			return;
+		}
 	}
 
 	new(Breakpoints) FBreakpoint( sClassName, sLine );
@@ -1211,11 +1534,13 @@ void FBreakpointManager::RemoveBreakpoint( const TCHAR* sClassName, INT sLine )
 -----------------------------------------------------------------------------*/
 
 FDebuggerState::FDebuggerState(UDebuggerCore* const inDebugger)
-: CurrentNode(NULL), Debugger(inDebugger), LineNumber(INDEX_NONE), EvalDepth(Debugger->CallStack->StackDepth)
+: CurrentNode(NULL), Debugger(inDebugger), LineNumber(INDEX_NONE), EvalDepth(inDebugger->CallStack->StackDepth)
 {
 	const FStackNode* Node = Debugger->GetCurrentNode();
 	if ( Node )	
+	{
 		LineNumber = Node->GetLine();
+	}
 }
 
 FDebuggerState::~FDebuggerState()
@@ -1224,11 +1549,14 @@ FDebuggerState::~FDebuggerState()
 
 void FDebuggerState::UpdateStackInfo( const FStackNode* CNode )
 {
-	if ( Debugger != NULL && ((Debugger->IsDebugging && CNode != GetCurrentNode()) || (CNode == NULL)) )
+	if ( Debugger != NULL
+	&& ((Debugger->IsDebuggerActive() && CNode != GetCurrentNode()) || (CNode == NULL)) )
 	{
 		Debugger->StackChanged(CNode);
 		if ( CNode == NULL )
-			Debugger->IsDebugging = 0;
+		{
+			Debugger->ActivateDebugger(FALSE);
+		}
 	}
 
 	SetCurrentNode(CNode);
@@ -1241,19 +1569,19 @@ void FDebuggerState::UpdateStackInfo( const FStackNode* CNode )
 DSIdleState::DSIdleState(UDebuggerCore* const inDebugger)
 : FDebuggerState(inDebugger)
 {
-	Debugger->IsDebugging = 0;
+	Debugger->ActivateDebugger(FALSE);
 }
 
 DSWaitForInput::DSWaitForInput(UDebuggerCore* const inDebugger)
-: FDebuggerState(inDebugger)
+: FDebuggerState(inDebugger), bContinue(FALSE)
 {
-	Debugger->IsDebugging = 1;
+	Debugger->ActivateDebugger(TRUE);
 }
 
 DSWaitForCondition::DSWaitForCondition(UDebuggerCore* const inDebugger)
 : FDebuggerState(inDebugger)
 {
-	Debugger->IsDebugging = 0;
+	Debugger->ActivateDebugger(FALSE);
 }
 
 DSBreakOnChange::DSBreakOnChange( UDebuggerCore* const inDebugger, const TCHAR* WatchText, FDebuggerState* NewState )
@@ -1270,7 +1598,9 @@ DSBreakOnChange::DSBreakOnChange( UDebuggerCore* const inDebugger, const TCHAR* 
 DSBreakOnChange::~DSBreakOnChange()
 {
 	if ( SubState )
+	{
 		delete SubState;
+	}
 
 	SubState = NULL;
 }
@@ -1299,15 +1629,21 @@ DSStepOverStack::DSStepOverStack( const UObject* inObject, UDebuggerCore* const 
 void DSBreakOnChange::SetCurrentNode( const FStackNode* Node )
 {
 	if ( SubState )
+	{
 		SubState->SetCurrentNode(Node);
+	}
 	else 
+	{
 		DSWaitForCondition::SetCurrentNode(Node);
+	}
 }
 
 FDebuggerState* DSBreakOnChange::GetCurrent()
 {
 	if ( SubState )
+	{
 		return SubState->GetCurrent();
+	}
 
 	return FDebuggerState::GetCurrent();
 }
@@ -1315,7 +1651,9 @@ FDebuggerState* DSBreakOnChange::GetCurrent()
 const FStackNode* DSBreakOnChange::GetCurrentNode() const
 {
 	if ( SubState )
+	{
 		return SubState->GetCurrentNode();
+	}
 
 	return FDebuggerState::GetCurrentNode();
 }
@@ -1323,12 +1661,16 @@ const FStackNode* DSBreakOnChange::GetCurrentNode() const
 UBOOL DSBreakOnChange::InterceptNewState( FDebuggerState* NewState )
 {
 	if ( !NewState )
+	{
 		return 0;
+	}
 
 	if ( SubState )
 	{
 		if ( SubState->InterceptNewState(NewState) )
+		{
 			return 1;
+		}
 
 		delete SubState;
 	}
@@ -1340,10 +1682,14 @@ UBOOL DSBreakOnChange::InterceptNewState( FDebuggerState* NewState )
 UBOOL DSBreakOnChange::InterceptOldState( FDebuggerState* OldState )
 {
 	if ( !OldState || !SubState || OldState == this )
+	{
 		return 0;
+	}
 
 	if ( SubState && SubState->InterceptOldState(OldState) )
+	{
 		return 1;
+	}
 
 	return OldState == SubState;
 }
@@ -1354,7 +1700,9 @@ UBOOL DSBreakOnChange::InterceptOldState( FDebuggerState* OldState )
 void DSBreakOnChange::HandleInput( EUserAction Action )
 {
 	if ( Action >= UA_MAX )
+	{
 		appErrorf(NAME_FriendlyError, TEXT("Invalid UserAction received by HandleInput()!"));
+	}
 
 	if ( Action != UA_Exit && Action != UA_None && bDataBreak )
 	{
@@ -1363,12 +1711,13 @@ void DSBreakOnChange::HandleInput( EUserAction Action )
 
 	bDataBreak = 0;
 	if ( SubState )
+	{
 		SubState->HandleInput(Action);
+	}
 }
 
 void DSWaitForInput::HandleInput( EUserAction UserInput ) 
 {
-	ContinueExecution();
 	switch ( UserInput )
 	{
 	case UA_RunToCursor:
@@ -1379,15 +1728,15 @@ void DSWaitForInput::HandleInput( EUserAction UserInput )
 		if ( sel.cpMax != sel.cpMin )
 		{
 
-		//appMsgf(0,TEXT("Invalid cursor position"));			
+		//appMsgf(0,*LocalizeUnrealEd("Error_InvalidCursorPosition"));			
 			return;
 		}
 		Parent->ChangeState( new DSRunToCursor( sel.cpMax, Parent->GetCallStack()->GetStackDepth() ) );*/
-		Debugger->IsDebugging = 0;
+		Debugger->ActivateDebugger(FALSE);
 		break;
 	case UA_Exit:
 		GIsRequestingExit = 1;
-		Debugger->Close();
+		Debugger->Close(FALSE);
 		break;
 	case UA_StepInto:
 		Debugger->ChangeState( new DSStepInto(Debugger) );
@@ -1408,7 +1757,7 @@ void DSWaitForInput::HandleInput( EUserAction UserInput )
 
 		}*/
 		debugf(TEXT("Warning: UA_StepOver currently unimplemented"));
-//		Debugger->IsDebugging = 1;
+//		Debugger->ActivateDebugger(TRUE);
 		break;
 	case UA_StepOverStack:
 		{
@@ -1428,6 +1777,8 @@ void DSWaitForInput::HandleInput( EUserAction UserInput )
 		Debugger->ChangeState( new DSIdleState(Debugger) );
 		break;
 	}
+
+	ContinueExecution();
 }
 
 /*-----------------------------------------------------------------------------
@@ -1435,20 +1786,25 @@ void DSWaitForInput::HandleInput( EUserAction UserInput )
 -----------------------------------------------------------------------------*/
 void FDebuggerState::Process( UBOOL bOptional )
 {
-	if ( !Debugger->IsClosing && Debugger->CallStack->StackDepth && EvaluateCondition(bOptional) )
+	if ( !Debugger->IsDebuggerClosing() && Debugger->GetCallStack()->GetStackDepth() > 0 && EvaluateCondition(bOptional) )
+	{
 		Debugger->Break();
+	}
 }
 
 void DSWaitForInput::Process(UBOOL bOptional) 
 {
-	if( Debugger->IsClosing )
+	if( Debugger->IsDebuggerClosing() )
+	{
 		return;
+	}
 
-	Debugger->AccessedNone = 0;
-	Debugger->BreakASAP = 0;
+//	debugf(TEXT("DSWaitForInput entering message loop!"));
+	Debugger->SetAccessedNone(FALSE);
+	Debugger->SetBreakASAP(FALSE);
 
 	Debugger->UpdateInterface();
-	bContinue = 0;
+	ContinueExecution(FALSE);
 
 	Debugger->GetInterface()->Show();
 
@@ -1462,21 +1818,22 @@ void DSWaitForCondition::Process(UBOOL bOptional)
 	const FStackNode* Node = GetCurrentNode();
 	check(Node);
 
-	if ( !Debugger->IsClosing && Debugger->CallStack->StackDepth && EvaluateCondition(bOptional) )
+	if ( !Debugger->IsDebuggerClosing() && Debugger->GetCallStack()->GetStackDepth() > 0 && Node->GetLine() > 0 && EvaluateCondition(bOptional) )
 	{
-		// Condition was MET. We now delegate control to a
-		// user-controlled state.
-		if ( Node && Node->StackNode && Node->StackNode->Node &&
-			 Node->StackNode->Node->IsA(UClass::StaticClass()) )
+		// Condition was MET. We now delegate control to a user-controlled state.
+		if ( Node && Node->StackNode && Node->StackNode->Node && Node->StackNode->Node->IsA(UClass::StaticClass()) )
 		{
-			if ( appIsDebuggerPresent() )
-				appDebugBreak();
-
 			return;
 		}
 
 		Debugger->Break();
 	}
+// #if _DEBUG
+// 	else
+// 	{
+// 		Node->Show();
+// 	}
+// #endif
 }
 
 void DSBreakOnChange::Process(UBOOL bOptional)
@@ -1486,13 +1843,14 @@ void DSBreakOnChange::Process(UBOOL bOptional)
 	const FStackNode* Node = GetCurrentNode();
 	check(Node);
 
-	if ( !Debugger->IsClosing && Debugger->CallStack->StackDepth && EvaluateCondition(bOptional) )
+	if ( !Debugger->IsDebuggerClosing() && Debugger->GetCallStack()->GetStackDepth() > 0 && EvaluateCondition(bOptional) )
 	{
-		if ( Node && Node->StackNode && Node->StackNode->Node &&
-			 Node->StackNode->Node->IsA(UClass::StaticClass()) )
+		if ( Node && Node->StackNode && Node->StackNode->Node && Node->StackNode->Node->IsA(UClass::StaticClass()) )
 		{
-			if ( appIsDebuggerPresent() )
+			if ( IsDebuggerPresent() )
+			{
 				appDebugBreak();
+			}
 
 			return;
 		}
@@ -1503,16 +1861,23 @@ void DSBreakOnChange::Process(UBOOL bOptional)
 	}
 
 	if ( SubState )
+	{
 		SubState->Process(bOptional);
+	}
 }
 
 void DSWaitForInput::PumpMessages() 
 {
-	while( !bContinue && !Debugger->IsClosing && !GIsRequestingExit )
+	while( !bContinue && !Debugger->IsDebuggerClosing() && !GIsRequestingExit )
 	{
-		check(GEngine->Client);
-		GEngine->Client->AllowMessageProcessing( FALSE );
-
+		if ( GEngine )
+		{
+			//Debugging commandlets don't have clients
+			if (GEngine->Client)
+			{
+				GEngine->Client->AllowMessageProcessing( FALSE );
+			}
+		}
 		MSG Msg;
 		while( PeekMessageW(&Msg,NULL,0,0,PM_REMOVE) )
 		{
@@ -1526,28 +1891,38 @@ void DSWaitForInput::PumpMessages()
 			DispatchMessageW( &Msg );
 		}
 
-		GEngine->Client->AllowMessageProcessing( TRUE );
+		if ( GEngine )
+		{
+			//Debugging commandlets don't have clients
+			if (GEngine->Client)
+			{
+				GEngine->Client->AllowMessageProcessing( TRUE );
+			}
+		}
 	}
 }
 
-void DSWaitForInput::ContinueExecution() 
+void DSWaitForInput::ContinueExecution( UBOOL bShouldContinue/*=TRUE*/ ) 
 {
-	bContinue = TRUE;
+	bContinue = bShouldContinue;
 }
 
 UBOOL FDebuggerState::EvaluateCondition( UBOOL bOptional )
 {
 	const FStackNode* Node = GetCurrentNode();
 	check(Node);
-	check(Debugger->CallStack->StackDepth);
+	check(Debugger->GetCallStack()->GetStackDepth() > 0);
 	check(Debugger);
 	check(Debugger->BreakpointManager);
-	check(!Debugger->IsClosing);
+	check(!Debugger->IsDebuggerClosing());
 
 	// Check if we've hit a breakpoint
 	INT Line = Node->GetLine();
-	if ( /*Line != LineNumber && */Debugger->BreakpointManager->QueryBreakpoint(*Debugger->GetStackOwnerClass(Node->StackNode)->GetPathName(), Line) )
+	if ( !Node->HasBreakpoint() && Debugger->BreakpointManager->QueryBreakpoint(*Debugger->GetStackOwnerClass(Node->StackNode)->GetPathName(), Line) )
+	{
+		const_cast<FStackNode*>(Node)->SetBreakpoint(Line);
 		return 1;
+	}
 
 	return 0;
 }
@@ -1565,13 +1940,15 @@ UBOOL DSRunToCursor::EvaluateCondition(UBOOL bOptional)
 UBOOL DSStepOut::EvaluateCondition(UBOOL bOptional)
 {
 	check(Debugger->CallStack->StackDepth);
-	check(!Debugger->IsClosing);
+	check(!Debugger->IsDebuggerClosing());
 
 	const FStackNode* Node = GetCurrentNode();
 	check(Node);
 
 	if ( Debugger->CallStack->StackDepth >= EvalDepth )
+	{
 		return FDebuggerState::EvaluateCondition(bOptional);
+	}
 
 	// ?! Is this the desired result?
 	// This seems like it could possibly result in the udebugger skipping a function while stepping out, if the
@@ -1583,7 +1960,9 @@ UBOOL DSStepOut::EvaluateCondition(UBOOL bOptional)
 	}
 	else*/ 
 	if ( Debugger->CallStack->StackDepth < EvalDepth )
+	{
 		return 1;
+	}
 
     return DSWaitForCondition::EvaluateCondition(bOptional);
 }
@@ -1591,7 +1970,7 @@ UBOOL DSStepOut::EvaluateCondition(UBOOL bOptional)
 UBOOL DSStepInto::EvaluateCondition(UBOOL bOptional)
 {
 	check(Debugger->CallStack->StackDepth);
-	check(!Debugger->IsClosing);
+	check(!Debugger->IsDebuggerClosing());
 	const FStackNode* Node = GetCurrentNode();
 	check(Node);
 
@@ -1601,16 +1980,20 @@ UBOOL DSStepInto::EvaluateCondition(UBOOL bOptional)
 UBOOL DSStepOverStack::EvaluateCondition(UBOOL bOptional)
 {
 	check(Debugger->CallStack->StackDepth);
-	check(!Debugger->IsClosing);
+	check(!Debugger->IsDebuggerClosing());
 	const FStackNode* Node = GetCurrentNode();
 	check(Node);
 
 	if ( Debugger->CallStack->StackDepth != EvalDepth || Node->GetLine() != LineNumber )
 	{
 		if ( Debugger->CallStack->StackDepth < EvalDepth )
+		{
 			return 1;
+		}
 		if ( Debugger->CallStack->StackDepth == EvalDepth )
+		{
 			return !bOptional;
+		}
 		return FDebuggerState::EvaluateCondition(bOptional);
 	}
 	return 0;
@@ -1630,7 +2013,9 @@ UBOOL DSBreakOnChange::EvaluateCondition( UBOOL bOptional )
 	}
 
 	if ( SubState )
+	{
 		return SubState->EvaluateCondition(bOptional);
+	}
 
 	return DSWaitForCondition::EvaluateCondition(bOptional);
 }
@@ -1641,13 +2026,16 @@ UBOOL DSBreakOnChange::EvaluateCondition( UBOOL bOptional )
 void UDebuggerCore::ChangeState( FDebuggerState* NewState, UBOOL bImmediately )
 {
 	if( PendingState )
+	{
 		delete PendingState;
+	}
 
 	PendingState = NewState ? NewState : NULL;
 	if ( bImmediately && PendingState )
 	{
-		AccessedNone = 0;
-		BreakASAP = 0;
+		SetAccessedNone(FALSE);
+		SetBreakASAP(FALSE);
+
 		PendingState->UpdateStackInfo(CurrentState ? CurrentState->GetCurrentNode() : NULL);
 		ProcessPendingState();
 		CurrentState->Process();
@@ -1667,7 +2055,9 @@ void UDebuggerCore::ProcessPendingState()
 			}
 
 			if ( !PendingState->InterceptOldState(CurrentState) )
+			{
 				delete CurrentState;
+			}
 		}
 
 		CurrentState = PendingState;
@@ -1676,222 +2066,470 @@ void UDebuggerCore::ProcessPendingState()
 }
 
 // Main debugger entry point
-void UDebuggerCore::DebugInfo( const UObject* Debugee, const FFrame* Stack, BYTE OpCode, INT LineNumber, INT InputPos )
+void UDebuggerCore::DebugInfo( const UObject* Debugee, const FFrame* CurrentFrame, BYTE OpCode, INT LineNumber, INT InputPos )
 {
-	if( !ProcessDebugInfo )
+	UBOOL bIsReleaseScript = false;
+
+	UClass* OwnerClass = this->GetStackOwnerClass(CurrentFrame);
+	if ( OwnerClass )
+	{
+		UPackage* OwnerPackage = OwnerClass->GetOutermost();
+		bIsReleaseScript = (OwnerPackage->PackageFlags & PKG_ContainsDebugInfo) != PKG_ContainsDebugInfo;
+	}
+
+	if ( bIsReleaseScript && OpCode != DI_PrevStackState )
+	{
 		return;
+	}
+
+	UBOOL bAllowDetach = FALSE;
+	UBOOL bIsDebuggerReady = Interface->NotifyDebugInfo( &bAllowDetach );
+
+	if ( bIsDebuggerReady && !bAllowDetach )
+	{
+		bAttached = TRUE;
+		bIsClosing = FALSE;
+	}
+	else if ( !bAllowDetach )
+	{
+		// prevent the call to Interface->Close()
+		if ( !IsDebuggerProcessingEnabled() || !IsDebuggerAttached() )
+		{
+			return;
+		}
+	}
+
+	if ( !IsDebuggerProcessingEnabled() || !IsDebuggerAttached() )
+	{
+		if ( !IsDebuggerAttached() && Interface != NULL && Interface->IsLoaded() )
+		{
+			Interface->Close();
+		}
+		return;
+	}
 
 	// Weird Devastation fix
-	if ( Stack->Node->IsA( UClass::StaticClass() ) )
+	if ( CurrentFrame->Node->IsA( UClass::StaticClass() ) )
 	{
-		if ( appIsDebuggerPresent() )
-			appDebugBreak();
-
 		return;
 	}
 
 	// Process any waiting states
 	ProcessPendingState();
-	check(CurrentState);
+	checkSlow(CurrentState);
+
+	if ( bIsReleaseScript )
+	{
+		return;
+	}
 
 	if ( CallStack && BreakpointManager && CurrentState )
 	{
-		if ( IsClosing )
+		UClass* OwnerClass = GetStackOwnerClass(CurrentFrame);
+		if ( OwnerClass != NULL )
 		{
-			if ( Interface->IsLoaded() )
-				Interface->Close();
+			UPackage* OwnerPackage = OwnerClass->GetOutermost();
+			checkf((OwnerPackage->PackageFlags&PKG_ContainsDebugInfo) != 0, TEXT("Package '%s' is not compiled in debug mode"), *OwnerPackage->GetName());
 		}
-		else if ( !GIsRequestingExit )
+
+		if ( IsGameExiting() )
+		{
+			Close();
+		}
+
+		if ( IsDebuggerClosing() )
+		{
+			if ( Interface != NULL && Interface->IsLoaded() )
+			{
+				Interface->Close();
+			}
+		}
+		else if ( !IsGameExiting() )
 		{
 			// Returns true if it handled updating the stack
-			if ( CallStack->UpdateStack(Debugee, Stack, LineNumber, InputPos, OpCode) )
-				return;
-
-			if ( CallStack->StackDepth > 0 )
+			if ( !CallStack->UpdateStack(Debugee, CurrentFrame, LineNumber, InputPos, OpCode) )
 			{
-				CurrentState->UpdateStackInfo( CallStack->GetTopNode() );
+				if ( CallStack->StackDepth > 0 )
+				{
+					CurrentState->UpdateStackInfo( CallStack->GetTopNode() );
+					if ( IsDebuggerActive() && CurrentStackPosition != CallStack->Stack.Num() - 1 )
+					{
+						StackChanged(CallStack->GetTopNode());
+					}
 
-				// Halt execution, and wait for user input if we have a breakpoint for this line
-				if ( (AccessedNone && BreakOnNone) || BreakASAP )
-				{
-					Break();
-				}
-				else
-				{
-					// Otherwise, update the debugger's state with the currently executing stacknode, then
-					// pass control to debugger state for further processing (i.e. if stepping over, are we ready to break again)
-					CurrentState->Process();
+					// Halt execution and wait for user input if we have a pending forced breakpoint.
+					if ( (HasReceivedAccessNone() && IsBreakOnNoneEnabled()) || IsPendingImmediateBreak() )
+					{
+						Break();
+					}
+					else
+					{
+						// Otherwise, update the debugger's state with the currently executing stacknode, then
+						// pass control to debugger state for further processing (i.e. if stepping over, are we ready to break again)
+						CurrentState->Process();
+						if ( IsGameExiting() )
+						{
+							Close();
+						}
+					}
 				}
 			}
 		}
 	}
 }
 
-// Update the call stack, adding new FStackNodes if necessary
-// Take into account latent state stack anomalies...
-UBOOL FCallStack::UpdateStack( const UObject* Debugee, const FFrame* FStack, int LineNumber, int InputPos, BYTE OpCode )
+void FCallStack::StackCorruptionDetected()
 {
-	check(StackDepth == Stack.Num());
+	if ( Parent != NULL )
+	{
+		// disable processing for the rest of the frame
+		Parent->EnableDebuggerProcessing(FALSE);
+		Parent->ChangeState(new DSIdleState(Parent), TRUE);
+	}
 
-	if ( StackDepth == 0 )
-		QueuedCommands.Empty();
+	Empty();
+}
+
+/**
+ * Update the debugger callstack with the latest script frame, adding new debugger stack nodes if necessary.
+ * Take into account latent stack anomolies.
+ * 
+ * @param	Debugee				the UObject executing script
+ * @param	CurrentFrame		the FFrame corresponding to the current script being executed
+ * @param	LineNumber			the source code line number (.uc) for this script frame
+ * @param	InputPos			the position in the .uc file for this script frame (used for tracking which
+ *								expression is active of multiple expressions on a single line such as for loops)
+ * @param	OpCode				the debugger opcode that was processed.  the value must match an value from the 
+ *								EDebugInfo enum (@see OpCode.h)
+ *
+ * @return	TRUE if the UDebugger should not be allowed to break on this opcode.  Typically, this is for opcodes
+ *			which are used to manage the udebugger's callstack, such as entering a new function or leaving a function.
+ *			FALSE if the UDebugger should query the current state to determine whether it should break on this opcode.
+ */
+UBOOL FCallStack::UpdateStack( const UObject* Debugee, const FFrame* CurrentFrame, int LineNumber, int InputPos, BYTE OpCode )
+{
+	checkSlow(StackDepth == Stack.Num());
 
 	FDebuggerState* CurrentState = Parent->GetCurrentState();
+	UClass* OwnerClass = Parent->GetStackOwnerClass(CurrentFrame);
 
 	switch ( OpCode )
 	{
-	// Check if stack change is due to a latent function in a state (meaning thread of execution
+	// PrevStackLatent is encountered when script calls a latent function.  Since the thread of execution will likely
+	// change after this function is called, the current stack node is removed.  Since latent functions can only be called
+	// from state code, we should only receive this opcode when we have only one node on the callstack (the one corresponding
+	// to the state code)
 	case DI_PrevStackLatent:
 		{
 			if ( StackDepth != 1 )
 			{
 				Parent->DumpStack();
-				appErrorf(NAME_FriendlyError, TEXT("PrevStackLatent received with stack depth != 1.  Verify that all packages have been compiled in debug mode."));
+#ifdef _DEBUG
+				appErrorf(NAME_FriendlyError,TEXT("PrevStackLatent received with stack depth != 1 - Object:%s Class:%s Line:%i OpCode:%s"), *Debugee->GetName(), *OwnerClass->GetName(), LineNumber, GetOpCodeName(OpCode));
+#else
+				warnf(NAME_Warning, TEXT("PrevStackLatent received with stack depth != 1.  Verify that all packages have been compiled in debug mode."));
+				StackCorruptionDetected();
+				return TRUE;
+#endif
 			}
 
+			// manually insert an additional debug bytecode here so that the interface stops on the line that calls the latent
+			// function, instead of ending up in some random location (which would be whichever script will be executed for the
+			// next actor to be ticked).....this additional bytecode can't be inserted by the compiler because only one debug bytecode
+			// will be read from the stream when the P_FINISH is called for the latent function
+			UpdateStack(Debugee,CurrentFrame,LineNumber,InputPos,DI_EFP);
+			CurrentState->UpdateStackInfo( &Stack.Last() );
+
+			// force the interface to process this action, before we move on and pop the node from the stack
+			CurrentState->Process(FALSE);
+
+			// now remove the stack node for this frame
 			Stack.Pop();
 			StackDepth--;
 
+			// calling Process() may have changed the debugger's state
+			CurrentState = Parent->GetCurrentState();
 			CurrentState->UpdateStackInfo(NULL);
-			return 1;
+			return TRUE;
 		}
 
-	// Normal change... pop the top stack off the call stack
+	// Leaving a function, state, label, etc...pop the top node off the call stack
 	case DI_PrevStack:
 		{
+// 			UBOOL bIsStateFrame = CurrentFrame->Node->IsA(UState::StaticClass());
+// 			if ( bIsStateFrame && ((FStateFrame*)CurrentFrame)->LatentAction != 0 )
+// 			{
+// 				// if a latent function is currently executing in the state, we don't need to pop off the
+// 				return TRUE;
+// 			}
 			if ( StackDepth <= 0 )
 			{			
 				Parent->DumpStack();
-				appErrorf(NAME_FriendlyError, TEXT("PrevStack received with StackDepth <= 0.  Verify that all packages have been compiled in debug mode."));
+#ifdef _DEBUG
+				appErrorf(NAME_FriendlyError, TEXT("PrevStack received with StackDepth <= 0.  Class:%s Line:%i Object:%s OpCode:%s"), *OwnerClass->GetName(), LineNumber, *Debugee->GetName(), GetOpCodeName(OpCode));
+#else
+				warnf(NAME_Warning, TEXT("PrevStack received with StackDepth <= 0.  Verify that all packages have been compiled in debug mode."));
+				StackCorruptionDetected();
+				return TRUE;
+#endif
 			}
 
-			FStackNode* Last = &Stack.Last();
-			if ( Last->StackNode != FStack )
+			FStackNode* CurrentTop = &Stack.Last();
+			check(CurrentTop);
+			check(CurrentTop->StackNode);
+			check(CurrentTop->StackNode->Node);
+
+			if (!AreStackFramesIdentical(CurrentTop->StackNode, CurrentFrame))
 			{
-				if ( !Last->StackNode->Node->IsA(UState::StaticClass()) && FStack->Node->IsA(UState::StaticClass()) )
+				if ( !CurrentTop->StackNode->Node->IsA(UState::StaticClass()) && CurrentFrame->Node->IsA(UState::StaticClass()) )
 				{
 					// We've received a call to execDebugInfo() from UObject::GotoState() as a result of the state change,
-					// but we were executing a function, not state code.
-					// Queue this prevstack until we're back in state code
-					new(QueuedCommands) StackCommand( FStack, OpCode, LineNumber );
-					return 1;
+					// but we were executing a function, not state code, or this is a result of pushing/popping a state.
+					// Queue this prevstack to be executed once the script callstack has unwound back to the state node
+					if ( ((FStateFrame*)CurrentFrame)->LatentAction == 0 )
+					{
+						new(QueuedCommands) StackCommand( CurrentFrame, OpCode, LineNumber );
+					}
+					return TRUE;
 				}
+
+#ifdef _DEBUG
+				Parent->DumpStack();
+				appErrorf(NAME_FriendlyError, TEXT("UDebugger CallStack inconsistency detected.  Class:%s Line:%i Object:%s OpCode:%s"), *OwnerClass->GetName(), LineNumber, *Debugee->GetName(), GetOpCodeName(OpCode));
+#else
+				warnf(NAME_Warning, TEXT("UDebugger CallStack inconsistency detected.  Verify that all packages have been compiled in debug mode."));
+				StackCorruptionDetected();
+				return TRUE;
+#endif
 			}
 
-			if ( Last->StackNode != FStack )
-				appErrorf(NAME_FriendlyError, TEXT("UDebugger CallStack inconsistency detected.  Verify that all packages have been compiled in debug mode."));
-
+			CurrentTop = NULL;
 			Stack.Pop();
 			StackDepth--;
 
-			// If we're returning to state code (StackDepth == 1 && stack node is an FStateFrame), and the current object has been marked
-			// to be deleted, we'll never receive the PREVSTACK (since state code isn't executed for actors marked bDeleteMe)
-			// Remove this stacknode now, but don't change the current state of the debugger (in case we were stepping into, or out of)
-			if ( StackDepth == 1 )
-			{
-				const FFrame* Node = Stack(0).StackNode;
-				if ( Node && Node->Node && Node->Node->IsA(UState::StaticClass()) && Node->Object->IsPendingKill() )
-				{
-					Stack.Pop();
-					StackDepth--;
-
-					CurrentState->UpdateStackInfo(NULL);
-					return 1;
-				}
-			}
-
 			if ( StackDepth == 0 )
+			{
 				CurrentState->UpdateStackInfo(NULL);
+			}
 
 			else
 			{
-				CurrentState->UpdateStackInfo( &Stack.Last() );
-				CurrentState->Process(1);
+				CurrentTop = &Stack.Last();
+				CurrentState->UpdateStackInfo( CurrentTop );
+				CurrentState->Process(TRUE);
 			}
 
+			// prevent re-entrancy
+			static bool bProcessQueue = true;
+
 			// If we're returning to state code and we have a queued command for this state, execute it now
-			if ( StackDepth == 1 && QueuedCommands.Num() )
+			if ( bProcessQueue && QueuedCommands.Num() > 0 )
 			{
-				StackCommand Command = QueuedCommands(0);
-				if ( Command.Frame == Stack(0).StackNode )
+				// if we don't have any stack nodes in the debugger callstack, clear all QueuedCommands that wanted to remove a node
+				if ( CurrentTop == NULL )
 				{
-					QueuedCommands.Remove(0);
-					UpdateStack( Debugee, Command.Frame, Command.LineNumber, InputPos, Command.OpCode );
+					while ( QueuedCommands.Num() > 0 && QueuedCommands(0).OpCode == DI_PrevStack )
+					{
+						QueuedCommands.Remove(0);
+					}
+
+					if ( QueuedCommands.Num() == 0 )
+					{
+						return TRUE;
+					}
+				}
+
+				// only process QueuedCommands once we're back to the correct point in the callstack (where the queued command's frame
+				// is the same as the frame for the stack node currently at the top of the callstack)
+				StackCommand FirstCommand = QueuedCommands(0);
+				if (CurrentTop == NULL || AreStackFramesIdentical(FirstCommand.Frame, CurrentTop->StackNode))
+				{
+					// the first QueuedCommand should now either point to a command which will create a new stack node,
+					// or a command that will remove the stack node currently on top
+					bProcessQueue = false;
+
+					INT NumCommandsToExecute = QueuedCommands.Num();
+					while ( NumCommandsToExecute-- > 0 )
+					{
+						// make sure this is a copy, since we're about to remove the StackCommand from the TArray
+						StackCommand Command = QueuedCommands(0);
+						QueuedCommands.Remove(0);
+
+						INT CommandLineNumber = Command.LineNumber;
+						if ( CommandLineNumber == 0 && CurrentTop != NULL )
+						{
+							CommandLineNumber = CurrentTop->GetLine();
+						}
+
+						Parent->ProcessPendingState();
+
+						// clear CurrentTop, as we can't trust that it will be valid after calling UpdateStack
+						CurrentTop = NULL;
+						UpdateStack( Debugee, Command.Frame, CommandLineNumber, InputPos, Command.OpCode );
+
+						if (StackDepth == 0)
+						{	
+							// remove any extra commands that pop stack nodes
+							while (NumCommandsToExecute > 0 && QueuedCommands(0).OpCode == DI_PrevStack)
+							{
+								QueuedCommands.Remove(0);
+								NumCommandsToExecute--;
+							}
+						}
+						else
+						{
+							CurrentTop = &Stack.Last();
+						}
+					}
+
+					bProcessQueue = true;
 				}
 			}
 
-			return 1;
+			return TRUE;
 		}
 		
+	// PrevStackState indicates that we're leaving a state manually (i.e. not as the result of processing a bytecode), so
+	// it isn't guaranteed that the debugger stack node corresponding to the CurrentFrame is the one on top...
 	case DI_PrevStackState:
 		{
-			if ( StackDepth == 1 && FStack->Node->IsA(UState::StaticClass()) )
+			if ( CurrentFrame->Node->IsA(UState::StaticClass()) )
 			{
-				FStackNode& Node = Stack(0);
-				UpdateStack( Debugee, Node.StackNode, Node.Lines.Last() + 1, 0, DI_PrevStack );
-				return 1;
+				// check if the specified frame is actually in the stack; if not, just ignore this command
+				for ( INT StackIndex = 0; StackIndex < Stack.Num(); StackIndex++ )
+				{
+					const FStackNode& DebuggerStackNode = Stack(StackIndex);
+					if ( AreStackFramesIdentical(DebuggerStackNode.StackNode, CurrentFrame) )
+					{
+						FStackNode& CurrentTop = Stack.Last();
+						if ( !CurrentTop.StackNode->Node->IsA(UState::StaticClass()) )
+						{
+							UpdateStack(Debugee, CurrentFrame, CurrentTop.GetLine(), CurrentTop.GetPos(), DI_PrevStack);
+						}
+						else
+						{
+							UpdateStack( Debugee, CurrentTop.StackNode, CurrentTop.GetLine() + 1, CurrentTop.GetPos(), DI_PrevStack );
+						}
+						break;
+					}
+				}
+
+				return TRUE;
 			}
 
 			break;
 		}
 
+	// NewStackState is only called when returning to a previous state via PopState().  We need to
+	// recreate the debugger stack node for this state node.
+	case DI_NewStackState:
+		{
+			if ( CurrentFrame->Node->IsA(UState::StaticClass()) )
+			{
+				if ( StackDepth > 0 )
+				{
+					FStackNode& CurrentTop = Stack.Last();
+					if ( !CurrentTop.StackNode->Node->IsA(UState::StaticClass()) )
+					{
+						// We're changing states, but we were executing a function, not state code.
+						// Queue this new stack to be pushed once the script callstack has unwound from this function's node
+						new(QueuedCommands) StackCommand( CurrentFrame, DI_NewStack, LineNumber );
+						return TRUE;
+					}
+				}
 
+				UpdateStack( Debugee, CurrentFrame, LineNumber, InputPos, DI_NewStack );
+				return TRUE;
+			}
+
+			break;
+		}
+
+	// Entering a new function, state, etc. as a result of a normal bytecode.
 	case DI_NewStack:
 		{
 			FStackNode* CurrentTop = NULL;
-			if (StackDepth)
-				CurrentTop = &Stack.Last();
-
-			if ( CurrentTop && CurrentTop->StackNode == FStack )
+			if ( StackDepth > 0 )
 			{
-				Parent->DumpStack();
-				appErrorf(NAME_FriendlyError, TEXT("Received call for new stack with identical stack node!  Verify that all packages have been compiled in debug mode."));
+				CurrentTop = &Stack.Last();
 			}
 
-			CurrentTop = new(Stack) 
-			FStackNode( Debugee, FStack, Parent->GetStackOwnerClass(FStack),
-						StackDepth, LineNumber, InputPos, OpCode );
+			if ( CurrentTop && CurrentTop->StackNode == CurrentFrame )
+			{
+				Parent->DumpStack();
+#if _DEBUG
+				appErrorf(NAME_FriendlyError,TEXT("Received duplicate NEWSTACK frame - Object:%s Class:%s Line:%i OpCode:%s"), *Debugee->GetName(), *OwnerClass->GetName(), LineNumber, GetOpCodeName(OpCode));
+#else
+				warnf(NAME_Warning,TEXT("Received duplicate NEWSTACK frame.  Verify that all packages have been compiled in debug mode."));
+				StackCorruptionDetected();
+				return TRUE;
+#endif
+			}
+
+			CurrentTop = new(Stack) FStackNode( Debugee, CurrentFrame, OwnerClass, StackDepth, LineNumber, InputPos, OpCode );
 			CurrentState->UpdateStackInfo( CurrentTop );
 			StackDepth++;
 
 			CurrentState->Process();
-
-			return 1;
+			return TRUE;
 		}
 
+	// NewStackLatent is encountered when a latent function has returned.   We need to recreate the debugger stack node for the state frame and push it
+	// onto the stack.  Since latent functions can only be called from state code, we should only receive this opcode when we the callstack is empty.
 	case DI_NewStackLatent:
 		{
-			if ( StackDepth )
+			if ( StackDepth != 0 )
 			{
+				// if the state frame has already been pushed onto the stack, just update it
+				if (StackDepth == 1 && CurrentFrame->Node->IsA(UState::StaticClass()))
+				{
+					FStackNode* CurrentTop = &Stack.Last();
+					if (CurrentTop->StackNode == CurrentFrame)
+					{
+						CurrentTop->Update(LineNumber, InputPos, OpCode, StackDepth);
+						return FALSE;
+					}
+				}
 				Parent->DumpStack();
-				appErrorf(NAME_FriendlyError,TEXT("Received LATENTNEWSTACK with stack depth  Object:%s Class:%s Line:%i OpCode:%s"), Parent->GetStackOwnerClass(FStack)->GetName(), Debugee->GetName(), LineNumber, OpCode);
+#ifdef _DEBUG
+				appErrorf(NAME_FriendlyError,TEXT("Received LATENTNEWSTACK with stack depth - Object:%s Class:%s Line:%i OpCode:%s"), *Debugee->GetName(), *OwnerClass->GetName(), LineNumber, GetOpCodeName(OpCode));
+#else
+				warnf(NAME_Warning,TEXT("Received LATENTNEWSTACK with stack depth.  Verify that all packages have been compiled in debug mode."));
+				StackCorruptionDetected();
+				return TRUE;
+#endif
 			}
 
-			CurrentState->UpdateStackInfo(new(Stack) FStackNode(Debugee, FStack, Parent->GetStackOwnerClass(FStack), StackDepth, LineNumber,InputPos,OpCode));
+			FStackNode* CurrentTop = new(Stack) FStackNode(Debugee, CurrentFrame, OwnerClass, StackDepth, LineNumber,InputPos,OpCode);
+			CurrentState->UpdateStackInfo( CurrentTop );
 			StackDepth++;
 
 			CurrentState->Process();
-
-			return 1;
+			return TRUE;
 		}
 
+	// Entering a new label, which may or may not require a new debugger stack node to be created.
 	case DI_NewStackLabel:
 		{
 			if ( StackDepth == 0 )
 			{
 				// was result of a native gotostate
-				CurrentState->UpdateStackInfo(new(Stack) FStackNode(Debugee, FStack, Parent->GetStackOwnerClass(FStack), StackDepth, LineNumber,InputPos,OpCode));
+				FStackNode* CurrentTop = new(Stack) FStackNode(Debugee, CurrentFrame, OwnerClass, StackDepth, LineNumber,InputPos,OpCode);
+				CurrentState->UpdateStackInfo( CurrentTop );
 				StackDepth++;
 
 				CurrentState->Process();
-				return 1;
+				return TRUE;
 			}
 
 			else
 			{
-				Stack.Last().Update( LineNumber, InputPos, OpCode, StackDepth );
-				return 0;
+				FStackNode* CurrentTop = &Stack.Last();
+				CurrentTop->Update( LineNumber, InputPos, OpCode, StackDepth );
+				return FALSE;
 			}
+
+			break;
 		}
 	}
 
@@ -1899,65 +2537,107 @@ UBOOL FCallStack::UpdateStack( const UObject* Debugee, const FFrame* FStack, int
 	if ( StackDepth <= 0 )
 	{
 		Parent->DumpStack();
-		appErrorf(NAME_FriendlyError,TEXT("Received call to UpdateStack with CallStack depth of 0.  Verify that all packages have been compiled in debug mode."));
+#ifdef _DEBUG
+		appErrorf(NAME_FriendlyError,TEXT("Received call to UpdateStack with CallStack depth of 0.  Class:%s Line:%i Object:%s OpCode:%s"), *OwnerClass->GetName(), LineNumber, *Debugee->GetName(), GetOpCodeName(OpCode));
+#else
+		warnf(NAME_Warning,TEXT("Received call to UpdateStack with CallStack depth of 0.  Verify that all packages have been compiled in debug mode."));
+		StackCorruptionDetected();
+#endif
+		return TRUE;
 	}
-	FStackNode* Last = &Stack.Last();
-	if ( Last->StackNode != FStack )
+
+	FStackNode* CurrentTop = &Stack.Last();
+	if ( CurrentTop->StackNode != CurrentFrame )
 	{
-		if ( !Last->StackNode->Node->IsA(UState::StaticClass()) && FStack->Node->IsA(UState::StaticClass()) )
+		if ( !CurrentTop->StackNode->Node->IsA(UState::StaticClass()) && CurrentFrame->Node->IsA(UState::StaticClass()) )
 		{
 			// We've received a call to execDebugInfo() from UObject::GotoState() as a result of the state change,
 			// but we were executing a function, not state code.
 			// Back up the state's pointer to the EX_DebugInfo, and ignore this update.
-			FFrame* HijackStack = const_cast<FFrame*>(FStack);
+			FFrame* HijackStack = const_cast<FFrame*>(CurrentFrame);
 			while ( --HijackStack->Code && *HijackStack->Code != EX_DebugInfo );
-			return 1;
+			return TRUE;
 		}
 
 		Parent->DumpStack();
-		if ( appIsDebuggerPresent() )
-			appDebugBreak();
-		else
-			appErrorf(NAME_FriendlyError,TEXT("Received call to UpdateStack with stack out of sync  Object:%s Class:%s Line:%i OpCode:%s"), Parent->GetStackOwnerClass(FStack)->GetName(), Debugee->GetName(), LineNumber, OpCode);
+#ifdef _DEBUG
+		debugf(TEXT("Debuggers says the current node is - Class:%s Line:%i Object:%s OpCode:%s"), *Parent->GetStackOwnerClass(CurrentTop->StackNode)->GetName(), CurrentTop->GetLine(), *CurrentTop->GetObject()->GetName(), CurrentTop->GetInfo());
+		appErrorf(NAME_FriendlyError,TEXT("Received call to UpdateStack with stack out of sync - Class:%s Line:%i Object:%s OpCode:%s"), *OwnerClass->GetName(), LineNumber, *Debugee->GetName(), GetOpCodeName(OpCode));
+#else
+		warnf(NAME_Warning,TEXT("Received call to UpdateStack with stack out of sync.  Verify that all packages have been compiled in debug mode."));
+		StackCorruptionDetected();
+		return TRUE;
+#endif
 	}
 
-	Last->Update( LineNumber, InputPos, OpCode, StackDepth );
+	CurrentTop->Update( LineNumber, InputPos, OpCode, StackDepth );
 
-	// Skip over OPEREFP & FORINIT opcodes to simplify stepping into/over
-	return OpCode == DI_EFPOper || OpCode == DI_ForInit;
+	// Skip over FORINIT opcodes to simplify stepping into/over
+	return OpCode == DI_ForInit;
 }
 
 void UDebuggerCore::Break()
 {
 #ifdef _DEBUG
 	if ( GetCurrentNode() )
-        GetCurrentNode()->Show();
+	{
+		GetCurrentNode()->Show();
+	}
 #endif
 
-	ChangeState( new DSWaitForInput(this), 1 );
+	ChangeState( new DSWaitForInput(this), TRUE );
 }
 
 void UDebuggerCore::DumpStack()
 {
 	check(CallStack);
-	debugf(TEXT("CALLSTACK DUMP - SOMETHING BAD HAPPENED  STACKDEPTH: %i !"), CallStack->StackDepth);
+	debugf(TEXT("CALLSTACK DUMP - STACKDEPTH: %i"), CallStack->StackDepth);
 
 	for ( INT i = 0; i < CallStack->Stack.Num(); i++ )
 	{
 		FStackNode* Node = &CallStack->Stack(i);
 		if ( !Node )
+		{
 			debugf(TEXT("%i)  INVALID NODE"), i);
+		}
 		else
 		{
-			debugf(TEXT("%i) Class '%s'  Object '%s'  Node  '%s'"),
+			debugf(TEXT("%i) Class '%s'  Object '%s'  Node '%s'"),
 				i, 
-				Node->Class ? Node->Class->GetName() : TEXT("NONE"),
-				Node->Object ? Node->Object->GetFullName() : TEXT("NONE"),
+				Node->Class		? *Node->Class->GetName()				: TEXT("NULL"),
+				Node->Object	? *Node->Object->GetFullName()			: TEXT("NULL"),
 				Node->StackNode && Node->StackNode->Node
-				? Node->StackNode->Node->GetFullName() : TEXT("NONE") );
+								? *Node->StackNode->Node->GetFullName() : TEXT("NULL") );
 
 			for ( INT j = 0; j < Node->Lines.Num() && j < Node->OpCodes.Num(); j++ )
+			{
 				debugf(TEXT("   %i): Line '%i'  OpCode '%s'  Depth  '%i'"), j, Node->Lines(j), GetOpCodeName(Node->OpCodes(j)), Node->Depths(j));
+			}
 		}
 	}
 }
+
+static const TCHAR* GetBoolString( UBOOL bValue )
+{
+	return bValue ? GTrue : GFalse;
+}
+
+/**
+ * Returns a string giving the current state of the UDebugger; used for debugging purposes.
+ */
+FString UDebuggerCore::Describe() const
+{
+	FString Result = FString::Printf(
+		TEXT("bIsAttached: %s\tbIsDebugging: %s\tbProcessDebugInfo: %s\tbBreakASAP: %s\tCurrentState: %s\tPendingState: %s"),
+		GetBoolString(bAttached),
+		GetBoolString(bIsDebugging),
+		GetBoolString(bProcessDebugInfo),
+		GetBoolString(bBreakASAP),
+		CurrentState ? *CurrentState->Describe() : TEXT("NULL"),
+		PendingState ? *PendingState->Describe() : TEXT("NULL")
+		);
+	return Result;
+}
+
+#endif
+

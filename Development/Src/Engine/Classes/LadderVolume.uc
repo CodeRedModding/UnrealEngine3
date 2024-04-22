@@ -1,12 +1,13 @@
 /*=============================================================================
 // LadderVolumes, when touched, cause ladder supporting actors to use Phys_Ladder.
 // note that underwater ladders won't be waterzones (no breathing problems)
+// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 ============================================================================= */
 
 class LadderVolume extends PhysicsVolume
-	native;
+	native
+	placeable;
 
-var() name ClimbingAnimation, TopAnimation;	// name of animation to play when climbing this ladder
 var() rotator WallDir;
 var vector LookDir;
 var vector ClimbDir;	// pawn can move in this direction (or reverse)
@@ -17,20 +18,26 @@ var() bool  bAllowLadderStrafing;  // if true, players on ladder can strafe side
 
 var Pawn PendingClimber;
 
+/** Editor visual cue for the direction of the wall */
+var ArrowComponent WallDirArrow;
+
 cpptext
 {
-	virtual INT AddMyMarker(AActor *S);
+	// Editor modification
+#if WITH_EDITOR
 	FVector FindTop(FVector V);
 	FVector FindCenter();
+	virtual INT AddMyMarker(AActor *S);
+#endif
+	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent);
 }
 
-simulated function PostBeginPlay()
+simulated event PostBeginPlay()
 {
 	local Ladder L, M;
 	local vector Dir;
 
 	Super.PostBeginPlay();
-	WallDir = Rotation;
 	LookDir = vector(WallDir);
 	if ( !bAutoPath && (LookDir.Z != 0) )
 	{
@@ -64,7 +71,7 @@ function bool InUse(Pawn Ignored)
 	if ( PendingClimber != None )
 	{
 		if ( (PendingClimber.Controller == None)
-			|| !PendingClimber.bCollideActors || !PendingClimber.bBlockActors 
+			|| !PendingClimber.bCollideActors || !PendingClimber.bBlockActors
 			|| (Ladder(PendingClimber.Controller.MoveTarget) == None)
 			|| (Ladder(PendingClimber.Controller.MoveTarget).MyLadder != self) )
 				PendingClimber = None;
@@ -104,14 +111,15 @@ simulated event PawnLeavingVolume(Pawn P)
 	// tell all waiting pawns, if not in use
 	if ( !InUse(P) )
 	{
-		for ( C=Level.ControllerList; C!=None; C=C.NextController )
-			if ( C.bPreparingMove && (Ladder(C.MoveTarget) != None)
-				&&(Ladder(C.MoveTarget).MyLadder == self) )
+		foreach WorldInfo.AllControllers(class'Controller', C)
+		{
+			if (C.bPreparingMove && Ladder(C.MoveTarget) != None && Ladder(C.MoveTarget).MyLadder == self)
 			{
 				C.bPreparingMove = false;
 				PendingClimber = C.Pawn;
 				return;
 			}
+		}
 	}
 }
 
@@ -124,11 +132,11 @@ simulated event PhysicsChangedFor(Actor Other)
 
 defaultproperties
 {
-
 	Begin Object Class=ArrowComponent Name=Arrow
 		ArrowColor=(R=150,G=100,B=150)
 		ArrowSize=5.0
 	End Object
+	WallDirArrow = Arrow
 	Components.Add(Arrow)
 
 	Begin Object Name=BrushComponent0

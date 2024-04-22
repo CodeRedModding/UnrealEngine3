@@ -1,11 +1,14 @@
-class ActorFactoryMover extends ActorFactoryStaticMesh
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+class ActorFactoryMover extends ActorFactoryDynamicSM
 	config(Editor)
 	collapsecategories
-	hidecategories(Object);
+	hidecategories(Object)
+	native;
 
 defaultproperties
 {
-	MenuName="Add Mover"
-	MenuPriority=0
+	MenuName="Add InterpActor"
 	NewActorClass=class'Engine.InterpActor'
 }

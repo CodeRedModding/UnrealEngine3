@@ -1,0 +1,199 @@
+/*=============================================================================
+	TextureDensityShader.hlsl: Shader for rendering texture density as a color
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+struct FTextureDensityVSToPS
+{
+	FVertexFactoryInterpolantsVSToPS FactoryInterpolants;
+	float4 WorldPosition	: TEXCOORD6;
+	float4 Position			: POSITION;
+};
+
+#if USING_SM5_TESSELLATION	
+	struct FTextureDensityVSToDS
+	{
+		FVertexFactoryInterpolantsVSToDS FactoryInterpolants;
+		float4 Position	: TEXCOORD6;
+		OPTIONAL_VertexID_VS_To_DS
+	};
+	
+	#define FTextureDensityVSOutput FTextureDensityVSToDS
+#else
+	#define FTextureDensityVSOutput FTextureDensityVSToPS
+#endif
+
+#if USING_SM5_TESSELLATION	
+	#define FPassSpecificVSToDS FTextureDensityVSToDS
+	#define FPassSpecificVSToPS FTextureDensityVSToPS
+	
+	FTextureDensityVSToDS PassInterpolate(FTextureDensityVSToDS a, float aInterp, FTextureDensityVSToDS b, float bInterp)
+	{
+		FTextureDensityVSToDS O;
+		
+		O.FactoryInterpolants = VertexFactoryInterpolate(a.FactoryInterpolants, aInterp, b.FactoryInterpolants, bInterp);
+
+		return O;
+	}
+
+	FTextureDensityVSToPS PassFinalizeTessellationOutput(FTextureDensityVSToDS Interpolants, float4 WorldPosition, FMaterialTessellationParameters MaterialParameters)
+	{
+		FTextureDensityVSToPS O;
+		
+		O.FactoryInterpolants = VertexFactoryAssignInterpolants(Interpolants.FactoryInterpolants);
+		
+		// Finally, transform position to clip-space
+		ISOLATE
+		{
+			O.Position = MulMatrix(ViewProjectionMatrixDS,WorldPosition);
+			O.Position = ApplyTemporalAAJitter(O.Position);
+		}
+
+		O.WorldPosition = WorldPosition;
+		
+		return O;
+	}
+	
+	#include "Tessellation.usf"
+#endif
+
+/*=============================================================================
+	Vertex Shader
+=============================================================================*/
+#if VERTEXSHADER
+void MainVertexShader(
+	FVertexFactoryInput Input,
+	OPTIONAL_VertexID
+	out FTextureDensityVSOutput Output
+	)
+{
+	FVertexFactoryIntermediates VFIntermediates = GetVertexFactoryIntermediates(Input);
+	float4 WorldPosition = VertexFactoryGetWorldPosition(Input, VFIntermediates);
+	float3x3 TangentBasis = VertexFactoryGetTangentBasis(Input, VFIntermediates);
+
+	FMaterialVertexParameters VertexParameters = GetMaterialVertexParameters(Input, VFIntermediates, WorldPosition.xyz, TangentBasis);
+	WorldPosition.xyz += GetMaterialWorldPositionOffset(VertexParameters);
+
+#if USING_SM5_TESSELLATION
+	Output.Position = WorldPosition;
+	Output.FactoryInterpolants = VertexFactoryGetInterpolantsVSToDS(Input, VFIntermediates);
+	
+#else // !USING_SM5_TESSELLATION
+
+	Output.WorldPosition = WorldPosition;
+	ISOLATE
+	{
+		Output.Position = MulMatrix(ViewProjectionMatrix, Output.WorldPosition);
+		Output.Position = ApplyTemporalAAJitter(Output.Position);
+	}
+	Output.FactoryInterpolants = VertexFactoryGetInterpolantsVSToPS(Input, VFIntermediates);
+	
+#endif // USING_SM5_TESSELLATION
+
+	OutputVertexID( Output );
+}
+#endif
+
+/*=============================================================================
+	Pixel Shader
+=============================================================================*/
+
+#define MAX_LOOKUPS 16
+
+float4 TextureDensityParameters;
+float4 TextureLookupInfo[ MAX_LOOKUPS ];
+
+#if PS3
+float CalcDensity( float MinDensity, float MaxDensity, FMaterialPixelParameters MaterialParameters, float WorldSpaceArea )
+{
+	float Density = MinDensity;
+	int NumLookups = TextureDensityParameters.x;
+	for ( int LookupIndex = 0; LookupIndex < MAX_LOOKUPS; ++LookupIndex )
+	{
+		if ( LookupIndex < NumLookups )
+		{
+			int TexCoordIndex = TextureLookupInfo[LookupIndex].z;
+			float2 TextureSize = TextureLookupInfo[LookupIndex].xy;
+			float2 TexCoord = TextureSize;
+			for ( int Index = 0; Index < NUM_MATERIAL_TEXCOORDS; ++Index )
+			{
+				if ( Index == TexCoordIndex )
+				{
+					TexCoord *= MaterialParameters.TexCoords[Index].xy;	// In texels
+				}
+			}
+			float2 A = ddx(TexCoord);
+			float2 B = ddy(TexCoord);
+			float2 C = A.xy * B.yx;
+
+			// Area of parallelogram, in texels.
+			float TexelArea = abs( C.x - C.y );
+
+			Density = max( Density, TexelArea / WorldSpaceArea );
+		}
+	}
+	return min( Density, MaxDensity );
+}
+#else
+float CalcDensity( float MinDensity, float MaxDensity, FMaterialPixelParameters MaterialParameters, float WorldSpaceArea )
+{
+	float Density = MinDensity;
+	int NumLookups = TextureDensityParameters.x;
+	for ( int LookupIndex = 0; LookupIndex < NumLookups && LookupIndex < MAX_LOOKUPS; ++LookupIndex )
+	{
+		int TexCoordIndex = TextureLookupInfo[LookupIndex].z;
+		float2 TextureSize = TextureLookupInfo[LookupIndex].xy;
+		float2 TexCoord = MaterialParameters.TexCoords[TexCoordIndex].xy * TextureSize;	// In texels
+		float2 A = ddx(TexCoord);
+		float2 B = ddy(TexCoord);
+		float2 C = A.xy * B.yx;
+
+		// Area of parallelogram, in texels.
+		float TexelArea = abs( C.x - C.y );
+
+		Density = max( Density, TexelArea / WorldSpaceArea );
+	}
+	return min( Density, MaxDensity );
+}
+#endif
+
+
+void MainPixelShader(
+	FVertexFactoryInterpolantsVSToPS FactoryInterpolants,
+	float4 WorldPosition	: TEXCOORD6,
+	OPTIONAL_PixelShaderScreenPosition
+	OPTIONAL_FacingSign
+	OPTIONAL_PixelShaderCoverageInputOutput
+	out float4 OutColor		: COLOR0
+	)
+{
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters( FactoryInterpolants );
+	CalcMaterialParameters(MaterialParameters, FacingSign, float4(0,0,1,0), float4(0,0,.00001f,1));
+	GetMaterialCoverageAndClipping(MaterialParameters,PixelShaderScreenPosition.xy,InCoverage,OutCoverage);
+
+	// Area of parallelogram, in world space units.
+	float WorldSpaceArea = length( cross( ddx(WorldPosition.xyz), ddy(WorldPosition.xyz) ) );
+	WorldSpaceArea = max( WorldSpaceArea, 0.00000001f );
+
+	float MinDensity = TextureDensityParameters.y;
+	float IdealDensity = TextureDensityParameters.z;
+	float MaxDensity = TextureDensityParameters.w;
+	float Density = CalcDensity( MinDensity, MaxDensity, MaterialParameters, WorldSpaceArea );
+
+	if ( Density > IdealDensity )
+	{
+		float Range = MaxDensity - IdealDensity;
+		Density -= IdealDensity;
+		OutColor = RETURN_COLOR( float4( Density/Range, (Range-Density)/Range, 0.0f, 1.0f ) );
+	}
+	else
+	{
+		float Range = IdealDensity - MinDensity;
+		Density -= MinDensity;
+		OutColor = RETURN_COLOR( float4( 0.0f, Density/Range, (Range-Density)/Range, 1.0f ) )	;
+	}
+}

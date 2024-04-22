@@ -1,0 +1,290 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{51964401-5DB3-4461-99C9-7D7EE674B5F9}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>UnSetup</RootNamespace>
+    <AssemblyName>UnSetup</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <SccProjectName>Perforce Project</SccProjectName>
+    <SccLocalPath>.</SccLocalPath>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccProvider>MSSCCI:Perforce SCM</SccProvider>
+    <ApplicationIcon>..\..\Src\Launch\Resources\UDK.ico</ApplicationIcon>
+    <SignManifests>false</SignManifests>
+    <GenerateManifests>false</GenerateManifests>
+    <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <OldToolsVersion>3.5</OldToolsVersion>
+    <UpgradeBackupLocation />
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Interop.IWshRuntimeLibrary, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Binaries\InstallData\Interop.IWshRuntimeLibrary.dll</HintPath>
+    </Reference>
+    <Reference Include="Ionic.Zip.Reduced, Version=1.9.1.5, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\binaries\Ionic.Zip.Reduced.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Common\MetaData.cs">
+      <Link>Properties\MetaData.cs</Link>
+    </Compile>
+    <Compile Include="ARP.cs" />
+    <Compile Include="Extras.cs" />
+    <Compile Include="InstallExtras.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="InstallExtras.Designer.cs">
+      <DependentUpon>InstallExtras.cs</DependentUpon>
+    </Compile>
+    <Compile Include="EULA.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="EULA.Designer.cs">
+      <DependentUpon>EULA.cs</DependentUpon>
+    </Compile>
+    <Compile Include="InstallFinished.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="InstallFinished.Designer.cs">
+      <DependentUpon>InstallFinished.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Localise.cs" />
+    <Compile Include="GameDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GameDialog.Designer.cs">
+      <DependentUpon>GameDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="InstallOptions.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="InstallOptions.Designer.cs">
+      <DependentUpon>InstallOptions.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Program.cs" />
+    <Compile Include="ProgressBar.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ProgressBar.Designer.cs">
+      <DependentUpon>ProgressBar.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ProjectSelect.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ProjectSelect.Designer.cs">
+      <DependentUpon>ProjectSelect.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ProjectUtils.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="EULA.resx">
+      <DependentUpon>EULA.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="InstallExtras.resx">
+      <DependentUpon>InstallExtras.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="InstallOptions.resx">
+      <DependentUpon>InstallOptions.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GameDialog.resx">
+      <DependentUpon>GameDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ProgressBar.resx">
+      <DependentUpon>ProgressBar.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ProjectSelect.resx">
+      <DependentUpon>ProjectSelect.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Query.resx">
+      <DependentUpon>Query.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="RedistProgress.resx">
+      <DependentUpon>RedistProgress.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UninstallOptions.resx">
+      <DependentUpon>UninstallOptions.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UninstallProgress.resx">
+      <DependentUpon>UninstallProgress.cs</DependentUpon>
+    </EmbeddedResource>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <Compile Include="Query.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Query.Designer.cs">
+      <DependentUpon>Query.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Redist.cs" />
+    <Compile Include="RedistProgress.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="RedistProgress.Designer.cs">
+      <DependentUpon>RedistProgress.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Shortcuts.cs" />
+    <Compile Include="Subscribe.cs" />
+    <Compile Include="UninstallOptions.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UninstallOptions.Designer.cs">
+      <DependentUpon>UninstallOptions.cs</DependentUpon>
+    </Compile>
+    <Compile Include="UninstallProgress.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UninstallProgress.Designer.cs">
+      <DependentUpon>UninstallProgress.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Utils.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 3.1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Banner.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\UDKShield.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Properties\app.manifest" />
+    <None Include="Resources\Waiting.gif" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\Src\Launch\Resources\UDK.ico">
+      <Link>Resources\UDK.ico</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="InstallFinished.resx">
+      <DependentUpon>InstallFinished.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\EmptyGame.png" />
+    <Content Include="Resources\red_arrow.png" />
+    <None Include="Resources\UT3Game.png" />
+    <None Include="Resources\UE3Redist.ico" />
+    <None Include="Resources\UE3Redist.png" />
+    <None Include="Resources\SCCConnect.png" />
+    <Content Include="Resources\UE3RedistBanner.jpg" />
+    <None Include="Resources\UE3RedistWaiting.gif" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+  <PropertyGroup>
+    <PostBuildEvent>"C:/Program Files (x86)/Microsoft/ILMerge/Ilmerge.exe" /t:winexe /targetplatform:v4,C:\Windows\Microsoft.NET\Framework64\v4.0.30319 /out:"..\..\..\..\Binaries\UnSetup.exe" UnSetup.exe "..\..\..\..\Binaries\Ionic.Zip.Reduced.dll"
+copy "../../../../Binaries/UnSetup.exe" "../../../Install/InstallFiles/Binaries/UnSetup.exe"
+</PostBuildEvent>
+    <PreBuildEvent>
+    </PreBuildEvent>
+  </PropertyGroup>
+</Project>

@@ -1,16 +1,15 @@
 /*=============================================================================
 	FMallocAnsi.h: ANSI memory allocator.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
-		* Alignment support by Daniel Vogel
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
-#ifdef _MSC_VER
+#ifndef __FMALLOCANSI_H__
+#define __FMALLOCANSI_H__
+
+#if _MSC_VER || PLATFORM_MACOSX
 #define USE_ALIGNED_MALLOC 1
 #else
-#error this should be implemented more elegantly on other platforms
+//@todo gcc: this should be implemented more elegantly on other platforms
 #define USE_ALIGNED_MALLOC 0
 #endif
 
@@ -20,13 +19,26 @@
 class FMallocAnsi : public FMalloc
 {
 	// Alignment.
-	enum {ALLOCATION_ALIGNMENT=16};
+	enum { ALLOCATION_ALIGNMENT = 16 };
 
 public:
-	// FMalloc interface.
-	void* Malloc( DWORD Size )
+	/**
+	 * Constructor enabling low fragmentation heap on platforms supporting it.
+	 */
+	FMallocAnsi()
 	{
-		check(Size>=0);
+#if _MSC_VER
+		// Enable low fragmentation heap - http://msdn2.microsoft.com/en-US/library/aa366750.aspx
+		intptr_t	CrtHeapHandle	= _get_heap_handle();
+		ULONG		EnableLFH		= 2;
+		HeapSetInformation( (PVOID)CrtHeapHandle, HeapCompatibilityInformation, &EnableLFH, sizeof(EnableLFH) );
+#endif
+	}
+
+	// FMalloc interface.
+	virtual void* Malloc( DWORD Size, DWORD Alignment )
+	{
+		check(Alignment == DEFAULT_ALIGNMENT && "Alignment currently unsupported in Ansi Malloc");
 #if USE_ALIGNED_MALLOC
 		void* Ptr = _aligned_malloc( Size, ALLOCATION_ALIGNMENT );
 		check(Ptr);
@@ -40,9 +52,10 @@ public:
 		return AlignedPtr;
 #endif
 	}
-	void* Realloc( void* Ptr, DWORD NewSize )
+
+	virtual void* Realloc( void* Ptr, DWORD NewSize, DWORD Alignment )
 	{
-		checkSlow(NewSize>=0);
+		check(Alignment == DEFAULT_ALIGNMENT && "Alignment currently unsupported in Ansi Malloc");
 		void* Result;
 #if USE_ALIGNED_MALLOC
 		if( Ptr && NewSize )
@@ -62,13 +75,13 @@ public:
 		if( Ptr && NewSize )
 		{
 			// Can't use realloc as it might screw with alignment.
-			Result = Malloc( NewSize, Tag );
+			Result = Malloc( NewSize, DEFAULT_ALIGNMENT );
 			appMemcpy( Result, Ptr, Min(NewSize, *((DWORD*)( (BYTE*)Ptr - sizeof(void*) - sizeof(DWORD))) ) );
 			Free( Ptr );
 		}
 		else if( Ptr == NULL )
 		{
-			Result = Malloc( NewSize, Tag );
+			Result = Malloc( NewSize, DEFAULT_ALIGNMENT );
 		}
 		else
 		{
@@ -78,39 +91,47 @@ public:
 #endif
 		return Result;
 	}
-	void Free( void* Ptr )
+
+	virtual void Free( void* Ptr )
 	{
-#ifdef USE_ALIGNED_MALLOC
+#if USE_ALIGNED_MALLOC
 		_aligned_free( Ptr );
 #else
 		if( Ptr )
+		{
 			free( *((void**)((BYTE*)Ptr-sizeof(void*))) );
+		}
 #endif
 	}
-	void DumpAllocs()
+
+	/**
+	 * Returns if the allocator is guaranteed to be thread-safe and therefore
+	 * doesn't need a unnecessary thread-safety wrapper around it.
+	 *
+	 * @return TRUE as we're using system allocator
+	 */
+	virtual UBOOL IsInternallyThreadSafe() const
 	{
-		debugf( NAME_Exit, TEXT("Allocation checking disabled") );
+		return TRUE;
 	}
-	void HeapCheck()
+
+	/**
+	 * Validates the allocator's heap
+	 */
+	virtual UBOOL ValidateHeap()
 	{
-#if (defined _MSC_VER)
+#if _MSC_VER
 		INT Result = _heapchk();
-		check(Result!=_HEAPBADBEGIN);
-		check(Result!=_HEAPBADNODE);
-		check(Result!=_HEAPBADPTR);
-		check(Result!=_HEAPEMPTY);
-		check(Result==_HEAPOK);
+		check(Result != _HEAPBADBEGIN);
+		check(Result != _HEAPBADNODE);
+		check(Result != _HEAPBADPTR);
+		check(Result != _HEAPEMPTY);
+		check(Result == _HEAPOK);
+#else
+		return TRUE;
 #endif
-	}
-	void Init( UBOOL Reset )
-	{
-	}
-	void Exit()
-	{
+		return TRUE;
 	}
 };
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
-
+#endif

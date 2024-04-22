@@ -1,0 +1,248 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.BuildCommandModel
+
+@{
+    ViewBag.Title = "Build System";
+    ViewBag.Description = "Details for Build Command '" + Model.Details.Description + "'";
+}
+
+
+<script type="text/javascript">
+    function UpdateCommandDetails () {
+        var query = $.ajax({
+            url: "@Url.RouteUrl(new { action = "CommandDetails", controller = "Build", id = Model.Details.ID })",
+            async: false
+        });
+
+        query.success(
+            function () {
+                setTimeout(function () {
+                    UpdateCommandDetails();
+                },
+                5000);
+            });
+
+        $('#commandDetails').html(query.responseText);
+    }
+
+    function UpdateCommandLog () {
+            var query = $.ajax({
+                url: "@Url.RouteUrl(new { action = "CommandLog", controller = "Build", id = Model.Details.ID })",
+                async: false
+        });
+
+        query.success(
+            function () {
+                setTimeout(function () {
+                    UpdateCommandLog();
+                },
+                5000);
+            });
+
+        $('#commandLog').html(query.responseText);
+    }
+
+    $(document).ready(function () {
+        $(':checkbox').live("change", function () {
+            if ($(this).attr('checked') == "checked") {
+                $.ajax({
+                    url: "@Url.RouteUrl(new { action = "SubscribeCommand", controller = "Build", id = Model.Details.ID })",
+                    data: "type=" + $(this).attr('name'),
+                    async: false
+                });
+            }
+            else {
+                $.ajax({
+                    url: "@Url.RouteUrl(new { action = "UnsubscribeCommand", controller = "Build", id = Model.Details.ID })",
+                    data: "type=" + $(this).attr('name'),
+                    async: false
+                });
+            }
+        });
+
+    UpdateCommandDetails();
+    UpdateCommandLog();
+    });
+</script>
+
+
+<section>
+    <div class="grid6">
+        <span class="linkBack">
+            @Html.ActionLink("Build Status", "Status", "Build") |
+            @Html.ActionLink("Verify Status", "Status", "Verify")
+        </span>
+
+        <span class="fr">
+            <a href="#details">Command Details</a> |
+            <a href="#subscriptions">Manage Your Subscriptions</a> |
+            <a href="#activity">Recent Activity</a> |
+            <a href="#buildlog">Build Log</a> |
+            <a href="#performance">Performance</a> |
+            <a href="#settings">Administration</a>
+        </span>
+    </div>
+</section>
+
+<section id="commandDetails" class="clearfix"></section>
+
+<section class="clearfix">
+    <div class="grid2">
+        <a name="subscriptions"></a><h2>Manage Your Subscriptions</h2>
+
+        <table class="tableKeyValue">
+            <tbody>
+                <tr>
+                    <th>Notify me when Triggered</th>
+                    <td><input name="@((byte)'T')" type="checkbox" @(Model.SubscribedTriggered ? "checked" : "") /></td>
+                </tr>
+                <tr>
+                    <th>Notify me when Succeeded</th>
+                    <td><input name="@((byte)'S')" type="checkbox" @(Model.SubscribedSucceeded ? "checked" : "") /></td>
+                </tr>
+                <tr>
+                    <th>Notify me when Failed</th>
+                    <td><input name="@((byte)'F')" type="checkbox" @(Model.SubscribedFailed ? "checked" : "") /></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="activity"></a><h2>Recent Activity</h2>
+
+        <img class="chart" src="@Url.RouteUrl(new { action = "CommandLog", controller = "Chart", id = Model.Details.ID, days = 45 })" alt="Build" />
+    </div>
+</section>
+
+<section id="commandLog" class="clearfix"></section>
+
+
+<section class="clearfix">
+    <div class="grid6">
+        <a name="performance"></a><h2>Performance</h2>
+
+        <img class="chart" src="@Url.RouteUrl(new { action = "CommandPerformance", controller = "Chart", id = @Model.Details.ID, counter = 0, machine = 0 })" alt="Build" />
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>
+
+<section class="clearfix defunct">
+    <div class="grid2">
+        <a name="settings"></a><h2>Administration</h2>
+
+        <fieldset>
+            <div>
+                <label>Branch</label>            
+                <select>
+                    @foreach (var b in Model.Branches)
+                    {
+                        if (b.Branch == Model.Details.Branch)
+                        {
+                            <option selected="selected">@b.Branch</option>
+                        }
+                        else
+                        {
+                            <option>@b.Branch</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div>
+                <label>Game</label>
+                <input type="text" value="@Model.Details.Game" />
+            </div>
+            <div>
+                <label>Platform</label>
+                <input type="text" value="@Model.Details.Platform" />
+            </div>
+            <div>
+                <label>Language</label>
+                <input type="text" value="@Model.Details.Language" />
+            </div>
+        </fieldset>
+    </div>
+
+    <div class="grid2">
+        <h2>&nbsp;</h2>
+
+        <fieldset>
+            <div>
+                <label>Build Script</label>
+                <input type="text" value="@Model.Details.Command" />
+            </div>
+            <div>
+                <label>Parameters</label>
+                <input type="text" value="@Model.Details.Parameter" />
+            </div>
+            <div>
+                <label>Operator</label>
+                <input type="text" value="@Model.Details.Operator" />
+            </div>
+            <div>
+                <label>Lock Machine</label>
+                <select>
+                    <option>None</option>
+                    @foreach (var m in Model.Machines)
+                    {
+                        if (m.MachineName == Model.Details.MachineLock)
+                        {
+                            <option selected="selected">@m.MachineName</option>
+                        }
+                        else
+                        {
+                            <option>@m.MachineName</option>
+                        }
+                    }
+                </select>
+            </div>
+        </fieldset>
+    </div>
+
+    <div class="grid2">
+        <h2>&nbsp;</h2>
+
+        <fieldset>
+            <div>
+                @if (Model.Details.IsPromotable)
+                {
+                    <input type="checkbox" checked="checked" />
+                }
+                else
+                {
+                    <input type="checkbox" name="checkPromotable" value="Promotable" />
+                }
+                <strong>Promotable</strong>
+            </div>
+            <div>
+                @if (Model.Details.NextTriggerDelay.HasValue)
+                {
+                    <input type="checkbox" checked="checked" />
+                }
+                else
+                {
+                    <input type="checkbox" />
+                }
+                <strong>Automatic Trigger</strong>
+            </div>
+            <div>
+                <label>Re-Trigger Delay (minutes)</label>
+                @if (Model.Details.NextTriggerDelay.HasValue)
+                {
+                    <input type="text" value="@Model.Details.NextTriggerDelay.Value.ToString()" />
+                }
+                else
+                {
+                    <input type="text" />
+                }
+            </div>
+        </fieldset>
+
+        <div class="clearfix">
+            <a href="#">Delete this Command</a>
+            <a href="#" class="button">Update Settings</a>
+        </div>
+    </div>
+</section>

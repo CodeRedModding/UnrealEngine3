@@ -1,0 +1,2269 @@
+#include "Common.usf"
+#if !SM4_PROFILE && !SM5_PROFILE
+	#define int float
+#endif
+
+float4 scolor;
+float4 DFShadowEnable;
+float4 DecalOffset;
+float4 DFSize;
+float4 OverlayColor;
+float4 ColorScale;
+float InverseGamma;
+sampler2D TextureBase;
+sampler2D TextureDetail;
+sampler2D TextureDetail3;
+sampler2D TextureDetail2;
+
+
+void FTexTGBatchCxformEAlphaMul(float4 factor : COLOR1,
+                                float4 fucxadd : TEXCOORD3,
+                                float4 fucxmul : TEXCOORD4,
+                                float2 TexCoords0 : TEXCOORD0,
+                                out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGBatchCxformEAlpha(float4 factor : COLOR1,
+                             float4 fucxadd : TEXCOORD3,
+                             float4 fucxmul : TEXCOORD4,
+                             float2 TexCoords0 : TEXCOORD0,
+                             out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGBatchCxformMul(float4 fucxadd : TEXCOORD3,
+                          float4 fucxmul : TEXCOORD4,
+                          float2 TexCoords0 : TEXCOORD0,
+                          out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGBatchCxform(float4 fucxadd : TEXCOORD3,
+                       float4 fucxmul : TEXCOORD4,
+                       float2 TexCoords0 : TEXCOORD0,
+                       out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGBatchEAlphaMul(float4 factor : COLOR1,
+                          float2 TexCoords0 : TEXCOORD0,
+                          out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGBatchEAlpha(float4 factor : COLOR1,
+                       float2 TexCoords0 : TEXCOORD0,
+                       out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGBatchMul(float2 TexCoords0 : TEXCOORD0,
+                    out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGBatch(float2 TexCoords0 : TEXCOORD0,
+                 out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGCxformEAlphaMul(float4 factor : COLOR1,
+                           float2 TexCoords0 : TEXCOORD0,
+                           out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGCxformEAlpha(float4 factor : COLOR1,
+                        float2 TexCoords0 : TEXCOORD0,
+                        out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGCxformMul(float2 TexCoords0 : TEXCOORD0,
+                     out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGCxform(float2 TexCoords0 : TEXCOORD0,
+                  out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGEAlphaMul(float4 factor : COLOR1,
+                     float2 TexCoords0 : TEXCOORD0,
+                     out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGEAlpha(float4 factor : COLOR1,
+                  float2 TexCoords0 : TEXCOORD0,
+                  out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGMul(float2 TexCoords0 : TEXCOORD0,
+               out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTG(float2 TexCoords0 : TEXCOORD0,
+            out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+fcolor = fcolor0;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexBatchCxformEAlphaMul(half4 color : COLOR0,
+                                 float4 factor : COLOR1,
+                                 float4 fucxadd : TEXCOORD3,
+                                 float4 fucxmul : TEXCOORD4,
+                                 out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexBatchCxformEAlpha(half4 color : COLOR0,
+                              float4 factor : COLOR1,
+                              float4 fucxadd : TEXCOORD3,
+                              float4 fucxmul : TEXCOORD4,
+                              out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexBatchCxformMul(half4 color : COLOR0,
+                           float4 fucxadd : TEXCOORD3,
+                           float4 fucxmul : TEXCOORD4,
+                           out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexBatchCxform(half4 color : COLOR0,
+                        float4 fucxadd : TEXCOORD3,
+                        float4 fucxmul : TEXCOORD4,
+                        out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexBatchEAlphaMul(half4 color : COLOR0,
+                           float4 factor : COLOR1,
+                           out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexBatchEAlpha(half4 color : COLOR0,
+                        float4 factor : COLOR1,
+                        out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexBatchMul(half4 color : COLOR0,
+                     out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexBatch(half4 color : COLOR0,
+                  out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexCxformEAlphaMul(half4 color : COLOR0,
+                            float4 factor : COLOR1,
+                            out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexCxformEAlpha(half4 color : COLOR0,
+                         float4 factor : COLOR1,
+                         out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexCxformMul(half4 color : COLOR0,
+                      out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexCxform(half4 color : COLOR0,
+                   out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexEAlphaMul(half4 color : COLOR0,
+                      float4 factor : COLOR1,
+                      out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexEAlpha(half4 color : COLOR0,
+                   float4 factor : COLOR1,
+                   out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexMul(half4 color : COLOR0,
+                out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertex(half4 color : COLOR0,
+             out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor0 = color;
+fcolor = fcolor0;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGBatchCxformEAlphaMul(float4 factor : COLOR1,
+                                     float4 fucxadd : TEXCOORD3,
+                                     float4 fucxmul : TEXCOORD4,
+                                     float2 TexCoords0 : TEXCOORD0,
+                                     float2 TexCoords1 : TEXCOORD1,
+                                     out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGBatchCxformEAlpha(float4 factor : COLOR1,
+                                  float4 fucxadd : TEXCOORD3,
+                                  float4 fucxmul : TEXCOORD4,
+                                  float2 TexCoords0 : TEXCOORD0,
+                                  float2 TexCoords1 : TEXCOORD1,
+                                  out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGBatchCxformMul(float4 factor : COLOR1,
+                               float4 fucxadd : TEXCOORD3,
+                               float4 fucxmul : TEXCOORD4,
+                               float2 TexCoords0 : TEXCOORD0,
+                               float2 TexCoords1 : TEXCOORD1,
+                               out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGBatchCxform(float4 factor : COLOR1,
+                            float4 fucxadd : TEXCOORD3,
+                            float4 fucxmul : TEXCOORD4,
+                            float2 TexCoords0 : TEXCOORD0,
+                            float2 TexCoords1 : TEXCOORD1,
+                            out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGBatchEAlphaMul(float4 factor : COLOR1,
+                               float2 TexCoords0 : TEXCOORD0,
+                               float2 TexCoords1 : TEXCOORD1,
+                               out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGBatchEAlpha(float4 factor : COLOR1,
+                            float2 TexCoords0 : TEXCOORD0,
+                            float2 TexCoords1 : TEXCOORD1,
+                            out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGBatchMul(float4 factor : COLOR1,
+                         float2 TexCoords0 : TEXCOORD0,
+                         float2 TexCoords1 : TEXCOORD1,
+                         out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGBatch(float4 factor : COLOR1,
+                      float2 TexCoords0 : TEXCOORD0,
+                      float2 TexCoords1 : TEXCOORD1,
+                      out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGCxformEAlphaMul(float4 factor : COLOR1,
+                                float2 TexCoords0 : TEXCOORD0,
+                                float2 TexCoords1 : TEXCOORD1,
+                                out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGCxformEAlpha(float4 factor : COLOR1,
+                             float2 TexCoords0 : TEXCOORD0,
+                             float2 TexCoords1 : TEXCOORD1,
+                             out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGCxformMul(float4 factor : COLOR1,
+                          float2 TexCoords0 : TEXCOORD0,
+                          float2 TexCoords1 : TEXCOORD1,
+                          out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGCxform(float4 factor : COLOR1,
+                       float2 TexCoords0 : TEXCOORD0,
+                       float2 TexCoords1 : TEXCOORD1,
+                       out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGEAlphaMul(float4 factor : COLOR1,
+                          float2 TexCoords0 : TEXCOORD0,
+                          float2 TexCoords1 : TEXCOORD1,
+                          out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGEAlpha(float4 factor : COLOR1,
+                       float2 TexCoords0 : TEXCOORD0,
+                       float2 TexCoords1 : TEXCOORD1,
+                       out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTGMul(float4 factor : COLOR1,
+                    float2 TexCoords0 : TEXCOORD0,
+                    float2 TexCoords1 : TEXCOORD1,
+                    out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGTexTG(float4 factor : COLOR1,
+                 float2 TexCoords0 : TEXCOORD0,
+                 float2 TexCoords1 : TEXCOORD1,
+                 out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S TexTG
+  fcolor1 = tex2D(TextureDetail,TexCoords1);
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexBatchCxformEAlphaMul(half4 color : COLOR0,
+                                      float4 factor : COLOR1,
+                                      float4 fucxadd : TEXCOORD3,
+                                      float4 fucxmul : TEXCOORD4,
+                                      float2 TexCoords0 : TEXCOORD0,
+                                      out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexBatchCxformEAlpha(half4 color : COLOR0,
+                                   float4 factor : COLOR1,
+                                   float4 fucxadd : TEXCOORD3,
+                                   float4 fucxmul : TEXCOORD4,
+                                   float2 TexCoords0 : TEXCOORD0,
+                                   out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexBatchCxformMul(half4 color : COLOR0,
+                                float4 factor : COLOR1,
+                                float4 fucxadd : TEXCOORD3,
+                                float4 fucxmul : TEXCOORD4,
+                                float2 TexCoords0 : TEXCOORD0,
+                                out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexBatchCxform(half4 color : COLOR0,
+                             float4 factor : COLOR1,
+                             float4 fucxadd : TEXCOORD3,
+                             float4 fucxmul : TEXCOORD4,
+                             float2 TexCoords0 : TEXCOORD0,
+                             out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexBatchEAlphaMul(half4 color : COLOR0,
+                                float4 factor : COLOR1,
+                                float2 TexCoords0 : TEXCOORD0,
+                                out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexBatchEAlpha(half4 color : COLOR0,
+                             float4 factor : COLOR1,
+                             float2 TexCoords0 : TEXCOORD0,
+                             out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexBatchMul(half4 color : COLOR0,
+                          float4 factor : COLOR1,
+                          float2 TexCoords0 : TEXCOORD0,
+                          out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexBatch(half4 color : COLOR0,
+                       float4 factor : COLOR1,
+                       float2 TexCoords0 : TEXCOORD0,
+                       out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexCxformEAlphaMul(half4 color : COLOR0,
+                                 float4 factor : COLOR1,
+                                 float2 TexCoords0 : TEXCOORD0,
+                                 out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexCxformEAlpha(half4 color : COLOR0,
+                              float4 factor : COLOR1,
+                              float2 TexCoords0 : TEXCOORD0,
+                              out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexCxformMul(half4 color : COLOR0,
+                           float4 factor : COLOR1,
+                           float2 TexCoords0 : TEXCOORD0,
+                           out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexCxform(half4 color : COLOR0,
+                        float4 factor : COLOR1,
+                        float2 TexCoords0 : TEXCOORD0,
+                        out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexEAlphaMul(half4 color : COLOR0,
+                           float4 factor : COLOR1,
+                           float2 TexCoords0 : TEXCOORD0,
+                           out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexEAlpha(half4 color : COLOR0,
+                        float4 factor : COLOR1,
+                        float2 TexCoords0 : TEXCOORD0,
+                        out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertexMul(half4 color : COLOR0,
+                     float4 factor : COLOR1,
+                     float2 TexCoords0 : TEXCOORD0,
+                     out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTexTGVertex(half4 color : COLOR0,
+                  float4 factor : COLOR1,
+                  float2 TexCoords0 : TEXCOORD0,
+                  out float4 fcolor : COLOR) {
+  float4 fcolor1;
+  float4 fcolor0;
+// S TexTG
+  fcolor0 = tex2D(TextureBase,TexCoords0);
+// S Vertex
+  fcolor1 = color;
+  fcolor = lerp(fcolor1, fcolor0, factor.r);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexBatchCxformEAlphaMul(half4 color : COLOR0,
+                                       float4 factor : COLOR1,
+                                       float4 fucxadd : TEXCOORD3,
+                                       float4 fucxmul : TEXCOORD4,
+                                       out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexBatchCxformEAlpha(half4 color : COLOR0,
+                                    float4 factor : COLOR1,
+                                    float4 fucxadd : TEXCOORD3,
+                                    float4 fucxmul : TEXCOORD4,
+                                    out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexBatchCxformMul(half4 color : COLOR0,
+                                 float4 fucxadd : TEXCOORD3,
+                                 float4 fucxmul : TEXCOORD4,
+                                 out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexBatchCxform(half4 color : COLOR0,
+                              float4 fucxadd : TEXCOORD3,
+                              float4 fucxmul : TEXCOORD4,
+                              out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexBatchEAlphaMul(half4 color : COLOR0,
+                                 float4 factor : COLOR1,
+                                 out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexBatchEAlpha(half4 color : COLOR0,
+                              float4 factor : COLOR1,
+                              out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexBatchMul(half4 color : COLOR0,
+                           out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexBatch(half4 color : COLOR0,
+                        out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexCxformEAlphaMul(half4 color : COLOR0,
+                                  float4 factor : COLOR1,
+                                  out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexCxformEAlpha(half4 color : COLOR0,
+                               float4 factor : COLOR1,
+                               out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexCxformMul(half4 color : COLOR0,
+                            out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexCxform(half4 color : COLOR0,
+                         out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexEAlphaMul(half4 color : COLOR0,
+                            float4 factor : COLOR1,
+                            out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexEAlpha(half4 color : COLOR0,
+                         float4 factor : COLOR1,
+                         out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertexMul(half4 color : COLOR0,
+                      out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FVertexVertex(half4 color : COLOR0,
+                   out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Vertex
+  fcolor = color;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FSolidBatch(float4 fucxmul : TEXCOORD4,
+                 out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Solid
+  fcolor0 = fucxmul;
+fcolor = fcolor0;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FSolid(out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Solid
+  fcolor0 = ColorScale;
+fcolor = fcolor0;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextBatchMul(float2 tc : TEXCOORD0,
+                   half4 vcolor : COLOR0,
+                   out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Text
+  half4 c = vcolor;
+  c.a = c.a * tex2D(TextureBase, tc).r;
+  fcolor0 = c;
+fcolor = fcolor0;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextBatch(float2 tc : TEXCOORD0,
+                half4 vcolor : COLOR0,
+                out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Text
+  half4 c = vcolor;
+  c.a = c.a * tex2D(TextureBase, tc).r;
+  fcolor0 = c;
+fcolor = fcolor0;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextMul(float2 tc : TEXCOORD0,
+              half4 vcolor : COLOR0,
+              out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Text
+  half4 c = vcolor;
+  c.a = c.a * tex2D(TextureBase, tc).r;
+  fcolor0 = c;
+fcolor = fcolor0;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FText(float2 tc : TEXCOORD0,
+           half4 vcolor : COLOR0,
+           out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S Text
+  half4 c = vcolor;
+  c.a = c.a * tex2D(TextureBase, tc).r;
+  fcolor0 = c;
+fcolor = fcolor0;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextColorBatchCxformMul(float4 fucxadd : TEXCOORD3,
+                              float4 fucxmul : TEXCOORD4,
+                              float2 tc : TEXCOORD0,
+                              out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TextColor
+  fcolor0 = tex2D(TextureBase,tc);
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextColorBatchCxform(float4 fucxadd : TEXCOORD3,
+                           float4 fucxmul : TEXCOORD4,
+                           float2 tc : TEXCOORD0,
+                           out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TextColor
+  fcolor0 = tex2D(TextureBase,tc);
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextColorBatchMul(float2 tc : TEXCOORD0,
+                        out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TextColor
+  fcolor0 = tex2D(TextureBase,tc);
+fcolor = fcolor0;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextColorBatch(float2 tc : TEXCOORD0,
+                     out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TextColor
+  fcolor0 = tex2D(TextureBase,tc);
+fcolor = fcolor0;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextColorCxformMul(float2 tc : TEXCOORD0,
+                         out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TextColor
+  fcolor0 = tex2D(TextureBase,tc);
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextColorCxform(float2 tc : TEXCOORD0,
+                      out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TextColor
+  fcolor0 = tex2D(TextureBase,tc);
+fcolor = fcolor0;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextColorMul(float2 tc : TEXCOORD0,
+                   out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TextColor
+  fcolor0 = tex2D(TextureBase,tc);
+fcolor = fcolor0;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextColor(float2 tc : TEXCOORD0,
+                out float4 fcolor : COLOR) {
+  float4 fcolor0;
+// S TextColor
+  fcolor0 = tex2D(TextureBase,tc);
+fcolor = fcolor0;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextDFABatchMul(float4 fuDFShadowColor : TEXCOORD4,
+                      float4 fuDFShadowEnable : TEXCOORD2,
+                      float4 fuDFShadowOffset : TEXCOORD5,
+                      float4 fuDFSize : TEXCOORD3,
+                      float2 tc : TEXCOORD0,
+                      float4 vcolor : COLOR0,
+                      out float4 fcolor : COLOR) {
+// E TextDFA
+
+	float  BaseDist = tex2D(TextureBase,tc).r;
+	float  DFWidth = fuDFSize.w * ddx(tc.x);
+	float  DFShadowWidth = fuDFSize.x * 0.5f;
+	float4 Color = float4(vcolor.rgb, smoothstep(0.5f-DFWidth, 0.5f+DFWidth, BaseDist));
+
+	if (fuDFShadowEnable.x >= 1)
+	{
+		float ShadowDist = tex2D(TextureBase,tc + fuDFShadowOffset.xy).r;
+		float4 Shadow = float4(fuDFShadowColor.rgb, fuDFShadowColor.a * smoothstep(0.5f-DFShadowWidth, 0.5f+DFShadowWidth, ShadowDist));
+		//float4 Shadow = fuDFShadowColor * smoothstep(0.5f-DFShadowWidth, 0.5f+DFShadowWidth, ShadowDist);
+		Color = lerp(Shadow,Color,Color.a);
+	}/*
+	if (DFGlowEnable)
+	{		float4 Glow = float4(DFGlowColor.rgb, DFGlowColor.a * smoothstep(DFGlowRadius[0],DFGlowRadius[1],BaseDist));
+		Color = lerp(Glow,Color,Color.a);
+	}*/
+
+	Color.a *= vcolor.a;
+	fcolor = Color;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextDFABatch(float4 fuDFShadowColor : TEXCOORD4,
+                   float4 fuDFShadowEnable : TEXCOORD2,
+                   float4 fuDFShadowOffset : TEXCOORD5,
+                   float4 fuDFSize : TEXCOORD3,
+                   float2 tc : TEXCOORD0,
+                   float4 vcolor : COLOR0,
+                   out float4 fcolor : COLOR) {
+// E TextDFA
+
+	float  BaseDist = tex2D(TextureBase,tc).r;
+	float  DFWidth = fuDFSize.w * ddx(tc.x);
+	float  DFShadowWidth = fuDFSize.x * 0.5f;
+	float4 Color = float4(vcolor.rgb, smoothstep(0.5f-DFWidth, 0.5f+DFWidth, BaseDist));
+
+	if (fuDFShadowEnable.x >= 1)
+	{
+		float ShadowDist = tex2D(TextureBase,tc + fuDFShadowOffset.xy).r;
+		float4 Shadow = float4(fuDFShadowColor.rgb, fuDFShadowColor.a * smoothstep(0.5f-DFShadowWidth, 0.5f+DFShadowWidth, ShadowDist));
+		//float4 Shadow = fuDFShadowColor * smoothstep(0.5f-DFShadowWidth, 0.5f+DFShadowWidth, ShadowDist);
+		Color = lerp(Shadow,Color,Color.a);
+	}/*
+	if (DFGlowEnable)
+	{		float4 Glow = float4(DFGlowColor.rgb, DFGlowColor.a * smoothstep(DFGlowRadius[0],DFGlowRadius[1],BaseDist));
+		Color = lerp(Glow,Color,Color.a);
+	}*/
+
+	Color.a *= vcolor.a;
+	fcolor = Color;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextDFAMul(float2 tc : TEXCOORD0,
+                 float4 vcolor : COLOR0,
+                 out float4 fcolor : COLOR) {
+// E TextDFA
+
+	float  BaseDist = tex2D(TextureBase,tc).r;
+	float  DFWidth = DFSize.w * ddx(tc.x);
+	float  DFShadowWidth = DFSize.x * 0.5f;
+	float4 Color = float4(vcolor.rgb, smoothstep(0.5f-DFWidth, 0.5f+DFWidth, BaseDist));
+
+	if (DFShadowEnable.x >= 1)
+	{
+		float ShadowDist = tex2D(TextureBase,tc + DecalOffset.xy).r;
+		float4 Shadow = float4(scolor.rgb, scolor.a * smoothstep(0.5f-DFShadowWidth, 0.5f+DFShadowWidth, ShadowDist));
+		//float4 Shadow = scolor * smoothstep(0.5f-DFShadowWidth, 0.5f+DFShadowWidth, ShadowDist);
+		Color = lerp(Shadow,Color,Color.a);
+	}/*
+	if (DFGlowEnable)
+	{		float4 Glow = float4(DFGlowColor.rgb, DFGlowColor.a * smoothstep(DFGlowRadius[0],DFGlowRadius[1],BaseDist));
+		Color = lerp(Glow,Color,Color.a);
+	}*/
+
+	Color.a *= vcolor.a;
+	fcolor = Color;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FTextDFA(float2 tc : TEXCOORD0,
+              float4 vcolor : COLOR0,
+              out float4 fcolor : COLOR) {
+// E TextDFA
+
+	float  BaseDist = tex2D(TextureBase,tc).r;
+	float  DFWidth = DFSize.w * ddx(tc.x);
+	float  DFShadowWidth = DFSize.x * 0.5f;
+	float4 Color = float4(vcolor.rgb, smoothstep(0.5f-DFWidth, 0.5f+DFWidth, BaseDist));
+
+	if (DFShadowEnable.x >= 1)
+	{
+		float ShadowDist = tex2D(TextureBase,tc + DecalOffset.xy).r;
+		float4 Shadow = float4(scolor.rgb, scolor.a * smoothstep(0.5f-DFShadowWidth, 0.5f+DFShadowWidth, ShadowDist));
+		//float4 Shadow = scolor * smoothstep(0.5f-DFShadowWidth, 0.5f+DFShadowWidth, ShadowDist);
+		Color = lerp(Shadow,Color,Color.a);
+	}/*
+	if (DFGlowEnable)
+	{		float4 Glow = float4(DFGlowColor.rgb, DFGlowColor.a * smoothstep(DFGlowRadius[0],DFGlowRadius[1],BaseDist));
+		Color = lerp(Glow,Color,Color.a);
+	}*/
+
+	Color.a *= vcolor.a;
+	fcolor = Color;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchCxformEAlphaMul(float4 factor : COLOR1,
+                              float4 fucxadd : TEXCOORD3,
+                              float4 fucxmul : TEXCOORD4,
+                              float2 tc : TEXCOORD0,
+                              out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchCxformEAlpha(float4 factor : COLOR1,
+                           float4 fucxadd : TEXCOORD3,
+                           float4 fucxmul : TEXCOORD4,
+                           float2 tc : TEXCOORD0,
+                           out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchCxformMul(float4 fucxadd : TEXCOORD3,
+                        float4 fucxmul : TEXCOORD4,
+                        float2 tc : TEXCOORD0,
+                        out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchCxform(float4 fucxadd : TEXCOORD3,
+                     float4 fucxmul : TEXCOORD4,
+                     float2 tc : TEXCOORD0,
+                     out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchEAlphaMul(float4 factor : COLOR1,
+                        float2 tc : TEXCOORD0,
+                        out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchEAlpha(float4 factor : COLOR1,
+                     float2 tc : TEXCOORD0,
+                     out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchMul(float2 tc : TEXCOORD0,
+                  out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchYUVACxformEAlphaMul(float4 factor : COLOR1,
+                                  float4 fucxadd : TEXCOORD3,
+                                  float4 fucxmul : TEXCOORD4,
+                                  float2 tc : TEXCOORD0,
+                                  out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchYUVACxformEAlpha(float4 factor : COLOR1,
+                               float4 fucxadd : TEXCOORD3,
+                               float4 fucxmul : TEXCOORD4,
+                               float2 tc : TEXCOORD0,
+                               out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchYUVACxformMul(float4 fucxadd : TEXCOORD3,
+                            float4 fucxmul : TEXCOORD4,
+                            float2 tc : TEXCOORD0,
+                            out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchYUVACxform(float4 fucxadd : TEXCOORD3,
+                         float4 fucxmul : TEXCOORD4,
+                         float2 tc : TEXCOORD0,
+                         out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E Cxform
+  fcolor = fcolor * fucxmul + fucxadd;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchYUVAEAlphaMul(float4 factor : COLOR1,
+                            float2 tc : TEXCOORD0,
+                            out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchYUVAEAlpha(float4 factor : COLOR1,
+                         float2 tc : TEXCOORD0,
+                         out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchYUVAMul(float2 tc : TEXCOORD0,
+                      out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatchYUVA(float2 tc : TEXCOORD0,
+                   out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVBatch(float2 tc : TEXCOORD0,
+               out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVCxformEAlphaMul(float4 factor : COLOR1,
+                         float2 tc : TEXCOORD0,
+                         out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVCxformEAlpha(float4 factor : COLOR1,
+                      float2 tc : TEXCOORD0,
+                      out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVCxformMul(float2 tc : TEXCOORD0,
+                   out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVCxform(float2 tc : TEXCOORD0,
+                out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVEAlphaMul(float4 factor : COLOR1,
+                   float2 tc : TEXCOORD0,
+                   out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVEAlpha(float4 factor : COLOR1,
+                float2 tc : TEXCOORD0,
+                out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVMul(float2 tc : TEXCOORD0,
+             out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVYUVACxformEAlphaMul(float4 factor : COLOR1,
+                             float2 tc : TEXCOORD0,
+                             out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVYUVACxformEAlpha(float4 factor : COLOR1,
+                          float2 tc : TEXCOORD0,
+                          out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVYUVACxformMul(float2 tc : TEXCOORD0,
+                       out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVYUVACxform(float2 tc : TEXCOORD0,
+                    out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E Cxform
+  fcolor = fcolor * ColorScale + OverlayColor;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVYUVAEAlphaMul(float4 factor : COLOR1,
+                       float2 tc : TEXCOORD0,
+                       out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVYUVAEAlpha(float4 factor : COLOR1,
+                    float2 tc : TEXCOORD0,
+                    out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E EAlpha
+  fcolor.a *= factor.a;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVYUVAMul(float2 tc : TEXCOORD0,
+                 out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E Mul
+  fcolor = lerp(half4(1,1,1,1), fcolor, fcolor.a);
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUVYUVA(float2 tc : TEXCOORD0,
+              out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E YUVA
+  fcolor.a = tex2D(TextureDetail3, tc).r;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+
+void FYUV(float2 tc : TEXCOORD0,
+          out float4 fcolor : COLOR) {
+// E YUV
+  half c0 = half((tex2D(TextureBase, tc).r - 16.f/255.f) * 1.164f);
+  half U0 = half(tex2D(TextureDetail, tc).r - 128.f/255.f);
+  half V0 = half(tex2D(TextureDetail2, tc).r - 128.f/255.f);
+  half4 c = half4(c0,c0,c0,c0);
+  half4 U = half4(U0,U0,U0,U0);
+  half4 V = half4(V0,V0,V0,V0);
+  c += V * half4(1.596f, -0.813f, 0, 0);
+  c += U * half4(0, -0.392f, 2.017f, 0);
+  c.a = 1.0f;
+  fcolor = c;
+// E gamma
+  fcolor = RETURN_COLOR (float4(pow(saturate(fcolor.rgb), InverseGamma),fcolor.a));
+}
+

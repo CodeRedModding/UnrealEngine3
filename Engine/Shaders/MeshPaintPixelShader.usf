@@ -1,0 +1,197 @@
+/*================================================================================
+	MeshPaintPixelShader.usf: Mesh texture paint pixel shader
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+================================================================================*/
+
+#include "Common.usf"
+
+/** Texture containing a clone of the texture we're currently rendering to. */
+sampler2D s_CloneTexture;
+
+float4x4 c_WorldToBrushMatrix;
+
+/** Brush metrics: x = radius, y = falloff range, z = depth, w = depth falloff range */
+float4 c_BrushMetrics;
+
+float c_BrushStrength;
+float4 c_BrushColor;
+
+/** Flags that control paining individual channels: x = Red, y = Green, z = Blue, w = Alpha */
+float4 c_ChannelFlags;
+
+/** Flag to control texture mask generation */
+float c_GenerateMaskFlag;
+
+// @todo MeshPaint: Remove this?
+float c_Gamma;
+
+
+
+
+
+
+void Main( in float2 InCloneTextureCoordinates : TEXCOORD0,
+		   in float3 InWorldSpaceVertexPosition : TEXCOORD1,
+		   out float4 OutColor : COLOR0 )
+{
+	// First sample the source values from the clone texture
+	float4 OldColor = tex2D( s_CloneTexture, InCloneTextureCoordinates );
+
+
+	// Brush metrics: x = radius, y = falloff range, z = depth, w = depth falloff range
+	float BrushRadius = c_BrushMetrics.x;
+	float BrushRadialFalloffRange = c_BrushMetrics.y;
+	float BrushDepth = c_BrushMetrics.z;
+	float BrushDepthFalloffRange = c_BrushMetrics.w;
+
+
+
+	float4x4 WorldToBrushMatrix = c_WorldToBrushMatrix;
+//  	WorldToBrushMatrix._m30 = c_WorldToBrushMatrix._m03;
+//  	WorldToBrushMatrix._m31 = -c_WorldToBrushMatrix._m13;
+//  	WorldToBrushMatrix._m32 = c_WorldToBrushMatrix._m23;
+//  	WorldToBrushMatrix._m03 = c_WorldToBrushMatrix._m30;
+//  	WorldToBrushMatrix._m13 = -c_WorldToBrushMatrix._m31;
+//  	WorldToBrushMatrix._m23 = c_WorldToBrushMatrix._m32;
+
+//	float3 WorldSpaceBrushPosition = float3( WorldToBrushMatrix._m03, WorldToBrushMatrix._m13, WorldToBrushMatrix._m23 );
+//	float3 BrushSpaceVertexPosition = WorldSpaceVertexPosition - WorldSpaceBrushPosition;
+
+	// Project the pixel into the plane of the brush
+	float3 WorldSpaceVertexPosition = InWorldSpaceVertexPosition;
+	float3 BrushSpaceVertexPosition = MulMatrix( WorldToBrushMatrix, float4( WorldSpaceVertexPosition, 1.0f ) ).xyz;
+	float2 BrushSpaceVertexPosition2D = BrushSpaceVertexPosition.xy;
+
+
+	// Start by using the old color
+	float4 NewColor = OldColor;
+
+	if( c_GenerateMaskFlag == 1.0f )
+	{
+		NewColor = float4( 0.0f, 0.0f, 0.0f, 1.0f );
+	}
+
+
+	// Is the brush close enough to the vertex to paint?
+ 	float DistanceToVertex2D = length( BrushSpaceVertexPosition2D );
+ 	if( DistanceToVertex2D <= BrushRadius )
+	{
+		// OK the vertex is overlapping the brush in 2D space, but is it too close or
+		// two far (depth wise) to be influenced?
+ 		float VertexDepthToBrush = abs( BrushSpaceVertexPosition.z );
+ 		if( VertexDepthToBrush <= BrushDepth )
+		{
+			// Compute amount of paint to apply
+			float PaintAmount = 1.0f;
+
+			// Apply radial-based falloff
+			{
+				// Compute the actual distance
+				float InnerBrushRadius = BrushRadius - BrushRadialFalloffRange;
+				if( DistanceToVertex2D > InnerBrushRadius )
+				{
+					float RadialBasedFalloff = ( DistanceToVertex2D - InnerBrushRadius ) / BrushRadialFalloffRange;
+					PaintAmount *= 1.0f - RadialBasedFalloff;
+				}
+			}
+
+			// Apply depth-based falloff
+			{
+				float InnerBrushDepth = BrushDepth - BrushDepthFalloffRange;
+				if( VertexDepthToBrush > InnerBrushDepth )
+				{
+					float DepthBasedFalloff = ( VertexDepthToBrush - InnerBrushDepth ) / BrushDepthFalloffRange;
+					PaintAmount *= 1.0f - DepthBasedFalloff;
+				}
+			}
+
+			PaintAmount *= c_BrushStrength;
+
+			if( c_GenerateMaskFlag == 1.0f )
+			{
+				if( PaintAmount > 0.0f )
+				{
+					NewColor = float4( 1.0f, 1.0f, 1.0f, 1.0f );
+				}
+
+			}
+			else
+			{
+				float4 BrushColor = c_BrushColor;
+
+				if( c_ChannelFlags.x )
+				{
+					if( OldColor.x < BrushColor.x )
+					{
+						NewColor.x = min( BrushColor.x, OldColor.x + PaintAmount );
+					}
+					else
+					{
+						NewColor.x = max( BrushColor.x, OldColor.x - PaintAmount );
+					}
+				}
+
+				if( c_ChannelFlags.y )
+				{
+					if( OldColor.y < BrushColor.y )
+					{
+						NewColor.y = min( BrushColor.y, OldColor.y + PaintAmount );
+					}
+					else
+					{
+						NewColor.y = max( BrushColor.y, OldColor.y - PaintAmount );
+					}
+				}
+
+				if( c_ChannelFlags.z )
+				{
+					if( OldColor.z < BrushColor.z )
+					{
+						NewColor.z = min( BrushColor.z, OldColor.z + PaintAmount );
+					}
+					else
+					{
+						NewColor.z = max( BrushColor.z, OldColor.z - PaintAmount );
+					}
+				}
+
+				if( c_ChannelFlags.w )
+				{
+					if( OldColor.w < BrushColor.w )
+					{
+						NewColor.w = min( BrushColor.w, OldColor.w + PaintAmount );
+					}
+					else
+					{
+						NewColor.w = max( BrushColor.w, OldColor.w - PaintAmount );
+					}
+				}
+			}
+
+//			NewColor = float4( PaintAmount, PaintAmount, PaintAmount, PaintAmount );
+		}
+	}
+
+//	OutColor = OldColor;
+	OutColor = NewColor;
+
+
+	// Gamma correct the output color.
+	if( c_Gamma != 1.0 )
+	{
+		OutColor.rgb = pow( saturate( OutColor.rgb ), c_Gamma );	
+	}
+
+
+//	float3 WorldSpaceBrushPosition = float3( WorldToBrushMatrix._m03, WorldToBrushMatrix._m13, WorldToBrushMatrix._m23 );
+// 
+// 	float Dist = length( WorldSpaceBrushPosition - WorldSpaceVertexPosition ) / 1000;
+// 
+// 	OutColor = float4( abs( WorldSpaceBrushPosition - WorldSpaceVertexPosition ) / 1000, 1.0f );
+// 	OutColor = float4( WorldSpaceVertexPosition / 700, 1.0f ); 
+//	OutColor = float4( WorldSpaceBrushPosition / 1000, 1.0f ); 
+//	OutColor = float4( Dist, Dist, Dist, 1.0f );
+//	OutColor = float4( abs( BrushSpaceVertexPosition ) / 100, 1.0f );
+	
+//	OutColor = float4( abs( c_WorldToBrushMatrix._m03 - WorldSpaceVertexPosition.x ) / 1000, abs( c_WorldToBrushMatrix._m13 - WorldSpaceVertexPosition.y )/ 1000, abs( c_WorldToBrushMatrix._m23 - WorldSpaceVertexPosition.z )/ 1000, 1.0f );
+}

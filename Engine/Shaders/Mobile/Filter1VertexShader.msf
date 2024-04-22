@@ -1,0 +1,16 @@
+/*=============================================================================
+	Filter1VertexShader.usf: Filter vertex shader source, with no filtering
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+ATTRIBUTE(vec4, Position, POSITION);
+ATTRIBUTE(vec2, TexCoords0, TEXCOORD0);
+
+OUT_VARYING_DEFAULT(vec2, TextureUV, TEXCOORD0);
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+void main()
+{
+	gl_Position = Position;
+	TextureUV = TexCoords0;
+}

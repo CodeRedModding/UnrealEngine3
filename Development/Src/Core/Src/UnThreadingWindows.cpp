@@ -1,99 +1,74 @@
-	/**
+/**
  * UnThreadingWindows.cpp -- Contains all Windows platform specific definitions
  * of interfaces and concrete classes for multithreading support in the Unreal
  * engine.
  *
- * Copyright 2004 Epic Games, Inc. All Rights Reserved.
- *
- * Revision history:
- *		Created by Joe Graf.
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
  */
 
 #include "CorePrivate.h"
+
+#if _MSC_VER
+
 #include "UnThreadingWindows.h"
 
 /** The global synchonization object factory.	*/
-FSynchronizeFactory*	GSynchronizeFactory = NULL;
+FSynchronizeFactory*	GSynchronizeFactory				= NULL;
 /** The global thread factory.					*/
-FThreadFactory*			GThreadFactory		= NULL;
+FThreadFactory*			GThreadFactory					= NULL;
+/** The global thread pool */
+FQueuedThreadPool*		GThreadPool						= NULL;
 
-/** Default constructor, initializing Value to 0 */
-FThreadSafeCounter::FThreadSafeCounter()
-{
-	Value = 0;
-}
 
 /**
- * Constructor, initializing counter to passed in value.
+ * Code setting the thread name for use in the debugger.
  *
- * @param InValue	Value to initialize counter to
+ * http://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
  */
-FThreadSafeCounter::FThreadSafeCounter( LONG InValue )
+#define MS_VC_EXCEPTION 0x406D1388
+
+#pragma pack(push,8)
+typedef struct tagTHREADNAME_INFO
 {
-	Value = InValue;
-}
+	DWORD dwType;		// Must be 0x1000.
+	LPCSTR szName;		// Pointer to name (in user addr space).
+	DWORD dwThreadID;	// Thread ID (-1=caller thread).
+	DWORD dwFlags;		// Reserved for future use, must be zero.
+} THREADNAME_INFO;
+#pragma pack(pop)
 
 /**
- * Increment and return new value.	
- *
- * @return the incremented value
+ * Helper function to set thread names, visible by the debugger.
+ * @param ThreadID		Thread ID for the thread who's name is going to be set
+ * @param ThreadName	Name to set
  */
-LONG FThreadSafeCounter::Increment()
+void SetThreadName( DWORD ThreadID, LPCSTR ThreadName )
 {
-	return InterlockedIncrement( &Value );
+	// on the xbox setting thread names messes up the XDK COM API that UnrealConsole uses so check to see if they have been
+	// explicitly enabled
+#if XBOX
+	if(GSetThreadNames)
+	{
+#endif
+		Sleep(10);
+		THREADNAME_INFO ThreadNameInfo;
+		ThreadNameInfo.dwType		= 0x1000;
+		ThreadNameInfo.szName		= ThreadName;
+		ThreadNameInfo.dwThreadID	= ThreadID;
+		ThreadNameInfo.dwFlags		= 0;
+
+		__try
+		{
+			RaiseException( MS_VC_EXCEPTION, 0, sizeof(ThreadNameInfo)/sizeof(ULONG_PTR), (ULONG_PTR*)&ThreadNameInfo );
+		}
+		__except(EXCEPTION_EXECUTE_HANDLER)
+		{
+		}
+#if XBOX
+	}
+#endif
 }
 
-/**
- * Decrement and return new value.
- *
- * @return the decremented value
- */
-LONG FThreadSafeCounter::Decrement()
-{
-	return InterlockedDecrement( &Value );
-}
-
-/**
- * Return the current value.
- *
- * @return the current value
- */
-LONG FThreadSafeCounter::GetValue()
-{
-	return Value;
-}
-
-/**
- * Constructor that initializes the aggregated critical section
- */
-FCriticalSectionWin::FCriticalSectionWin(void)
-{
-	InitializeCriticalSection(&CriticalSection);
-}
-
-/**
- * Locks the critical section
- */
-void FCriticalSectionWin::Lock(void)
-{
-	EnterCriticalSection(&CriticalSection);
-}
-
-/**
- * Releases the lock on the critical seciton
- */
-void FCriticalSectionWin::Unlock(void)
-{
-	LeaveCriticalSection(&CriticalSection);
-}
-
-/**
- * Destructor cleaning up the critical section
- */
-FCriticalSectionWin::~FCriticalSectionWin(void)
-{
-	DeleteCriticalSection(&CriticalSection);
-}
 
 /**
  * Constructor that zeroes the handle
@@ -143,7 +118,11 @@ void FEventWin::Unlock(void)
 UBOOL FEventWin::Create(UBOOL bIsManualReset,const TCHAR* InName)
 {
 	// Create the event and default it to non-signaled
+#if XBOX
 	Event = CreateEventA(NULL,bIsManualReset,0,TCHAR_TO_ANSI(InName));
+#else
+	Event = CreateEvent(NULL,bIsManualReset,0,InName);
+#endif
 	return Event != NULL;
 }
 
@@ -191,112 +170,6 @@ UBOOL FEventWin::Wait(DWORD WaitTime)
 }
 
 /**
- * Constructor that zeroes the handle
- */
-FMutexWin::FMutexWin(void)
-{
-	Mutex = NULL;
-}
-
-/**
- * Cleans up the mutex handle if valid
- */
-FMutexWin::~FMutexWin(void)
-{
-	if (Mutex != NULL)
-	{
-		CloseHandle(Mutex);
-	}
-}
-
-/**
- * Locks the mutex
- */
-void FMutexWin::Lock(void)
-{
-	check(Mutex);
-	WaitForSingleObject(Mutex,INFINITE);
-}
-
-/**
- * Releases the lock on the mutex
- */
-void FMutexWin::Unlock(void)
-{
-	check(Mutex);
-	ReleaseMutex(Mutex);
-}
-
-/**
- * Creates the mutex. If a name is supplied, that name is used to find
- * a shared mutex instance.
- *
- * @param InName Whether to use a commonly shared mutex or not. If so this
- * is the name of the mutex to share.
- *
- * @return Returns TRUE if the mutex was created, FALSE otherwise
- */
-UBOOL FMutexWin::Create(const TCHAR* InName)
-{
-	Mutex = CreateMutexA(NULL,0,TCHAR_TO_ANSI(InName));
-	return Mutex != NULL;
-}
-
-/**
- * Constructor that zeroes the handle
- */
-FSemaphoreWin::FSemaphoreWin(void)
-{
-	Semaphore = NULL;
-}
-
-/**
- * Cleans up the semaphore handle if valid
- */
-FSemaphoreWin::~FSemaphoreWin(void)
-{
-	if (Semaphore != NULL)
-	{
-		CloseHandle(Semaphore);
-	}
-}
-
-/**
- * Acquires a lock on the semaphore
- */
-void FSemaphoreWin::Lock(void)
-{
-	check(Semaphore);
-	WaitForSingleObject(Semaphore,INFINITE);
-}
-
-/**
- * Releases one acquired lock back to the semaphore
- */
-void FSemaphoreWin::Unlock(void)
-{
-	check(Semaphore);
-	LONG Ignored;
-	ReleaseSemaphore(Semaphore,1,&Ignored);
-}
-
-/**
- * Creates the semaphore with the specified number of locks. Named
- * semaphores share instances the same way events and mutexes do.
- *
- * @param InNumLocks The number of locks this semaphore will support
- * @param InName Whether to use a commonly shared semaphore or not. If so
- * this is the name of the semaphore to share.
- *
- * @return Returns TRUE if the semaphore was created, FALSE otherwise
- */
-UBOOL FSemaphoreWin::Create(DWORD InNumLocks,const TCHAR* InName)
-{
-	Semaphore = CreateSemaphoreA(NULL,0,InNumLocks,TCHAR_TO_ANSI(InName));
-	return Semaphore != NULL;
-}
-
-/**
  * Zeroes its members
  */
 FSynchronizeFactoryWin::FSynchronizeFactoryWin(void)
@@ -310,7 +183,7 @@ FSynchronizeFactoryWin::FSynchronizeFactoryWin(void)
  */
 FCriticalSection* FSynchronizeFactoryWin::CreateCriticalSection(void)
 {
-	return new FCriticalSectionWin();
+	return new FCriticalSection();
 }
 
 /**
@@ -337,49 +210,6 @@ FEvent* FSynchronizeFactoryWin::CreateSynchEvent(UBOOL bIsManualReset,
 }
 
 /**
- * Creates a new semaphore
- *
- * @param InNumLocks The number of locks this semaphore will support
- * @param InName Whether to use a commonly shared semaphore or not. If so
- * this is the name of the semaphore to share.
- *
- * @return The new semaphore object or NULL if creation fails
- */
-FSemaphore* FSynchronizeFactoryWin::CreateSemaphore(DWORD InNumLocks,const TCHAR* InName)
-{
-	// Allocate the new object
-	FSemaphore* Semaphore = new FSemaphoreWin();
-	// If the internal create fails, delete the instance and return NULL
-	if (Semaphore->Create(InNumLocks,InName) == FALSE)
-	{
-		delete Semaphore;
-		Semaphore = NULL;
-	}
-	return Semaphore;
-}
-
-/**
- * Creates a new mutex
- *
- * @param InName Whether to use a commonly shared mutex or not. If so this
- * is the name of the mutex to share.
- *
- * @return The new mutex object or NULL if creation fails
- */
-FMutex* FSynchronizeFactoryWin::CreateMutex(const TCHAR* InName)
-{
-	// Allocate the new object
-	FMutex* Mutex = new FMutexWin();
-	// If the internal create fails, delete the instance and return NULL
-	if (Mutex->Create(InName) == FALSE)
-	{
-		delete Mutex;
-		Mutex = NULL;
-	}
-	return Mutex;
-}
-
-/**
  * Cleans up the specified synchronization object using the correct heap
  *
  * @param InSynchObj The synchronization object to destroy
@@ -392,14 +222,14 @@ void FSynchronizeFactoryWin::Destroy(FSynchronize* InSynchObj)
 /**
  * Zeros any members
  */
-FQueuedThreadWin::FQueuedThreadWin(void)
+FQueuedThreadWin::FQueuedThreadWin(void) :
+	DoWorkEvent(NULL),
+	ThreadHandle(NULL),
+	ThreadID(0),
+	TimeToDie(FALSE),
+	QueuedWork(NULL),
+	OwningThreadPool(NULL)
 {
-	DoWorkEvent			= NULL;
-	TimeToDie			= FALSE;
-	QueuedWork			= NULL;
-	QueuedWorkSynch		= NULL;
-	OwningThreadPool	= NULL;
-	ThreadID			= 0;
 }
 
 /**
@@ -432,25 +262,22 @@ DWORD STDCALL FQueuedThreadWin::_ThreadProc(LPVOID pThis)
  */
 void FQueuedThreadWin::Run(void)
 {
-	// While we are not told to die
-	while (InterlockedExchange((LPLONG)&TimeToDie,0) == 0)
+	while (!TimeToDie)
 	{
+		STAT(StatsUpdate.ConditionalUpdate());   // maybe advance the stats frame
 		// Wait for some work to do
 		DoWorkEvent->Wait();
+		FQueuedWork* LocalQueuedWork = QueuedWork;
+		QueuedWork = NULL;
+		check(LocalQueuedWork || TimeToDie); // well you woke me up, where is the job or termination request?
+		while (LocalQueuedWork)
 		{
-			FScopeLock sl(QueuedWorkSynch);
-			// If there is a valid job, do it otherwise check for time to exit
-			if (QueuedWork != NULL)
-			{
-				// Tell the object to do the work
-				QueuedWork->DoWork();
-				// Let the object cleanup before we remove our ref to it
-				QueuedWork->Dispose();
-				QueuedWork = NULL;
-			}
-		}
-		// Return ourselves to the owning pool
-		OwningThreadPool->ReturnToPool(this);
+			STAT(StatsUpdate.ConditionalUpdate());   // maybe advance the stats frame
+			// Tell the object to do the work
+			LocalQueuedWork->DoThreadedWork();
+			// Let the object cleanup before we remove our ref to it
+			LocalQueuedWork = OwningThreadPool->ReturnToPoolOrGetNextJob(this);
+		} 
 	}
 }
 
@@ -460,23 +287,45 @@ void FQueuedThreadWin::Run(void)
  *
  * @param InPool The thread pool interface used to place this thread
  * back into the pool of available threads when its work is done
+ * @param ProcessorMask Specifies which processors should be used by the pool
  * @param InStackSize The size of the stack to create. 0 means use the
  * current thread's stack size
+ * @param ThreadPriority priority of new thread
  *
  * @return True if the thread and all of its initialization was successful, false otherwise
  */
-UBOOL FQueuedThreadWin::Create(FQueuedThreadPool* InPool,DWORD InStackSize)
+UBOOL FQueuedThreadWin::Create(FQueuedThreadPool* InPool,DWORD ProcessorMask,
+	DWORD InStackSize,EThreadPriority ThreadPriority)
 {
 	check(OwningThreadPool == NULL && ThreadHandle == NULL);
 	// Copy the parameters for use in the thread
 	OwningThreadPool = InPool;
 	// Create the work event used to notify this thread of work
 	DoWorkEvent = GSynchronizeFactory->CreateSynchEvent();
-	QueuedWorkSynch = GSynchronizeFactory->CreateCriticalSection();
-	if (DoWorkEvent != NULL && QueuedWorkSynch != NULL)
+	if (DoWorkEvent != NULL)
 	{
 		// Create the new thread
 		ThreadHandle = CreateThread(NULL,InStackSize,_ThreadProc,this,0,&ThreadID);
+		// Move the thread to the specified processors if requested
+		if (ThreadHandle != NULL && ProcessorMask > 0)
+		{
+#if PLATFORM_WINDOWS
+			// The mask specifies a set of processors to run on
+			SetThreadAffinityMask(ThreadHandle,(DWORD_PTR)ProcessorMask);
+#elif XBOX
+			DWORD ProcNum = 0;
+			DWORD ProcMask = 1;
+			// Search for the first matching processor
+			while ((ProcMask & ProcessorMask) == 0 && ProcMask < 64)
+			{
+				ProcNum++;
+				ProcMask <<= 1;
+			}
+			check(ProcNum < 6);
+			// Use the converted mask value to determine the hwthread #
+			XSetThreadProcessor(ThreadHandle,ProcNum);
+#endif
+		}
 	}
 	// If it fails, clear all the vars
 	if (ThreadHandle == NULL)
@@ -488,12 +337,21 @@ UBOOL FQueuedThreadWin::Create(FQueuedThreadPool* InPool,DWORD InStackSize)
 			GSynchronizeFactory->Destroy(DoWorkEvent);
 		}
 		DoWorkEvent = NULL;
-		if (QueuedWorkSynch != NULL)
+	}
+	else
+	{
+		// Let the thread start up, then set the name for debug purposes.
+		Sleep(1);
+		if (ThreadPriority != TPri_Normal)
 		{
-			// Clean up the work synch
-			GSynchronizeFactory->Destroy(QueuedWorkSynch);
+			check(ThreadPriority == TPri_AboveNormal || ThreadPriority == TPri_BelowNormal);
+			SetThreadName( ThreadID,ThreadPriority == TPri_AboveNormal ? "HiPriPoolThread" : "LoPriPoolThread" );
+			SetThreadPriority( ThreadHandle, ThreadPriority == TPri_AboveNormal ? THREAD_PRIORITY_ABOVE_NORMAL : THREAD_PRIORITY_BELOW_NORMAL );
 		}
-		QueuedWorkSynch = NULL;
+		else
+		{
+			SetThreadName( ThreadID, "PoolThread" );
+		}
 	}
 	return ThreadHandle != NULL;
 }
@@ -505,14 +363,11 @@ UBOOL FQueuedThreadWin::Create(FQueuedThreadPool* InPool,DWORD InStackSize)
  * NOTE: having a thread forcibly destroyed can cause leaks in TLS, etc.
  *
  * @param bShouldWait If true, the call will wait for the thread to exit
- * @param MaxWaitTime The amount of time to wait before killing it. It
- * defaults to inifinite.
  * @param bShouldDeleteSelf Whether to delete ourselves upon completion
  *
  * @return True if the thread exited gracefully, false otherwise
  */
-UBOOL FQueuedThreadWin::Kill(UBOOL bShouldWait,DWORD MaxWaitTime,
-	UBOOL bShouldDeleteSelf)
+UBOOL FQueuedThreadWin::Kill(UBOOL bShouldWait,UBOOL bShouldDeleteSelf)
 {
 	UBOOL bDidExitOK = TRUE;
 	// Tell the thread it needs to die
@@ -524,19 +379,12 @@ UBOOL FQueuedThreadWin::Kill(UBOOL bShouldWait,DWORD MaxWaitTime,
 	// brute force kill that thread. Very bad as that might leak.
 	if (bShouldWait == TRUE)
 	{
-		// If this times out, kill the thread
-		if (WaitForSingleObject(ThreadHandle,MaxWaitTime) == WAIT_TIMEOUT)
-		{
-#if 0
-			// Kill the thread. @warning: This can leak TLS data
-			TerminateThread(ThreadHandle,-1);
-			bDidExitOK = FALSE;
-#else
-			//@todo xenon: We cannot possibly leak any memory for memory images to work and I don't want to track
-			//@todo xenon: down Xenon only threading issues which is why I'd rather assert on the PC as well.
-			appErrorf(TEXT("Thread %p still alive. Kill failed: Aborting."),ThreadHandle);
-#endif
-		}
+		// Wait indefinitely for the thread to finish.  IMPORTANT:  It's not safe to just go and
+		// kill the thread with TerminateThread() as it could have a mutex lock that's shared
+		// with a thread that's continuing to run, which would cause that other thread to
+		// dead-lock.  (This can manifest itself in code as simple as the synchronization
+		// object that is used by our logging output classes.  Trust us, we've seen it!)
+		WaitForSingleObject(ThreadHandle, INFINITE);
 	}
 	// Now clean up the thread handle so we don't leak
 	CloseHandle(ThreadHandle);
@@ -545,8 +393,6 @@ UBOOL FQueuedThreadWin::Kill(UBOOL bShouldWait,DWORD MaxWaitTime,
 	GSynchronizeFactory->Destroy(DoWorkEvent);
 	DoWorkEvent = NULL;
 	// Clean up the work synch
-	GSynchronizeFactory->Destroy(QueuedWorkSynch);
-	QueuedWorkSynch = NULL;
 	TimeToDie = FALSE;
 	// Delete ourselves if requested
 	if (bShouldDeleteSelf)
@@ -564,12 +410,9 @@ UBOOL FQueuedThreadWin::Kill(UBOOL bShouldWait,DWORD MaxWaitTime,
  */
 void FQueuedThreadWin::DoWork(FQueuedWork* InQueuedWork)
 {
-	{
-		FScopeLock sl(QueuedWorkSynch);
-		check(QueuedWork == NULL && "Can't do more than one task at a time");
-		// Tell the thread the work to be done
-		QueuedWork = InQueuedWork;
-	}
+	check(QueuedWork == NULL && "Can't do more than one task at a time");
+	// Tell the thread the work to be done
+	QueuedWork = InQueuedWork;
 	// Tell the thread to wake up and do its job
 	DoWorkEvent->Trigger();
 }
@@ -589,36 +432,71 @@ FQueuedThreadPoolWin::~FQueuedThreadPoolWin(void)
  * Creates the thread pool with the specified number of threads
  *
  * @param InNumQueuedThreads Specifies the number of threads to use in the pool
+ * @param ProcessorMask Specifies which processors should be used by the pool
  * @param StackSize The size of stack the threads in the pool need (32K default)
+ * @param ThreadPriority priority of new pool thread
  *
  * @return Whether the pool creation was successful or not
  */
-UBOOL FQueuedThreadPoolWin::Create(DWORD InNumQueuedThreads,DWORD StackSize)
+UBOOL FQueuedThreadPoolWin::Create(DWORD InNumQueuedThreads,DWORD ProcessorMask,
+	DWORD StackSize,EThreadPriority ThreadPriority)
 {
-	UBOOL bWasSuccessful = TRUE;
-	FScopeLock LockThreads(SynchThreadQueue);
-	FScopeLock LockWork(SynchWorkQueue);
-	// Presize the array so there is no extra memory allocated
-	QueuedThreads.Empty(InNumQueuedThreads);
-	// Now create each thread and add it to the array
-	for (DWORD Count = 0; Count < InNumQueuedThreads && bWasSuccessful == TRUE;
-		Count++)
+	// Make sure we have synch objects
+	UBOOL bWasSuccessful = CreateSynchObjects();
+	if (bWasSuccessful == TRUE)
 	{
-		// Create a new queued thread
-		FQueuedThread* pThread = new FQueuedThreadWin();
-		// Now create the thread and add it if ok
-		if (pThread->Create(this,StackSize) == TRUE)
+		FScopeLock Lock(SynchQueue);
+		// Presize the array so there is no extra memory allocated
+		QueuedThreads.Empty(InNumQueuedThreads);
+#if XBOX
+		// Used to set which processor for each pooled thread
+		DWORD NextMask = 1;
+#endif
+		// Now create each thread and add it to the array
+		for (DWORD Count = 0; Count < InNumQueuedThreads && bWasSuccessful == TRUE;
+			Count++)
 		{
-			QueuedThreads.AddItem(pThread);
-		}
-		else
-		{
-			// Failed to fully create so clean up
-			bWasSuccessful = FALSE;
-			delete pThread;
+			// Create a new queued thread
+			FQueuedThread* pThread = new FQueuedThreadWin();
+#if XBOX
+			// Skip if we aren't specifying where
+			if (ProcessorMask > 0)
+			{
+				// Figure out where we want this one to run
+				while ((NextMask & ProcessorMask) == 0)
+				{
+					NextMask <<= 1;
+					// Wrap back around if we've passed the end
+					if (NextMask > ProcessorMask)
+					{
+						NextMask = 1;
+					}
+				}
+			}
+			else
+			{
+				NextMask = 0;
+			}
+			DWORD CurrentMask = NextMask;
+			NextMask <<= 1;
+			// Now create the thread and add it if ok
+			if (pThread->Create(this,CurrentMask,StackSize,ThreadPriority) == TRUE)
+#else
+			// Now create the thread and add it if ok
+			if (pThread->Create(this,ProcessorMask,StackSize,ThreadPriority) == TRUE)
+#endif
+			{
+				QueuedThreads.AddItem(pThread);
+			}
+			else
+			{
+				// Failed to fully create so clean up
+				bWasSuccessful = FALSE;
+				delete pThread;
+			}
 		}
 	}
-	// Destroy any created threads if the full set was not succesful
+	// Destroy any created threads if the full set was not successful
 	if (bWasSuccessful == FALSE)
 	{
 		Destroy();
@@ -629,13 +507,14 @@ UBOOL FQueuedThreadPoolWin::Create(DWORD InNumQueuedThreads,DWORD StackSize)
 /**
  * Zeroes members
  */
-FRunnableThreadWin::FRunnableThreadWin(void)
-{
-	Thread					= NULL;
-	Runnable				= NULL;
-	bShouldDeleteSelf		= FALSE;
-	bShouldDeleteRunnable	= FALSE;
-}
+FRunnableThreadWin::FRunnableThreadWin(void) :
+	Thread(NULL),
+	Runnable(NULL),				
+	ThreadInitSyncEvent(NULL),	
+	bShouldDeleteSelf(FALSE),	
+	bShouldDeleteRunnable(FALSE),
+	ThreadID(NULL)				
+{}
 
 /**
  * Cleans up any resources
@@ -653,6 +532,7 @@ FRunnableThreadWin::~FRunnableThreadWin(void)
  * Creates the thread with the specified stack size and thread priority.
  *
  * @param InRunnable The runnable object to execute
+ * @param ThreadName Name of the thread
  * @param bAutoDeleteSelf Whether to delete this object on exit
  * @param bAutoDeleteRunnable Whether to delete the runnable object on exit
  * @param InStackSize The size of the stack to create. 0 means use the
@@ -662,7 +542,7 @@ FRunnableThreadWin::~FRunnableThreadWin(void)
  *
  * @return True if the thread and all of its initialization was successful, false otherwise
  */
-UBOOL FRunnableThreadWin::Create(FRunnable* InRunnable,
+UBOOL FRunnableThreadWin::Create(FRunnable* InRunnable, const TCHAR* ThreadName,
 	UBOOL bAutoDeleteSelf,UBOOL bAutoDeleteRunnable,DWORD InStackSize,
 	EThreadPriority InThreadPri)
 {
@@ -671,14 +551,30 @@ UBOOL FRunnableThreadWin::Create(FRunnable* InRunnable,
 	ThreadPriority = InThreadPri;
 	bShouldDeleteSelf = bAutoDeleteSelf;
 	bShouldDeleteRunnable = bAutoDeleteRunnable;
-	DWORD ThreadID;
+
+	// Create a sync event to guarantee the Init() function is called first
+	ThreadInitSyncEvent	= GSynchronizeFactory->CreateSynchEvent(TRUE);
 	// Create the new thread
 	Thread = CreateThread(NULL,InStackSize,_ThreadProc,this,0,&ThreadID);
 	// If it fails, clear all the vars
 	if (Thread == NULL)
 	{
+		if (bAutoDeleteRunnable == TRUE)
+		{
+			delete InRunnable;
+		}
 		Runnable = NULL;
 	}
+	else
+	{
+		// Let the thread start up, then set the name for debug purposes.
+		ThreadInitSyncEvent->Wait(INFINITE);
+		SetThreadName( ThreadID, ThreadName ? TCHAR_TO_ANSI( ThreadName ) : "Unnamed UE3" );
+	}
+
+	// Cleanup the sync event
+	GSynchronizeFactory->Destroy(ThreadInitSyncEvent);
+	ThreadInitSyncEvent = NULL;
 	return Thread != NULL;
 }
 
@@ -708,46 +604,41 @@ void FRunnableThreadWin::Suspend(UBOOL bShouldPause)
  * NOTE: having a thread forcibly destroyed can cause leaks in TLS, etc.
  *
  * @param bShouldWait If true, the call will wait for the thread to exit
- * @param MaxWaitTime The amount of time to wait before killing it.
- * Defaults to inifinite.
  *
- * @return True if the thread exited gracefull, false otherwise
+ * @return True if the thread exited graceful, false otherwise
  */
-UBOOL FRunnableThreadWin::Kill(UBOOL bShouldWait,DWORD MaxWaitTime)
+UBOOL FRunnableThreadWin::Kill(UBOOL bShouldWait)
 {
-	check(Thread && Runnable && "Did you forget to call Create()?");
+	check(Thread && "Did you forget to call Create()?");
 	UBOOL bDidExitOK = TRUE;
 	// Let the runnable have a chance to stop without brute force killing
-	Runnable->Stop();
+	if (Runnable)
+	{
+		Runnable->Stop();
+	}
 	// If waiting was specified, wait the amount of time. If that fails,
 	// brute force kill that thread. Very bad as that might leak.
 	if (bShouldWait == TRUE)
 	{
-		// If this times out, kill the thread
-		if (WaitForSingleObject(Thread,MaxWaitTime) == WAIT_TIMEOUT)
-		{
-#if 0
-			// Kill the thread. @warning: This can leak TLS data
-			TerminateThread(Thread,-1);
-			bDidExitOK = FALSE;
-#else
-			//@todo xenon: We cannot possibly leak any memory for memory images to work and I don't want to track
-			//@todo xenon: down Xenon only threading issues which is why I'd rather assert on the PC as well.
-			appErrorf(TEXT("Thread %p still alive. Kill failed: Aborting."),Thread);
-#endif
-		}
+		// Wait indefinitely for the thread to finish.  IMPORTANT:  It's not safe to just go and
+		// kill the thread with TerminateThread() as it could have a mutex lock that's shared
+		// with a thread that's continuing to run, which would cause that other thread to
+		// dead-lock.  (This can manifest itself in code as simple as the synchronization
+		// object that is used by our logging output classes.  Trust us, we've seen it!)
+		WaitForSingleObject(Thread,INFINITE);
 	}
 	// Now clean up the thread handle so we don't leak
 	CloseHandle(Thread);
 	Thread = NULL;
-	// Should we delete the runnable?
-	if (bShouldDeleteRunnable == TRUE)
+	// delete the runnable if requested and we didn't shut down gracefully already.
+	if (Runnable && bShouldDeleteRunnable == TRUE)
 	{
 		delete Runnable;
 		Runnable = NULL;
 	}
-	// Delete ourselves if requested
-	if (bShouldDeleteSelf == TRUE)
+	// Delete ourselves if requested and we didn't shut down gracefully already.
+	// This check prevents a double-delete of self when we shut down gracefully.
+	if (!bDidExitOK && bShouldDeleteSelf == TRUE)
 	{
 		GThreadFactory->Destroy(this);
 	}
@@ -783,16 +674,32 @@ DWORD FRunnableThreadWin::Run(void)
 	// Initialize the runnable object
 	if (Runnable->Init() == TRUE)
 	{
+		// Initialization has completed, release the sync event
+		ThreadInitSyncEvent->Trigger();
 		// Now run the task that needs to be done
 		ExitCode = Runnable->Run();
 		// Allow any allocated resources to be cleaned up
 		Runnable->Exit();
 	}
+	else
+	{
+		// Initialization has failed, release the sync event
+		ThreadInitSyncEvent->Trigger();
+	}
+
+	// Should we delete the runnable?
+	if (bShouldDeleteRunnable == TRUE)
+	{
+		delete Runnable;
+		Runnable = NULL;
+	}
 	// Clean ourselves up without waiting
 	if (bShouldDeleteSelf == TRUE)
 	{
-		// Passing TRUE here will deadlock the thread
-		Kill(FALSE);
+		// Now clean up the thread handle so we don't leak
+		CloseHandle(Thread);
+		Thread = NULL;
+		GThreadFactory->Destroy(this);
 	}
 	return ExitCode;
 }
@@ -823,11 +730,7 @@ void FRunnableThreadWin::SetThreadPriority(EThreadPriority NewPriority)
  */
 void FRunnableThreadWin::SetProcessorAffinity(DWORD ProcessorNum)
 {
-#ifndef XBOX
-	SetThreadIdealProcessor(Thread,ProcessorNum);
-#else
-	XSetThreadProcessor(Thread,ProcessorNum);
-#endif
+	appSetThreadAffinity(Thread,ProcessorNum);
 }
 
 /**
@@ -840,9 +743,20 @@ void FRunnableThreadWin::WaitForCompletion(void)
 }
 
 /**
+* Thread ID for this thread 
+*
+* @return ID that was set by CreateThread
+*/
+DWORD FRunnableThreadWin::GetThreadID(void)
+{
+	return ThreadID;
+}
+
+/**
  * Creates the thread with the specified stack size and thread priority.
  *
  * @param InRunnable The runnable object to execute
+ * @param ThreadName Name of the thread
  * @param bAutoDeleteSelf Whether to delete this object on exit
  * @param bAutoDeleteRunnable Whether to delete the runnable object on exit
  * @param InStackSize The size of the stack to create. 0 means use the
@@ -852,7 +766,7 @@ void FRunnableThreadWin::WaitForCompletion(void)
  *
  * @return The newly created thread or NULL if it failed
  */
-FRunnableThread* FThreadFactoryWin::CreateThread(FRunnable* InRunnable,
+FRunnableThread* FThreadFactoryWin::CreateThread(FRunnable* InRunnable, const TCHAR* ThreadName,
 	UBOOL bAutoDeleteSelf,UBOOL bAutoDeleteRunnable,DWORD InStackSize,
 	EThreadPriority InThreadPri)
 {
@@ -862,7 +776,7 @@ FRunnableThread* FThreadFactoryWin::CreateThread(FRunnable* InRunnable,
 	if (NewThread)
 	{
 		// Call the thread's create method
-		if (NewThread->Create(InRunnable,bAutoDeleteSelf,bAutoDeleteRunnable,
+		if (NewThread->Create(InRunnable,ThreadName,bAutoDeleteSelf,bAutoDeleteRunnable,
 			InStackSize,InThreadPri) == FALSE)
 		{
 			// We failed to start the thread correctly so clean up
@@ -882,3 +796,6 @@ void FThreadFactoryWin::Destroy(FRunnableThread* InThread)
 {
 	delete InThread;
 }
+
+#endif
+

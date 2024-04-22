@@ -1,0 +1,61 @@
+/*=============================================================================
+	SphericalHarmonicLightPixelShader.usf: Lights an object using a single SH environment.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#undef WORLD_COORDS
+#define WORLD_COORDS 1
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+#include "SphericalHarmonicCommon.usf"
+#include "SubsurfaceScatteringCommon.usf"
+
+void Main(
+	in FVertexFactoryInterpolantsVSToPS FactoryInterpolants,
+	in float4 CameraVectorOrVertexColor : TEXCOORD6,
+	in float4 PixelPosition : TEXCOORD7,
+	OPTIONAL_PixelShaderScreenPosition
+	OPTIONAL_FacingSign
+	OPTIONAL_PixelShaderCoverageInputOutput
+	out float4 OutColor : COLOR0
+#if SM5_PROFILE && MATERIAL_ENABLE_SUBSURFACE_SCATTERING
+	,out float4 OutSubsurfaceInscattering : COLOR1
+#endif
+	)
+{
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(FactoryInterpolants);
+	CalcMaterialParameters(MaterialParameters,FacingSign,CameraVectorOrVertexColor,PixelPosition,float3(0,0,1));
+
+	// Allow the material to mask out pixels.
+	GetMaterialCoverageAndClipping(MaterialParameters,PixelShaderScreenPosition.xy,InCoverage,OutCoverage);
+
+	// Transform the surface normal and the reflected camera vector into world-space.
+	float3 WorldNormal = TransformTangentVectorToWorld(MaterialParameters.TangentToWorld, MaterialParameters.TangentNormal);
+
+	#if MATERIAL_LIGHTINGMODEL_CUSTOM
+		float3 CustomLightingDiffuse = GetMaterialCustomLightingDiffuse(MaterialParameters);
+	#else
+		float3 CustomLightingDiffuse = float3(0,0,0);
+	#endif
+	OutColor.rgb = ComputeSHLighting(GetMaterialDiffuseColor(MaterialParameters), CustomLightingDiffuse, WorldNormal, MaterialParameters);
+	half Opacity = GetMaterialOpacity(MaterialParameters);
+	
+#if MATERIALBLENDING_TRANSLUCENT
+		OutColor.a = Opacity;
+#elif MATERIALBLENDING_ADDITIVE || MATERIALBLENDING_SOFTMASKED
+		OutColor.rgb = OutColor.rgb * Opacity;
+		OutColor.a = 0.0f;
+#else
+		OutColor.a = 0.0f;
+#endif
+
+#if SM5_PROFILE && MATERIAL_ENABLE_SUBSURFACE_SCATTERING
+	float3 IncidentLighting = ComputeSHLighting(float3(1,1,1),float3(1,1,1),WorldNormal,MaterialParameters);
+
+	OutSubsurfaceInscattering = EncodeSubsurfaceInscattering(IncidentLighting * GetMaterialSubsurfaceInscatteringColor(MaterialParameters));
+#endif
+
+	OutColor = RETURN_COLOR(OutColor);
+}

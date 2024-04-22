@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="BuiltWithUnrealBuildTool|Win32">
+      <Configuration>BuiltWithUnrealBuildTool</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{9A9F621F-9C29-4166-8476-FF4A9F917E8B}</ProjectGuid>
+    <RootNamespace>SubstanceAirEd</RootNamespace>
+    <Keyword>MakeFileProj</Keyword>
+    <SccProjectName>
+    </SccProjectName>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\$(Configuration)\$(ProjectName)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\$(Configuration)\$(ProjectName)\</IntDir>
+    <NMakeBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeReBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeCleanCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeOutput Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="Classes\GenericBrowserType_SubstanceAirGraphInstance.uc" />
+    <None Include="Classes\GenericBrowserType_SubstanceAirImageInput.uc" />
+    <None Include="Classes\GenericBrowserType_SubstanceAirInstanceFactory.uc" />
+    <None Include="Classes\GenericBrowserType_SubstanceAirTexture2D.uc" />
+    <None Include="Classes\ImageInputThumbnailRenderer.uc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\SubstanceAirEd.cpp" />
+    <ClCompile Include="Src\SubstanceAirEdCreateImageInputDlg.cpp" />
+    <ClCompile Include="Src\SubstanceAirEdCreateTestSceneCommandlet.cpp" />
+    <ClCompile Include="Src\SubstanceAirEdGenericBrowser.cpp" />
+    <ClCompile Include="Src\SubstanceAirEdHelpers.cpp" />
+    <ClCompile Include="Src\SubstanceAirEdImageInputFactory.cpp" />
+    <ClCompile Include="Src\SubstanceAirEdImportCommandlet.cpp" />
+    <ClCompile Include="Src\SubstanceAirEdNewGraphInstanceDlg.cpp" />
+    <ClCompile Include="Src\SubstanceAirEdPreset.cpp" />
+    <ClCompile Include="Src\SubstanceAirEdImportFactory.cpp" />
+    <ClCompile Include="Src\SubstanceAirEdThumbnailRenderer.cpp" />
+    <ClCompile Include="Src\SubstanceAirEdXmlHelper.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\SubstanceAirEdBrowserClasses.h" />
+    <ClInclude Include="Inc\SubstanceAirEdCommandlet.h" />
+    <ClInclude Include="Inc\SubstanceAirEdCreateImageInputDlg.h" />
+    <ClInclude Include="Inc\SubstanceAirEdFactoryClasses.h" />
+    <ClInclude Include="Inc\SubstanceAirEdGraphInstanceEditorWindowShared.h" />
+    <ClInclude Include="Inc\SubstanceAirEdHelpers.h" />
+    <ClInclude Include="Inc\SubstanceAirEdImageReaders.h" />
+    <ClInclude Include="Inc\SubstanceAirEdNames.h" />
+    <ClInclude Include="Inc\SubstanceAirEdNewGraphInstanceDlg.h" />
+    <ClInclude Include="Inc\SubstanceAirEdPreset.h" />
+    <ClInclude Include="Inc\SubstanceAirEdThumbnailRendererClasses.h" />
+    <ClInclude Include="Inc\SubstanceAirEdXmlHelper.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

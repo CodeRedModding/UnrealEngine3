@@ -1,0 +1,147 @@
+/*=============================================================================
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// struct FVertexFactoryInput
+
+#define NUM_INPUT_TEXCOORDS_SPEEDTREE 1
+
+struct FVertexFactoryInput
+{
+	float4	Position	: POSITION;
+	half3	TangentX	: TANGENT;
+	half3	TangentY	: BINORMAL;
+	half3	TangentZ	: NORMAL;
+	
+	float2	TexCoords[NUM_INPUT_TEXCOORDS_SPEEDTREE] : TEXCOORD0;
+
+	float	bIsVerticalBillboard : TEXCOORD1;
+
+#if NEEDS_VERTEX_LIGHTMAP
+	float4 LightMapA : TEXCOORD5;
+	float4 LightMapB : TEXCOORD6;
+#elif NEEDS_SIMPLE_VERTEX_LIGHTMAP
+	float4	LightMapA : TEXCOORD5;
+#endif
+};
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Includes
+
+#include "SpeedTreeVertexFactoryBase.usf"
+
+
+///////////////////////////////////////////////////////////////////////  
+//  billboard-specific global variables
+
+float4		TextureCoordinateScaleBias;
+float4x4	ViewToLocal;
+float		BillboardMaskClipValues[2];
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// AlignLocalVectorToView
+
+float3 AlignLocalVectorToView(float3 _Vector)
+{
+	const float3 CameraZ = MulMatrix(ViewToLocal,float4(0,0,1,0)).xyz;
+	const float3 Up = float3(0,0,1);
+	const float3 Right = normalize(cross(Up,CameraZ).xyz);
+	return Right * _Vector.y + Up * _Vector.z + CameraZ * _Vector.x;
+}
+
+
+///////////////////////////////////////////////////////////////////////  
+//  BillboardWindMotion
+
+float4 BillboardWindMotion(float3 vPos)
+{
+	// rotate tree before wind
+	vPos = MulMatrix(vPos, RotationOnlyMatrix);
+	
+	// get the oscillation times (they changed independently to allow smooth frequency changes in multiple components)
+#if PS3 
+	float fPrimaryTime = WindTimes.x + LocalToWorld[0][3]; 
+	float fSecondaryTime = WindTimes.y + LocalToWorld[1][3]; 
+#else 
+	float fPrimaryTime = WindTimes.x + LocalToWorld[3][0]; 
+	float fSecondaryTime = WindTimes.y + LocalToWorld[3][1]; 
+#endif 
+
+	// compute how much the height contributes
+	float fAdjust = max(vPos.z * WindDistances.z, 0.0f);
+	fAdjust = pow(fAdjust, WindDistances.w);
+
+	// move a bare minimum due to gusting/strength
+	float fMoveAmount = WindGust.y;
+
+	// primary oscillation
+	fMoveAmount += WindDistances.x * sin(fPrimaryTime * 0.3f) * cos(fPrimaryTime * 0.95f);
+	fMoveAmount *= fAdjust;
+
+	// xy component
+	vPos.xy += WindDir.xy * fMoveAmount;
+
+	// move down a little to hide the sliding effect
+	vPos.z -= fMoveAmount * WindGustHints.x;
+
+	return float4(vPos, 1);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CalcWorldPosition
+
+float4 CalcWorldPosition(float4x4 Transform, FVertexFactoryInput Input)
+{
+	float3 Position = Input.Position.xyz;
+	if(Input.bIsVerticalBillboard > 0.0)
+	{
+		Position = AlignLocalVectorToView(Position);
+	}
+	
+	return MulMatrix(Transform, BillboardWindMotion(Position));
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// GetWorldTangentBasis
+
+half3x3 GetWorldTangentBasis(FVertexFactoryInput Input)
+{
+	half3x3 Tangents = half3x3(TangentBias(Input.TangentX.xyz),
+								TangentBias(Input.TangentY.xyz),
+								TangentBias(Input.TangentZ.xyz));		
+	
+	if (Input.bIsVerticalBillboard > 0.0)
+	{
+		Tangents[0] = AlignLocalVectorToView(Tangents[0]);
+		Tangents[1] = AlignLocalVectorToView(Tangents[1]);
+		Tangents[2] = AlignLocalVectorToView(Tangents[2]);
+	}
+	
+	return MulMatrix(Tangents, (half3x3)RotationOnlyMatrix);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ModifyInterpolants
+
+void ModifyInterpolants(FVertexFactoryInput Input, inout FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+#if NUM_MATERIAL_TEXCOORDS
+	// only choose new texcoords for the vertical billboards
+	if (Input.bIsVerticalBillboard > 0.0)
+	{
+		Interpolants.TexCoords[0].xy *= TextureCoordinateScaleBias.xy;
+		Interpolants.TexCoords[0].xy += TextureCoordinateScaleBias.zw;
+	}
+#endif
+
+	// Use the appropriate mask clip value for the billboard.
+	Interpolants.VertexColor.a = BillboardMaskClipValues[Input.bIsVerticalBillboard];
+}
+

@@ -1,0 +1,16 @@
+/*=============================================================================
+	SubsurfaceScatteringVertexShader.usf: Vertex shader for subsurface scattering
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+void Main(
+	in float2 InPosition : POSITION,
+	out float4 OutScreenPosition : TEXCOORD0,
+	out float4 OutPosition : POSITION
+	)
+{	
+	// screenspace position from vb
+	OutPosition = float4(InPosition,0,1);
+	OutScreenPosition = float4(InPosition,0,1);	
+}

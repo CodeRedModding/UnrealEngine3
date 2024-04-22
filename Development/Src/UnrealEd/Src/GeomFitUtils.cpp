@@ -1,13 +1,11 @@
 /*=============================================================================
 	GeomFitUtils.cpp: Utilities for fitting collision models to static meshes.
-	Copyright 1997-2002 Epic Games, Inc. All Rights Reserved.
-
-    Revision history:
-		* Created by James Golding
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "UnrealEd.h"
-
+#include "EnginePhysicsClasses.h"
+#include "BSPOps.h"
 
 #define LOCAL_EPS (0.01f)
 static void AddVertexIfNotPresent(TArray<FVector> &vertices, FVector &newVertex)
@@ -36,30 +34,23 @@ static void AddVertexIfNotPresent(TArray<FVector> &vertices, FVector &newVertex)
 
 void GenerateKDopAsCollisionModel(UStaticMesh* StaticMesh,TArray<FVector> &dirs)
 {
-	// If we already have a collision model for this staticmesh, ask if we want to replace it.
-	if(StaticMesh->CollisionModel)
-	{
-		UBOOL doReplace = appMsgf(1, TEXT("Static Mesh already has a collision model. \nDo you want to replace it?"));
-		if(doReplace)
-			StaticMesh->CollisionModel = NULL;
-		else
-			return;
-	}
+	// Make sure rendering is done - so we are not changing data being used by collision drawing.
+	FlushRenderingCommands();
 
 	URB_BodySetup* bs = StaticMesh->BodySetup;
 	if(bs)
 	{
-		// If we already have some karma collision for this mesh, check user want to replace it with sphere.
-		int totalGeoms = 1 + bs->AggGeom.GetElementCount();
-		if(totalGeoms > 0)
-		{
-			UBOOL doReplace = appMsgf(1, TEXT("Static Mesh already has physics collision geoemtry. \n")
-				TEXT("Are you sure you want replace it with a K-DOP?"));
+		// If we already have some simplified collision for this mesh - check before we clobber it.
+		UBOOL doReplace = appMsgf( AMT_YesNo, *LocalizeUnrealEd("Prompt_9") );
 
-			if(doReplace)
-				bs->AggGeom.EmptyElements();
-			else
-				return;
+		if(doReplace)
+		{
+			bs->AggGeom.EmptyElements();
+			bs->ClearShapeCache();
+		}
+		else
+		{
+			return;
 		}
 	}
 	else
@@ -75,15 +66,16 @@ void GenerateKDopAsCollisionModel(UStaticMesh* StaticMesh,TArray<FVector> &dirs)
 	for(INT i=0; i<kCount; i++)
 		maxDist.AddItem(-MY_FLTMAX);
 
-	StaticMesh->CollisionModel = new(StaticMesh->GetOuter()) UModel(NULL,1);
+	// Construct temporary UModel for kdop creation. We keep no refs to it, so it can be GC'd.
+	UModel* TempModel = new UModel(NULL,1);
 
 	// For each vertex, project along each kdop direction, to find the max in that direction.
-	TArray<FStaticMeshVertex>* verts = &StaticMesh->Vertices;
-	for(INT i=0; i<verts->Num(); i++)
+	const FStaticMeshRenderData& RenderData = StaticMesh->LODModels(0);
+	for(UINT i=0; i<RenderData.NumVertices; i++)
 	{
 		for(INT j=0; j<kCount; j++)
 		{
-			FLOAT dist = (*verts)(i).Position | dirs(j);
+			FLOAT dist = RenderData.PositionVertexBuffer.VertexPosition(i) | dirs(j);
 			maxDist(j) = Max(dist, maxDist(j));
 		}
 	}
@@ -95,20 +87,19 @@ void GenerateKDopAsCollisionModel(UStaticMesh* StaticMesh,TArray<FVector> &dirs)
 
 	for(INT i=0; i<planes.Num(); i++)
 	{
-		FPoly*	Polygon = new(StaticMesh->CollisionModel->Polys->Element) FPoly();
+		FPoly*	Polygon = new(TempModel->Polys->Element) FPoly();
 		FVector Base, AxisX, AxisY;
 
 		Polygon->Init();
 		Polygon->Normal = planes(i);
-		Polygon->NumVertices = 4;
 		Polygon->Normal.FindBestAxisVectors(AxisX,AxisY);
 
 		Base = planes(i) * planes(i).W;
 
-		Polygon->Vertex[0] = Base + AxisX * HALF_WORLD_MAX + AxisY * HALF_WORLD_MAX;
-		Polygon->Vertex[1] = Base + AxisX * HALF_WORLD_MAX - AxisY * HALF_WORLD_MAX;
-		Polygon->Vertex[2] = Base - AxisX * HALF_WORLD_MAX - AxisY * HALF_WORLD_MAX;
-		Polygon->Vertex[3] = Base - AxisX * HALF_WORLD_MAX + AxisY * HALF_WORLD_MAX;
+		new(Polygon->Vertices) FVector(Base + AxisX * HALF_WORLD_MAX + AxisY * HALF_WORLD_MAX);
+		new(Polygon->Vertices) FVector(Base + AxisX * HALF_WORLD_MAX - AxisY * HALF_WORLD_MAX);
+		new(Polygon->Vertices) FVector(Base - AxisX * HALF_WORLD_MAX - AxisY * HALF_WORLD_MAX);
+		new(Polygon->Vertices) FVector(Base - AxisX * HALF_WORLD_MAX + AxisY * HALF_WORLD_MAX);
 
 		for(INT j=0; j<planes.Num(); j++)
 		{
@@ -116,16 +107,16 @@ void GenerateKDopAsCollisionModel(UStaticMesh* StaticMesh,TArray<FVector> &dirs)
 			{
 				if(!Polygon->Split(-FVector(planes(j)), planes(j) * planes(j).W))
 				{
-					Polygon->NumVertices = 0;
+					Polygon->Vertices.Empty();
 					break;
 				}
 			}
 		}
 
-		if(Polygon->NumVertices < 3)
+		if(Polygon->Vertices.Num() < 3)
 		{
 			// If poly resulted in no verts, remove from array
-			StaticMesh->CollisionModel->Polys->Element.Remove(StaticMesh->CollisionModel->Polys->Element.Num()-1);
+			TempModel->Polys->Element.Remove(TempModel->Polys->Element.Num()-1);
 		}
 		else
 		{
@@ -135,24 +126,25 @@ void GenerateKDopAsCollisionModel(UStaticMesh* StaticMesh,TArray<FVector> &dirs)
 		}
 	}
 
-	if(StaticMesh->CollisionModel->Polys->Element.Num() < 4)
+	if(TempModel->Polys->Element.Num() < 4)
 	{
-		StaticMesh->CollisionModel = NULL;
+		TempModel = NULL;
 		return;
 	}
 
 	// Build bounding box.
-	StaticMesh->CollisionModel->BuildBound();
+	TempModel->BuildBound();
 
 	// Build BSP for the brush.
-	GEditor->bspBuild(StaticMesh->CollisionModel,BSP_Good,15,70,1,0);
-	GEditor->bspRefresh(StaticMesh->CollisionModel,1);
-	GEditor->bspBuildBounds(StaticMesh->CollisionModel);
+	FBSPOps::bspBuild(TempModel,FBSPOps::BSP_Good,15,70,1,0);
+	FBSPOps::bspRefresh(TempModel,1);
+	FBSPOps::bspBuildBounds(TempModel);
 
-	KModelToHulls(&bs->AggGeom, StaticMesh->CollisionModel, FVector(0, 0, 0));
+	KModelToHulls(&bs->AggGeom, TempModel);
 	
 	// Mark staticmesh as dirty, to help make sure it gets saved.
 	StaticMesh->MarkPackageDirty();
+	GCallbackEvent->Send( FCallbackEventParameters( NULL, CALLBACK_RefreshContentBrowser, CBR_UpdateAssetListUI, StaticMesh ) );
 }
 
 /* ******************************** OBB ******************************** */
@@ -170,25 +162,25 @@ void GenerateOBBAsCollisionModel(UStaticMesh* StaticMesh)
 
 // This algorithm taken from Ritter, 1990
 // This one seems to do well with asymmetric input.
-static void CalcBoundingSphere(TArray<FStaticMeshVertex>& verts, FSphere& sphere, FVector& LimitVec)
+static void CalcBoundingSphere(const FStaticMeshRenderData& RenderData, FSphere& sphere, FVector& LimitVec)
 {
 	FBox Box;
 
-	if(verts.Num() == 0)
+	if(RenderData.NumVertices == 0)
 		return;
 
 	INT minIx[3], maxIx[3]; // Extreme points.
 
 	// First, find AABB, remembering furthest points in each dir.
-	Box.Min = verts(0).Position * LimitVec;
+	Box.Min = RenderData.PositionVertexBuffer.VertexPosition(0) * LimitVec;
 	Box.Max = Box.Min;
 
 	minIx[0] = minIx[1] = minIx[2] = 0;
 	maxIx[0] = maxIx[1] = maxIx[2] = 0;
 
-	for(INT i=1; i<verts.Num(); i++) 
+	for(UINT i=1; i<RenderData.NumVertices; i++) 
 	{
-		FVector p = verts(i).Position * LimitVec;
+		FVector p = RenderData.PositionVertexBuffer.VertexPosition(i) * LimitVec;
 
 		// X //
 		if(p.X < Box.Min.X)
@@ -231,17 +223,17 @@ static void CalcBoundingSphere(TArray<FStaticMeshVertex>& verts, FSphere& sphere
 	FLOAT d2 = 0.f;
 	for(INT i=0; i<3; i++)
 	{
-		FVector diff = (verts(maxIx[i]).Position - verts(minIx[i]).Position) * LimitVec;
+		FVector diff = (RenderData.PositionVertexBuffer.VertexPosition(maxIx[i]) - RenderData.PositionVertexBuffer.VertexPosition(minIx[i])) * LimitVec;
 		FLOAT tmpd2 = diff.SizeSquared();
 
 		if(tmpd2 > d2)
 		{
 			d2 = tmpd2;
-			FVector centre = verts(minIx[i]).Position + (0.5f * diff);
+			FVector centre = RenderData.PositionVertexBuffer.VertexPosition(minIx[i]) + (0.5f * diff);
 			centre *= LimitVec;
-			sphere.X = centre.X;
-			sphere.Y = centre.Y;
-			sphere.Z = centre.Z;
+			sphere.Center.X = centre.X;
+			sphere.Center.Y = centre.Y;
+			sphere.Center.Z = centre.Z;
 			sphere.W = 0.f;
 		}
 	}
@@ -251,9 +243,9 @@ static void CalcBoundingSphere(TArray<FStaticMeshVertex>& verts, FSphere& sphere
 	FLOAT r2 = r * r;
 
 	// Now check each point lies within this sphere. If not - expand it a bit.
-	for(INT i=0; i<verts.Num(); i++) 
+	for(UINT i=0; i<RenderData.NumVertices; i++) 
 	{
-		FVector cToP = (verts(i).Position * LimitVec) - sphere;
+		FVector cToP = (RenderData.PositionVertexBuffer.VertexPosition(i) * LimitVec) - sphere.Center;
 		FLOAT pr2 = cToP.SizeSquared();
 
 		// If this point is outside our current bounding sphere..
@@ -264,7 +256,7 @@ static void CalcBoundingSphere(TArray<FStaticMeshVertex>& verts, FSphere& sphere
 			r = 0.5f * (r + pr);
 			r2 = r * r;
 
-			sphere += (pr-r)/pr * cToP;
+			sphere.Center += ((pr-r)/pr * cToP);
 		}
 	}
 
@@ -273,26 +265,26 @@ static void CalcBoundingSphere(TArray<FStaticMeshVertex>& verts, FSphere& sphere
 
 // This is the one thats already used by unreal.
 // Seems to do better with more symmetric input...
-static void CalcBoundingSphere2(TArray<FStaticMeshVertex>& verts, FSphere& sphere, FVector& LimitVec)
+static void CalcBoundingSphere2(const FStaticMeshRenderData& RenderData, FSphere& sphere, FVector& LimitVec)
 {
 	FBox Box(0);
 	
-	for(INT i=0; i<verts.Num(); i++)
+	for(UINT i=0; i<RenderData.NumVertices; i++)
 	{
-		Box += verts(i).Position * LimitVec;
+		Box += RenderData.PositionVertexBuffer.VertexPosition(i) * LimitVec;
 	}
 
 	FVector centre, extent;
 	Box.GetCenterAndExtents(centre, extent);
 
-	sphere.X = centre.X;
-	sphere.Y = centre.Y;
-	sphere.Z = centre.Z;
+	sphere.Center.X = centre.X;
+	sphere.Center.Y = centre.Y;
+	sphere.Center.Z = centre.Z;
 	sphere.W = 0;
 
-	for( INT i=0; i<verts.Num(); i++ )
+	for( UINT i=0; i<RenderData.NumVertices; i++ )
 	{
-		FLOAT Dist = FDistSquared(verts(i).Position * LimitVec, sphere);
+		FLOAT Dist = FDistSquared(RenderData.PositionVertexBuffer.VertexPosition(i) * LimitVec, sphere.Center);
 		if( Dist > sphere.W )
 			sphere.W = Dist;
 	}
@@ -303,25 +295,14 @@ static void CalcBoundingSphere2(TArray<FStaticMeshVertex>& verts, FSphere& spher
 
 void GenerateSphereAsKarmaCollision(UStaticMesh* StaticMesh)
 {
-	// If we already have a collision model for this staticmesh, ask if we want to replace it.
-	if(StaticMesh->CollisionModel)
-	{
-		UBOOL doReplace = appMsgf(1, TEXT("Static Mesh already has a collision model. \nDo you want to replace it?"));
-		if(doReplace)
-			StaticMesh->CollisionModel = NULL;
-		else
-			return;
-	}
-
 	URB_BodySetup* bs = StaticMesh->BodySetup;
 	if(bs)
 	{
-		// If we already have some karma collision for this mesh, check user want to replace it with sphere.
+		// If we already have some simplified collision for this mesh, check user want to replace it with sphere.
 		int totalGeoms = 1 + bs->AggGeom.GetElementCount();
 		if(totalGeoms > 0)
 		{
-			UBOOL doReplace = appMsgf(1, TEXT("Static Mesh already has physics collision geoemtry. \n")
-				TEXT("Are you sure you want replace it with a sphere?"));
+			UBOOL doReplace = appMsgf( AMT_YesNo, *LocalizeUnrealEd("Prompt_9") );
 
 			if(doReplace)
 				bs->AggGeom.EmptyElements();
@@ -337,12 +318,12 @@ void GenerateSphereAsKarmaCollision(UStaticMesh* StaticMesh)
 	}
 
 	// Calculate bounding sphere.
-	TArray<FStaticMeshVertex>* verts = &StaticMesh->Vertices;
+	const FStaticMeshRenderData& RenderData = StaticMesh->LODModels(0);
 
 	FSphere bSphere, bSphere2, bestSphere;
 	FVector unitVec = FVector(1,1,1);
-	CalcBoundingSphere(*verts, bSphere, unitVec);
-	CalcBoundingSphere2(*verts, bSphere2, unitVec);
+	CalcBoundingSphere(RenderData, bSphere, unitVec);
+	CalcBoundingSphere2(RenderData, bSphere2, unitVec);
 
 	if(bSphere.W < bSphere2.W)
 		bestSphere = bSphere;
@@ -352,21 +333,22 @@ void GenerateSphereAsKarmaCollision(UStaticMesh* StaticMesh)
 	// Dont use if radius is zero.
 	if(bestSphere.W <= 0.f)
 	{
-		appMsgf(0, TEXT("Could not create geometry."));
+		appMsgf(AMT_OK, *LocalizeUnrealEd("Prompt_10"));
 		return;
 	}
 
 	int ex = bs->AggGeom.SphereElems.AddZeroed();
 	FKSphereElem* s = &bs->AggGeom.SphereElems(ex);
 	s->TM = FMatrix::Identity;
-	s->TM.M[3][0] = bestSphere.X;
-	s->TM.M[3][1] = bestSphere.Y;
-	s->TM.M[3][2] = bestSphere.Z;
+	s->TM.M[3][0] = bestSphere.Center.X;
+	s->TM.M[3][1] = bestSphere.Center.Y;
+	s->TM.M[3][2] = bestSphere.Center.Z;
 	s->Radius = bestSphere.W;
 
 
 	// Mark staticmesh as dirty, to help make sure it gets saved.
 	StaticMesh->MarkPackageDirty();
+	GCallbackEvent->Send( FCallbackEventParameters( NULL, CALLBACK_RefreshContentBrowser, CBR_UpdateAssetListUI, StaticMesh ) );
 }
 
 

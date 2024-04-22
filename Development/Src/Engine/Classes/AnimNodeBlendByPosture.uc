@@ -2,9 +2,7 @@
  * AnimNodeBlendByPosture.uc
  * Looks at the posture of the Pawn that owns this node and blends accordingly.
  *
- * Created by:	Daniel Vogel
- * Copyright:	(c) 2004
- * Company:		Epic Games, Inc.
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
  */
 
 class AnimNodeBlendByPosture extends AnimNodeBlendList
@@ -16,10 +14,11 @@ class AnimNodeBlendByPosture extends AnimNodeBlendList
 
 cpptext
 {
-	virtual	void TickAnim( FLOAT DeltaSeconds, FLOAT TotalWeight );
+	virtual	void TickAnim(FLOAT DeltaSeconds);
 }
 
 defaultproperties
 {
-
+	Children(0)=(Name="Standing")
+	Children(1)=(Name="Crouched")
 }

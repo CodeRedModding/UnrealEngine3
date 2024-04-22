@@ -1,0 +1,126 @@
+/*=============================================================================
+	BasePassCommon.usf: Base pass definitions used by both vertex and pixel shader
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#undef NEEDS_LIGHTMAP_COORDINATE
+#undef NEEDS_SHADOWMAP_COORDINATE
+
+#define NEEDS_LIGHTMAP_COORDINATE		(TEXTURE_LIGHTMAP || SIMPLE_TEXTURE_LIGHTMAP || STATICLIGHTING_TEXTUREMASK)
+#define NEEDS_SHADOWMAP_COORDINATE		STATICLIGHTING_TEXTUREMASK
+#define NEEDS_VERTEX_LIGHTMAP			VERTEX_LIGHTMAP
+#define NEEDS_SIMPLE_VERTEX_LIGHTMAP	SIMPLE_VERTEX_LIGHTMAP
+#define SUPPORTS_DECAL_FOGGING			(!(DECAL_FACTORY && GPUSKIN_DECAL))
+#define NEEDS_BASEPASS_FOGGING			(MATERIALBLENDING_TRANSLUCENT || MATERIALBLENDING_ADDITIVE || MATERIALBLENDING_MODULATE || MATERIALBLENDING_MODULATEANDADD) && SUPPORTS_DECAL_FOGGING
+
+/* If simple lighting is enabled then the base pass shader will just be Diffuse * LightMap + Emissive */
+#define SIMPLE_LIGHTING					((SIMPLE_VERTEX_LIGHTMAP || SIMPLE_TEXTURE_LIGHTMAP) && !MATERIAL_LIGHTINGMODEL_CUSTOM)
+
+// SH lighting requires a TangentToWorld matrix.
+// SM5 also requires the TangentToWorld matrix for deferred rendering.
+#if ENABLE_SH_LIGHT || SM5_PROFILE
+	#undef WORLD_COORDS
+	#define WORLD_COORDS 1
+#endif
+
+#if DYNAMICALLY_SHADOWED_BASEPASS_LIGHT
+	#undef WORLD_POS
+	#define WORLD_POS 1
+#endif
+
+#if XBOX || PS3 || WIIU
+	#define SUPPORTS_MULTITYPE_BASEPASS_LIGHT	1
+#else
+	#define SUPPORTS_MULTITYPE_BASEPASS_LIGHT	0
+#endif
+
+#define V_INPUT_CAMERAVECTOR		TEXCOORD6
+#define V_INPUT_SKYVECTOR			TEXCOORD7
+#define V_INPUT_TANGENTLIGHTVECTOR	TEXCOORD8
+#define V_INPUT_WORLDLIGHTVECTOR	TEXCOORD9
+
+#define TANGENT_LIGHT_VECTOR_DEFINED 0
+
+struct FSharedBasePassInterpolants
+{
+	#if VERTEX_LIGHTMAP
+		float3 LightMapA	: TEXCOORD2;
+		float3 LightMapB	: TEXCOORD3;
+		#if NEEDS_BASEPASS_FOGGING
+			float4 VertexFog	: TEXCOORD4;
+		#endif
+	#else
+		#if SIMPLE_VERTEX_LIGHTMAP
+			float3 LightMapA		: TEXCOORD2;
+		#endif
+		//for texture-lightmapped translucency we can pass the vertex fog in its own interpolator
+		#if NEEDS_BASEPASS_FOGGING
+			#if (ENABLE_DIRECTIONAL_LIGHT || ENABLE_MULTITYPE_BASEPASS_LIGHT) && !MATERIAL_LIGHTINGMODEL_UNLIT
+				#undef TANGENT_LIGHT_VECTOR_DEFINED
+				#define TANGENT_LIGHT_VECTOR_DEFINED 1
+				float4 TangentLightVector	: TEXCOORD3;
+			#endif
+			float4 VertexFog		: TEXCOORD4;
+		#elif ENABLE_DIRECTIONAL_LIGHT || ENABLE_MULTITYPE_BASEPASS_LIGHT
+			#undef TANGENT_LIGHT_VECTOR_DEFINED
+			#define TANGENT_LIGHT_VECTOR_DEFINED 1
+			float4 TangentLightVector	: TEXCOORD4;
+		#endif
+	#endif
+
+	#if !PC_D3D
+		float4 PixelPosition	: TEXCOORD5;
+	#endif
+
+	// If we're computing the camera vector per-pixel, then we don't need to transport it to the pixel
+	// shader in an interpolator.  Instead, we'll use this slot for storing vertex color, which we
+	// normally wouldn't have space for (due to tangent -> world matrix for WORLD_COORDS=1)
+	float4 CameraVectorOrVertexColor : V_INPUT_CAMERAVECTOR;
+
+	#if !MATERIAL_LIGHTINGMODEL_UNLIT
+		#if ENABLE_TRANSLUCENCY_DOF	
+			// Translucency DoF blur amount is stored in SkyVector.w
+			float4 SkyVector	: V_INPUT_SKYVECTOR;
+			#define TranslucencyDoFBlur SkyVector.w
+		#else
+			float3 SkyVector	: V_INPUT_SKYVECTOR;
+		#endif
+	#else
+		#if ENABLE_TRANSLUCENCY_DOF
+		float TranslucencyDoFBlur : V_INPUT_SKYVECTOR;
+		#endif		
+	#endif
+
+	// If TangentLightVector couldn't be allocated and ENABLE_DIRECTIONAL_LIGHT || ENABLE_MULTITYPE_BASEPASS_LIGHT is enabled, 
+	// Use one of the extended interpolators that PC SM3 doesn't support
+	#if (ENABLE_DIRECTIONAL_LIGHT || ENABLE_MULTITYPE_BASEPASS_LIGHT) && !TANGENT_LIGHT_VECTOR_DEFINED && SUPPORTS_MULTITYPE_BASEPASS_LIGHT
+		#undef TANGENT_LIGHT_VECTOR_DEFINED
+		#define TANGENT_LIGHT_VECTOR_DEFINED 1
+		float4 TangentLightVector : V_INPUT_TANGENTLIGHTVECTOR;
+	#endif
+
+	#if ENABLE_MULTITYPE_BASEPASS_LIGHT
+		float3 WorldLightVector : V_INPUT_WORLDLIGHTVECTOR;
+	#endif
+};
+
+#if PC_D3D
+
+/** Interpolants passed from the vertex shader to the pixel shader. */
+struct FBasePassInterpolantsVSToPS : FSharedBasePassInterpolants
+{
+	float4 PixelPosition	: TEXCOORD5;
+};
+
+/** Interpolants passed from the vertex shader to the domain shader. */
+struct FBasePassInterpolantsVSToDS : FSharedBasePassInterpolants
+{
+};
+
+#else
+
+// Only the PC shader compiler supports HLSL inheritance
+#define FBasePassInterpolantsVSToPS FSharedBasePassInterpolants
+
+#endif
+

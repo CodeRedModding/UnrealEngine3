@@ -1,0 +1,63 @@
+﻿@model System.Byte
+
+@{
+    Layout = null;
+}
+
+@{
+    string img = "";
+    string title = "";
+
+    switch (Model)
+    {
+        case 0:
+            img = "dash.png";
+            title = "Not checked";
+            
+            break;
+                
+        case 1:
+            img = "query.png";
+            title = "Skipped";
+
+            break;
+                
+        case 2:
+            img = "query2.png";
+            title = "Skipped";
+
+            break;
+                
+        case 3:
+            img = "spinner.gif";
+            title = "In Progress";
+
+            break;
+                
+        case 4:
+            img = "spinner2.gif";
+            title = "In Progress";
+
+            break;
+                
+        case 5:
+            img = "tick.png";
+            title = "Passed";
+
+            break;
+                
+        case 6:
+            img = "cross.png";
+            title = "Failed";
+            
+            break;
+            
+        case 255:
+            img = "skull.png";
+            title = "Killed";
+
+            break;
+    }
+}
+
+<img class="icon" src="~/Content/Themes/Base/Images/@img" alt="State" title="@title" />

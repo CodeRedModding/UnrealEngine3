@@ -1,10 +1,10 @@
 /*=============================================================================
 	FFeedbackContextAnsi.h: Unreal Ansi user interface interaction.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
+
+#ifndef __FFEEDBACKCONTEXTANSI_H__
+#define __FFEEDBACKCONTEXTANSI_H__
 
 /*-----------------------------------------------------------------------------
 	FFeedbackContextAnsi.
@@ -24,10 +24,10 @@ public:
 	// Local functions.
 	void LocalPrint( const TCHAR* Str )
 	{
-#if UNICODE
-		wprintf(TEXT("%s"),Str);
+#if PS3 || PLATFORM_MACOSX
+		printf("%s", TCHAR_TO_ANSI(Str));
 #else
-		printf(TEXT("%s"),Str);
+		wprintf(Str);
 #endif
 	}
 
@@ -40,7 +40,7 @@ public:
 	{}
 	void Serialize( const TCHAR* V, EName Event )
 	{
-		TCHAR Temp[1024]=TEXT("");
+		TCHAR Temp[MAX_SPRINTF]=TEXT("");
 		if( Event==NAME_Title )
 		{
 			return;
@@ -57,15 +57,33 @@ public:
 		}
 		else if( Event==NAME_Error || Event==NAME_Warning || Event==NAME_ExecWarning || Event==NAME_ScriptWarning )
 		{
+			if( TreatWarningsAsErrors && Event==NAME_Warning )
+			{
+				Event = NAME_Error;
+			}
+
 			if( Context )
 			{
-				appSprintf( Temp, TEXT("%s : %s, %s"), *Context->GetContext(), *FName(Event), (TCHAR*)V );
-				V = Temp;
+				appSprintf( Temp, TEXT("%s : %s, %s"), *Context->GetContext(), *FName(Event).ToString(), (TCHAR*)V );
 			}
-			if(Event == NAME_Error || TreatWarningsAsErrors)
-				ErrorCount++;
 			else
-				WarningCount++;
+			{
+				appSprintf( Temp, TEXT("%s, %s"), *FName(Event).ToString(), (TCHAR*)V );
+			}
+			V = Temp;
+
+			// Only store off the message if running a commandlet.
+			if ( GIsUCC )
+			{
+				if(Event == NAME_Error)
+				{
+					Errors.AddItem(FString(V));
+				}
+				else
+				{
+					Warnings.AddItem(FString(V));
+				}
+			}
 		}
 		else if( Event==NAME_Progress )
 		{
@@ -76,10 +94,29 @@ public:
 			fflush( stdout );
 			return;
 		}
+#if PLATFORM_UNIX
+		if (Event == NAME_Color)
+		{
+			if (appStricmp(V, TEXT("")) == 0)
+			{
+				LocalPrint(TEXT("\033[0m"));
+			}
+			else
+			{
+				LocalPrint(TEXT("\033[0;32m"));
+			}
+		}
+		else
+		{
+			LocalPrint(V);
+			LocalPrint( TEXT("\n") );
+		}
+#else
 		LocalPrint( V );
 		LocalPrint( TEXT("\n") );
 		if( !GLog->IsRedirectingTo( this ) )
 			GLog->Serialize( V, Event );
+#endif
 		if( AuxOut )
 			AuxOut->Serialize( V, Event );
 		fflush( stdout );
@@ -87,15 +124,15 @@ public:
 	VARARG_BODY( UBOOL, YesNof, const TCHAR*, VARARG_NONE )
 	{
 		TCHAR TempStr[4096];
-		GET_VARARGS( TempStr, ARRAY_COUNT(TempStr), Fmt, Fmt );
+		GET_VARARGS( TempStr, ARRAY_COUNT(TempStr), ARRAY_COUNT(TempStr)-1, Fmt, Fmt );
 		if( (GIsClient || GIsEditor) )
 		{
 			LocalPrint( TempStr );
 			LocalPrint( TEXT(" (Y/N): ") );
-			if( ParseParam(appCmdLine(),TEXT("Silent")) )
+			if( ( GIsSilent == TRUE ) || ( GIsUnattended == TRUE ) )
 			{
 				LocalPrint( TEXT("Y") );
-				return 1;
+				return TRUE;
 			}
 			else
 			{
@@ -104,9 +141,9 @@ public:
 				return (InputText[0]=='Y' || InputText[0]=='y');
 			}
 		}
-		return 1;
+		return TRUE;
 	}
-	void BeginSlowTask( const TCHAR* Task, UBOOL StatusWindow )
+	void BeginSlowTask( const TCHAR* Task, UBOOL ShowProgressDialog, UBOOL bShowCancelButton=FALSE )
 	{
 		GIsSlowTask = ++SlowTaskCount>0;
 	}
@@ -118,12 +155,12 @@ public:
 	VARARG_BODY( UBOOL VARARGS, StatusUpdatef, const TCHAR*, VARARG_EXTRA(INT Numerator) VARARG_EXTRA(INT Denominator) )
 	{
 		TCHAR TempStr[4096];
-		GET_VARARGS( TempStr, ARRAY_COUNT(TempStr), Fmt, Fmt );
+		GET_VARARGS( TempStr, ARRAY_COUNT(TempStr), ARRAY_COUNT(TempStr)-1, Fmt, Fmt );
 		if( GIsSlowTask )
 		{
 			//!!
 		}
-		return 1;
+		return TRUE;
 	}
 	void SetContext( FContextSupplier* InSupplier )
 	{
@@ -131,7 +168,4 @@ public:
 	}
 };
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
-
+#endif

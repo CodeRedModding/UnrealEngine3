@@ -1,42 +1,103 @@
 /*=============================================================================
 	PhATTool.cpp: Physics Asset Tool general tools/modal stuff
-	Copyright 2003 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-	* Created by James Golding
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "UnrealEd.h"
+#include "PhAT.h"
 #include "EnginePhysicsClasses.h"
+#include "EngineAnimClasses.h"
+#include "ScopedTransaction.h"
+#include "PropertyWindow.h"
 #include "..\..\Launch\Resources\resource.h"
 
-static const FLOAT	TranslateSpeed  = 0.25f;
-static const FLOAT  RotateSpeed     = 1.0f * ( static_cast<FLOAT>( PI ) / 180.0f );
+static const FLOAT	PhAT_TranslateSpeed = 0.25f;
+static const FLOAT  PhAT_RotateSpeed = static_cast<FLOAT>( 1.0*(PI/180.0) );
 
 static const FLOAT	DefaultPrimSize = 15.0f;
-static const FLOAT	MinPrimSize     = 0.5f;
+static const FLOAT	MinPrimSize = 0.5f;
 
-static const FLOAT	SimGrabCheckDistance        = 5000.0f;
-static const FLOAT	SimHoldDistanceChangeDelta  = 20.0f;
-static const FLOAT	SimMinHoldDistance          = 10.0f;
-static const FLOAT  SimGrabMoveSpeed            = 1.0f;
+static const FLOAT	SimGrabCheckDistance = 5000.0f;
+static const FLOAT	SimHoldDistanceChangeDelta = 20.0f;
+static const FLOAT	SimMinHoldDistance = 10.0f;
+static const FLOAT  SimGrabMoveSpeed = 1.0f;
 
-static const FLOAT	DuplicateXOffset            = 10.0f;
+static const FLOAT	DuplicateXOffset = 10.0f;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////// WPhAT //////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-void WPhAT::RecalcEntireAsset( void )
+void WxPhAT::ChangeDefaultSkelMesh()
 {
-	UBOOL bDoRecalc = appMsgf(1, TEXT("This will completely replace the current asset.\nAre you sure?"));
+	// Don't let them do this while running sim!
+	if(bRunningSimulation)
+	{
+		return;
+	}
+
+	// Get the currently selected SkeletalMesh. Fail if there ain't one.
+	GCallbackEvent->Send(CALLBACK_LoadSelectedAssetsIfNeeded);
+
+	USkeletalMesh* NewSkelMesh = GEditor->GetSelectedObjects()->GetTop<USkeletalMesh>();
+	if(!NewSkelMesh)
+	{
+		appMsgf( AMT_OK, *LocalizeUnrealEd("NoSkelMeshSelected") );
+		return;
+	}
+
+	// Confirm they want to do this.
+	UBOOL bDoChange = appMsgf( AMT_YesNo, LocalizeSecure(LocalizeUnrealEd("SureChangeAssetSkelMesh"), *PhysicsAsset->GetName(), *NewSkelMesh->GetName()) );
+	if(bDoChange)
+	{
+		// See if any bones are missing from the skeletal mesh we are trying to use
+		// @todo Could do more here - check for bone lengths etc. Maybe modify asset?
+		for(INT i=0; i<PhysicsAsset->BodySetup.Num(); i++)
+		{
+			FName BodyName = PhysicsAsset->BodySetup(i)->BoneName;
+			INT BoneIndex = NewSkelMesh->MatchRefBone(BodyName);
+			if(BoneIndex == INDEX_NONE)
+			{
+				appMsgf( AMT_OK, LocalizeSecure(LocalizeUnrealEd("BoneMissingFromSkelMesh"), *BodyName.ToString()) );
+				return;
+			}
+		}
+
+		// We have all the bones - go ahead and make the change.
+		PhysicsAsset->DefaultSkelMesh = NewSkelMesh;
+
+		// Change preview
+		EditorSkelMesh = NewSkelMesh;
+		EditorSkelComp->SetSkeletalMesh(NewSkelMesh);
+
+		// Update various infos based on the mesh
+		EditorSkelMesh->CalcBoneVertInfos(DominantWeightBoneInfos, true);
+		EditorSkelMesh->CalcBoneVertInfos(AnyWeightBoneInfos, false);
+		FillTree();
+
+		// Mark asset's package as dirty as its changed.
+		PhysicsAsset->MarkPackageDirty();
+	}
+}
+
+void WxPhAT::RecalcEntireAsset()
+{
+	if(bRunningSimulation)
+	{
+		return;
+	}
+
+	UBOOL bDoRecalc = appMsgf(AMT_YesNo, *LocalizeUnrealEd("Prompt_12"));
 	if(!bDoRecalc)
 		return;
+
+	// Make sure rendering is done - so we are not changing data being used by collision drawing.
+	FlushRenderingCommands();
 
 	// Then calculate a new one.
 
 	WxDlgNewPhysicsAsset dlg;
-	if( dlg.ShowModal( FString(TEXT("")), FString(PhysicsAsset->GetName()), NULL, true ) == wxID_OK )
+	if( dlg.ShowModal( NULL, true ) == wxID_OK )
 	{
 		// Deselect everything.
 		SetSelectedBody(INDEX_NONE, KPT_Unknown, INDEX_NONE);
@@ -44,28 +105,30 @@ void WPhAT::RecalcEntireAsset( void )
 
 		// Empty current asset data.
 		PhysicsAsset->BodySetup.Empty();
+		PhysicsAsset->BodySetupIndexMap.Empty();
 		PhysicsAsset->ConstraintSetup.Empty();
 		PhysicsAsset->DefaultInstance->Bodies.Empty();
 		PhysicsAsset->DefaultInstance->Constraints.Empty();
 
 		PhysicsAsset->CreateFromSkeletalMesh(EditorSkelMesh, dlg.Params);
 
+		FillTree();
 		PhATViewportClient->Viewport->Invalidate();
 	}
 
 }
 
-void WPhAT::ResetBoneCollision(INT BodyIndex)
+void WxPhAT::ResetBoneCollision(INT BodyIndex)
 {
-	if(BodyIndex == INDEX_NONE)
+	if(bRunningSimulation || BodyIndex == INDEX_NONE)
 		return;
 
-	UBOOL bDoRecalc = appMsgf(1, TEXT("This will completely replace the current bone collision.\nAre you sure?"));
+	UBOOL bDoRecalc = appMsgf(AMT_YesNo, *LocalizeUnrealEd("Prompt_13"));
 	if(!bDoRecalc)
 		return;
 
 	WxDlgNewPhysicsAsset dlg;
-	if( dlg.ShowModal( FString(TEXT("")), FString(PhysicsAsset->GetName()), NULL, true ) != wxID_OK )
+	if( dlg.ShowModal( NULL, true ) != wxID_OK )
 		return;
 
 	URB_BodySetup* bs = PhysicsAsset->BodySetup(BodyIndex);
@@ -85,7 +148,7 @@ void WPhAT::ResetBoneCollision(INT BodyIndex)
 
 }
 
-void WPhAT::SetSelectedBodyAnyPrim(INT BodyIndex)
+void WxPhAT::SetSelectedBodyAnyPrim(INT BodyIndex)
 {
 	if(BodyIndex == INDEX_NONE)
 	{
@@ -105,12 +168,12 @@ void WPhAT::SetSelectedBodyAnyPrim(INT BodyIndex)
 	else if(bs->AggGeom.ConvexElems.Num() > 0)
 		SetSelectedBody(BodyIndex, KPT_Convex, 0);
 	else
-		appErrorf(TEXT("Body Setup with No Primitives!")); 
+		appErrorf(*LocalizeUnrealEd("Error_BodySetupWithNoPrimitives")); 
 
 }
 
 
-void WPhAT::SetSelectedBody(INT BodyIndex, EKCollisionPrimitiveType PrimitiveType, INT PrimitiveIndex)
+void WxPhAT::SetSelectedBody(INT BodyIndex, EKCollisionPrimitiveType PrimitiveType, INT PrimitiveIndex)
 {
 	SelectedBodyIndex = BodyIndex;
 	SelectedPrimitiveType = PrimitiveType;
@@ -119,40 +182,82 @@ void WPhAT::SetSelectedBody(INT BodyIndex, EKCollisionPrimitiveType PrimitiveTyp
 	if(SelectedBodyIndex == INDEX_NONE)
 	{
 		// No bone selected
-		PropertyWindow->Root.SetObjects((UObject**)&EditorSimOptions, 1);
-
-		for( INT i=0; i<PropertyWindow->List.GetCount(); i++ )
-		{
-			FTreeItem* Item = PropertyWindow->GetListItem(i);
-			if(Item->Expandable && !Item->Expanded && (Item->GetCaption() == TEXT("KMeshProps") || Item->GetCaption() == TEXT("RB_BodySetup")) )
-				Item->Expand();
-		}
+		//PropertyWindow->SetObject(PhysicsAsset, true, false, true);
+		PropertyWindow->SetObject(EditorSimOptions, EPropertyWindowFlags::ShouldShowCategories);
 	}
 	else
 	{
 		check( SelectedBodyIndex >= 0 && SelectedBodyIndex < PhysicsAsset->BodySetup.Num() );
 
-		// Set properties dialog to display selected bone info.
-		PropertyWindow->Root.SetObjects((UObject**)&PhysicsAsset->BodySetup(SelectedBodyIndex), 1);
-
-		for( INT i=0; i<PropertyWindow->List.GetCount(); i++ )
+		// Set properties dialog to display selected bone (or bone instance) info.
+		if(bShowInstanceProps)
 		{
-			FTreeItem* Item = PropertyWindow->GetListItem(i);
-			if(Item->Expandable && !Item->Expanded && (Item->GetCaption() == TEXT("KMeshProps") || Item->GetCaption() == TEXT("RB_BodySetup")) )
-				Item->Expand();
+			PropertyWindow->SetObject(PhysicsAsset->DefaultInstance->Bodies(SelectedBodyIndex), EPropertyWindowFlags::ShouldShowCategories);
+		}
+		else
+		{
+			PropertyWindow->SetObject(PhysicsAsset->BodySetup(SelectedBodyIndex), EPropertyWindowFlags::ShouldShowCategories);
 		}
 	}
 
-	NextSelectEvent = PNS_Normal;
+	NextSelectEvent =  ( NextSelectEvent == PNS_MakeNewBody ) ? PNS_MakeNewBody :PNS_Normal;
 	UpdateControlledBones();
 	UpdateNoCollisionBodies();
 	UpdateToolBarStatus();
 	PhATViewportClient->Viewport->Invalidate();
 
+	// Update the tree control
+	if( EditingMode == PEM_BodyEdit )
+	{
+		TreeCtrl->UnselectAll();
+
+		if( SelectedBodyIndex != INDEX_NONE )
+		{
+			// todo: store reverse map to avoid linear search
+			for( TMap<wxTreeItemId,FPhATTreeBoneItem>::TIterator TreeIt(TreeItemBodyIndexMap); TreeIt; ++TreeIt )
+			{
+				if( TreeIt.Value().BodyIndex == SelectedBodyIndex &&
+					TreeIt.Value().PrimType  == SelectedPrimitiveType &&
+					TreeIt.Value().PrimIndex == SelectedPrimitiveIndex )
+				{
+					TreeCtrl->SelectItem( TreeIt.Key() );
+					break;
+				}
+
+			}
+		}
+	}
+}
+
+// Center the view on the selected bone/constraint.
+void WxPhAT::CenterViewOnSelected()
+{
+	if(bRunningSimulation)
+	{
+		return;
+	}
+
+	if(EditingMode == PEM_BodyEdit)
+	{
+		if(SelectedBodyIndex != INDEX_NONE)
+		{
+			INT BoneIndex = EditorSkelComp->MatchRefBone( PhysicsAsset->BodySetup(SelectedBodyIndex)->BoneName );
+			FMatrix BoneTM = EditorSkelComp->GetBoneMatrix(BoneIndex);
+			PhATViewportClient->MayaLookAt = BoneTM.GetOrigin();
+		}
+	}
+	else if(EditingMode == PEM_ConstraintEdit)
+	{
+		if(SelectedConstraintIndex != INDEX_NONE)
+		{
+			FMatrix ConstraintTM = GetConstraintMatrix(SelectedConstraintIndex, 1, 1.f);
+			PhATViewportClient->MayaLookAt = ConstraintTM.GetOrigin();
+		}
+	}
 }
 
 // Fill in array of graphics bones currently being moved by selected physics body.
-void WPhAT::UpdateControlledBones()
+void WxPhAT::UpdateControlledBones()
 {
 	ControlledBones.Empty();
 
@@ -166,11 +271,10 @@ void WPhAT::UpdateControlledBones()
 		if(ControllerBodyIndex == SelectedBodyIndex)
 			ControlledBones.AddItem(i);
 	}
-
 }
 
 // Update NoCollisionBodies array with indices of all bodies that have no collision with the selected one.
-void WPhAT::UpdateNoCollisionBodies()
+void WxPhAT::UpdateNoCollisionBodies()
 {
 	NoCollisionBodies.Empty();
 
@@ -185,36 +289,37 @@ void WPhAT::UpdateNoCollisionBodies()
 		else if(SelectedBodyIndex != INDEX_NONE && i != SelectedBodyIndex)
 		{
 			// Add this body if it has disabled collision with selected.
-			QWORD Key = RigidBodyIndicesToKey(i, SelectedBodyIndex);
+			FRigidBodyIndexPair Key(i, SelectedBodyIndex);
 
 			if( PhysicsAsset->BodySetup(SelectedBodyIndex)->bNoCollision ||
 				PhysicsAsset->DefaultInstance->CollisionDisableTable.Find(Key) )
 				NoCollisionBodies.AddItem(i);
 		}
 	}
-
 }
 
-void WPhAT::SetSelectedConstraint(INT ConstraintIndex)
+void WxPhAT::SetSelectedConstraint(INT ConstraintIndex)
 {
 	SelectedConstraintIndex = ConstraintIndex;
 
 	if(SelectedConstraintIndex == INDEX_NONE)
 	{
-		PropertyWindow->Root.SetObjects((UObject**)&EditorSimOptions, 1);
+		//PropertyWindow->SetObject(PhysicsAsset, true, false, true);
+		PropertyWindow->SetObject(EditorSimOptions, EPropertyWindowFlags::ShouldShowCategories);
 	}
 	else
 	{
 		check( SelectedConstraintIndex >= 0 && SelectedConstraintIndex < PhysicsAsset->ConstraintSetup.Num() );
 		check( PhysicsAsset->ConstraintSetup.Num() == PhysicsAsset->DefaultInstance->Constraints.Num() );
 
-		PropertyWindow->Root.SetObjects((UObject**)&PhysicsAsset->ConstraintSetup(SelectedConstraintIndex), 1);
-
-		for( INT i=0; i<PropertyWindow->List.GetCount(); i++ )
+		// Show instance or setup properties as desired.
+		if(bShowInstanceProps)
 		{
-			FTreeItem* Item = PropertyWindow->GetListItem(i);
-			if(Item->Expandable && !Item->Expanded && (Item->GetCaption() == TEXT("Linear") || Item->GetCaption() == TEXT("Angular")) )
-				Item->Expand();
+			PropertyWindow->SetObject(PhysicsAsset->DefaultInstance->Constraints(SelectedConstraintIndex), EPropertyWindowFlags::ShouldShowCategories);
+		}
+		else
+		{
+			PropertyWindow->SetObject(PhysicsAsset->ConstraintSetup(SelectedConstraintIndex), EPropertyWindowFlags::ShouldShowCategories);
 		}
 	}	
 
@@ -222,11 +327,30 @@ void WPhAT::SetSelectedConstraint(INT ConstraintIndex)
 	UpdateToolBarStatus();
 	PhATViewportClient->Viewport->Invalidate();
 
+	// Update the tree control
+	if( EditingMode == PEM_ConstraintEdit )
+	{
+		TreeCtrl->UnselectAll();
+
+		if( SelectedConstraintIndex != INDEX_NONE )
+		{
+			// todo: store reverse map to avoid linear search
+			for( TMap<wxTreeItemId,INT>::TIterator TreeIt(TreeItemConstraintIndexMap); TreeIt; ++TreeIt )
+			{
+				if( TreeIt.Value() == SelectedConstraintIndex )
+				{
+					TreeCtrl->SelectItem( TreeIt.Key() );
+					break;
+				}
+
+			}
+		}
+	}
 }
 
-void WPhAT::DisableCollisionWithNextSelect()
+void WxPhAT::DisableCollisionWithNextSelect()
 {
-	if(EditingMode != PEM_BodyEdit || SelectedBodyIndex == INDEX_NONE)
+	if(bRunningSimulation || EditingMode != PEM_BodyEdit || SelectedBodyIndex == INDEX_NONE)
 		return;
 
 	NextSelectEvent = PNS_DisableCollision;
@@ -234,9 +358,9 @@ void WPhAT::DisableCollisionWithNextSelect()
 
 }
 
-void WPhAT::EnableCollisionWithNextSelect()
+void WxPhAT::EnableCollisionWithNextSelect()
 {
-	if(EditingMode != PEM_BodyEdit || SelectedBodyIndex == INDEX_NONE)
+	if(bRunningSimulation || EditingMode != PEM_BodyEdit || SelectedBodyIndex == INDEX_NONE)
 		return;
 
 	NextSelectEvent = PNS_EnableCollision;
@@ -244,8 +368,11 @@ void WPhAT::EnableCollisionWithNextSelect()
 
 }
 
-void WPhAT::CopyPropertiesToNextSelect()
+void WxPhAT::CopyPropertiesToNextSelect()
 {
+	if(bRunningSimulation)
+		return;
+
 	if(EditingMode == PEM_ConstraintEdit && SelectedConstraintIndex == INDEX_NONE)
 		return;
 
@@ -257,7 +384,7 @@ void WPhAT::CopyPropertiesToNextSelect()
 
 }
 
-void WPhAT::WeldBodyToNextSelect()
+void WxPhAT::WeldBodyToNextSelect()
 {
 	if(bRunningSimulation || EditingMode != PEM_BodyEdit || SelectedBodyIndex == INDEX_NONE)
 		return;
@@ -267,8 +394,11 @@ void WPhAT::WeldBodyToNextSelect()
 
 }
 
-void WPhAT::SetCollisionBetween(INT Body1Index, INT Body2Index, UBOOL bEnableCollision)
+void WxPhAT::SetCollisionBetween(INT Body1Index, INT Body2Index, UBOOL bEnableCollision)
 {
+	if(bRunningSimulation)
+		return;
+
 	if(Body1Index != INDEX_NONE && Body2Index != INDEX_NONE && Body1Index != Body2Index)
 	{
 		URB_BodyInstance* bi1 = PhysicsAsset->DefaultInstance->Bodies(Body1Index);
@@ -286,25 +416,46 @@ void WPhAT::SetCollisionBetween(INT Body1Index, INT Body2Index, UBOOL bEnableCol
 
 }
 
-void WPhAT::CopyBodyProperties(INT ToBodyIndex, INT FromBodyIndex)
+void WxPhAT::CopyBodyProperties(INT ToBodyIndex, INT FromBodyIndex)
 {
-	if(ToBodyIndex != INDEX_NONE && FromBodyIndex != INDEX_NONE && ToBodyIndex != FromBodyIndex)
+	// Can't do this while simulating!
+	if(bRunningSimulation)
+	{
+		return;
+	}
+
+	// Must have two valid bodies (which are different)
+	if(ToBodyIndex == INDEX_NONE || FromBodyIndex == INDEX_NONE || ToBodyIndex == FromBodyIndex)
+	{
+		return;
+	}
+
+	// Copy setup/instance properties - based on what we are viewing.
+	if(!bShowInstanceProps)
 	{
 		URB_BodySetup* tbs = PhysicsAsset->BodySetup(ToBodyIndex);
 		URB_BodySetup* fbs = PhysicsAsset->BodySetup(FromBodyIndex);
-
 		tbs->CopyBodyPropertiesFrom(fbs);
+
+		SetSelectedBodyAnyPrim(ToBodyIndex);
+	}
+	else
+	{
+		URB_BodyInstance* tbi = PhysicsAsset->DefaultInstance->Bodies(ToBodyIndex);
+		URB_BodyInstance* fbi = PhysicsAsset->DefaultInstance->Bodies(FromBodyIndex);
+		tbi->CopyBodyInstancePropertiesFrom(fbi);
 	}
 
-	SetSelectedBodyAnyPrim(ToBodyIndex);
-
 	PhATViewportClient->Viewport->Invalidate();
-
 }
 
 // Supplied body must be a direct child of a bone controlled by selected body.
-void WPhAT::WeldBodyToSelected(INT AddBodyIndex)
+void WxPhAT::WeldBodyToSelected(INT AddBodyIndex)
 {
+	if(bRunningSimulation)
+		return;
+
+
 	if(AddBodyIndex == INDEX_NONE || SelectedBodyIndex == INDEX_NONE || AddBodyIndex == SelectedBodyIndex)
 	{
 		PhATViewportClient->Viewport->Invalidate();
@@ -339,46 +490,47 @@ void WPhAT::WeldBodyToSelected(INT AddBodyIndex)
 	}
 	else
 	{
-		appMsgf(0, TEXT("You can only weld parent/child pairs."));
+		appMsgf(AMT_OK, *LocalizeUnrealEd("Error_CanOnlyWeldParentChildPairs"));
 		return;
 	}
 
 	check(ChildBodyIndex != INDEX_NONE);
 	check(ParentBodyIndex != INDEX_NONE);
 
-	//UBOOL bDoWeld = appMsgf(1,  *FString::Printf(TEXT("Are you sure you want to weld '%s' to '%s' ?"), *AddBoneName, *SelectedBoneName) );
+	//UBOOL bDoWeld = appMsgf(1,  *FString::Printf(LocalizeSecure(LocalizeUnrealEd("Prompt_14"), *AddBoneName, *SelectedBoneName)) );
 	UBOOL bDoWeld = true;
 	if(bDoWeld)
 	{
-		// Call 'Modify' on all things that will be affected by the welding..
-		GEditor->Trans->Begin( TEXT("Weld Bodies") );
-
-		// .. the asset itself..
-		PhysicsAsset->Modify();
-		PhysicsAsset->DefaultInstance->Modify();
-
-		// .. the parent and child bodies..
-		PhysicsAsset->BodySetup(ParentBodyIndex)->Modify();
-		PhysicsAsset->DefaultInstance->Bodies(ParentBodyIndex)->Modify();
-		PhysicsAsset->BodySetup(ChildBodyIndex)->Modify();
-		PhysicsAsset->DefaultInstance->Bodies(ChildBodyIndex)->Modify();
-
-		// .. and any constraints of the 'child' body..
-		TArray<INT>	Constraints;
-		PhysicsAsset->BodyFindConstraints(ChildBodyIndex, Constraints);
-
-		for(INT i=0; i<Constraints.Num(); i++)
 		{
-			INT ConstraintIndex = Constraints(i);
-			PhysicsAsset->ConstraintSetup(ConstraintIndex)->Modify();
-			PhysicsAsset->DefaultInstance->Constraints(ConstraintIndex)->Modify();
+			const FScopedTransaction Transaction( *LocalizeUnrealEd("WeldBodies") );
+
+			// .. the asset itself..
+			PhysicsAsset->Modify();
+			PhysicsAsset->DefaultInstance->Modify();
+
+			// .. the parent and child bodies..
+			PhysicsAsset->BodySetup(ParentBodyIndex)->Modify();
+			PhysicsAsset->DefaultInstance->Bodies(ParentBodyIndex)->Modify();
+			PhysicsAsset->BodySetup(ChildBodyIndex)->Modify();
+			PhysicsAsset->DefaultInstance->Bodies(ChildBodyIndex)->Modify();
+
+			// .. and any constraints of the 'child' body..
+			TArray<INT>	Constraints;
+			PhysicsAsset->BodyFindConstraints(ChildBodyIndex, Constraints);
+
+			for(INT i=0; i<Constraints.Num(); i++)
+			{
+				INT ConstraintIndex = Constraints(i);
+				PhysicsAsset->ConstraintSetup(ConstraintIndex)->Modify();
+				PhysicsAsset->DefaultInstance->Constraints(ConstraintIndex)->Modify();
+			}
+
+			// Do the actual welding
+			PhysicsAsset->WeldBodies(ParentBodyIndex, ChildBodyIndex, EditorSkelComp);
 		}
 
-		// Do the actual welding
-		PhysicsAsset->WeldBodies(ParentBodyIndex, ChildBodyIndex, EditorSkelComp);
-
-		// End the transaction.
-		GEditor->Trans->End();
+		// update the tree
+		FillTree();
 
 		// Body index may have changed, so we re-find it.
 		INT NewSelectedIndex = PhysicsAsset->FindBodyIndex(ParentBoneName);
@@ -390,110 +542,280 @@ void WPhAT::WeldBodyToSelected(INT AddBodyIndex)
 	
 }
 
-void WPhAT::MakeNewBodyFromNextSelect()
+void WxPhAT::MakeNewBodyFromNextSelect()
 {
-	if(bRunningSimulation || EditingMode != PEM_BodyEdit)
+	if( bRunningSimulation || EditingMode != PEM_BodyEdit )
+	{
 		return;
+	}
 
 	NextSelectEvent = PNS_MakeNewBody;
+
 	PhATViewportClient->Viewport->Invalidate();
 
+	FillTree();
+	TreeCtrl->UnselectAll();
 }
 
-void WPhAT::MakeNewBody(INT NewBoneIndex)
+/**
+ * Helper method to initialize a constraint setup between two bodies.
+ *
+ * @param	ConstraintSetup		Constraint setup to initialize
+ * @param	ChildBodyIndex		Index of the child body in the physics asset body setup array
+ * @param	ParentBodyIndex		Index of the parent body in the physics asset body setup array
+ */
+void WxPhAT::InitConstraintSetup( URB_ConstraintSetup* ConstraintSetup, INT ChildBodyIndex, INT ParentBodyIndex )
+{
+	check( ConstraintSetup );
+
+	URB_BodySetup* ChildBodySetup = PhysicsAsset->BodySetup( ChildBodyIndex );
+	URB_BodySetup* ParentBodySetup = PhysicsAsset->BodySetup( ParentBodyIndex );
+	check( ChildBodySetup && ParentBodySetup );
+
+	const INT ChildBoneIndex = EditorSkelMesh->MatchRefBone( ChildBodySetup->BoneName );
+	const INT ParentBoneIndex = EditorSkelMesh->MatchRefBone( ParentBodySetup->BoneName );
+	check( ChildBoneIndex != INDEX_NONE && ParentBoneIndex != INDEX_NONE );
+
+	// Transform of child from parent is just child ref-pose entry.
+	FMatrix ChildBoneTM = EditorSkelComp->GetBoneMatrix( ChildBoneIndex );
+	ChildBoneTM.RemoveScaling();
+
+	FMatrix ParentBoneTM = EditorSkelComp->GetBoneMatrix( ParentBoneIndex );
+	ParentBoneTM.RemoveScaling();
+
+	FMatrix RelTM = ChildBoneTM * ParentBoneTM.InverseSafe();
+
+	// Place joint at origin of child
+	ConstraintSetup->ConstraintBone1 = ChildBodySetup->BoneName;
+	ConstraintSetup->Pos1 = FVector( 0, 0, 0 );
+	ConstraintSetup->PriAxis1 = FVector( 1, 0, 0 );
+	ConstraintSetup->SecAxis1 = FVector( 0, 1, 0 );
+
+	ConstraintSetup->ConstraintBone2 = ParentBodySetup->BoneName;
+	ConstraintSetup->Pos2 = RelTM.GetOrigin() * U2PScale;
+	ConstraintSetup->PriAxis2 = RelTM.GetAxis( 0 );
+	ConstraintSetup->SecAxis2 = RelTM.GetAxis( 1 );
+
+	// Disable collision between constrained bodies by default.
+	SetCollisionBetween( ChildBodyIndex, ParentBodyIndex, FALSE );
+}
+
+/** Creates a new collision body */
+void WxPhAT::MakeNewBody(INT NewBoneIndex)
 {
 	FName NewBoneName = EditorSkelMesh->RefSkeleton(NewBoneIndex).Name;
 
 	// If this body is already physical - do nothing.
-	if( PhysicsAsset->FindBodyIndex(NewBoneName) != INDEX_NONE )
-		return;
-
-	// Check that this bone has no physics children.
-	for(INT i=0; i<EditorSkelMesh->RefSkeleton.Num(); i++)
+	INT NewBodyIndex = PhysicsAsset->FindBodyIndex(NewBoneName);
+	if(NewBodyIndex != INDEX_NONE)
 	{
-		if( EditorSkelMesh->BoneIsChildOf(i, NewBoneIndex) )
-		{
-			INT BodyIndex = PhysicsAsset->FindBodyIndex( EditorSkelMesh->RefSkeleton(i).Name );
-			if(BodyIndex != INDEX_NONE)
-			{
-				appMsgf(0, TEXT("You cannot make a new bone physical if it has physical children."));
-				return;
-			}
-		}
+		SetSelectedBodyAnyPrim(NewBodyIndex);
+		FillTree();
+		return;
 	}
+
+	WxDlgNewPhysicsAsset AssetDlg;
+	if( AssetDlg.ShowModal( NULL, true ) != wxID_OK )
+	{
+		FillTree();
+		return;
+	}
+
+	// Make sure rendering is done - so we are not changing data being used by collision drawing.
+	FlushRenderingCommands();
 
 	// Find body that currently controls this bone.
 	INT ParentBodyIndex = PhysicsAsset->FindControllingBodyIndex(EditorSkelMesh, NewBoneIndex);
 
 	// Create the physics body.
-	INT NewBodyIndex = PhysicsAsset->CreateNewBody( NewBoneName );
+	NewBodyIndex = PhysicsAsset->CreateNewBody( NewBoneName );
 	URB_BodySetup* bs = PhysicsAsset->BodySetup( NewBodyIndex );
 	check(bs->BoneName == NewBoneName);
 
-	WxDlgNewPhysicsAsset dlg;
-	if( dlg.ShowModal( FString(TEXT("")), FString(PhysicsAsset->GetName()), NULL, true ) != wxID_OK )
-		return;
-
 	// Create a new physics body for this bone.
-	if(dlg.Params.VertWeight == EVW_DominantWeight)
-		PhysicsAsset->CreateCollisionFromBone(bs, EditorSkelMesh, NewBoneIndex, dlg.Params, DominantWeightBoneInfos);
+	if(AssetDlg.Params.VertWeight == EVW_DominantWeight)
+	{
+		PhysicsAsset->CreateCollisionFromBone(bs, EditorSkelMesh, NewBoneIndex, AssetDlg.Params, DominantWeightBoneInfos);
+	}
 	else
-		PhysicsAsset->CreateCollisionFromBone(bs, EditorSkelMesh, NewBoneIndex, dlg.Params, AnyWeightBoneInfos);
+	{
+		PhysicsAsset->CreateCollisionFromBone(bs, EditorSkelMesh, NewBoneIndex, AssetDlg.Params, AnyWeightBoneInfos);
+	}
+
+	// Check if the bone of the new body has any physical children bones
+	for( INT i = 0; i < EditorSkelMesh->RefSkeleton.Num(); ++i )
+	{
+		if( EditorSkelMesh->BoneIsChildOf( i, NewBoneIndex ) )
+		{
+			const INT ChildBodyIndex = PhysicsAsset->FindBodyIndex( EditorSkelMesh->RefSkeleton(i).Name );
+			
+			// If the child bone is physical, it may require fixing up in regards to constraints
+			if( ChildBodyIndex != INDEX_NONE )
+			{
+				URB_BodySetup* ChildBody = PhysicsAsset->BodySetup( ChildBodyIndex );
+				check( ChildBody );
+
+				INT ConstraintIndex = PhysicsAsset->FindConstraintIndex( ChildBody->BoneName );
+				
+				// If the child body is not constrained already, create a new constraint between
+				// the child body and the new body
+				if ( ConstraintIndex == INDEX_NONE )
+				{
+					ConstraintIndex = PhysicsAsset->CreateNewConstraint( ChildBody->BoneName );
+					check( ConstraintIndex != INDEX_NONE );
+				}
+				// If there's a pre-existing constraint, see if it needs to be fixed up
+				else
+				{
+					URB_ConstraintSetup* ExistingConstraintSetup = PhysicsAsset->ConstraintSetup( ConstraintIndex );
+					check( ExistingConstraintSetup );
+					
+					const INT ExistingConstraintBoneIndex = EditorSkelMesh->MatchRefBone( ExistingConstraintSetup->ConstraintBone2 );
+					check( ExistingConstraintBoneIndex != INDEX_NONE );
+
+					// If the constraint exists between two child bones, then no fix up is required
+					if ( EditorSkelMesh->BoneIsChildOf( ExistingConstraintBoneIndex, NewBoneIndex ) )
+					{
+						continue;
+					}
+					
+					// If the constraint isn't between two child bones, then it is between a physical bone higher in the bone
+					// hierarchy than the new bone, so it needs to be fixed up by setting the constraint to point to the new bone
+					// instead. Additionally, collision needs to be re-enabled between the child bone and the identified "grandparent"
+					// bone.
+					const INT ExistingConstraintBodyIndex = PhysicsAsset->FindBodyIndex( ExistingConstraintSetup->ConstraintBone2 );
+					check( ExistingConstraintBodyIndex != INDEX_NONE );
+					check( ExistingConstraintBodyIndex == ParentBodyIndex );
+
+					SetCollisionBetween( ChildBodyIndex, ExistingConstraintBodyIndex, TRUE );
+				}
+
+				URB_ConstraintSetup* ChildConstraintSetup = PhysicsAsset->ConstraintSetup( ConstraintIndex );
+				check( ChildConstraintSetup );
+				InitConstraintSetup( ChildConstraintSetup, ChildBodyIndex, NewBodyIndex );
+			}
+		}
+	}
 
 	// If we have a physics parent, create a joint to it.
 	if(ParentBodyIndex != INDEX_NONE)
 	{
-		INT NewConstraintIndex = PhysicsAsset->CreateNewConstraint( NewBoneName );
-		URB_ConstraintSetup* cs = PhysicsAsset->ConstraintSetup( NewConstraintIndex );
+		const INT NewConstraintIndex = PhysicsAsset->CreateNewConstraint( NewBoneName );
+		URB_ConstraintSetup* ConstraintSetup = PhysicsAsset->ConstraintSetup( NewConstraintIndex );
+		check( ConstraintSetup );
 
-		FName ParentBoneName = PhysicsAsset->BodySetup(ParentBodyIndex)->BoneName;
-		INT ParentBoneIndex = EditorSkelMesh->MatchRefBone(ParentBoneName);
-		check(ParentBoneIndex != INDEX_NONE);
-
-		// Transform of child from parent is just child ref-pose entry.
-		FMatrix NewBoneTM = EditorSkelComp->GetBoneMatrix(NewBoneIndex);
-		NewBoneTM.RemoveScaling();
-
-		FMatrix ParentBoneTM = EditorSkelComp->GetBoneMatrix(ParentBoneIndex);
-		ParentBoneTM.RemoveScaling();
-
-		FMatrix RelTM = NewBoneTM * ParentBoneTM.Inverse();
-
-		// Place joint at origin of child
-		cs->ConstraintBone1 = NewBoneName;
-		cs->Pos1 = FVector(0,0,0);
-		cs->PriAxis1 = FVector(1,0,0);
-		cs->SecAxis1 = FVector(0,1,0);
-
-		cs->ConstraintBone2 = ParentBoneName;
-		cs->Pos2 = RelTM.GetOrigin() * U2PScale;
-		cs->PriAxis2 = RelTM.GetAxis(0);
-		cs->SecAxis2 = RelTM.GetAxis(1);
-
-		// Disable collision between constrained bodies by default.
-		URB_BodyInstance* bodyInstance = PhysicsAsset->DefaultInstance->Bodies(NewBodyIndex);
-		URB_BodyInstance* parentInstance = PhysicsAsset->DefaultInstance->Bodies(ParentBodyIndex);
-
-		PhysicsAsset->DefaultInstance->DisableCollision(bodyInstance, parentInstance);
+		InitConstraintSetup( ConstraintSetup, NewBodyIndex, ParentBodyIndex );
 	}
+
+	// update the tree
+	FillTree();
 
 	SetSelectedBodyAnyPrim(NewBodyIndex);
-
 }
 
-void WPhAT::SetAssetPhysicalMaterial()
+/** Show the floating 'Sim Options' window. */
+void WxPhAT::ShowSimOptionsWindow()
 {
-	WxDlgSetAssetPhysMaterial dlg;
-	if( dlg.ShowModal() != wxID_OK )
-		return;
-
-	check(dlg.PhysMaterialClass);
-
-	for(INT i=0; i<PhysicsAsset->BodySetup.Num(); i++)
+	if(!SimOptionsWindow)
 	{
-		URB_BodySetup* bs = PhysicsAsset->BodySetup(i);
-		bs->PhysicalMaterial = dlg.PhysMaterialClass;
+		SimOptionsWindow = new WxPropertyWindowFrame;
+		SimOptionsWindow->Create( this, -1, this );
+		SimOptionsWindow->SetSize( 64,64, 350,600 );
 	}
+
+	SimOptionsWindow->SetObject( EditorSimOptions, EPropertyWindowFlags::ShouldShowCategories );
+	SimOptionsWindow->Show();
+}
+
+/** Toggle between setup properties and default per-instance properties, for the selected obejct. */
+void WxPhAT::ToggleInstanceProperties()
+{
+	bShowInstanceProps = !bShowInstanceProps;
+	ToolBar->ToggleTool( IDMN_PHAT_INSTANCEPROPS, bShowInstanceProps == TRUE );
+	PhATViewportClient->Viewport->Invalidate();
+
+	if(EditingMode == PEM_ConstraintEdit)
+	{
+		if(SelectedConstraintIndex != INDEX_NONE)
+		{
+			URB_ConstraintSetup* ConSetup = PhysicsAsset->ConstraintSetup(SelectedConstraintIndex);
+			URB_ConstraintInstance* ConInstance = PhysicsAsset->DefaultInstance->Constraints(SelectedConstraintIndex);
+
+			// Show the per-instance structure or shared setup structure as desired.
+			if(bShowInstanceProps)
+			{
+				PropertyWindow->SetObject(ConInstance, EPropertyWindowFlags::ShouldShowCategories);
+			}
+			else
+			{
+				PropertyWindow->SetObject(ConSetup, EPropertyWindowFlags::ShouldShowCategories);
+			}
+		}
+	}
+	else if( EditingMode == PEM_BodyEdit )
+	{
+		if(SelectedBodyIndex != INDEX_NONE)
+		{
+			URB_BodySetup* BodySetup = PhysicsAsset->BodySetup(SelectedBodyIndex);
+			URB_BodyInstance* BodyInstance = PhysicsAsset->DefaultInstance->Bodies(SelectedBodyIndex);
+
+			// Set properties dialog to display selected bone (or bone instance) info.
+			if(bShowInstanceProps)
+			{
+				PropertyWindow->SetObject(BodyInstance, EPropertyWindowFlags::ShouldShowCategories);
+			}
+			else
+			{
+				PropertyWindow->SetObject(BodySetup, EPropertyWindowFlags::ShouldShowCategories);
+			}
+		}
+	}
+}
+
+void WxPhAT::SetAssetPhysicalMaterial()
+{
+	GCallbackEvent->Send(CALLBACK_LoadSelectedAssetsIfNeeded);
+	UPhysicalMaterial* SelectedPhysMaterial = GEditor->GetSelectedObjects()->GetTop<UPhysicalMaterial>();
+
+	if(SelectedPhysMaterial)
+	{
+		for(INT BodyIdx=0; BodyIdx<PhysicsAsset->BodySetup.Num(); BodyIdx++)
+		{
+			URB_BodySetup* BodySetup = PhysicsAsset->BodySetup(BodyIdx);
+			BodySetup->PhysMaterial = SelectedPhysMaterial;
+		}
+	}
+}
+
+void WxPhAT::CopyJointSettingsToAll()
+{
+	// Don't do anything if running sim or not in constraint editing mode
+	if(bRunningSimulation || EditingMode != PEM_ConstraintEdit || SelectedConstraintIndex == INDEX_NONE)
+	{
+		return;
+	}
+
+	// Quite a significant thing to do - so warn.
+	const UBOOL bProceed = appMsgf( AMT_YesNo, *LocalizeUnrealEd("CopyToAllJointsWarning") );
+	if(!bProceed)
+	{
+		return;
+	}
+
+	const FScopedTransaction Transaction( *LocalizeUnrealEd(TEXT("CopyJointSettingsToAll")) );
+
+	// Iterate over all constraints
+	for(INT i=0; i<PhysicsAsset->ConstraintSetup.Num(); i++)
+	{
+		// Don't copy to yourself!
+		if(i != SelectedConstraintIndex)
+		{
+			CopyConstraintProperties(i, SelectedConstraintIndex);
+		}
+	}
+
+	// Force redraw.
+	PhATViewportClient->Viewport->Invalidate();
 }
 
 static void CycleMatrixRows(FMatrix* TM)
@@ -507,16 +829,12 @@ static void CycleMatrixRows(FMatrix* TM)
 }
 
 // Keep con frame 1 fixed, and update con frame 0 so supplied rel TM is maintained.
-void WPhAT::SetSelectedConstraintRelTM(const FMatrix& RelTM)
+void WxPhAT::SetSelectedConstraintRelTM(const FMatrix& RelTM)
 {
 	FMatrix WParentFrame = GetSelectedConstraintWorldTM(1);
 	FMatrix WNewChildFrame = RelTM * WParentFrame;
 
 	URB_ConstraintSetup* cs = PhysicsAsset->ConstraintSetup(SelectedConstraintIndex);
-
-	FVector Scale3D = EditorActor->DrawScale3D * EditorActor->DrawScale;
-	check( Scale3D.IsUniform() );
-	FVector InvScale3D( 1.0f/Scale3D.X );
 
 	// Get child bone transform
 	INT BoneIndex = EditorSkelMesh->MatchRefBone( cs->ConstraintBone1 );
@@ -524,12 +842,46 @@ void WPhAT::SetSelectedConstraintRelTM(const FMatrix& RelTM)
 
 	FMatrix BoneTM = EditorSkelComp->GetBoneMatrix(BoneIndex);
 	BoneTM.RemoveScaling();
-	BoneTM.ScaleTranslation(InvScale3D); // Remove any asset scaling here.
 
-	cs->SetRefFrameMatrix(0, WNewChildFrame * BoneTM.Inverse() );
+	cs->SetRefFrameMatrix(0, WNewChildFrame * BoneTM.InverseSafe() );
 }
 
-void WPhAT::CycleSelectedConstraintOrientation()
+// Keep con frame 0 fixed, and update con frame 1
+void WxPhAT::SnapConstraintToBone(INT ConstraintIndex, const FMatrix& WParentFrame)
+{
+	URB_ConstraintSetup* cs = PhysicsAsset->ConstraintSetup(ConstraintIndex);
+
+	// Get child bone transform
+	INT BoneIndex = EditorSkelMesh->MatchRefBone( cs->ConstraintBone1 );
+	check(BoneIndex != INDEX_NONE);
+
+	FMatrix BoneTM = EditorSkelComp->GetBoneMatrix(BoneIndex);
+
+	FMatrix Con1Matrix = PhysicsAsset->ConstraintSetup(ConstraintIndex)->GetRefFrameMatrix(1);
+	FMatrix Con0Matrix = PhysicsAsset->ConstraintSetup(ConstraintIndex)->GetRefFrameMatrix(0);
+
+	cs->SetRefFrameMatrix(1, Con0Matrix * BoneTM * WParentFrame.InverseSafe() * Con1Matrix );
+
+}
+
+// Snap selected constraint to the bone
+void WxPhAT::SnapSelectedConstraintToBone()
+{
+	FMatrix WParentFrame = GetSelectedConstraintWorldTM(1);
+	SnapConstraintToBone(SelectedConstraintIndex, WParentFrame);
+}
+
+// Snap all constraints to the bone
+void WxPhAT::SnapAllConstraintsToBone()
+{
+	for(INT i=0; i<PhysicsAsset->ConstraintSetup.Num(); i++)
+	{
+		FMatrix WParentFrame = GetConstraintMatrix(i, 1, 1.0f);
+		SnapConstraintToBone(i, WParentFrame);
+	}
+}
+
+void WxPhAT::CycleSelectedConstraintOrientation()
 {
 	if(EditingMode != PEM_ConstraintEdit || SelectedConstraintIndex == INDEX_NONE)
 		return;
@@ -539,7 +891,7 @@ void WPhAT::CycleSelectedConstraintOrientation()
 
 	FMatrix WParentFrame = GetSelectedConstraintWorldTM(1);
 	FMatrix WChildFrame = GetSelectedConstraintWorldTM(0);
-	FMatrix RelTM = WChildFrame * WParentFrame.Inverse();
+	FMatrix RelTM = WChildFrame * WParentFrame.InverseSafe();
 
 	CycleMatrixRows(&ConMatrix);
 	cs->SetRefFrameMatrix(1, ConMatrix);
@@ -549,16 +901,12 @@ void WPhAT::CycleSelectedConstraintOrientation()
 	PhATViewportClient->Viewport->Invalidate();
 }
 
-FMatrix WPhAT::GetSelectedConstraintWorldTM(INT BodyIndex)
+FMatrix WxPhAT::GetSelectedConstraintWorldTM(INT BodyIndex)
 {
 	if(SelectedConstraintIndex == INDEX_NONE)
 		return FMatrix::Identity;
 
 	URB_ConstraintSetup* cs = PhysicsAsset->ConstraintSetup(SelectedConstraintIndex);
-
-	FVector Scale3D = EditorActor->DrawScale3D * EditorActor->DrawScale;
-	check( Scale3D.IsUniform() );
-	FVector InvScale3D( 1.0f/Scale3D.X );
 
 	FMatrix Frame = cs->GetRefFrameMatrix(BodyIndex);
 
@@ -571,75 +919,83 @@ FMatrix WPhAT::GetSelectedConstraintWorldTM(INT BodyIndex)
 
 	FMatrix BoneTM = EditorSkelComp->GetBoneMatrix(BoneIndex);
 	BoneTM.RemoveScaling();
-	BoneTM.ScaleTranslation(InvScale3D); // Remove any asset scaling here.
 
 	return Frame * BoneTM;
 }
 
 // This leaves the joint ref frames unchanged, but copies limit info/type.
-void WPhAT::CopyConstraintProperties(INT ToConstraintIndex, INT FromConstraintIndex)
+// Assumes that Begin has been called on undo buffer before calling this.
+void WxPhAT::CopyConstraintProperties(INT ToConstraintIndex, INT FromConstraintIndex)
 {
 	if(ToConstraintIndex == INDEX_NONE || FromConstraintIndex == INDEX_NONE)
 		return;
 
-	URB_ConstraintSetup* tcs = PhysicsAsset->ConstraintSetup(ToConstraintIndex);
-	URB_ConstraintSetup* fcs = PhysicsAsset->ConstraintSetup(FromConstraintIndex);
+	// If we are showing instance properties - copy instance properties. If showing setup, just copy setup properties.
+	if(!bShowInstanceProps)
+	{
+		URB_ConstraintSetup* tcs = PhysicsAsset->ConstraintSetup(ToConstraintIndex);
+		URB_ConstraintSetup* fcs = PhysicsAsset->ConstraintSetup(FromConstraintIndex);
 
-	tcs->CopyConstraintParamsFrom(fcs);
+		tcs->Modify();
+		tcs->CopyConstraintParamsFrom(fcs);
+	}
+	else
+	{
+		URB_ConstraintInstance* tci = PhysicsAsset->DefaultInstance->Constraints(ToConstraintIndex);
+		URB_ConstraintInstance* fci = PhysicsAsset->DefaultInstance->Constraints(FromConstraintIndex);
 
-	SetSelectedConstraint(ToConstraintIndex);
-
-	PhATViewportClient->Viewport->Invalidate();
-
+		tci->Modify();
+		tci->CopyInstanceParamsFrom(fci);
+	}
 }
 
-void WPhAT::Undo()
+void WxPhAT::Undo()
 {
 	if(bRunningSimulation)
 		return;
 
-	GEditor->Trans->Undo();
-	PhATViewportClient->Viewport->Invalidate();
+	// Clear selection before we undo. We don't transact the editor itself - don't want to have something selected that is then removed.
+	SetSelectedBody(INDEX_NONE, KPT_Unknown, INDEX_NONE);
+	SetSelectedConstraint(INDEX_NONE);
 
+	GEditor->UndoTransaction();
+	PhATViewportClient->Viewport->Invalidate();
+	FillTree();
 }
 
-void WPhAT::Redo()
+void WxPhAT::Redo()
 {
 	if(bRunningSimulation)
 		return;
 
-	GEditor->Trans->Redo();
-	PhATViewportClient->Viewport->Invalidate();
+	SetSelectedBody(INDEX_NONE, KPT_Unknown, INDEX_NONE);
+	SetSelectedConstraint(INDEX_NONE);
 
+	GEditor->RedoTransaction();
+	PhATViewportClient->Viewport->Invalidate();
+	FillTree();
 }
 
-void WPhAT::ToggleSelectionLock()
+void WxPhAT::ToggleSelectionLock()
 {
 	if(bRunningSimulation)
 		return;
 
 	bSelectionLock = !bSelectionLock;
 	PhATViewportClient->Viewport->Invalidate();
-
 }
 
-void WPhAT::ToggleSnap()
+void WxPhAT::ToggleSnap()
 {
 	if(bRunningSimulation)
 		return;
 
 	bSnap = !bSnap;
-
-	if(bSnap)
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_SNAP, (LPARAM) MAKELONG(1, 0));
-	else
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_SNAP, (LPARAM) MAKELONG(0, 0));
-
+	ToolBar->ToggleTool( IDMN_PHAT_SNAP, bSnap == TRUE );
 	PhATViewportClient->Viewport->Invalidate();
-
 }
 
-void WPhAT::ToggleEditingMode()
+void WxPhAT::ToggleEditingMode()
 {
 	if(bRunningSimulation)
 		return;
@@ -647,14 +1003,16 @@ void WPhAT::ToggleEditingMode()
 	if(EditingMode == PEM_ConstraintEdit)
 	{
 		EditingMode = PEM_BodyEdit;
+		FillTree();
 		SetSelectedBody(SelectedBodyIndex, SelectedPrimitiveType, SelectedPrimitiveIndex); // Forces properties panel to update...
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_EDITMODE, (LPARAM) MAKELONG(0, 0));
+		ToolBar->ModeButton->SetBitmapLabel(ToolBar->BodyModeB);
 	}
 	else
 	{
 		EditingMode = PEM_ConstraintEdit;
+		FillTree();
 		SetSelectedConstraint(SelectedConstraintIndex);
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_EDITMODE, (LPARAM) MAKELONG(1, 0));
+		ToolBar->ModeButton->SetBitmapLabel(ToolBar->ConstraintModeB);
 
 		// Scale isn't valid for constraints!
 		if(MovementMode == PMM_Scale)
@@ -664,10 +1022,9 @@ void WPhAT::ToggleEditingMode()
 	NextSelectEvent = PNS_Normal;
 	UpdateToolBarStatus();
 	PhATViewportClient->Viewport->Invalidate();
-
 }
 
-void WPhAT::SetMovementMode(EPhATMovementMode NewMovementMode)
+void WxPhAT::SetMovementMode(EPhATMovementMode NewMovementMode)
 {
 	if(bRunningSimulation)
 		return;
@@ -676,158 +1033,181 @@ void WPhAT::SetMovementMode(EPhATMovementMode NewMovementMode)
 
 	if(MovementMode == PMM_Rotate)
 	{
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_ROTATE, (LPARAM) MAKELONG(1, 0));
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_TRANSLATE, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_SCALE, (LPARAM) MAKELONG(0, 0));
+		ToolBar->ToggleTool(IDMN_PHAT_ROTATE, true);
+		ToolBar->ToggleTool(IDMN_PHAT_TRANSLATE, false);
+		ToolBar->ToggleTool(IDMN_PHAT_SCALE, false);
 	}
 	else if(MovementMode == PMM_Translate)
 	{
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_ROTATE, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_TRANSLATE, (LPARAM) MAKELONG(1, 0));
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_SCALE, (LPARAM) MAKELONG(0, 0));
+		ToolBar->ToggleTool(IDMN_PHAT_ROTATE, false);
+		ToolBar->ToggleTool(IDMN_PHAT_TRANSLATE, true);
+		ToolBar->ToggleTool(IDMN_PHAT_SCALE, false);
 	}
 	else if(MovementMode == PMM_Scale)
 	{
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_ROTATE, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_TRANSLATE, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_SCALE, (LPARAM) MAKELONG(1, 0));
+		ToolBar->ToggleTool(IDMN_PHAT_ROTATE, false);
+		ToolBar->ToggleTool(IDMN_PHAT_TRANSLATE, false);
+		ToolBar->ToggleTool(IDMN_PHAT_SCALE, true);
 	}
 
 	PhATViewportClient->Viewport->Invalidate();
-
 }
 
-void WPhAT::ToggleMovementSpace()
+void WxPhAT::CycleMovementMode()
+{
+	if(bRunningSimulation)
+		return;
+
+	if(MovementMode == PMM_Translate)
+	{
+		SetMovementMode(PMM_Rotate);
+	}
+	else if(MovementMode == PMM_Rotate)
+	{
+		SetMovementMode(PMM_Scale);
+	}
+	else if(MovementMode == PMM_Scale)
+	{
+		SetMovementMode(PMM_Translate);
+	}
+}
+
+void WxPhAT::ToggleMovementSpace()
 {
 	if(MovementSpace == PMS_Local)
 	{
 		MovementSpace = PMS_World;
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_MOVESPACE, (LPARAM) MAKELONG(7, 0));
-
+		ToolBar->SpaceButton->SetBitmapLabel(ToolBar->WorldSpaceB);
 	}
 	else
 	{
 		MovementSpace = PMS_Local;
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_MOVESPACE, (LPARAM) MAKELONG(8, 0));
+		ToolBar->SpaceButton->SetBitmapLabel(ToolBar->LocalSpaceB);
 	}
 
 	PhATViewportClient->Viewport->Invalidate();
-
 }
 
-void WPhAT::UpdateToolBarStatus()
+void WxPhAT::UpdateToolBarStatus()
 {	
 	if(bRunningSimulation) // Disable everything.
 	{
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ROTATE, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_TRANSLATE, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_MOVESPACE, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_COPYPROPERTIES, (LPARAM) MAKELONG(0, 0));
+		ToolBar->EnableTool( IDMN_PHAT_ROTATE, false );
+		ToolBar->EnableTool( IDMN_PHAT_TRANSLATE, false );
+		ToolBar->EnableTool( IDMN_PHAT_MOVESPACE, false );
+		ToolBar->EnableTool( IDMN_PHAT_COPYPROPERTIES, false );
+		
+		ToolBar->EnableTool( IDMN_PHAT_SCALE, false );
 
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_SCALE, (LPARAM) MAKELONG(0, 0));
+		ToolBar->EnableTool( IDMN_PHAT_DISABLECOLLISION, false );
+		ToolBar->EnableTool( IDMN_PHAT_ENABLECOLLISION, false );
+		ToolBar->EnableTool( IDMN_PHAT_WELDBODIES, false );
+		ToolBar->EnableTool( IDMN_PHAT_ADDNEWBODY, false );
 
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DISABLECOLLISION, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ENABLECOLLISION, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_WELDBODIES, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDNEWBODY, (LPARAM) MAKELONG(0, 0));
+		ToolBar->EnableTool( IDMN_PHAT_ADDSPHERE, false );
+		ToolBar->EnableTool( IDMN_PHAT_ADDSPHYL, false );
+		ToolBar->EnableTool( IDMN_PHAT_ADDBOX, false );
+		ToolBar->EnableTool( IDMN_PHAT_DUPLICATEPRIM, false );
+		ToolBar->EnableTool( IDMN_PHAT_DELETEPRIM, false );
 
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDSPHERE, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDSPHYL, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDBOX, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DUPLICATEPRIM, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DELETEPRIM, (LPARAM) MAKELONG(0, 0));
-
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_RESETCONFRAME, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDBS, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDHINGE, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDPRISMATIC, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDSKELETAL, (LPARAM) MAKELONG(0, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DELETECONSTRAINT, (LPARAM) MAKELONG(0, 0));
+		ToolBar->EnableTool( IDMN_PHAT_RESETCONFRAME, false );
+		ToolBar->EnableTool( IDMN_PHAT_SNAPCONTOBONE, false );
+		ToolBar->EnableTool( IDMN_PHAT_SNAPALLCONTOBONE, false );
+		ToolBar->EnableTool( IDMN_PHAT_ADDBS, false );
+		ToolBar->EnableTool( IDMN_PHAT_ADDHINGE, false );
+		ToolBar->EnableTool( IDMN_PHAT_ADDPRISMATIC, false );
+		ToolBar->EnableTool( IDMN_PHAT_ADDSKELETAL, false );
+		ToolBar->EnableTool( IDMN_PHAT_DELETECONSTRAINT, false );
 	}
 	else // Enable stuff for current editing mode.
 	{
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ROTATE, (LPARAM) MAKELONG(1, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_TRANSLATE, (LPARAM) MAKELONG(1, 0));
-		SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_MOVESPACE, (LPARAM) MAKELONG(1, 0));
+		ToolBar->EnableTool( IDMN_PHAT_ROTATE, true );
+		ToolBar->EnableTool( IDMN_PHAT_TRANSLATE, true );
+		ToolBar->EnableTool( IDMN_PHAT_MOVESPACE, true );
 
 		if(EditingMode == PEM_BodyEdit) //// BODY MODE ////
 		{
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_SCALE, (LPARAM) MAKELONG(1, 0));
+			ToolBar->EnableTool( IDMN_PHAT_SCALE, true );
 
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDNEWBODY, (LPARAM) MAKELONG(1, 0));
+			ToolBar->EnableTool( IDMN_PHAT_ADDNEWBODY, true );
 
 			if(SelectedBodyIndex != INDEX_NONE)
 			{
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_COPYPROPERTIES, (LPARAM) MAKELONG(1, 0));
+				ToolBar->EnableTool( IDMN_PHAT_COPYPROPERTIES, true );
 
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DISABLECOLLISION, (LPARAM) MAKELONG(1, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ENABLECOLLISION, (LPARAM) MAKELONG(1, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_WELDBODIES, (LPARAM) MAKELONG(1, 0));
+				ToolBar->EnableTool( IDMN_PHAT_DISABLECOLLISION, true );
+				ToolBar->EnableTool( IDMN_PHAT_ENABLECOLLISION, true );
+				ToolBar->EnableTool( IDMN_PHAT_WELDBODIES, true );
 
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDSPHERE, (LPARAM) MAKELONG(1, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDSPHYL, (LPARAM) MAKELONG(1, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDBOX, (LPARAM) MAKELONG(1, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DUPLICATEPRIM, (LPARAM) MAKELONG(1, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DELETEPRIM, (LPARAM) MAKELONG(1, 0));
+				ToolBar->EnableTool( IDMN_PHAT_ADDSPHERE, true );
+				ToolBar->EnableTool( IDMN_PHAT_ADDSPHYL, true );
+				ToolBar->EnableTool( IDMN_PHAT_ADDBOX, true );
+				ToolBar->EnableTool( IDMN_PHAT_DUPLICATEPRIM, true );
+				ToolBar->EnableTool( IDMN_PHAT_DELETEPRIM, true );
 			}
 			else
 			{
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_COPYPROPERTIES, (LPARAM) MAKELONG(0, 0));
+				ToolBar->EnableTool( IDMN_PHAT_COPYPROPERTIES, false );
 
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DISABLECOLLISION, (LPARAM) MAKELONG(0, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ENABLECOLLISION, (LPARAM) MAKELONG(0, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_WELDBODIES, (LPARAM) MAKELONG(0, 0));
+				ToolBar->EnableTool( IDMN_PHAT_DISABLECOLLISION, false );
+				ToolBar->EnableTool( IDMN_PHAT_ENABLECOLLISION, false );
+				ToolBar->EnableTool( IDMN_PHAT_WELDBODIES, false );
 
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDSPHERE, (LPARAM) MAKELONG(0, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDSPHYL, (LPARAM) MAKELONG(0, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDBOX, (LPARAM) MAKELONG(0, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DUPLICATEPRIM, (LPARAM) MAKELONG(0, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DELETEPRIM, (LPARAM) MAKELONG(0, 0));
+				ToolBar->EnableTool( IDMN_PHAT_ADDSPHERE, false );
+				ToolBar->EnableTool( IDMN_PHAT_ADDSPHYL, false );
+				ToolBar->EnableTool( IDMN_PHAT_ADDBOX, false );
+				ToolBar->EnableTool( IDMN_PHAT_DUPLICATEPRIM, false );
+				ToolBar->EnableTool( IDMN_PHAT_DELETEPRIM, false );
 			}
 
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_RESETCONFRAME, (LPARAM) MAKELONG(0, 0));
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDBS, (LPARAM) MAKELONG(0, 0));
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDHINGE, (LPARAM) MAKELONG(0, 0));
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDPRISMATIC, (LPARAM) MAKELONG(0, 0));
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDSKELETAL, (LPARAM) MAKELONG(0, 0));
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DELETECONSTRAINT, (LPARAM) MAKELONG(0, 0));
+			ToolBar->EnableTool( IDMN_PHAT_RESETCONFRAME, false );
+			ToolBar->EnableTool( IDMN_PHAT_SNAPCONTOBONE, false );
+			ToolBar->EnableTool( IDMN_PHAT_SNAPALLCONTOBONE, false );
+			ToolBar->EnableTool( IDMN_PHAT_ADDBS, false );
+			ToolBar->EnableTool( IDMN_PHAT_ADDHINGE, false );
+			ToolBar->EnableTool( IDMN_PHAT_ADDPRISMATIC, false );
+			ToolBar->EnableTool( IDMN_PHAT_ADDSKELETAL, false );
+			ToolBar->EnableTool( IDMN_PHAT_DELETECONSTRAINT, false );
 		}
 		else //// CONSTRAINT MODE ////
 		{
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_SCALE, (LPARAM) MAKELONG(0, 0));
+			ToolBar->EnableTool( IDMN_PHAT_SCALE, false );
 
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DISABLECOLLISION, (LPARAM) MAKELONG(0, 0));
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ENABLECOLLISION, (LPARAM) MAKELONG(0, 0));
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_WELDBODIES, (LPARAM) MAKELONG(0, 0));
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDNEWBODY, (LPARAM) MAKELONG(0, 0));
+			ToolBar->EnableTool( IDMN_PHAT_DISABLECOLLISION, false );
+			ToolBar->EnableTool( IDMN_PHAT_ENABLECOLLISION, false );
+			ToolBar->EnableTool( IDMN_PHAT_WELDBODIES, false );
+			ToolBar->EnableTool( IDMN_PHAT_ADDNEWBODY, false );
 
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDSPHERE, (LPARAM) MAKELONG(0, 0));
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDSPHYL, (LPARAM) MAKELONG(0, 0));
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDBOX, (LPARAM) MAKELONG(0, 0));
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DUPLICATEPRIM, (LPARAM) MAKELONG(0, 0));
-			SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DELETEPRIM, (LPARAM) MAKELONG(0, 0));	
+			ToolBar->EnableTool( IDMN_PHAT_ADDSPHERE, false );
+			ToolBar->EnableTool( IDMN_PHAT_ADDSPHYL, false );
+			ToolBar->EnableTool( IDMN_PHAT_ADDBOX, false );
+			ToolBar->EnableTool( IDMN_PHAT_DUPLICATEPRIM, false );
+			ToolBar->EnableTool( IDMN_PHAT_DELETEPRIM, false );	
+			ToolBar->EnableTool( IDMN_PHAT_SNAPALLCONTOBONE, true );
 
 			if(SelectedConstraintIndex != INDEX_NONE)
 			{
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_COPYPROPERTIES, (LPARAM) MAKELONG(1, 0));
+				ToolBar->EnableTool( IDMN_PHAT_COPYPROPERTIES, true );	
 
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_RESETCONFRAME, (LPARAM) MAKELONG(1, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDBS, (LPARAM) MAKELONG(1, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDHINGE, (LPARAM) MAKELONG(1, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDPRISMATIC, (LPARAM) MAKELONG(1, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDSKELETAL, (LPARAM) MAKELONG(1, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DELETECONSTRAINT, (LPARAM) MAKELONG(1, 0));
+				ToolBar->EnableTool( IDMN_PHAT_RESETCONFRAME, true );	
+				ToolBar->EnableTool( IDMN_PHAT_SNAPCONTOBONE, true );
+				ToolBar->EnableTool( IDMN_PHAT_ADDBS, true );	
+				ToolBar->EnableTool( IDMN_PHAT_ADDHINGE, true );	
+				ToolBar->EnableTool( IDMN_PHAT_ADDPRISMATIC, true );	
+				ToolBar->EnableTool( IDMN_PHAT_ADDSKELETAL, true );	
+				ToolBar->EnableTool( IDMN_PHAT_DELETECONSTRAINT, true );	
 			}
 			else
 			{
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_COPYPROPERTIES, (LPARAM) MAKELONG(0, 0));
+				ToolBar->EnableTool( IDMN_PHAT_COPYPROPERTIES, false );	
 
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_RESETCONFRAME, (LPARAM) MAKELONG(0, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDBS, (LPARAM) MAKELONG(0, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDHINGE, (LPARAM) MAKELONG(0, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDPRISMATIC, (LPARAM) MAKELONG(0, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_ADDSKELETAL, (LPARAM) MAKELONG(0, 0));
-				SendMessageX( hWndToolBar, TB_ENABLEBUTTON,  IDMN_PHAT_DELETECONSTRAINT, (LPARAM) MAKELONG(0, 0));
+				ToolBar->EnableTool( IDMN_PHAT_RESETCONFRAME, false );	
+				ToolBar->EnableTool( IDMN_PHAT_SNAPCONTOBONE, false );
+				ToolBar->EnableTool( IDMN_PHAT_ADDBS, false );	
+				ToolBar->EnableTool( IDMN_PHAT_ADDHINGE, false );	
+				ToolBar->EnableTool( IDMN_PHAT_ADDPRISMATIC, false );	
+				ToolBar->EnableTool( IDMN_PHAT_ADDSKELETAL, false );	
+				ToolBar->EnableTool( IDMN_PHAT_DELETECONSTRAINT, false );	
 			}
 		}
 	}
@@ -835,33 +1215,355 @@ void WPhAT::UpdateToolBarStatus()
 	// Update view mode icons.
 	EPhATRenderMode MeshViewMode = GetCurrentMeshViewMode();
 	if(MeshViewMode == PRM_None)
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_MESHVIEWMODE, (LPARAM) MAKELONG(19, 0));
+		ToolBar->MeshViewButton->SetBitmapLabel(ToolBar->HideMeshB);
 	else if(MeshViewMode == PRM_Wireframe)
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_MESHVIEWMODE, (LPARAM) MAKELONG(20, 0));
+		ToolBar->MeshViewButton->SetBitmapLabel(ToolBar->WireMeshB);
 	else if(MeshViewMode == PRM_Solid)
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_MESHVIEWMODE, (LPARAM) MAKELONG(21, 0));
+		ToolBar->MeshViewButton->SetBitmapLabel(ToolBar->ShowMeshB);
 
 	EPhATRenderMode CollisionViewMode = GetCurrentCollisionViewMode();
 	if(CollisionViewMode == PRM_None)
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_COLLISIONVIEWMODE, (LPARAM) MAKELONG(16, 0));
+		ToolBar->CollisionViewButton->SetBitmapLabel(ToolBar->HideCollB);
 	else if(CollisionViewMode == PRM_Wireframe)
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_COLLISIONVIEWMODE, (LPARAM) MAKELONG(17, 0));
+		ToolBar->CollisionViewButton->SetBitmapLabel(ToolBar->WireCollB);
 	else if(CollisionViewMode == PRM_Solid)
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_COLLISIONVIEWMODE, (LPARAM) MAKELONG(18, 0));
+		ToolBar->CollisionViewButton->SetBitmapLabel(ToolBar->ShowCollB);
 
 	EPhATConstraintViewMode ConstraintViewMode = GetCurrentConstraintViewMode();
 	if(ConstraintViewMode == PCV_None)
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_CONSTRAINTVIEWMODE, (LPARAM) MAKELONG(28, 0));
+		ToolBar->ConstraintViewButton->SetBitmapLabel(ToolBar->ConHideB);
 	else if(ConstraintViewMode == PCV_AllPositions)
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_CONSTRAINTVIEWMODE, (LPARAM) MAKELONG(29, 0));
+		ToolBar->ConstraintViewButton->SetBitmapLabel(ToolBar->ConPosB);
 	else if(ConstraintViewMode == PCV_AllLimits)
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_CONSTRAINTVIEWMODE, (LPARAM) MAKELONG(30, 0));
+		ToolBar->ConstraintViewButton->SetBitmapLabel(ToolBar->ConLimitB);
 
+	ToolBar->Refresh();
 }	
 
+static wxTreeItemId PhAT_CreateTreeItemAndParents(INT BoneIndex, TArray<FMeshBone>& Skeleton, wxTreeCtrl* TreeCtrl, TMap<FName,wxTreeItemId>& BoneTreeItemMap)
+{
+	wxTreeItemId* existingItem = BoneTreeItemMap.Find( Skeleton(BoneIndex).Name );
+	if( existingItem != NULL )
+	{
+		return *existingItem;
+	}
+
+	FMeshBone& Bone = Skeleton(BoneIndex);
+	wxTreeItemId newItem;
+	if( BoneIndex == 0 )
+	{
+		newItem = TreeCtrl->AddRoot( *Bone.Name.ToString() );
+	}
+	else
+	{
+		wxTreeItemId parentItem = PhAT_CreateTreeItemAndParents(Bone.ParentIndex, Skeleton, TreeCtrl, BoneTreeItemMap);
+		newItem = TreeCtrl->AppendItem( parentItem, *Bone.Name.ToString() );
+		TreeCtrl->Expand( parentItem );
+	}    
+
+	BoneTreeItemMap.Set(Bone.Name, newItem);
+
+	return newItem;
+}
 
 
-void WPhAT::StartManipulating(EAxis Axis, const FViewportClick& Click, const FMatrix& WorldToCamera)
+/**
+* Posts an event for regenerating the tree view data.
+*/
+void WxPhAT::FillTree()
+{
+	wxCommandEvent Event;
+	Event.SetEventObject(this);
+	Event.SetEventType(ID_PHAT_FILLTREE);
+	GetEventHandler()->AddPendingEvent(Event);
+}
+
+/**
+ * Event handler for regenerating the tree view data.
+ *
+ * @param	In	Information about the event.
+ */
+void WxPhAT::OnFillTree(wxCommandEvent &In)
+{
+	TreeCtrl->Freeze();
+	{
+		TreeCtrl->DeleteAllItems();
+
+		TreeItemBoneIndexMap.Empty();
+		TreeItemBodyIndexMap.Empty();
+		TreeItemConstraintIndexMap.Empty();
+
+		TMap<FName,wxTreeItemId>	BoneTreeItemMap;
+
+		// if next event is selecting a bone to create a new body, Fill up tree with bone names
+		if( NextSelectEvent == PNS_MakeNewBody )
+		{
+			// Fill Tree with all bones...
+			for(INT BoneIndex=0; BoneIndex<EditorSkelMesh->RefSkeleton.Num(); BoneIndex++)
+			{
+				wxTreeItemId newItem = PhAT_CreateTreeItemAndParents(BoneIndex, EditorSkelMesh->RefSkeleton, TreeCtrl, BoneTreeItemMap);
+				if ( PhysicsAsset->FindBodyIndex( EditorSkelMesh->RefSkeleton( BoneIndex ).Name ) == INDEX_NONE )
+				{
+					TreeCtrl->SetItemBold(newItem);
+				}
+
+				TreeItemBoneIndexMap.Set(newItem, BoneIndex);
+			}
+		}
+		else if( EditingMode == PEM_BodyEdit )
+		{
+			// fill tree with bodies
+			for(INT i=0; i<PhysicsAsset->BodySetup.Num(); i++)
+			{
+				INT BoneIndex = EditorSkelComp->MatchRefBone(PhysicsAsset->BodySetup(i)->BoneName);
+				if(BoneIndex != INDEX_NONE)
+				{
+					wxTreeItemId newItem = PhAT_CreateTreeItemAndParents(BoneIndex, EditorSkelMesh->RefSkeleton, TreeCtrl, BoneTreeItemMap);
+
+					FKAggregateGeom& AggGeom = PhysicsAsset->BodySetup(i)->AggGeom;
+
+					if( AggGeom.SphereElems.Num()+AggGeom.BoxElems.Num()+AggGeom.SphylElems.Num()+AggGeom.ConvexElems.Num() == 1 )
+					{
+						// Case for only a single primitive
+						TreeCtrl->SetItemBold( newItem );
+
+						if( AggGeom.SphereElems.Num() == 1 )
+							TreeItemBodyIndexMap.Set(newItem,FPhATTreeBoneItem(i, KPT_Sphere, 0));
+						else
+							if( AggGeom.BoxElems.Num() == 1 )
+								TreeItemBodyIndexMap.Set(newItem,FPhATTreeBoneItem(i, KPT_Box, 0));
+							else
+								if( AggGeom.SphylElems.Num() == 1 )
+									TreeItemBodyIndexMap.Set(newItem,FPhATTreeBoneItem(i, KPT_Sphyl, 0));
+								else
+									if( AggGeom.ConvexElems.Num() == 1 )
+										TreeItemBodyIndexMap.Set(newItem,FPhATTreeBoneItem(i, KPT_Convex, 0));
+					}
+					else
+					{
+						// case for multiple primitives
+						for(INT j=0; j<AggGeom.SphereElems.Num(); j++)
+						{
+							wxTreeItemId subItem = TreeCtrl->AppendItem( newItem, *FString::Printf(TEXT("Sphere %d"),j) );
+							TreeCtrl->SetItemBold( subItem );
+							TreeItemBodyIndexMap.Set(subItem,FPhATTreeBoneItem(i, KPT_Sphere, j));
+						}
+
+						for(INT j=0; j<AggGeom.BoxElems.Num(); j++)
+						{
+							wxTreeItemId subItem = TreeCtrl->AppendItem( newItem, *FString::Printf(TEXT("Box %d"),j) );
+							TreeCtrl->SetItemBold( subItem );
+							TreeItemBodyIndexMap.Set(subItem,FPhATTreeBoneItem(i, KPT_Box, j));
+						}
+
+						for(INT j=0; j<AggGeom.SphylElems.Num(); j++)
+						{
+							wxTreeItemId subItem = TreeCtrl->AppendItem( newItem, *FString::Printf(TEXT("Sphyl %d"),j) );
+							TreeCtrl->SetItemBold( subItem );
+							TreeItemBodyIndexMap.Set(subItem,FPhATTreeBoneItem(i, KPT_Sphyl, j));
+						}
+
+						for(INT j=0; j<AggGeom.ConvexElems.Num(); j++)
+						{
+							wxTreeItemId subItem = TreeCtrl->AppendItem( newItem, *FString::Printf(TEXT("Convex %d"),j) );
+							TreeCtrl->SetItemBold( subItem );
+							TreeItemBodyIndexMap.Set(subItem,FPhATTreeBoneItem(i, KPT_Convex, j));
+						}
+						TreeCtrl->Expand( newItem );
+					}
+				}
+			}
+		}
+		else
+		{
+			// fill tree with constraints
+			for(INT i=0; i<PhysicsAsset->ConstraintSetup.Num(); i++)
+			{
+				// try to find the 1st bone, 2nd finally the joint name in the hierarchy
+				INT BoneIndex = EditorSkelComp->MatchRefBone( PhysicsAsset->ConstraintSetup(i)->ConstraintBone1 );
+				if( BoneIndex == INDEX_NONE )
+					BoneIndex = EditorSkelComp->MatchRefBone( PhysicsAsset->ConstraintSetup(i)->ConstraintBone2 );
+				if( BoneIndex == INDEX_NONE )
+					BoneIndex = EditorSkelComp->MatchRefBone( PhysicsAsset->ConstraintSetup(i)->JointName );
+				if( BoneIndex == INDEX_NONE )
+					continue;
+
+				wxTreeItemId newItem = PhAT_CreateTreeItemAndParents( BoneIndex, EditorSkelMesh->RefSkeleton, TreeCtrl, BoneTreeItemMap );
+				TreeCtrl->SetItemBold( newItem );
+				TreeItemConstraintIndexMap.Set(newItem,i);
+			}
+		}
+	}
+	TreeCtrl->Thaw();
+}
+
+/** DblClick */
+void WxPhAT::OnTreeItemDblClick(wxTreeEvent& InEvent)
+{
+	wxTreeItemId Item = InEvent.GetItem();
+
+	// set the focus to the viewport and disable mouse capture
+	PreviewWindow->SetFocus();
+	::SetFocus( (HWND) PhATViewportClient->Viewport->GetWindow() );
+
+	// If creating a new body
+	if( NextSelectEvent == PNS_MakeNewBody )
+	{
+		const INT* BoneIdxPtr	= TreeItemBoneIndexMap.Find(Item);
+
+		if( BoneIdxPtr )
+		{
+			const INT NewBoneIndex = *BoneIdxPtr;
+
+			NextSelectEvent = PNS_Normal;
+
+			//calls FillTree()
+			MakeNewBody(NewBoneIndex);
+		}
+	}
+
+	//HitNothing();
+}
+
+
+void WxPhAT::OnTreeSelChanged( wxTreeEvent& In )
+{
+	// prevent re-entrancy
+	static UBOOL InsideSelChanged = FALSE;
+
+	if( InsideSelChanged )
+	{
+		return;
+	}
+
+	wxTreeItemId Item = In.GetItem();
+
+	InsideSelChanged = TRUE;
+
+	// set the focus to the viewport and disable mouse capture
+	PreviewWindow->SetFocus();
+	::SetFocus( (HWND) PhATViewportClient->Viewport->GetWindow() );
+
+	if( Item.IsOk() )
+	{
+		// see if it's a body
+		FPhATTreeBoneItem* b = TreeItemBodyIndexMap.Find(Item);
+		if( b )
+		{
+			HitBone( b->BodyIndex, b->PrimType, b->PrimIndex );
+		}
+		else if( SelectedBodyIndex != INDEX_NONE )
+		{
+			SetSelectedBody(INDEX_NONE, KPT_Unknown, INDEX_NONE);
+		}
+
+		// see if it's a constraint
+		INT* c = TreeItemConstraintIndexMap.Find(Item);
+		if( c )
+		{
+			HitConstraint( *c );
+		}
+		else if( SelectedConstraintIndex != INDEX_NONE )
+		{
+			SetSelectedConstraint(INDEX_NONE);
+		}
+
+		//HitNothing();
+	}
+
+	InsideSelChanged = FALSE;
+}
+
+/** Displays a context menu for the bone tree. */
+void WxPhAT::OnTreeItemRightClick( wxTreeEvent& In )
+{
+	if(SelectedBodyIndex != INDEX_NONE && EditingMode == PEM_BodyEdit)
+	{
+		// Pop up menu, if we have a body selected.
+		WxBodyContextMenu Menu( this );
+		FTrackPopupMenu TrackMenu( this, &Menu );
+		TrackMenu.Show();
+	}
+	else if(SelectedConstraintIndex != INDEX_NONE && EditingMode == PEM_ConstraintEdit)
+	{
+		// Pop up menu, if we have a constraint selected.
+		WxConstraintContextMenu Menu( this );
+		FTrackPopupMenu TrackMenu( this, &Menu );
+		TrackMenu.Show();
+	}
+}
+
+void WxPhAT::HitBone( INT BodyIndex, EKCollisionPrimitiveType PrimType, INT PrimIndex )
+{
+	if(EditingMode == PEM_BodyEdit)
+	{
+		if(NextSelectEvent == PNS_EnableCollision)
+		{
+			NextSelectEvent = PNS_Normal;
+			SetCollisionBetween( SelectedBodyIndex, BodyIndex, true );
+		}
+		else if(NextSelectEvent == PNS_DisableCollision)
+		{
+			NextSelectEvent = PNS_Normal;
+			SetCollisionBetween( SelectedBodyIndex, BodyIndex, false );
+		}
+		else if(NextSelectEvent == PNS_CopyProperties)
+		{
+			NextSelectEvent = PNS_Normal;
+			CopyBodyProperties( BodyIndex, SelectedBodyIndex );
+		}
+		else if(NextSelectEvent == PNS_WeldBodies)
+		{
+			NextSelectEvent = PNS_Normal;
+			WeldBodyToSelected( BodyIndex );
+		}
+		else if(!bSelectionLock)
+		{
+			SetSelectedBody( BodyIndex, PrimType, PrimIndex );
+		}
+	}
+}
+
+void WxPhAT::HitConstraint( INT ConstraintIndex )
+{
+	if(EditingMode == PEM_ConstraintEdit)
+	{
+		if(NextSelectEvent == PNS_CopyProperties)
+		{
+			NextSelectEvent = PNS_Normal;
+			{
+				const FScopedTransaction Transaction( *LocalizeUnrealEd(TEXT("CopyConstraint")) );
+				CopyConstraintProperties( ConstraintIndex, SelectedConstraintIndex );
+			}
+			SetSelectedConstraint(ConstraintIndex);
+			PhATViewportClient->Viewport->Invalidate();
+		}
+		else if(!bSelectionLock)
+		{
+			SetSelectedConstraint( ConstraintIndex );
+		}
+	}
+}
+
+void WxPhAT::HitNothing()
+{
+	if( NextSelectEvent != PNS_Normal )
+	{
+		NextSelectEvent = PNS_Normal;
+		PhATViewportClient->Viewport->Invalidate();
+		FillTree();
+	}
+	else if(!bSelectionLock)
+	{
+		if(EditingMode == PEM_BodyEdit)
+			SetSelectedBody( INDEX_NONE, KPT_Unknown, INDEX_NONE );	
+		else
+			SetSelectedConstraint( INDEX_NONE );
+	}
+}
+
+
+void WxPhAT::StartManipulating(EAxis Axis, const FViewportClick& Click, const FMatrix& WorldToCamera)
 {
 	check(!bManipulating);
 
@@ -872,26 +1574,24 @@ void WPhAT::StartManipulating(EAxis Axis, const FViewportClick& Click, const FMa
 	if(EditingMode == PEM_BodyEdit)
 	{
 		check(SelectedBodyIndex != INDEX_NONE);
-		GEditor->Trans->Begin( TEXT("Move Element") );
+		GEditor->BeginTransaction( *LocalizeUnrealEd("MoveElement") );
 		PhysicsAsset->BodySetup(SelectedBodyIndex)->Modify();
 	}
 	else
 	{
 		check(SelectedConstraintIndex != INDEX_NONE);
-		GEditor->Trans->Begin( TEXT("Move Constraint") );
+		GEditor->BeginTransaction( *LocalizeUnrealEd("MoveConstraint") );
 		PhysicsAsset->ConstraintSetup(SelectedConstraintIndex)->Modify();
 
-		FMatrix WParentFrame = GetSelectedConstraintWorldTM(1);
-		FMatrix WChildFrame = GetSelectedConstraintWorldTM(0);
-		StartManRelConTM = WChildFrame * WParentFrame.Inverse();
+		const FMatrix WParentFrame = GetSelectedConstraintWorldTM(1);
+		const FMatrix WChildFrame = GetSelectedConstraintWorldTM(0);
+		StartManRelConTM = WChildFrame * WParentFrame.InverseSafe();
 
 		StartManParentConTM = PhysicsAsset->ConstraintSetup(SelectedConstraintIndex)->GetRefFrameMatrix(1);
 		StartManChildConTM = PhysicsAsset->ConstraintSetup(SelectedConstraintIndex)->GetRefFrameMatrix(0);
 	}
 
-	FVector Scale3D = EditorActor->DrawScale3D * EditorActor->DrawScale;
-
-	FMatrix InvWidgetTM = WidgetTM.Inverse(); // WidgetTM is set inside WPhAT::DrawCurrentWidget.
+	FMatrix InvWidgetTM = WidgetTM.Inverse(); // WidgetTM is set inside WxPhAT::DrawCurrentWidget.
 
 	// First - get the manipulation axis in world space.
 	FVector WorldManDir;
@@ -922,10 +1622,10 @@ void WPhAT::StartManipulating(EAxis Axis, const FViewportClick& Click, const FMa
 
 	if(MovementMode == PMM_Rotate)
 	{
-		if( Abs(Click.Direction | WorldManDir) > KINDA_SMALL_NUMBER ) // If click direction and circle plane are parallel.. can't resolve.
+		if( Abs(Click.GetDirection() | WorldManDir) > KINDA_SMALL_NUMBER ) // If click direction and circle plane are parallel.. can't resolve.
 		{
 			// First, find actual position we clicking on the circle in world space.
-			FVector ClickPosition = FLinePlaneIntersection( Click.Origin, Click.Origin + Click.Direction, WidgetTM.GetOrigin(), WorldManDir );
+			const FVector ClickPosition = FLinePlaneIntersection( Click.GetOrigin(), Click.GetOrigin() + Click.GetDirection(), WidgetTM.GetOrigin(), WorldManDir );
 
 			// Then find Radial direction vector (from center to widget to clicked position).
 			FVector RadialDir = ( ClickPosition - WidgetTM.GetOrigin() );
@@ -968,7 +1668,7 @@ void WPhAT::StartManipulating(EAxis Axis, const FViewportClick& Click, const FMa
 	PhATViewportClient->Viewport->Invalidate();
 }
 
-void WPhAT::UpdateManipulation(FLOAT DeltaX, FLOAT DeltaY, UBOOL bCtrlDown)
+void WxPhAT::UpdateManipulation(FLOAT DeltaX, FLOAT DeltaY, UBOOL bCtrlDown)
 {
 	// DragX/Y is total offset from start of drag.
 	DragX += DeltaX;
@@ -982,18 +1682,18 @@ void WPhAT::UpdateManipulation(FLOAT DeltaX, FLOAT DeltaY, UBOOL bCtrlDown)
 
 	if(MovementMode == PMM_Translate)
 	{
-		ManipulateTranslation = TranslateSpeed * DragMag;
+		ManipulateTranslation = PhAT_TranslateSpeed * DragMag;
 
 		if(bSnap)
 			ManipulateTranslation = EditorSimOptions->LinearSnap * appFloor(ManipulateTranslation/EditorSimOptions->LinearSnap);
 		else
-			ManipulateTranslation = TranslateSpeed * appFloor(ManipulateTranslation/TranslateSpeed);
+			ManipulateTranslation = PhAT_TranslateSpeed * appFloor(ManipulateTranslation/PhAT_TranslateSpeed);
 
 		ManipulateMatrix = FTranslationMatrix(ManipulateDir * ManipulateTranslation);
 	}
 	else if(MovementMode == PMM_Rotate)
 	{
-		ManipulateRotation = -RotateSpeed * DragMag;
+		ManipulateRotation = -PhAT_RotateSpeed * DragMag;
 
 		if(bSnap)
 		{
@@ -1001,14 +1701,14 @@ void WPhAT::UpdateManipulation(FLOAT DeltaX, FLOAT DeltaY, UBOOL bCtrlDown)
 			ManipulateRotation = AngSnapRadians * appFloor(ManipulateRotation/AngSnapRadians);
 		}
 		else
-			ManipulateRotation = RotateSpeed * appFloor(ManipulateRotation/RotateSpeed);
+			ManipulateRotation = PhAT_RotateSpeed * appFloor(ManipulateRotation/PhAT_RotateSpeed);
 
 		FQuat RotQuat(ManipulateDir, ManipulateRotation);
-		ManipulateMatrix = FMatrix(FVector(0.f), RotQuat);
+		ManipulateMatrix = FQuatRotationTranslationMatrix( RotQuat, FVector(0.f) );
 	}
 	else if(MovementMode == PMM_Scale && EditingMode == PEM_BodyEdit) // Scaling only valid for bodies.
 	{
-		FLOAT DeltaMag = ((DeltaX * DragDirX) + (DeltaY * DragDirY)) * TranslateSpeed;
+		FLOAT DeltaMag = ((DeltaX * DragDirX) + (DeltaY * DragDirY)) * PhAT_TranslateSpeed;
 		CurrentScale += DeltaMag;
 
 		FLOAT ApplyScale;
@@ -1065,13 +1765,14 @@ void WPhAT::UpdateManipulation(FLOAT DeltaX, FLOAT DeltaY, UBOOL bCtrlDown)
 	}
 }
 
-void WPhAT::EndManipulating()
+void WxPhAT::EndManipulating()
 {
 	if(bManipulating)
 	{
 		//debugf(TEXT("END"));
 
-		bManipulating = false;
+		bManipulating = FALSE;
+		ManipulateAxis = AXIS_None;
 
 		if(EditingMode == PEM_BodyEdit)
 		{
@@ -1088,7 +1789,7 @@ void WPhAT::EndManipulating()
 				AggGeom->SphylElems(SelectedPrimitiveIndex).TM = ManipulateMatrix * AggGeom->SphylElems(SelectedPrimitiveIndex).TM;
 		}
 
-		GEditor->Trans->End();
+		GEditor->EndTransaction();
 
 		PhATViewportClient->Viewport->Invalidate();
 	}
@@ -1096,97 +1797,116 @@ void WPhAT::EndManipulating()
 
 // Mouse forces
 
-void WPhAT::SimMousePress(FChildViewport* Viewport, UBOOL bConstrainRotation)
+void WxPhAT::SimMousePress(FViewport* Viewport, UBOOL bConstrainRotation, FName Key)
 {
-	FSceneView	View;
-	PhATViewportClient->CalcSceneView(&View);
+	UBOOL bCtrlDown = Viewport->KeyState(KEY_LeftControl) || Viewport->KeyState(KEY_RightControl);
+	UBOOL bShiftDown = Viewport->KeyState(KEY_LeftShift) || Viewport->KeyState(KEY_RightShift);
 
-	FViewportClick Click( &View, PhATViewportClient, NAME_None, IE_Released, Viewport->GetMouseX(), Viewport->GetMouseY() );
+	FSceneViewFamilyContext ViewFamily(Viewport,PhATViewportClient->GetScene(),PhATViewportClient->ShowFlags,GWorld->GetTimeSeconds(),GWorld->GetDeltaSeconds(),GWorld->GetRealTimeSeconds());
+	FSceneView* View = PhATViewportClient->CalcSceneView(&ViewFamily);
+
+	const FViewportClick Click( View, PhATViewportClient, NAME_None, IE_Released, Viewport->GetMouseX(), Viewport->GetMouseY() );
 
 	FCheckResult Result(1.f);
-	UBOOL bHit = !PhysicsAsset->LineCheck( Result, EditorSkelComp, Click.Origin,Click.Origin + Click.Direction * SimGrabCheckDistance, FVector(0) );
+	const UBOOL bHit = !PhysicsAsset->LineCheck( Result, EditorSkelComp, Click.GetOrigin(),Click.GetOrigin() + Click.GetDirection() * SimGrabCheckDistance, FVector(0), FALSE );
 
 	if(bHit)
 	{
-		bManipulating = true;
-		DragX = 0.0f;
-		DragY = 0.0f;
-		SimGrabPush = 0.0f;
-
 		check(Result.Item != INDEX_NONE);
 		FName BoneName = PhysicsAsset->BodySetup(Result.Item)->BoneName;
-		URB_Handle* Handle = EditorActor->MouseHandle;
 
-		// Update mouse force properties from sim options.
-		Handle->LinearDamping = EditorSimOptions->MouseLinearDamping;
-		Handle->LinearStiffness = EditorSimOptions->MouseLinearStiffness;
-		Handle->LinearMaxDistance = EditorSimOptions->MouseLinearMaxDistance;
-		Handle->AngularDamping = EditorSimOptions->MouseAngularDamping;
-		Handle->AngularStiffness = EditorSimOptions->MouseAngularStiffness;
+		// Right mouse is for dragging things around
+		if(Key == KEY_RightMouseButton)
+		{
+			bManipulating = TRUE;
+			DragX = 0.0f;
+			DragY = 0.0f;
+			SimGrabPush = 0.0f;
 
-		// Create handle to object.
-		Handle->GrabComponent(EditorSkelComp, BoneName, Result.Location, bConstrainRotation);
-		
-		FMatrix	InvViewMatrix = View.ViewMatrix.Inverse();
+			// Update mouse force properties from sim options.
+			MouseHandle->LinearDamping = EditorSimOptions->HandleLinearDamping;
+			MouseHandle->LinearStiffness = EditorSimOptions->HandleLinearStiffness;
+			MouseHandle->AngularDamping = EditorSimOptions->HandleAngularDamping;
+			MouseHandle->AngularStiffness = EditorSimOptions->HandleAngularStiffness;
 
-		SimGrabMinPush = SimMinHoldDistance - (Result.Time * SimGrabCheckDistance);
+			// Create handle to object.
+			MouseHandle->GrabComponent(EditorSkelComp, BoneName, Result.Location, bConstrainRotation);
 
-		SimGrabLocation = Result.Location;
-		SimGrabX = InvViewMatrix.GetAxis(0).SafeNormal();
-		SimGrabY = InvViewMatrix.GetAxis(1).SafeNormal();
-		SimGrabZ = InvViewMatrix.GetAxis(2).SafeNormal();
+			FMatrix	InvViewMatrix = View->ViewMatrix.Inverse();
+
+			SimGrabMinPush = SimMinHoldDistance - (Result.Time * SimGrabCheckDistance);
+
+			SimGrabLocation = Result.Location;
+			SimGrabX = InvViewMatrix.GetAxis(0).SafeNormal();
+			SimGrabY = InvViewMatrix.GetAxis(1).SafeNormal();
+			SimGrabZ = InvViewMatrix.GetAxis(2).SafeNormal();
+		}
+		// Left mouse is for poking things
+		else if(Key == KEY_LeftMouseButton)
+		{
+			check(EditorSkelComp->PhysicsAssetInstance);
+
+			// Ensure that we are not fixed before adding an impulse.
+			if(EditorSkelComp->bSkelCompFixed)
+			{
+				EditorSkelComp->SetComponentRBFixed(FALSE);
+			}
+
+			EditorSkelComp->AddImpulse( Click.GetDirection() * EditorSimOptions->PokeStrength, Result.Location, BoneName );
+
+			LastPokeTime = TotalTickTime;
+		}
 	}
 }
 
-void WPhAT::SimMouseMove(FLOAT DeltaX, FLOAT DeltaY)
+void WxPhAT::SimMouseMove(FLOAT DeltaX, FLOAT DeltaY)
 {
 	DragX += DeltaX;
 	DragY += DeltaY;
 
-	URB_Handle* Handle = EditorActor->MouseHandle;
-
-	if(!Handle->GrabbedComponent)
+	if(!MouseHandle->GrabbedComponent)
+	{
 		return;
-
-	check(Handle->GrabbedComponent->Owner == EditorActor);
+	}
 
 	FVector NewLocation = SimGrabLocation + (SimGrabPush * SimGrabZ) + (DragX * SimGrabMoveSpeed * SimGrabX) + (DragY * SimGrabMoveSpeed * SimGrabY);
 
-	Handle->SetLocation(NewLocation);
-	Handle->GrabbedComponent->WakeRigidBody(Handle->GrabbedBoneName);
+	MouseHandle->SetLocation(NewLocation);
+	MouseHandle->GrabbedComponent->WakeRigidBody(MouseHandle->GrabbedBoneName);
 }
 
-void WPhAT::SimMouseRelease()
+void WxPhAT::SimMouseRelease()
 {
-	bManipulating = false;
+	bManipulating = FALSE;
+	ManipulateAxis = AXIS_None;
 
-	URB_Handle* Handle = EditorActor->MouseHandle;
-
-	if(!Handle->GrabbedComponent)
+	if(!MouseHandle->GrabbedComponent)
+	{
 		return;
+	}
 
-	check(Handle->GrabbedComponent->Owner == EditorActor);
-
-	Handle->GrabbedComponent->WakeRigidBody(Handle->GrabbedBoneName);
-	Handle->ReleaseComponent();
+	MouseHandle->GrabbedComponent->WakeRigidBody(MouseHandle->GrabbedBoneName);
+	MouseHandle->ReleaseComponent();
 }
 
-void WPhAT::SimMouseWheelUp()
+void WxPhAT::SimMouseWheelUp()
 {
-	URB_Handle* Handle = EditorActor->MouseHandle;
-	if(!Handle->GrabbedComponent)
+	if(!MouseHandle->GrabbedComponent)
+	{
 		return;
+	}
 
 	SimGrabPush += SimHoldDistanceChangeDelta;
 
 	SimMouseMove(0.0f, 0.0f);
 }
 
-void WPhAT::SimMouseWheelDown()
+void WxPhAT::SimMouseWheelDown()
 {
-	URB_Handle* Handle = EditorActor->MouseHandle;
-	if(!Handle->GrabbedComponent)
+	if(!MouseHandle->GrabbedComponent)
+	{
 		return;
+	}
 
 	SimGrabPush -= SimHoldDistanceChangeDelta;
 	SimGrabPush = Max(SimGrabMinPush, SimGrabPush); 
@@ -1196,163 +1916,203 @@ void WPhAT::SimMouseWheelDown()
 
 // Simulation
 
-void WPhAT::ToggleSimulation()
+void WxPhAT::ToggleSimulation()
 {
+	// don't start simulation if there are no bodies or if we are manipulating a body
+	if( PhysicsAsset->BodySetup.Num() == 0 || bManipulating )
+	{
+		return;  
+	}
+
 	bRunningSimulation = !bRunningSimulation;
 
 	if(bRunningSimulation)
 	{
-		// START RUNNING SIM
-
 		NextSelectEvent = PNS_Normal;
+
+		// Reset last poke time.
+		LastPokeTime = -100000.f;
 
 		// Disable all the editing buttons
 		UpdateToolBarStatus();
 
-		// Change the button icon to a stop icon
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_RUNSIM, (LPARAM) MAKELONG(4, 0));
+		// Let you press the anim play button.
+		ToolBar->AnimPlayButton->Enable(TRUE);
+		ToolBar->AnimCombo->Enable(TRUE);
 
-		// Flush geometry cache inside the asset (dont want to use cached version of old geometry!)
+		// Reassign selected animation.
+		AnimComboSelected();
+
+		// Change the button icon to a stop icon
+		ToolBar->SimButton->SetBitmapLabel(ToolBar->StopSimB);
+
+		// Flush geometry cache inside the asset (don't want to use cached version of old geometry!)
 		PhysicsAsset->ClearShapeCaches();
 
-		// Start up the physics asset for the actor.
-		check(EditorSkelComp == EditorActor->CollisionComponent);
-		EditorSkelComp->InitArticulated();
-		EditorActor->setPhysics(PHYS_Articulated);
+		// We should not already have an instance (destroyed when stopping sim).
+		check(!EditorSkelComp->PhysicsAssetInstance);
+		EditorSkelComp->PhysicsAssetInstance = ConstructObject<UPhysicsAssetInstance>(UPhysicsAssetInstance::StaticClass(), EditorSkelComp, NAME_None, RF_Public|RF_Transactional, PhysicsAsset->DefaultInstance);
+		EditorSkelComp->PhysicsAssetInstance->CollisionDisableTable = PhysicsAsset->DefaultInstance->CollisionDisableTable;
+
+		EditorSkelComp->PhysicsAssetInstance->InitInstance(EditorSkelComp, PhysicsAsset, FALSE, RBPhysScene);
+
+		// Make it start simulating
 		EditorSkelComp->WakeRigidBody();
 
 		// Set the properties window to point at the simulation options object.
-		PropertyWindow->Root.SetObjects((UObject**)&EditorSimOptions, 1);
+		//PropertyWindow->SetObject(PhysicsAsset, true, false, true);
+		PropertyWindow->SetObject(EditorSimOptions, EPropertyWindowFlags::ShouldShowCategories);
 
-		PhATViewportClient->Realtime = 1;
+		// empty the tree
+		TreeCtrl->DeleteAllItems();
 	}
 	else
 	{
-		// STOP RUNNING SIM
-
-		PhATViewportClient->Realtime = 0;
+		// Stop any animation and clear node when stopping simulation.
+		SetAnimPlayback(FALSE);
+		EditorSeqNode->SetAnim(NAME_None);
 
 		// Turn off/remove the physics instance for this thing, and move back to start location.
-		EditorActor->setPhysics(PHYS_None);
-		EditorSkelComp->TermArticulated();
-
-
-		FCheckResult Hit(0);
-		EditorLevel->FarMoveActor(EditorActor, EditorActorStartLocation, 0, 0, 0);
-		EditorLevel->MoveActor(EditorActor, FVector(0.f), FRotator(0,0,0), Hit);
+		check(EditorSkelComp->PhysicsAssetInstance);
+		UBOOL bTerminated = EditorSkelComp->PhysicsAssetInstance->TermInstance(RBPhysScene);
+		check(bTerminated);
+		EditorSkelComp->PhysicsAssetInstance = NULL;
 
 		// Force an update of the skeletal mesh to get it back to ref pose
-		EditorSkelComp->UpdateSpaceBases();
-		EditorSkelComp->Update();
+		EditorSkelComp->UpdateSkelPose();
+		EditorSkelComp->ConditionalUpdateTransform();
 		PhATViewportClient->Viewport->Invalidate();
 
 		// Enable all the buttons again
 		UpdateToolBarStatus();
 
 		// Change the button icon to a play icon again
-		SendMessageX( hWndToolBar, TB_CHANGEBITMAP,  IDMN_PHAT_RUNSIM, (LPARAM) MAKELONG(3, 0));
+		ToolBar->SimButton->SetBitmapLabel(ToolBar->StartSimB);
+
+		// Fill the tree
+		FillTree();
 
 		// Put properties window back to selected.
 		if(EditingMode == PEM_BodyEdit)
 			SetSelectedBody(SelectedBodyIndex, SelectedPrimitiveType, SelectedPrimitiveIndex);
 		else
 			SetSelectedConstraint(SelectedConstraintIndex);
+
+		// Stop you from pressing the anim playback button
+		ToolBar->AnimPlayButton->Enable(FALSE);
+		ToolBar->AnimCombo->Enable(FALSE);
 	}
 }
 
-void WPhAT::TickSimulation(FLOAT DeltaSeconds)
-{
-	check(bRunningSimulation);
 
-	FLOAT TimeScale = Clamp<FLOAT>(EditorSimOptions->SimSpeed, 0.1f, 2.0f);
-	EditorLevel->Tick(LEVELTICK_All, TimeScale * DeltaSeconds);
+void WxPhAT::ViewContactsToggle()
+{
+	// This moves the dependency on novodex files to the engine module
+
+	// turn on / off the debug visualizations by calling the same NXVIS
+	// params as this exec toggles the state
+	GWorld->Exec( TEXT("NXVIS CONTACTPOINT") );
+	GWorld->Exec( TEXT("NXVIS CONTACTNORMAL") );
+	GWorld->Exec( TEXT("NXVIS CONTACTERROR") );
+	GWorld->Exec( TEXT("NXVIS CONTACTFORCE") );
+
 }
+
+
 
 // Create/Delete Primitives
 
-void WPhAT::AddNewPrimitive(EKCollisionPrimitiveType InPrimitiveType, UBOOL bCopySelected)
+void WxPhAT::AddNewPrimitive(EKCollisionPrimitiveType InPrimitiveType, UBOOL bCopySelected)
 {
 	if(SelectedBodyIndex == INDEX_NONE)
 		return;
 
 	URB_BodySetup* bs = PhysicsAsset->BodySetup(SelectedBodyIndex);
 
-	GEditor->Trans->Begin( TEXT("Add New Primitive") );
-	bs->Modify();
-
 	EKCollisionPrimitiveType PrimitiveType;
 	if(bCopySelected)
+	{
 		PrimitiveType = SelectedPrimitiveType;
+	}
 	else
+	{
 		PrimitiveType = InPrimitiveType;
-
+	}
 
 	INT NewPrimIndex = 0;
-	if(PrimitiveType == KPT_Sphere)
 	{
-		NewPrimIndex = bs->AggGeom.SphereElems.AddZeroed();
-		FKSphereElem* se = &bs->AggGeom.SphereElems(NewPrimIndex);
+		// Make sure rendering is done - so we are not changing data being used by collision drawing.
+		FlushRenderingCommands();
 
-		if(!bCopySelected)
+		const FScopedTransaction Transaction( *LocalizeUnrealEd("AddNewPrimitive") );
+		bs->Modify();
+
+		if(PrimitiveType == KPT_Sphere)
 		{
-			se->TM = FMatrix::Identity;
+			NewPrimIndex = bs->AggGeom.SphereElems.AddZeroed();
+			FKSphereElem* se = &bs->AggGeom.SphereElems(NewPrimIndex);
 
-			se->Radius = DefaultPrimSize;
+			if(!bCopySelected)
+			{
+				se->TM = FMatrix::Identity;
+
+				se->Radius = DefaultPrimSize;
+			}
+			else
+			{
+				se->TM = bs->AggGeom.SphereElems(SelectedPrimitiveIndex).TM;
+				se->TM.M[3][0] += DuplicateXOffset;
+
+				se->Radius = bs->AggGeom.SphereElems(SelectedPrimitiveIndex).Radius;
+			}
 		}
-		else
+		else if(PrimitiveType == KPT_Box)
 		{
-			se->TM = bs->AggGeom.SphereElems(SelectedPrimitiveIndex).TM;
-			se->TM.M[3][0] += DuplicateXOffset;
+			NewPrimIndex = bs->AggGeom.BoxElems.AddZeroed();
+			FKBoxElem* be = &bs->AggGeom.BoxElems(NewPrimIndex);
 
-			se->Radius = bs->AggGeom.SphereElems(SelectedPrimitiveIndex).Radius;
+			if(!bCopySelected)
+			{
+				be->TM = FMatrix::Identity;
+
+				be->X = 0.5f * DefaultPrimSize;
+				be->Y = 0.5f * DefaultPrimSize;
+				be->Z = 0.5f * DefaultPrimSize;
+			}
+			else
+			{
+				be->TM = bs->AggGeom.BoxElems(SelectedPrimitiveIndex).TM;
+				be->TM.M[3][0] += DuplicateXOffset;
+
+				be->X = bs->AggGeom.BoxElems(SelectedPrimitiveIndex).X;
+				be->Y = bs->AggGeom.BoxElems(SelectedPrimitiveIndex).Y;
+				be->Z = bs->AggGeom.BoxElems(SelectedPrimitiveIndex).Z;
+			}
 		}
-	}
-	else if(PrimitiveType == KPT_Box)
-	{
-		NewPrimIndex = bs->AggGeom.BoxElems.AddZeroed();
-		FKBoxElem* be = &bs->AggGeom.BoxElems(NewPrimIndex);
-
-		if(!bCopySelected)
+		else if(PrimitiveType == KPT_Sphyl)
 		{
-			be->TM = FMatrix::Identity;
+			NewPrimIndex = bs->AggGeom.SphylElems.AddZeroed();
+			FKSphylElem* se = &bs->AggGeom.SphylElems(NewPrimIndex);
 
-			be->X = 0.5f * DefaultPrimSize;
-			be->Y = 0.5f * DefaultPrimSize;
-			be->Z = 0.5f * DefaultPrimSize;
+			if(!bCopySelected)
+			{
+				se->TM = FMatrix::Identity;
+
+				se->Length = DefaultPrimSize;
+				se->Radius = DefaultPrimSize;
+			}
+			else
+			{
+				se->TM = bs->AggGeom.SphylElems(SelectedPrimitiveIndex).TM;
+				se->TM.M[3][0] += DuplicateXOffset;
+
+				se->Length = bs->AggGeom.SphylElems(SelectedPrimitiveIndex).Length;
+				se->Radius = bs->AggGeom.SphylElems(SelectedPrimitiveIndex).Radius;
+			}
 		}
-		else
-		{
-			be->TM = bs->AggGeom.BoxElems(SelectedPrimitiveIndex).TM;
-			be->TM.M[3][0] += DuplicateXOffset;
+	} // ScopedTransaction
 
-			be->X = bs->AggGeom.BoxElems(SelectedPrimitiveIndex).X;
-			be->Y = bs->AggGeom.BoxElems(SelectedPrimitiveIndex).Y;
-			be->Z = bs->AggGeom.BoxElems(SelectedPrimitiveIndex).Z;
-		}
-	}
-	else if(PrimitiveType == KPT_Sphyl)
-	{
-		NewPrimIndex = bs->AggGeom.SphylElems.AddZeroed();
-		FKSphylElem* se = &bs->AggGeom.SphylElems(NewPrimIndex);
-
-		if(!bCopySelected)
-		{
-			se->TM = FMatrix::Identity;
-
-			se->Length = DefaultPrimSize;
-			se->Radius = DefaultPrimSize;
-		}
-		else
-		{
-			se->TM = bs->AggGeom.SphylElems(SelectedPrimitiveIndex).TM;
-			se->TM.M[3][0] += DuplicateXOffset;
-
-			se->Length = bs->AggGeom.SphylElems(SelectedPrimitiveIndex).Length;
-			se->Radius = bs->AggGeom.SphylElems(SelectedPrimitiveIndex).Radius;
-		}
-	}
-
-	GEditor->Trans->End();
+	FillTree();
 
 	// Select the new primitive. Will call UpdateViewport.
 	SetSelectedBody(SelectedBodyIndex, PrimitiveType, NewPrimIndex);
@@ -1364,7 +2124,39 @@ void WPhAT::AddNewPrimitive(EKCollisionPrimitiveType InPrimitiveType, UBOOL bCop
 	PhATViewportClient->Viewport->Invalidate();
 }
 
-void WPhAT::DeleteCurrentPrim()
+void WxPhAT::DeleteBody(INT DelBodyIndex)
+{
+	const FScopedTransaction Transaction( *LocalizeUnrealEd("DeleteBody") );
+
+	// The physics asset and default instance..
+	PhysicsAsset->Modify();
+	PhysicsAsset->DefaultInstance->Modify();
+
+	// .. the body..
+	PhysicsAsset->BodySetup(DelBodyIndex)->Modify();
+	PhysicsAsset->DefaultInstance->Bodies(DelBodyIndex)->Modify();		
+
+	// .. and any constraints to the body.
+	TArray<INT>	Constraints;
+	PhysicsAsset->BodyFindConstraints(DelBodyIndex, Constraints);
+
+	for(INT i=0; i<Constraints.Num(); i++)
+	{
+		INT ConstraintIndex = Constraints(i);
+		PhysicsAsset->ConstraintSetup(ConstraintIndex)->Modify();
+		PhysicsAsset->DefaultInstance->Constraints(ConstraintIndex)->Modify();
+	}
+
+	// Now actually destroy body. This will destroy any constraints associated with the body as well.
+	PhysicsAsset->DestroyBody(DelBodyIndex);
+
+	// Select nothing.
+	SetSelectedBody(INDEX_NONE, KPT_Unknown, INDEX_NONE);
+	SetSelectedConstraint(INDEX_NONE);
+	FillTree();
+}
+
+void WxPhAT::DeleteCurrentPrim()
 {
 	if(bRunningSimulation)
 		return;
@@ -1372,70 +2164,63 @@ void WPhAT::DeleteCurrentPrim()
 	if(SelectedBodyIndex == INDEX_NONE)
 		return;
 
+	// Make sure rendering is done - so we are not changing data being used by collision drawing.
+	FlushRenderingCommands();
+
 	URB_BodySetup* bs = PhysicsAsset->BodySetup(SelectedBodyIndex);
+
+	// If only one body, and this is the last element of this body - disallow deletion.
+	if(PhysicsAsset->BodySetup.Num() == 1 && bs->AggGeom.GetElementCount() == 1)
+	{
+		appMsgf(AMT_OK, TEXT("%s"), *LocalizeUnrealEd("MustBeAtLeastOneCollisionBody"));
+		return;
+	}
 
 	// If this bone has no more geometry - remove it totally.
 	if( bs->AggGeom.GetElementCount() == 1 )
 	{
 		UBOOL bDoDelete = true;
-		
+
 		if(EditorSimOptions->bPromptOnBoneDelete)
-			bDoDelete = appMsgf(1, TEXT("This will completely remove this bone, and any constraints to it.\nAre you sure you want to do this?"));
-
-		if(!bDoDelete)
-			return;
-
-		// We are about the delete an entire body, so we start the transaction and call Modify of affected parts.
-		GEditor->Trans->Begin( TEXT("Delete Body") );
-
-		// The physics asset and default instance..
-		PhysicsAsset->Modify();
-		PhysicsAsset->DefaultInstance->Modify();
-
-		// .. the body..
-		PhysicsAsset->BodySetup(SelectedBodyIndex)->Modify();
-		PhysicsAsset->DefaultInstance->Bodies(SelectedBodyIndex)->Modify();		
-
-		// .. and any constraints to the body.
-		TArray<INT>	Constraints;
-		PhysicsAsset->BodyFindConstraints(SelectedBodyIndex, Constraints);
-
-		for(INT i=0; i<Constraints.Num(); i++)
 		{
-			INT ConstraintIndex = Constraints(i);
-			PhysicsAsset->ConstraintSetup(ConstraintIndex)->Modify();
-			PhysicsAsset->DefaultInstance->Constraints(ConstraintIndex)->Modify();
+			bDoDelete = appMsgf(AMT_YesNo, TEXT("%s"), *LocalizeUnrealEd("Prompt_15"));
+
+			if(!bDoDelete)
+			{
+				return;
+			}
 		}
 
-		// Now actually destroy body. This will destroy any constraints associated with the body as well.
-		PhysicsAsset->DestroyBody(SelectedBodyIndex);
-
-		GEditor->Trans->End();
-
-		// Select nothing.
-		SetSelectedBody(INDEX_NONE, KPT_Unknown, INDEX_NONE);
+		DeleteBody(SelectedBodyIndex);
 
 		return;
 	}
 
-	GEditor->Trans->Begin( TEXT("Delete Primitive") );
+	const FScopedTransaction Transaction( *LocalizeUnrealEd("DeletePrimitive") );
 	bs->Modify();
 
 	if(SelectedPrimitiveType == KPT_Sphere)
+	{
 		bs->AggGeom.SphereElems.Remove(SelectedPrimitiveIndex);
+	}
 	else if(SelectedPrimitiveType == KPT_Box)
+	{
 		bs->AggGeom.BoxElems.Remove(SelectedPrimitiveIndex);
+	}
 	else if(SelectedPrimitiveType == KPT_Sphyl)
+	{
 		bs->AggGeom.SphylElems.Remove(SelectedPrimitiveIndex);
+	}
 	else if(SelectedPrimitiveType == KPT_Convex)
+	{
 		bs->AggGeom.ConvexElems.Remove(SelectedPrimitiveIndex);
+	}
 
-	GEditor->Trans->End();
-
+	FillTree();
 	SetSelectedBodyAnyPrim(SelectedBodyIndex); // Will call UpdateViewport
 }
 
-void WPhAT::ModifyPrimitiveSize(INT BodyIndex, EKCollisionPrimitiveType PrimType, INT PrimIndex, FVector DeltaSize)
+void WxPhAT::ModifyPrimitiveSize(INT BodyIndex, EKCollisionPrimitiveType PrimType, INT PrimIndex, FVector DeltaSize)
 {
 	check(SelectedBodyIndex != INDEX_NONE);
 
@@ -1478,7 +2263,7 @@ void WPhAT::ModifyPrimitiveSize(INT BodyIndex, EKCollisionPrimitiveType PrimType
 }
 
 // BoneTM is assumed to have NO SCALING in it!
-FMatrix WPhAT::GetPrimitiveMatrix(FMatrix& BoneTM, INT BodyIndex, EKCollisionPrimitiveType PrimType, INT PrimIndex, FLOAT Scale)
+FMatrix WxPhAT::GetPrimitiveMatrix(FMatrix& BoneTM, INT BodyIndex, EKCollisionPrimitiveType PrimType, INT PrimIndex, FLOAT Scale)
 {
 	URB_BodySetup* bs = PhysicsAsset->BodySetup(BodyIndex);
 	FVector Scale3D(Scale);
@@ -1520,7 +2305,7 @@ FMatrix WPhAT::GetPrimitiveMatrix(FMatrix& BoneTM, INT BodyIndex, EKCollisionPri
 	return FMatrix::Identity;
 }
 
-FMatrix WPhAT::GetConstraintMatrix(INT ConstraintIndex, INT BodyIndex, FLOAT Scale)
+FMatrix WxPhAT::GetConstraintMatrix(INT ConstraintIndex, INT BodyIndex, FLOAT Scale)
 {
 	check(BodyIndex == 0 || BodyIndex == 1);
 
@@ -1540,17 +2325,23 @@ FMatrix WPhAT::GetConstraintMatrix(INT ConstraintIndex, INT BodyIndex, FLOAT Sca
 		LFrame = cs->GetRefFrameMatrix(1);
 	}
 
-	check(BoneIndex != INDEX_NONE);
+	// If we couldn't find the bone - fall back to identity.
+	if(BoneIndex == INDEX_NONE)
+	{
+		return FMatrix::Identity;
+	}
+	else
+	{
+		FMatrix BoneTM = EditorSkelComp->GetBoneMatrix(BoneIndex);
+		BoneTM.RemoveScaling();
 
-	FMatrix BoneTM = EditorSkelComp->GetBoneMatrix(BoneIndex);
-	BoneTM.RemoveScaling();
+		LFrame.ScaleTranslation(Scale3D);
 
-	LFrame.ScaleTranslation(Scale3D);
-
-	return LFrame * BoneTM;
+		return LFrame * BoneTM;
+	}
 }
 
-void WPhAT::CreateOrConvertConstraint(URB_ConstraintSetup* NewSetup)
+void WxPhAT::CreateOrConvertConstraint(URB_ConstraintSetup* NewSetup)
 {
 	if(EditingMode != PEM_ConstraintEdit)
 		return;
@@ -1567,17 +2358,283 @@ void WPhAT::CreateOrConvertConstraint(URB_ConstraintSetup* NewSetup)
 		// TODO - making brand new constraints...
 	}
 
+    FillTree();
 	SetSelectedConstraint(SelectedConstraintIndex); // Push new properties into property window.
 	PhATViewportClient->Viewport->Invalidate();
 }
 
-void WPhAT::DeleteCurrentConstraint()
+void WxPhAT::DeleteCurrentConstraint()
 {
 	if(EditingMode != PEM_ConstraintEdit || SelectedConstraintIndex == INDEX_NONE)
 		return;
 
 	PhysicsAsset->DestroyConstraint(SelectedConstraintIndex);
+    FillTree();
 	SetSelectedConstraint(INDEX_NONE);
 
 	PhATViewportClient->Viewport->Invalidate();
+}
+
+/** Utility for getting indices of all constraints below (and including) the one with the supplied name. */
+void WxPhAT::GetConstraintIndicesBelow(TArray<INT>& OutConstraintIndices, FName InBoneName)
+{
+	INT BaseIndex = EditorSkelMesh->MatchRefBone(InBoneName);
+
+	// Iterate over all other joints, looking for 'children' of this one
+	for(INT i=0; i<PhysicsAsset->ConstraintSetup.Num(); i++)
+	{
+		URB_ConstraintSetup* CS = PhysicsAsset->ConstraintSetup(i);
+		FName TestName = CS->JointName;
+		INT TestIndex = EditorSkelMesh->MatchRefBone(TestName);
+
+		// We want to return this constraint as well.
+		if(TestIndex == BaseIndex || EditorSkelMesh->BoneIsChildOf(TestIndex, BaseIndex))
+		{
+			OutConstraintIndices.AddItem(i);
+		}
+	}
+}
+
+/** Toggle the swing/twist drive on the selected constraint. */
+void WxPhAT::ToggleSelectedConstraintMotorised()
+{
+	if(SelectedConstraintIndex != INDEX_NONE)
+	{
+		URB_ConstraintInstance* CI = PhysicsAsset->DefaultInstance->Constraints(SelectedConstraintIndex);
+
+		if(CI->bTwistPositionDrive && CI->bSwingPositionDrive)
+		{
+			CI->bTwistPositionDrive = FALSE;
+			CI->bSwingPositionDrive = FALSE;
+		}
+		else
+		{
+			CI->bTwistPositionDrive = TRUE;
+			CI->bSwingPositionDrive = TRUE;
+		}
+	}
+}
+
+/** Set twist/swing drive on the selected constraint, and all below if in the hierarchy. */
+void WxPhAT::SetConstraintsBelowSelectedMotorised(UBOOL bMotorised)
+{
+	if(SelectedConstraintIndex != INDEX_NONE)
+	{
+		// Get the index of this constraint
+		URB_ConstraintSetup* BaseSetup = PhysicsAsset->ConstraintSetup(SelectedConstraintIndex);
+
+		TArray<INT> BelowConstraints;
+		GetConstraintIndicesBelow(BelowConstraints, BaseSetup->JointName);
+
+		for(INT i=0; i<BelowConstraints.Num(); i++)
+		{
+			INT ConIndex = BelowConstraints(i);
+			URB_ConstraintInstance* CI = PhysicsAsset->DefaultInstance->Constraints(ConIndex);
+
+			if(bMotorised)
+			{
+				CI->bTwistPositionDrive = TRUE;
+				CI->bSwingPositionDrive = TRUE;
+			}
+			else
+			{
+				CI->bTwistPositionDrive = FALSE;
+				CI->bSwingPositionDrive = FALSE;
+			}
+		}
+	}
+}
+
+/** Toggle the bFixed flag on the selected body. */
+void WxPhAT::ToggleSelectedBodyFixed()
+{
+	if(SelectedBodyIndex != INDEX_NONE)
+	{
+		URB_BodySetup* BS = PhysicsAsset->BodySetup(SelectedBodyIndex);
+
+		BS->bFixed = !BS->bFixed;
+	}
+}
+
+/** Set the bFixed flag on the selected body, and all below it in the hierarchy. */
+void WxPhAT::SetBodiesBelowSelectedFixed(UBOOL bFix)
+{
+	if(SelectedBodyIndex != INDEX_NONE)
+	{
+		// Get the index of this body
+		URB_BodySetup* BaseSetup = PhysicsAsset->BodySetup(SelectedBodyIndex);
+
+		TArray<INT> BelowBodies;
+		PhysicsAsset->GetBodyIndicesBelow(BelowBodies, BaseSetup->BoneName, EditorSkelMesh);
+
+		for(INT i=0; i<BelowBodies.Num(); i++)
+		{
+			INT BodyIndex = BelowBodies(i);
+			URB_BodySetup* BS = PhysicsAsset->BodySetup(BodyIndex);
+
+			BS->bFixed = bFix;
+		}
+	}
+}
+
+/** Delete all the bodies below the selected one */
+void WxPhAT::DeleteBodiesBelowSelected()
+{
+	if(SelectedBodyIndex != INDEX_NONE)
+	{
+		// Build a list of BodySetups below this one
+		URB_BodySetup* BaseSetup = PhysicsAsset->BodySetup(SelectedBodyIndex);
+
+		TArray<INT> BelowBodies;
+		PhysicsAsset->GetBodyIndicesBelow(BelowBodies, BaseSetup->BoneName, EditorSkelMesh);
+
+		TArray<URB_BodySetup*> BelowBodySetups;
+		for(INT i=0; i<BelowBodies.Num(); i++)
+		{
+			INT BodyIndex = BelowBodies(i);
+			URB_BodySetup* BS = PhysicsAsset->BodySetup(BodyIndex);
+
+			BelowBodySetups.AddItem(BS);
+		}
+
+		// Now remove each one
+		for(INT i=0; i<BelowBodySetups.Num(); i++)
+		{
+			URB_BodySetup* BS = BelowBodySetups(i);
+
+			// DeleteBody function takes index, so we have to find that
+			INT BodyIndex = PhysicsAsset->FindBodyIndex(BS->BoneName);
+			if(BodyIndex != INDEX_NONE)
+			{
+				// Use PhAT function to delete action (so undo works etc)
+				DeleteBody(BodyIndex);
+			}
+		}
+	}
+}
+
+
+////////////////////// Animation //////////////////////
+
+/** Called when someone changes the combo - get its new contents and set the animation on the mesh. */
+void WxPhAT::AnimComboSelected()
+{
+	FString AnimName = (const TCHAR*)ToolBar->AnimCombo->GetStringSelection();
+
+	if(AnimName == FString(TEXT("-None-")))
+	{
+		EditorSeqNode->SetAnim( NAME_None );
+	}
+	else
+	{
+		EditorSeqNode->SetAnim( FName( *AnimName ) );
+	}
+}
+
+/** Toggle animation playing state */
+void WxPhAT::ToggleAnimPlayback()
+{
+	if(EditorSeqNode->bPlaying)
+	{
+		SetAnimPlayback(FALSE);
+	}
+	else
+	{
+		SetAnimPlayback(TRUE);
+	}
+}
+
+/** Turning animation playback on and off */
+void WxPhAT::SetAnimPlayback(UBOOL bPlayAnim)
+{
+	// Only allow play animation if running sim.
+	if(bPlayAnim && bRunningSimulation)
+	{
+		EditorSeqNode->PlayAnim(TRUE);
+		ToolBar->AnimPlayButton->SetBitmapLabel(ToolBar->StopSimB);
+	}
+	else
+	{
+		EditorSeqNode->StopAnim();
+		ToolBar->AnimPlayButton->SetBitmapLabel(ToolBar->StartSimB);
+	}
+}
+
+/** Regenerate the contents of the animation combo. Doesn't actually change any animation state. */
+void WxPhAT::UpdateAnimCombo()
+{
+	ToolBar->AnimCombo->Freeze();
+	ToolBar->AnimCombo->Clear();
+
+	// Put 'none' entry at the top.
+	ToolBar->AnimCombo->Append( TEXT("-None-") );
+
+	// If we have a set, iterate over it adding names to the combo box
+	if(EditorSimOptions->PreviewAnimSet)
+	{
+		for(INT i=0; i<EditorSimOptions->PreviewAnimSet->Sequences.Num(); i++)
+		{
+			ToolBar->AnimCombo->Append( *(EditorSimOptions->PreviewAnimSet->Sequences(i)->SequenceName.ToString()) );
+		}
+	}
+
+	// Select the top (none) entry
+	ToolBar->AnimCombo->SetSelection(0);
+	ToolBar->AnimCombo->Thaw();
+}
+
+/** Handle pressing the 'toggle animation skeleton' button, for drawing results of animation before physics. */
+void WxPhAT::ToggleShowAnimSkel()
+{
+	bShowAnimSkel = !bShowAnimSkel;
+	ToolBar->ToggleTool( IDMN_PHAT_SHOWANIMSKEL, bShowAnimSkel == TRUE );
+	PhATViewportClient->Viewport->Invalidate();
+}
+
+/** Update physics/anim blend weight. */
+void WxPhAT::UpdatePhysBlend()
+{
+	// Blend between all physics (just after poke) to all animation.
+	if(EditorSimOptions->bBlendOnPoke)
+	{
+		FLOAT TimeSincePoke = TotalTickTime - LastPokeTime;
+
+		// Within pause time - fully physics
+		if(TimeSincePoke < EditorSimOptions->PokePauseTime)
+		{
+			EditorSkelComp->PhysicsWeight = 1.f;
+
+			if(EditorSkelComp->bSkelCompFixed)
+			{
+				EditorSkelComp->SetComponentRBFixed(FALSE);
+			}
+		}
+		// Blending between physics and animation
+		else if(TimeSincePoke < (EditorSimOptions->PokePauseTime + EditorSimOptions->PokeBlendTime))
+		{
+			FLOAT Alpha = (TimeSincePoke - EditorSimOptions->PokePauseTime)/EditorSimOptions->PokeBlendTime;
+			Alpha = ::Clamp(Alpha, 0.f, 1.f);
+			EditorSkelComp->PhysicsWeight = 1.f - Alpha;
+
+			if(EditorSkelComp->bSkelCompFixed)
+			{
+				EditorSkelComp->SetComponentRBFixed(FALSE);
+			}
+		}
+		// All animation.
+		else
+		{
+			EditorSkelComp->PhysicsWeight = 0.f;
+
+			if(!EditorSkelComp->bSkelCompFixed)
+			{
+				EditorSkelComp->SetComponentRBFixed(TRUE);
+			}
+		}
+	}
+	// If not blending on poke, just update directly.
+	else
+	{
+		EditorSkelComp->PhysicsWeight = EditorSimOptions->PhysicsBlend;
+	}
 }

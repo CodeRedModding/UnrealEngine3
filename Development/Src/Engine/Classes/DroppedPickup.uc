@@ -4,6 +4,7 @@
 // PickupFactory should be used to place items in the level.  This class is for dropped inventory, which should attach
 // itself to this pickup, and set the appropriate mesh
 //
+// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 //=============================================================================
 class DroppedPickup extends Actor
 	notplaceable
@@ -11,29 +12,84 @@ class DroppedPickup extends Actor
 
 //-----------------------------------------------------------------------------
 // AI related info.
-var		Inventory					Inventory;			// the dropped inventory item which spawned this pickup
-var		NavigationPoint				PickupCache;		// navigationpoint this pickup is attached to
+var				Inventory					Inventory;			// the dropped inventory item which spawned this pickup
+var	repnotify	class<Inventory>			InventoryClass;		// Class of the inventory object to pickup
+var				NavigationPoint				PickupCache;		// navigationpoint this pickup is attached to
+var	repnotify	bool						bFadeOut;
 
 native final function AddToNavigation();			// cache dropped inventory in navigation network
 native final function RemoveFromNavigation();
 
-function Destroyed()
+replication
+{
+	if( Role==ROLE_Authority )
+		InventoryClass, bFadeOut;
+}
+
+event Destroyed()
 {
 	if (Inventory != None )
 		Inventory.Destroy();
 }
 
+simulated event ReplicatedEvent(name VarName)
+{
+	if( VarName == 'InventoryClass' )
+	{
+		SetPickupMesh( InventoryClass.default.DroppedPickupMesh );
+		SetPickupParticles( InventoryClass.default.DroppedPickupParticles );
+	}
+	else if ( VarName == 'bFadeOut' )
+	{
+		GotoState('Fadeout');
+	}
+	else
+	{
+		super.ReplicatedEvent(VarName);
+	}
+}
 /* Reset()
 reset actor to initial state - used when restarting level without reloading.
 */
 function Reset()
 {
-	destroy();
+	Destroy();
 }
 
-function SetPickupMesh(ActorComponent PickupMesh)
+/**
+ * Set Pickup mesh to use.
+ * Replicated through InventoryClass to remote clients using Inventory.DroppedPickup component as default mesh.
+ */
+simulated event SetPickupMesh(PrimitiveComponent PickupMesh)
 {
-	AddComponent(PickupMesh, false);
+	local ActorComponent Comp;
+
+	if (PickupMesh != None && WorldInfo.NetMode != NM_DedicatedServer )
+	{
+		Comp = new(self) PickupMesh.Class(PickupMesh);
+		AttachComponent(Comp);
+	}
+}
+
+/**
+ * Set Pickup particles to use.
+ * Replicated through InventoryClass to remote clients using Inventory.DroppedPickup component as default mesh.
+ */
+simulated event SetPickupParticles(ParticleSystemComponent PickupParticles)
+{
+	local ParticleSystemComponent Comp;
+
+	if (PickupParticles != None && WorldInfo.NetMode != NM_DedicatedServer )
+	{
+		Comp = new(self) PickupParticles.Class(PickupParticles);
+		AttachComponent(Comp);
+		Comp.SetActive(true);
+	}
+}
+
+event EncroachedBy(Actor Other)
+{
+	Destroy();
 }
 
 /* DetourWeight()
@@ -44,100 +100,132 @@ function float DetourWeight(Pawn Other,float PathWeight)
 	return Inventory.DetourWeight(Other, PathWeight);
 }
 
-/* Inventory has an AI interface to allow AIControllers, such as bots, to assess the
- desireability of acquiring that pickup.  The BotDesireability() method returns a
- float typically between 0 and 1 describing how valuable the pickup is to the
- AIController.  This method is called when an AIController uses the
- FindPathToBestInventory() navigation intrinsic.
-*/
-function float BotDesireability( pawn Bot )
+event Landed(Vector HitNormal, Actor FloorActor)
 {
-	return Inventory.BotDesireability(Bot);
+	// force full net update
+	bForceNetUpdate = TRUE;
+	bNetDirty = true;
+	// reduce frequency since the pickup isn't moving anymore
+	NetUpdateFrequency = 3;
+
+	AddToNavigation();
 }
 
-event Landed(Vector HitNormal)
+/** give pickup to player */
+function GiveTo( Pawn P )
 {
-	NetUpdateTime = Level.TimeSeconds - 1;
-	NetUpdateFrequency = 3;
-    AddToNavigation();
+	if( Inventory != None )
+	{
+		Inventory.AnnouncePickup(P);
+		Inventory.GiveTo(P);
+		Inventory = None;
+	}
+	PickedUpBy(P);
 }
+
+function PickedUpBy(Pawn P)
+{
+	Destroy();
+}
+
+function RecheckValidTouch();
 
 //=============================================================================
 // Pickup state: this inventory item is sitting on the ground.
 
 auto state Pickup
 {
-	/* ValidTouch()
+	/*
 	 Validate touch (if valid return true to let other pick me up and trigger event).
 	*/
-	function bool ValidTouch( actor Other )
+	function bool ValidTouch(Pawn Other)
 	{
 		// make sure its a live player
-		if ( (Pawn(Other) == None) || !Pawn(Other).bCanPickupInventory || (Pawn(Other).DrivenVehicle == None && Pawn(Other).Controller == None) )
+		if (Other == None || !Other.bCanPickupInventory || (Other.DrivenVehicle == None && Other.Controller == None))
+		{
 			return false;
+		}
 
 		// make sure thrower doesn't run over own weapon
-		if ( (Physics == PHYS_Falling) && (Velocity.Z > 0) && ((Velocity dot Other.Velocity) > 0) && ((Velocity dot (Location - Other.Location)) > 0) )
+		if ( (Physics == PHYS_Falling) && (Other == Instigator) && (Velocity.Z > 0) )
+		{
 			return false;
-		
+		}
+
 		// make sure not touching through wall
 		if ( !FastTrace(Other.Location, Location) )
+		{
+			SetTimer( 0.5, false, nameof(RecheckValidTouch) );
 			return false;
-
-		log("GOT HERE");
+		}
 
 		// make sure game will let player pick me up
-		if( Level.Game.PickupQuery(Pawn(Other), Inventory.class) )
+		if (WorldInfo.Game.PickupQuery(Other, Inventory.class, self))
 		{
 			return true;
 		}
 		return false;
 	}
 
-	// When touched by an actor.
-	event Touch( Actor Other, vector HitLocation, vector HitNormal )
+	/**
+	Pickup was touched through a wall.  Check to see if touching pawn is no longer obstructed
+	*/
+	function RecheckValidTouch()
 	{
+		CheckTouching();
+	}
+
+	// When touched by an actor.
+	event Touch( Actor Other, PrimitiveComponent OtherComp, vector HitLocation, vector HitNormal )
+	{
+		local Pawn P;
+
 		// If touched by a player pawn, let him pick this up.
-		if( ValidTouch(Other) )
+		P = Pawn(Other);
+		if( P != None && ValidTouch(P) )
 		{
-			if ( Inventory != None )
-			{
-				Inventory.AnnouncePickup(Pawn(Other));
-				Inventory.GiveTo( Pawn(Other) );
-				Inventory = None;
-			}
-			Destroy();
+			GiveTo(P);
 		}
 	}
 
-	function Timer()
+	event Timer()
 	{
 		GotoState('FadeOut');
 	}
 
-	function BeginState()
+	function CheckTouching()
 	{
-		AddToNavigation();
-		SetTimer(LifeSpan - 1, false);
+		local Pawn P;
+
+		foreach TouchingActors(class'Pawn', P)
+		{
+			Touch( P, None, Location, vect(0,0,1) );
+		}
 	}
 
-	function EndState()
+	event BeginState(Name PreviousStateName)
+	{
+		AddToNavigation();
+		if( LifeSpan > 0.f )
+		{
+			SetTimer(LifeSpan - 1, false);
+		}
+	}
+
+	event EndState(Name NextStateName)
 	{
 		RemoveFromNavigation();
 	}
 
 Begin:
+		CheckTouching();
 }
 
 State FadeOut extends Pickup
 {
-	function Tick(float DeltaTime)
+	simulated event BeginState(Name PreviousStateName)
 	{
-		SetDrawScale(FMax(0.01, DrawScale - Default.DrawScale * DeltaTime));
-	}
-
-	function BeginState()
-	{
+		bFadeOut = true;
 		RotationRate.Yaw=60000;
 		SetPhysics(PHYS_Rotating);
 		LifeSpan = 1.0;
@@ -146,28 +234,37 @@ State FadeOut extends Pickup
 
 defaultproperties
 {
-	Begin Object NAME=Sprite
-		Sprite=Texture2D'EngineResources.S_Inventory'
+	Begin Object Class=SpriteComponent Name=Sprite
+		Sprite=Texture2D'EditorResources.S_Inventory'
+		HiddenGame=True
+		AlwaysLoadOnClient=False
+		AlwaysLoadOnServer=False
+		SpriteCategoryName="Inventory"
 	End Object
+	Components.Add(Sprite)
 
-	Begin Object NAME=CollisionCylinder
+	Begin Object Class=CylinderComponent NAME=CollisionCylinder
 		CollisionRadius=+00030.000000
 		CollisionHeight=+00020.000000
 		CollideActors=true
 	End Object
+	CollisionComponent=CollisionCylinder
+	Components.Add(CollisionCylinder)
+
 
 	bOnlyDirtyReplication=true
-    NetUpdateFrequency=8
+	NetUpdateFrequency=8
 	RemoteRole=ROLE_SimulatedProxy
 	bHidden=false
 	NetPriority=+1.4
 	bCollideActors=true
 	bCollideWorld=true
 	RotationRate=(Yaw=5000)
-	DesiredRotation=(Yaw=30000)
+
 	bOrientOnSlope=true
 	bShouldBaseAtStartup=true
 	bIgnoreEncroachers=false
-	bIgnoreVehicles=true
-    LifeSpan=+16.0
+	bIgnoreRigidBodyPawns=true
+	bUpdateSimulatedPosition=true
+	LifeSpan=+16.0
 }

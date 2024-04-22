@@ -1,0 +1,119 @@
+﻿@model IEnumerable<EpicGames.Tools.Builder.Frontend.Database.SP_GetCisBranchChangelistsResult>
+
+@{
+    Layout = null;
+}
+
+@functions{
+    public string GetTaskStateImage (byte state)
+    {
+        switch (state)
+        {
+            case 0:
+                return "dash.png";
+                
+            case 1:
+                return "query.png";
+                
+            case 2:
+                return "query2.png";
+                
+            case 3:
+                return "spinner.gif";
+                
+            case 4:
+                return "spinner2.gif";
+                
+            case 5:
+                return "tick.png";
+                
+            case 6:
+                return "cross.png";
+        }
+
+        return "";
+    }
+
+    int NumberOfSetBits (int i)
+    {
+        i = i - ((i >> 1) & 0x55555555);
+        i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
+        return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+    }
+}
+
+
+<div class="grid6">
+    <a name="status"></a><h2>Current Task Status</h2>
+
+    @if (Model.Count() > 0)
+    {
+        <table class="detail">
+            <thead>
+                <th class="string">Changelist</th>
+                <th class="string">Submitted</th>
+                <th class="string">Details</th>
+                <th class="numeric"><span>Submitter</span></th>
+            </thead>
+
+            <tbody>
+        
+            @foreach (var m in Model)
+            {
+                string img;
+                string state;
+
+                if (m.BuildStatus.HasValue)
+                {
+                    if (m.BuildStatus != -1)
+                    {
+                        img = "cross.png";
+                        state = "bad";
+                    }
+                    else
+                    {
+                        img = "tick.png";
+                        state = "good";
+                    }
+                }
+                else
+                {
+                    img = "spinner.gif";
+                    state = "good";
+                }
+                
+                <tr class="@state" title="@m.Description">
+                    <td class="string">
+                        <img class="icon" src="~/Content/Themes/Base/Images/@img" alt="State" />
+                        @Html.ActionLink(m.Changelist.ToString(), "Changelist", "Build", new { id = m.Changelist }, null)
+                    </td>
+                    <td class="string">@m.Timestamp.ToLocalTime().ToString()</td>
+                    <td class="string">
+                        @if (m.BuildStatus.HasValue)
+                        {
+                            if (m.BuildStatus != -1)
+                            {
+                                <text>@NumberOfSetBits(m.BuildStatus.Value ^ -1).ToString() CIS tasks failed.</text>
+                            }
+                        }
+                        else
+                        {
+                            <text>In progress...</text>
+                        }
+                    </td>
+                    <td class="numeric">
+                        @Html.ActionLink(@m.Submitter.Replace('_', '.'), "UserProfile", "Home", new { id = @m.Submitter.Replace('_', '.') }, null)
+                        <a href="mailto:@(m.Submitter.Replace('_', '.') + "@epicgames.com")?subject=Regarding your changelist CL @m.Changelist.ToString() from @m.Timestamp.ToString()" title="Send Email"><img class="icon" src="~/Content/Themes/Base/Images/iconOutlook.png" alt="Email" /></a>
+                        <a href="sip:@(m.Submitter.Replace('_', '.') + "@epicgames.com")" title="Send Email"><img class="icon" src="~/Content/Themes/Base/Images/iconLync.png" alt="IM" /></a>
+                    </td>
+                </tr>
+            }
+
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <text>This branch did not execute any CIS tasks yet.</text>
+    }
+</div>

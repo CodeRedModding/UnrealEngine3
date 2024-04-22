@@ -1,0 +1,133 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.CisStatusChangelistsModel
+
+@{
+    Layout = null;
+
+    int latestCount = Model.Latest.Count();
+    int failing = Model.Latest.Count(m => (m.BuildStatus.HasValue && (m.BuildStatus != -1)));
+}
+
+
+<div class="grid6">
+    <a name="latest"></a><h2>Latest Changelists</h2>
+
+    <p>
+        @if (failing == 0)
+        {
+            <text>All branches passed the latest CIS tests.</text>
+        }
+        else
+        {
+            <text>CIS testing is currently failing in <strong>@failing</strong> of @latestCount branches.</text>
+        }
+    </p>
+
+    @if (latestCount > 0)
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Changelist</th>
+                    <th>Branch</th>
+                    <th class="enum">Timestamp</th>
+                    <th class="numeric">Submitter</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var m in Model.Latest)
+                {
+                    string img;
+                    string title;
+                    string cls;
+
+                    if (m.BuildStatus.HasValue)
+                    {
+                        if (m.BuildStatus == -1)
+                        {
+                            img = "tick.png";
+                            title = "Changelist passed";
+                            cls = "good";
+                        }
+                        else
+                        {
+                            img = "cross.png";
+                            title = "Changelist failed";
+                            cls = "bad";
+                        }
+                    }
+                    else
+                    {
+                        img = "spinner.gif";
+                        title = "Unknown";
+                        cls = "good";
+                    }
+                    
+                    <tr class="@cls" title="@title">
+                        <td>
+                            <img class="icon" src="~/Content/Themes/Base/Images/@img" alt="State" />
+                            @Html.ActionLink("CL " + m.Changelist.ToString(), "Changelist", "Build", new { id = m.Changelist.ToString() }, null)
+                        </td>
+                        <td>
+                            @Html.ActionLink(@m.Branch, "Branch", "Cis", new { id = m.BranchConfigID }, null)
+                        </td>
+                        <td class="enum">
+                            @m.TimeStamp.ToString()
+                        </td>
+                        <td class="numeric">
+                            @Html.ActionLink(@m.Submitter.Replace('_', '.'), "UserProfile", "Home", new { id = @m.Submitter.Replace('_', '.') }, null)
+                            <a href="mailto:@(m.Submitter.Replace('_', '.') + "@epicgames.com")?subject=Regarding your changelist CL @m.Changelist.ToString() from @m.TimeStamp.ToString()"><img class="icon" src="~/Content/Themes/Base/Images/iconOutlook.png" alt="IM" /></a>
+                            <a href="sip:@(m.Submitter.Replace('_', '.') + "@epicgames.com")"><img class="icon" src="~/Content/Themes/Base/Images/iconLync.png" alt="Send Email" /></a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>No changelists have been processed by CIS yet.</p>
+    }
+</div>
+
+<div class="grid6">
+    <a name="pending"></a><h2>Pending Tasks</h2>
+
+    @{
+        int pending = Model.PendingTasks.Count();
+        
+        if (pending > 0)
+        {
+            <p>There are currently <strong>@Model.PendingTasks.Count()</strong> pending CIS Tasks:</p>
+        
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Branch</th>
+                        <th class="enum">Game</th>
+                        <th class="enum">Platform</th>
+                        <th class="enum">Config</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in Model.PendingTasks)
+                    {
+                        <tr>
+                            <td>@t.Name</td>
+                            <td>@t.Branch</td>
+                            <td class="enum">@t.Game</td>
+                            <td class="enum">@t.Platform</td>
+                            <td class="enum">@t.Config</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>   
+        }
+        else
+        {
+            <div>There are are no pending CIS tasks at this time.</div>
+        }
+    }
+
+    <a class="linkUp" href="#top">Back to top</a>
+</div>

@@ -1,0 +1,231 @@
+/*=============================================================================
+	MotionVelocityShader.usf: Calculates velocity vectors.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+
+/*=============================================================================
+ * Vertex Shader
+ *============================================================================*/
+
+// previous frame
+float4x4 PrevViewProjectionMatrix;
+// PreViewTranslation - PreviousPreViewTranslation
+float3 PreViewTranslationDelta;
+
+struct FVelocityInterpsVSToPS
+{
+	// float4(ScreenPosition.xyz, ObjectRelative.x)
+    float4 PackedVelocityA : TEXCOORD6;
+	// float4(WorldPosition.xyz, ObjectRelative.y)
+    float4 PackedVelocityB : TEXCOORD7;
+	FVertexFactoryInterpolantsVSToPS FactoryInterpolants;
+};
+
+struct FVelocityVSToPS
+{
+	FVelocityInterpsVSToPS Interps;
+	float4 Position : POSITION;
+};
+
+#if USING_SM5_TESSELLATION
+	struct FVelocityInterpsVSToDS
+	{
+		// float4(ScreenPosition.xyz, ObjectRelative.x)
+		float4 PackedVelocityA : TEXCOORD6;
+		// float4(WorldPosition.xyz, ObjectRelative.y)
+		float4 PackedVelocityB : TEXCOORD7;
+	};
+
+	struct FVelocityVSToDS
+	{
+		FVelocityInterpsVSToDS Interps;
+		FVertexFactoryInterpolantsVSToDS FactoryInterpolants;
+		float4 Position : VS_To_DS_Position;
+		OPTIONAL_VertexID_VS_To_DS
+	};
+	
+	#define FVertexOutput FVelocityVSToDS
+	#define VertexFactoryGetInterpolants VertexFactoryGetInterpolantsVSToDS
+#else
+	#define FVertexOutput FVelocityVSToPS
+	#define VertexFactoryGetInterpolants VertexFactoryGetInterpolantsVSToPS
+#endif
+
+#if USING_SM5_TESSELLATION	
+	#define FPassSpecificVSToDS FVelocityVSToDS
+	#define FPassSpecificVSToPS FVelocityVSToPS
+	
+	#define VELOCITY_INTERPOLATE_MEMBER(member) O.member = a.member * aInterp + b.member * bInterp
+	
+	FVelocityVSToDS PassInterpolate(FVelocityVSToDS a, float aInterp, FVelocityVSToDS b, float bInterp)
+	{
+		FVelocityVSToDS O;
+
+		O.FactoryInterpolants = VertexFactoryInterpolate(a.FactoryInterpolants, aInterp, b.FactoryInterpolants, bInterp);
+		
+		VELOCITY_INTERPOLATE_MEMBER(Interps.PackedVelocityA);
+		VELOCITY_INTERPOLATE_MEMBER(Interps.PackedVelocityB);
+
+		return O;
+	}
+	
+	#undef VELOCITY_INTERPOLATE_MEMBER
+	
+	FVelocityVSToPS PassFinalizeTessellationOutput(FVelocityVSToDS Interpolants, float4 WorldPosition, FMaterialTessellationParameters MaterialParameters)
+	{
+		FVelocityVSToPS O;
+		
+		O.Interps.FactoryInterpolants = VertexFactoryAssignInterpolants(Interpolants.FactoryInterpolants);
+
+		ISOLATE
+		{
+			O.Position = MulMatrix(ViewProjectionMatrixDS, float4(WorldPosition.xyz, 1) );
+			O.Position = ApplyTemporalAAJitter(O.Position);
+		}
+
+		// Move all geometry a little bit towards the camera.
+		float StretchTimeScale = -0.001f;
+		O.Position.z += StretchTimeScale * O.Position.w;
+		
+		O.Interps.PackedVelocityA = Interpolants.Interps.PackedVelocityA;
+		O.Interps.PackedVelocityB = Interpolants.Interps.PackedVelocityB;
+		
+		return O;
+	}
+	
+	#include "Tessellation.usf"
+#endif
+
+void MainVertexShader(
+	FVertexFactoryInput Input,
+	OPTIONAL_VertexID
+	out FVertexOutput Output )
+{
+	FVertexFactoryIntermediates VFIntermediates = GetVertexFactoryIntermediates(Input);
+	float4 WorldPosition		= VertexFactoryGetWorldPosition( Input, VFIntermediates );
+	float3x3 TangentBasis		= VertexFactoryGetTangentBasis( Input, VFIntermediates );
+
+	FMaterialVertexParameters VertexParameters = GetMaterialVertexParameters(Input, VFIntermediates, WorldPosition.xyz, TangentBasis);
+	// Isolate instructions used for world position offset on xbox 360, 
+	// As these cause the optimizer to generate different position calculating instructions in each pass, resulting in self-z-fighting.
+	// This is only necessary for shaders used in passes that have depth testing enabled.
+	ISOLATE
+	{
+		WorldPosition.xyz += GetMaterialWorldPositionOffset(VertexParameters);
+	}
+
+#if USING_SM5_TESSELLATION
+	Output.FactoryInterpolants = VertexFactoryGetInterpolants( Input, VFIntermediates );
+#else
+	Output.Interps.FactoryInterpolants = VertexFactoryGetInterpolants( Input, VFIntermediates );
+#endif // #if USING_SM5_TESSELLATION
+	float4 PrevWorldPosition = VertexFactoryGetPreviousWorldPosition( Input, VFIntermediates );	
+
+	VertexParameters = GetMaterialVertexParameters(Input, VFIntermediates, PrevWorldPosition.xyz, TangentBasis);
+	PrevWorldPosition.xyz += GetMaterialWorldPositionOffset(VertexParameters);
+	
+#if USING_SM5_TESSELLATION
+	Output.Position = WorldPosition;
+#endif
+
+	{
+		float4 ScreenPosition;
+#if WITH_REALD
+		FDepthAllocateOutput DBAResultS  = DepthAllocate(float4(PrevWorldPosition.xyz + PreViewTranslationDelta, 1));
+		float4 PrevScreenPositionObj = DBAResultS.DBAPixelPosition;
+#else
+		float4 PrevScreenPositionObj = MulMatrix(ViewProjectionMatrix, float4(PrevWorldPosition.xyz + PreViewTranslationDelta, 1));
+#endif
+
+#if !USING_SM5_TESSELLATION
+		ISOLATE
+		{
+#endif
+#if WITH_REALD
+			FDepthAllocateOutput DBAResult  = DepthAllocate(float4(WorldPosition.xyz, 1));
+			ScreenPosition = DBAResult.DBAPixelPosition;
+#else
+			ScreenPosition  = MulMatrix( ViewProjectionMatrix, float4(WorldPosition.xyz, 1) );
+#endif
+#if !USING_SM5_TESSELLATION
+			Output.Position = ApplyTemporalAAJitter(ScreenPosition);
+		}
+#endif
+
+		float2 ObjectRelative = ScreenPosition.xy - PrevScreenPositionObj.xy;
+
+		// object motion vector
+		Output.Interps.PackedVelocityA = float4(ScreenPosition.xyz, ObjectRelative.x);
+		// camera motion vector
+		Output.Interps.PackedVelocityB = float4(WorldPosition.xyz, ObjectRelative.y);
+	}
+
+#if !USING_SM5_TESSELLATION
+	// Move all geometry a little bit towards the camera.  Constant used to be passed from VelocityShader.cpp
+	float StretchTimeScale = -0.001f;
+	Output.Position.z += StretchTimeScale * Output.Position.w;
+#endif
+
+	OutputVertexID( Output );
+}
+
+/*=============================================================================
+ * Pixel Shader
+ *============================================================================*/
+
+// set by C++
+// xy for the instance scale, zw for the camera scale (includes y flip for both scale)
+float4 IndividualVelocityScale;
+ 
+void MainPixelShader(
+	in FVelocityInterpsVSToPS Input,
+	OPTIONAL_PixelShaderScreenPosition
+	OPTIONAL_FacingSign
+	OPTIONAL_PixelShaderCoverageInputOutput
+	out float4 OutColor : COLOR0
+	)
+{
+	// Manual clipping here (alpha-test, etc)
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters( Input.FactoryInterpolants );
+	CalcMaterialParameters( MaterialParameters, FacingSign, float4(0,0,1,0), float4(0,0,.00001f,1));
+	GetMaterialCoverageAndClipping(MaterialParameters,PixelShaderScreenPosition.xy,InCoverage,OutCoverage);
+
+	float3 ScreenPosition = Input.PackedVelocityA.xyz;
+	float3 WorldPosition = Input.PackedVelocityB.xyz;
+	float2 ObjectRelative = float2(Input.PackedVelocityA.w, Input.PackedVelocityB.w);
+
+	float4 PrevScreenPositionCam = MulMatrix(PrevViewProjectionMatrix, float4(WorldPosition, 1));
+	float2 CameraRelative = ScreenPosition.xy - PrevScreenPositionCam.xy;
+
+	// xy for object, zw for camera (relative motion in -1.1 screen space)
+	half4 PackedVelocity = float4(ObjectRelative, CameraRelative) / ScreenPosition.z;
+
+	// Scale by opacity
+	PackedVelocity.xy *= GetMaterialOpacity( MaterialParameters );
+
+	// Scale by UPrimitiveComponent::MotionBlurInstanceScale and view parameters, includes y flip
+	PackedVelocity *= IndividualVelocityScale;
+
+	// final = object + camera
+	half2 Velocity = PackedVelocity.xy + PackedVelocity.zw;
+
+	// clamp motion vector in a disc from -1 to 1 (the maximum motion vector range)
+	{
+		half Len = dot(Velocity, Velocity);
+		FLATTEN if(Len > 1)
+		{
+			Velocity *= rsqrt(Len);
+		}
+	}
+
+	// Map [-1,1] to [0,1].
+	// x: -1=left .. 1=right, y: -1=up .. 1=down
+	Velocity	= Velocity * 0.5f + 0.5f;
+	// R: 0=left .. 1=right, G: 0=up .. 1=down
+	OutColor = float4(Velocity, 0, 0);
+}

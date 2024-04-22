@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+		android:key="screen_key"
+		android:title="Game Settings"
+		android:summary="Main preference screen"
+		>
+	<PreferenceCategory
+		android:key="first_category"
+		android:title="Settings"
+		android:summary="settings">
+
+        <ListPreference
+                android:id="@+id/listPref"
+                android:title="Performance Settings"
+                android:summary="Choose speed vs quality."
+                android:key="@string/PerformancePref_Key"
+                android:defaultValue="-1"
+                android:entries="@array/performance_entries"
+                android:entryValues="@array/performance_values" />
+
+        <ListPreference
+                android:id="@+id/listPref"
+                android:title="Rendering Resolution Percentage"
+                android:summary="Choose a percentage of native resolution to render the scene. Lower values may perform better on some devices."
+                android:key="@string/ResolutionPref_Key"
+                android:defaultValue="-1"
+                android:entries="@array/resolution_entries"
+                android:entryValues="@array/resolution_values" />
+	</PreferenceCategory>
+
+        <PreferenceCategory
+                android:key="exit category"
+                android:title="Exit"
+                android:summary="Return to game">
+        
+                <Preference
+                        android:title="Apply Changes"
+                        android:summary="Apply new settings and return to the game. This may take several minutes to complete."
+                        android:key="@string/Apply_Button"
+                        />        
+        </PreferenceCategory>
+
+</PreferenceScreen>

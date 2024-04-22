@@ -1,0 +1,11 @@
+/*=============================================================================
+	NULLPixelShader.usf: Dummy pixel shader to use instead of SetPixelShader(NULL).
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+float4 Main() : COLOR0
+{
+	return 0;
+}

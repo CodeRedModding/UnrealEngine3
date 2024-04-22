@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resource version="2.3.0.1" xmlns="http://www.wxwidgets.org/wxxrc">
+    <object class="wxPanel" name="ID_VISUALIZER_PANEL">
+        <style>wxTAB_TRAVERSAL</style>
+        <size>700,800</size>
+        <title>GameStatsVisualizer__Title</title>
+        <object class="wxBoxSizer">
+            <orient>wxVERTICAL</orient>
+            <object class="sizeritem">
+                <flag>wxGROW|wxALL</flag>
+                <border>5</border>
+                <option>1</option>
+                <object class="wxSplitterWindow" name="ID_SPLITTERWINDOW">
+                    <size>100,100</size>
+                    <style>wxSP_3DBORDER|wxSP_3DSASH|wxNO_BORDER</style>
+                    <orientation>horizontal</orientation>
+                    <sashpos>500</sashpos>
+                    <minsize>100</minsize>
+                    <gravity>0.50</gravity>
+                    <object class="wxPanel" name="ID_TOPPANEL">
+                        <style>wxSUNKEN_BORDER|wxTAB_TRAVERSAL</style>
+                        <object class="wxBoxSizer">
+                            <orient>wxVERTICAL</orient>
+                            <object class="sizeritem">
+                                <flag>wxGROW|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxBoxSizer">
+                                    <orient>wxHORIZONTAL</orient>
+                                    <object class="spacer">
+                                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                        <border>5</border>
+                                        <option>2</option>
+                                        <size>5,5</size>
+                                    </object>
+                                    <object class="sizeritem">
+                                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                        <border>5</border>
+                                        <option>1</option>
+                                        <object class="wxChoice" name="ID_DATELIST">
+                                        </object>
+                                    </object>
+                                    <object class="sizeritem">
+                                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                        <border>5</border>
+                                        <option>1</option>
+                                        <object class="wxChoice" name="ID_GAMETYPELIST">
+                                        </object>
+                                    </object>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxGROW|wxALL</flag>
+                                <border>5</border>
+                                <option>2</option>
+                                <object class="wxBoxSizer">
+                                    <orient>wxHORIZONTAL</orient>
+                                    <object class="sizeritem">
+                                        <flag>wxGROW|wxALL</flag>
+                                        <border>5</border>
+                                        <option>1</option>
+                                        <object class="wxListCtrl" name="ID_GAMESESSIONINFO">
+                                            <style>wxLC_REPORT</style>
+                                        </object>
+                                    </object>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxGROW|wxALL</flag>
+                                <border>5</border>
+                                <option>3</option>
+                                <object class="wxBoxSizer">
+                                    <orient>wxHORIZONTAL</orient>
+                                    <object class="sizeritem">
+                                        <flag>wxGROW|wxALL</flag>
+                                        <border>5</border>
+                                        <option>1</option>
+                                        <object class="wxNotebook" name="ID_VISUALIZERBOOK">
+                                            <style>wxBK_DEFAULT</style>
+                                        </object>
+                                    </object>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxGROW|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxBoxSizer">
+                                    <orient>wxVERTICAL</orient>
+                                    <object class="sizeritem">
+                                        <flag>wxGROW|wxALL</flag>
+                                        <border>5</border>
+                                        <object class="wxStaticBoxSizer" name="wxID_ANY">
+                                            <orient>wxVERTICAL</orient>
+                                            <label>GameStatsVisualizer__TimeRange</label>
+                                            <object class="sizeritem">
+                                                <flag>wxGROW|wxALL</flag>
+                                                <border>5</border>
+                                                <option>1</option>
+                                                <object class="wxSlider" name="ID_TIMESCRUBSLIDER">
+                                                    <style>wxSL_HORIZONTAL|wxSL_SELRANGE</style>
+                                                    <value>0</value>
+                                                    <min>0</min>
+                                                    <max>100</max>
+                                                </object>
+                                            </object>
+                                            <object class="sizeritem">
+                                                <flag>wxGROW|wxALL</flag>
+                                                <border>5</border>
+                                                <option>1</option>
+                                                <object class="wxBoxSizer">
+                                                    <orient>wxHORIZONTAL</orient>
+                                                    <object class="sizeritem">
+                                                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                        <border>0</border>
+                                                        <object class="wxSpinCtrl" name="ID_FILTERSTARTTIME">
+                                                            <style>wxSP_ARROW_KEYS</style>
+                                                            <value>0</value>
+                                                            <min>0</min>
+                                                            <max>100</max>
+                                                        </object>
+                                                    </object>
+                                                    <object class="spacer">
+                                                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                        <border>5</border>
+                                                        <option>1</option>
+                                                        <size>5,5</size>
+                                                    </object>
+                                                    <object class="sizeritem">
+                                                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                        <border>5</border>
+                                                        <object class="wxBitmapButton" name="ID_PLAYTOGGLE">
+                                                            <style>wxBU_AUTODRAW</style>
+                                                        </object>
+                                                    </object>
+                                                    <object class="sizeritem">
+                                                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                        <border>5</border>
+                                                        <object class="wxBitmapButton" name="ID_STOPTOGGLE">
+                                                            <style>wxBU_AUTODRAW</style>
+                                                        </object>
+                                                    </object>
+                                                    <object class="spacer">
+                                                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                        <border>5</border>
+                                                        <option>1</option>
+                                                        <size>5,5</size>
+                                                    </object>
+                                                    <object class="sizeritem">
+                                                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                                        <border>0</border>
+                                                        <object class="wxSpinCtrl" name="ID_FILTERENDTIME">
+                                                            <style>wxSP_ARROW_KEYS</style>
+                                                            <value>0</value>
+                                                            <min>0</min>
+                                                            <max>100</max>
+                                                        </object>
+                                                    </object>
+                                                </object>
+                                            </object>
+                                        </object>
+                                    </object>
+                                </object>
+                            </object>
+                        </object>
+                    </object>
+                    <object class="wxPanel" name="ID_BOTTOMPANEL">
+                        <style>wxSUNKEN_BORDER|wxTAB_TRAVERSAL</style>
+                        <object class="wxStaticBoxSizer" name="wxID_ANY">
+                            <orient>wxHORIZONTAL</orient>
+                            <label>GameStatsVisualizer__Status</label>
+                            <object class="sizeritem">
+                                <flag>wxGROW|wxALL</flag>
+                                <border>0</border>
+                                <option>1</option>
+                                <object class="wxTextCtrl" name="ID_VISRESULTS">
+                                    <size>-1,250</size>
+                                    <style>wxTE_MULTILINE|wxTE_READONLY|wxTE_WORDWRAP</style>
+                                </object>
+                            </object>
+                        </object>
+                    </object>
+                </object>
+            </object>
+        </object>
+    </object>
+    <object class="wxPanel" name="ID_HEATMAPOPTIONS">
+        <style>wxTAB_TRAVERSAL</style>
+        <size>500,420</size>
+        <title>HeatmapVisualizer__TitleBar</title>
+        <centered>1</centered>
+        <object class="wxBoxSizer">
+            <orient>wxVERTICAL</orient>
+            <object class="sizeritem">
+                <flag>wxGROW|wxALL</flag>
+                <border>5</border>
+                <object class="wxStaticBoxSizer" name="wxID_ANY">
+                    <orient>wxHORIZONTAL</orient>
+                    <label>HeatmapVisualizer__MaxDensity</label>
+                    <object class="sizeritem">
+                        <flag>wxGROW|wxALL</flag>
+                        <border>5</border>
+                        <option>1</option>
+                        <object class="wxSlider" name="ID_MAXDENSITY">
+                            <style>wxSL_HORIZONTAL|wxSL_LABELS</style>
+                            <value>0</value>
+                            <min>0</min>
+                            <max>100</max>
+                        </object>
+                    </object>
+                </object>
+            </object>
+            <object class="sizeritem">
+                <flag>wxGROW|wxALL</flag>
+                <border>5</border>
+                <object class="wxStaticBoxSizer" name="wxID_ANY">
+                    <orient>wxHORIZONTAL</orient>
+                    <label>HeatmapVisualizer__MinDensity</label>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                        <border>5</border>
+                        <option>1</option>
+                        <object class="wxSlider" name="ID_MINDENSITY">
+                            <style>wxSL_HORIZONTAL|wxSL_LABELS</style>
+                            <value>0</value>
+                            <min>0</min>
+                            <max>100</max>
+                        </object>
+                    </object>
+                </object>
+            </object>
+            <object class="sizeritem">
+                <flag>wxGROW|wxALL</flag>
+                <border>5</border>
+                <object class="wxStaticBoxSizer" name="wxID_ANY">
+                    <orient>wxHORIZONTAL</orient>
+                    <label>HeatmapVisualizer__HeatRadius</label>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                        <border>5</border>
+                        <option>1</option>
+                        <object class="wxSlider" name="ID_HEATRADIUS">
+                            <style>wxSL_HORIZONTAL|wxSL_LABELS</style>
+                            <value>5</value>
+                            <min>0</min>
+                            <max>10</max>
+                        </object>
+                    </object>
+                </object>
+            </object>
+            <object class="sizeritem">
+                <flag>wxGROW|wxALL</flag>
+                <border>5</border>
+                <object class="wxStaticBoxSizer" name="wxID_ANY">
+                    <orient>wxHORIZONTAL</orient>
+                    <label>HeatmapVisualizer__PixelDensity</label>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                        <border>5</border>
+                        <option>1</option>
+                        <object class="wxSlider" name="ID_PIXELDENSITY">
+                            <style>wxSL_HORIZONTAL|wxSL_LABELS</style>
+                            <value>15</value>
+                            <min>1</min>
+                            <max>100</max>
+                        </object>
+                    </object>
+                </object>
+            </object>
+            <object class="sizeritem">
+                <flag>wxALIGN_RIGHT|wxALL</flag>
+                <border>5</border>
+                <object class="wxButton" name="ID_HEATMAPSCREENSHOT">
+                    <label>HeatmapVisualizer__TakeScreenshot</label>
+                </object>
+            </object>
+        </object>
+    </object>
+    <object class="wxPanel" name="ID_FILTERS">
+        <style>wxTAB_TRAVERSAL</style>
+        <size>700,143</size>
+        <title>Filters</title>
+        <centered>1</centered>
+        <object class="wxBoxSizer">
+            <orient>wxVERTICAL</orient>
+            <object class="sizeritem">
+                <flag>wxGROW|wxLEFT|wxRIGHT</flag>
+                <border>5</border>
+                <object class="wxBoxSizer">
+                    <orient>wxHORIZONTAL</orient>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                        <border>5</border>
+                        <option>1</option>
+                        <object class="wxChoice" name="ID_VISUALIZERLIST">
+                        </object>
+                    </object>
+                    <object class="spacer">
+                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                        <border>5</border>
+                        <option>1</option>
+                        <size>5,5</size>
+                    </object>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                        <border>5</border>
+                        <object class="wxButton" name="ID_VISOPTIONS">
+                            <label>GameStatsVisualizer__Options</label>
+                        </object>
+                    </object>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                        <border>5</border>
+                        <object class="wxCheckBox" name="ID_VISENABLED">
+                            <label>GameStatsVisualizer__Enabled</label>
+                            <checked>0</checked>
+                        </object>
+                    </object>
+                </object>
+            </object>
+            <object class="sizeritem">
+                <flag>wxGROW|wxALL</flag>
+                <border>5</border>
+                <option>1</option>
+                <object class="wxBoxSizer">
+                    <orient>wxHORIZONTAL</orient>
+                    <object class="sizeritem">
+                        <flag>wxGROW|wxALL</flag>
+                        <border>5</border>
+                        <option>1</option>
+                        <object class="wxListCtrl" name="ID_EVENTSCTRL">
+                            <style>wxLC_REPORT|wxLC_HRULES|wxLC_VRULES</style>
+                        </object>
+                    </object>
+                    <object class="sizeritem">
+                        <flag>wxGROW|wxALL</flag>
+                        <border>5</border>
+                        <option>1</option>
+                        <object class="wxListCtrl" name="ID_TEAMCTRL">
+                            <style>wxLC_REPORT|wxLC_HRULES|wxLC_VRULES</style>
+                        </object>
+                    </object>
+                    <object class="sizeritem">
+                        <flag>wxGROW|wxALL</flag>
+                        <border>5</border>
+                        <option>1</option>
+                        <object class="wxListCtrl" name="ID_PLAYERNAMES">
+                            <style>wxLC_REPORT|wxLC_NO_SORT_HEADER|wxLC_HRULES|wxLC_VRULES</style>
+                        </object>
+                    </object>
+                </object>
+            </object>
+        </object>
+    </object>
+</resource>

@@ -1,0 +1,35 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+<UserControl 
+	xmlns:cc="clr-namespace:CustomControls"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	x:Class="CustomControls.InfoPanel"
+	x:Name="This" 
+	mc:Ignorable="d">
+	<UserControl.Resources>
+		<BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+	</UserControl.Resources>
+
+	<!-- POPUP Info/Warning Balloon -->
+	<!-- @todo hardcoded style need to go --> 
+	<DockPanel KeyboardNavigation.IsTabStop="false" LastChildFill="False" Background="{StaticResource Slate_List_Background}">
+		<Border x:Name="ErrorBorder" DockPanel.Dock="Top" Background="{StaticResource Slate_Error_Background}">
+			<DockPanel LastChildFill="False">
+				<Image x:Name="ErrorImage"/>
+				<TextBlock Foreground="{StaticResource Slate_Error_Foreground}" x:Name="mErrorLabel" Margin="3"/>
+			</DockPanel>
+		</Border>
+		<Border x:Name="WarningBorder" DockPanel.Dock="Top" Background="{StaticResource Slate_Warning_Background}">
+			<DockPanel LastChildFill="False">
+				<Image x:Name="WarningImage"/>
+				<TextBlock Foreground="{StaticResource Slate_Warning_Foreground}" x:Name="mWarningLabel" Margin="3"/>
+			</DockPanel>
+		</Border>
+		<Border x:Name="InfoBorder" DockPanel.Dock="Top" Background="{StaticResource Slate_Panel_Background}">
+			<DockPanel LastChildFill="False">
+				<Image x:Name="InfoImage"/>
+				<TextBlock Foreground="{StaticResource Slate_Control_Foreground}" x:Name="mInfoLabel" Margin="3"/>
+			</DockPanel>
+		</Border>
+	</DockPanel>
+</UserControl>

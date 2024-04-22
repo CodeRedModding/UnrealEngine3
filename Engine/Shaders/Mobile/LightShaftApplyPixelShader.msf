@@ -1,0 +1,80 @@
+/*=============================================================================
+	LightShaftApplyPixelShader.usf: Shaders for rendering light shafts
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+UNIFORM_SAMPLER2D(SceneColorTexture, TEXUNIT0); // : register(s0);
+
+#define MAX_SCENE_COLOR 1
+#define RETURN_COLOR( Color ) ( Color )
+
+/** return the scene lighting texture */
+vec4 CalcSceneColor(vec2 ScreenUV)
+{
+	return USE_SCENECOLOR( texture2D(SceneColorTexture,ScreenUV) );
+}
+
+half3 ScreenBlend( half3 Color1, half3 Color2 )
+{
+	// Original:    1-(1-a)*(1-b)
+	// Alternative: b + a*(1-b)
+	return 1.0 - (1.0 - Color1) * (1.0 - Color2);
+}
+
+
+/** If this is defined to 0, the apply will occur uniformly, ignoring the
+    original scene brightnesss, which saves a sample from the full-sized
+    texture and some math at the cost of some oversaturation in bright areas */
+#define APPLY_USES_SCENE_COLOR_TO_AVOID_OVERSATURATION 1
+
+/** Origin in texture coordinates in xy. */
+UNIFORM_MEDIUM(vec2, TextureSpaceBlurOrigin);
+
+UNIFORM_MEDIUM(vec4, AspectRatioAndInvAspectRatio);
+
+/** 1.0 / OcclusionDepthRange in x, BloomScale in y, RadialBlurPercent / 100 in z, OcclusionMaskDarkness in w. */
+UNIFORM_MEDIUM(vec4, LightShaftParameters);
+
+/** Tint in rgb, threshold in a. */
+UNIFORM(vec4, BloomTintAndThreshold);
+
+/** Transitions to 1 when the light shafts should no longer be seen. */
+float DistanceFade;
+
+float BloomScreenBlendThreshold;
+
+/** Result of the previous pass, rgb contains bloom color and a contains an occlusion mask. */
+UNIFORM_SAMPLER2D(ApplySourceTexture, TEXUNIT1); // : register(s1);
+
+IN_VARYING_DEFAULT(vec2, SceneColorUV, TEXCOORD0);
+IN_VARYING_DEFAULT(vec2, SourceUV0, TEXCOORD1);
+IN_VARYING_DEFAULT(vec2, SourceUV1, TEXCOORD2);
+IN_VARYING_DEFAULT(vec2, SourceUV2, TEXCOORD3);
+IN_VARYING_DEFAULT(vec2, SourceUV3, TEXCOORD4);
+
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+// ApplyLightShaftsPixelMain
+PIXEL_MAIN
+{
+	vec4 LightShaftColorAndMask = vec4(0,0,0,0);
+	LightShaftColorAndMask += USE_SCENECOLOR( texture2D(ApplySourceTexture, SourceUV0.xy) );
+	LightShaftColorAndMask += USE_SCENECOLOR( texture2D(ApplySourceTexture, SourceUV1.xy) );
+	LightShaftColorAndMask += USE_SCENECOLOR( texture2D(ApplySourceTexture, SourceUV2.xy) );
+	LightShaftColorAndMask += USE_SCENECOLOR( texture2D(ApplySourceTexture, SourceUV3.xy) );
+	LightShaftColorAndMask = LightShaftColorAndMask / 4.0;
+
+	// LightShaftParameters.w is OcclusionMaskDarkness, use that to control what an occlusion value of 0 maps to
+	// Lerp an occlusion value of 1 to a multiplier greater than one to balance out the brightness of the scene
+	half SceneColorMultiplier = mix(LightShaftParameters.w, 1.5 - .5 * LightShaftParameters.w, LightShaftColorAndMask.w * LightShaftColorAndMask.w);
+
+	// Setup a mask based on where the blur origin is
+	half BlurOriginDistanceMask = saturate(length(TextureSpaceBlurOrigin.xy - SceneColorUV * AspectRatioAndInvAspectRatio.zw) * 0.5);
+
+	// Fade out occlusion over distance away from the blur origin
+	SceneColorMultiplier = mix(SceneColorMultiplier, 1.0, BlurOriginDistanceMask);
+
+	vec4 SceneColor = CalcSceneColor(SceneColorUV);
+	half3 LightShaftColor = LightShaftColorAndMask.rgb * BloomTintAndThreshold.rgb;
+	gl_FragColor = half4( ScreenBlend(LightShaftColor, saturate(SceneColor.rgb*SceneColorMultiplier)), 1.0 );
+}

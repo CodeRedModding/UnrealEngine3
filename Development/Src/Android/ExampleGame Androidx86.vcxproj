@@ -1,0 +1,161 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Shipping|Win32">
+      <Configuration>Shipping</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Test|Win32">
+      <Configuration>Test</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{40CE406F-32F9-484F-B972-CCDFEA072E83}</ProjectGuid>
+    <Keyword>MakeFileProj</Keyword>
+    <SccProjectName>
+    </SccProjectName>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <OutDir>..\..\Intermediate\Unused\</OutDir>
+    <IntDir>..\..\Intermediate\Unused\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <OutDir>..\..\Intermediate\Unused\</OutDir>
+    <IntDir>..\..\Intermediate\Unused\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <OutDir>..\..\Intermediate\Unused\</OutDir>
+    <IntDir>..\..\Intermediate\Unused\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Shipping|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <OutDir>..\..\Intermediate\Unused\</OutDir>
+    <IntDir>..\..\Intermediate\Unused\</IntDir>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Shipping|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <NMakeOutput>../../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so</NMakeOutput>
+    <NMakePreprocessorDefinitions>$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeBuildCommandLine>@cd ..
+@call Targets/Build.bat $(ProjectName) $(Configuration) -output "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so"
+    </NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>@cd ..
+@call Targets/CleanGame.bat $(ProjectName) $(Configuration) "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).apk"
+@call Targets/Build.bat $(ProjectName) $(Configuration) -output "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so"</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>@cd ..
+@call Targets/CleanGame.bat $(ProjectName) $(Configuration) "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so"</NMakeCleanCommandLine>
+    <NMakeIncludeSearchPath>$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes>$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath>$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies>$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <NMakeOutput>../../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so</NMakeOutput>
+    <NMakePreprocessorDefinitions>$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeBuildCommandLine>@cd ..
+@call Targets/Build.bat $(ProjectName) $(Configuration) -output "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so"
+    </NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>@cd ..
+@call Targets/CleanGame.bat $(ProjectName) $(Configuration) "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).apk"
+@call Targets/Build.bat $(ProjectName) $(Configuration) -output "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so"</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>@cd ..
+@call Targets/CleanGame.bat $(ProjectName) $(Configuration) "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so"</NMakeCleanCommandLine>
+    <NMakeIncludeSearchPath>$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes>$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath>$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies>$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">
+    <NMakeOutput>../../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so</NMakeOutput>
+    <NMakePreprocessorDefinitions>$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeBuildCommandLine>@cd ..
+@call Targets/Build.bat $(ProjectName) $(Configuration) -output "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so"
+    </NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>@cd ..
+@call Targets/CleanGame.bat $(ProjectName) $(Configuration) "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).apk"
+@call Targets/Build.bat $(ProjectName) $(Configuration) -output "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so"</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>@cd ..
+@call Targets/CleanGame.bat $(ProjectName) $(Configuration) "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so"</NMakeCleanCommandLine>
+    <NMakeIncludeSearchPath>$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes>$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath>$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies>$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Shipping|Win32'">
+    <NMakeOutput>../../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so</NMakeOutput>
+    <NMakePreprocessorDefinitions>$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeBuildCommandLine>@cd ..
+@call Targets/Build.bat $(ProjectName) $(Configuration) -output "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so"
+    </NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>@cd ..
+@call Targets/CleanGame.bat $(ProjectName) $(Configuration) "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).apk"
+@call Targets/Build.bat $(ProjectName) $(Configuration) -output "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so"</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>@cd ..
+@call Targets/CleanGame.bat $(ProjectName) $(Configuration) "../../Binaries/Android/ExampleGame-Androidx86-$(Configuration).so"</NMakeCleanCommandLine>
+    <NMakeIncludeSearchPath>$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes>$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath>$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies>$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <BuildLog>
+      <Path>..\..\Intermediate\BuildLogs\$(ProjectName) $(Configuration)\BuildLog.htm</Path>
+    </BuildLog>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <BuildLog>
+      <Path>..\..\Intermediate\BuildLogs\$(ProjectName) $(Configuration)\BuildLog.htm</Path>
+    </BuildLog>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">
+    <BuildLog>
+      <Path>..\..\Intermediate\BuildLogs\$(ProjectName) $(Configuration)\BuildLog.htm</Path>
+    </BuildLog>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Shipping|Win32'">
+    <BuildLog>
+      <Path>..\..\Intermediate\BuildLogs\$(ProjectName) $(Configuration)\BuildLog.htm</Path>
+    </BuildLog>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

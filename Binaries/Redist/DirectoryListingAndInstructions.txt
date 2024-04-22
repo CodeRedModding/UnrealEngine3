@@ -1,0 +1,26 @@
+
+This file maintains a directory listing of the Redist folder which contains
+utilities and tools that are generally free for anyone to download and use,
+but are redistributed by Epic for convenience. Also included are instructions for
+acquiring these tools yourself.
+
+Redist\ImgTec\PVRTexTool.exe
+
+	This tool can be acquired from Imagination Technologies
+	http://www.imgtec.com/powervr/insider/powervr-pvrtextool.asp
+
+Redist\MCPP\bin\mcpp.exe
+
+	This tool can be acquired from sourceforge
+	http://sourceforge.net/projects/mcpp/
+
+	This tool is a C/C++ preprocessor and is used to condense glsl shaders
+	prior to runtime compilation on mobile
+
+Redist\Perforce\
+
+	This tool can be acquired from Perforce
+	http://perforce.com/downloads/latest-features
+
+	This is the preferred source control system to be used with the
+	UnrealEngine.

@@ -1,0 +1,12 @@
+﻿To install -
+
+InstallUtil.exe UnrealDatabaseProxy.exe
+
+The service uses the Local System account, so the database requires a system user adding with read and write permissions. e.g. if the service is running on machine 'ServiceHost', add
+the user DOMAIN\ServiceHost$
+
+To uninstall -
+
+Kill the process in task manager
+InstallUtil.exe /u UnrealDatabaseProxy.exe
+

@@ -1,31 +1,45 @@
+
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class AnimNodeBlendPerBone extends AnimNodeBlend
-	native(Anim)
-	hidecategories(Object);
+	native(Anim);
 
-/** Weight scaling for each bone of the skeleton. Must be same size as RefSkeleton of SkeletalMesh. If all 0.0, no animation can ever be drawn from Child2. */
-var		array<float>	Child2PerBoneWeight;
 
-/** Used in InitAnim, so you can set up partial blending in the defaultproperties. See SetChild2StartBone. */
-var		name		InitChild2StartBone;
+/** If TRUE, blend will be done in local space. */
+var()	const		bool			bForceLocalSpaceBlend;
 
-/** Used in InitAnim, so you can set up partial blending in the defaultproperties.  See SetChild2StartBone. */
-var		float		InitPerBoneIncrease;
+/** List of branches to mask in from child2 */
+var()				Array<Name>		BranchStartBoneName;
+
+/** per bone weight list, built from list of branches. */
+var					Array<FLOAT>	Child2PerBoneWeight;
+
+/** Required bones for local to component space conversion */
+var					Array<BYTE>		LocalToCompReqBones;
 
 cpptext
 {
+	/** Do any initialisation, and then call InitAnim on all children. Should not discard any existing anim state though. */
+	virtual void InitAnim(USkeletalMeshComponent* meshComp, UAnimNodeBlendBase* Parent);
 	// AnimNode interface
-	virtual void InitAnim( USkeletalMeshComponent* meshComp, UAnimNodeBlendBase* Parent );
-	virtual void GetBoneAtoms( TArray<FBoneAtom>& Atoms);
-
-	// AnimNodeBlendPerBone interface
-
-	/** Utility for creating the Child2PerBoneWeight array. Starting from the named bone, walk down the heirarchy increasing the weight by PerBoneIncrease each step. */
-	virtual void SetChild2StartBone( FName StartBoneName, FLOAT PerBoneIncrease=1.f );
+	virtual	void TickAnim(FLOAT DeltaSeconds);
+	// AnimNode interface
+	virtual void GetBoneAtoms(FBoneAtomArray& Atoms, const TArray<BYTE>& DesiredBones, FBoneAtom& RootMotionDelta, INT& bHasRootMotion, FCurveKeyArray& CurveKeys);
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent);
+	virtual void BuildWeightList();
 }
 
-native final function SetChild2StartBone( name StartBoneName, optional float PerBoneIncrease );
+/**
+ * Overridden so we can keep child zero weight at 1.
+ */
+native function SetBlendTarget( float BlendTarget, float BlendTime );
 
 defaultproperties
 {
-	InitPerBoneIncrease=1.0
+	Children(0)=(Name="Source",Weight=1.0)
+	Children(1)=(Name="Target")
+	bFixNumChildren=TRUE
+
+	CategoryDesc = "Filter"
 }

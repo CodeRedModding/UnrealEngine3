@@ -1,0 +1,98 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Inc">
+      <UniqueIdentifier>{66628c5b-d4d6-415e-a305-8375857f73e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MiscSearchable">
+      <UniqueIdentifier>{6c232c97-e142-46f1-a9b7-d595c4e7a3f6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src">
+      <UniqueIdentifier>{d207787c-0060-451b-96f7-ebfa79a8c027}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{71ee5b0a-215e-4ca1-9bdf-037ddd8f42ff}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\AsyncLoadingMac.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\FFileManagerMac.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\HIDControllers.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\Mac.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\MacClient.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\MacDrv.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\MacObjCWrapper.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\MacThreading.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UE3AppDelegate.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnSocketBSD.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\ExampleGame-Info.plist">
+      <Filter>MiscSearchable</Filter>
+    </None>
+    <None Include="Resources\UDKGame-Info.plist">
+      <Filter>MiscSearchable</Filter>
+    </None>
+    <None Include="Src\MacObjCWrapper.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\MacWideChar.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\Main.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Src\UE3AppDelegate.mm">
+      <Filter>Src</Filter>
+    </None>
+    <None Include="Resources\English.lproj\MainMenu.xib">
+      <Filter>Resources</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\AsyncLoadingMac.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\FFileManagerMac.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\HIDControllers.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Mac.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\MacClient.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\MacThreading.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\MacViewport.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnSocketBSD.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

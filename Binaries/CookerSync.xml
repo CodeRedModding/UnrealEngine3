@@ -1,0 +1,1611 @@
+<?xml version="1.0"?>
+<SharedSettings>
+
+	<KnownGames>
+		<GameDescription Name="Example" />
+		<GameDescription Name="Gear" />
+		<GameDescription Name="Fortress" />
+		<GameDescription Name="Exo" />
+		<GameDescription Name="UDK" />
+		<GameDescription Name="Mobile" />
+	</KnownGames>
+
+	<KnownPlatforms>
+		<PlatformDescription Name="PC" />
+		<PlatformDescription Name="PCConsole" />
+		<PlatformDescription Name="PCServer" />
+		<PlatformDescription Name="Xbox360"/>
+		<PlatformDescription Name="PS3" bCaseSensitiveFileSystem="true" />
+		<PlatformDescription Name="IPhone" />
+		<PlatformDescription Name="Android" />
+		<PlatformDescription Name="NGP" />
+	<PlatformDescription Name="WiiU" />
+	</KnownPlatforms>
+
+	<KnownLanguages>
+		<LanguageDescription ThreeLetterCode="INT" />
+		<LanguageDescription ThreeLetterCode="FRA" />
+		<LanguageDescription ThreeLetterCode="ITA" />
+		<LanguageDescription ThreeLetterCode="DEU" />
+		<LanguageDescription ThreeLetterCode="ESN" />
+		<LanguageDescription ThreeLetterCode="ESM" />
+		<LanguageDescription ThreeLetterCode="PTB" />
+		<LanguageDescription ThreeLetterCode="RUS" />
+		<LanguageDescription ThreeLetterCode="POL" />
+		<LanguageDescription ThreeLetterCode="HUN" />
+		<LanguageDescription ThreeLetterCode="CZE" />
+		<LanguageDescription ThreeLetterCode="SLO" />
+		<LanguageDescription ThreeLetterCode="JPN" />
+		<LanguageDescription ThreeLetterCode="KOR" />
+		<LanguageDescription ThreeLetterCode="CHN" />
+		<LanguageDescription ThreeLetterCode="XXX" />
+	</KnownLanguages>
+
+	<KnownTextureExtensions>
+		<TextureExtensionDescription Name="DXT" />
+		<TextureExtensionDescription Name="PVRTC" />
+		<TextureExtensionDescription Name="ATITC" />
+		<TextureExtensionDescription Name="ETC" />
+	</KnownTextureExtensions>
+
+<!-- ==========================
+
+Executable - all the binaries required to run the game on the target.
+Engine - the engine specific content required to run the game on the target
+Content - the game specific content required to run the game on the target
+Movies - the movie files and movie support files
+Language - the content specific to any given language
+Debug - the files required to get symbols and a callstack
+Utils - support files that are not required to run the game on the console
+Cert - files only required for the cert process
+
+========================== -->
+
+	<TagSets>
+		<TagSet Name="CompleteBuild">
+			<Tags>
+				<Tag Name="Executable"/>
+				<Tag Name="ThirdPartyExecutable"/>
+				<Tag Name="Win64Executable"/>
+				<Tag Name="Win64ThirdPartyExecutable"/>
+				<Tag Name="Steamworks"/>
+				<Tag Name="DVD"/>
+				<Tag Name="Engine"/>
+				<Tag Name="CookedEngine"/>
+				<Tag Name="Content"/>
+				<Tag Name="Movies"/>
+				<Tag Name="Music"/>
+				<Tag Name="Language"/>
+				<Tag Name="DLC"/>
+				<Tag Name="Lightmass"/>
+
+				<Tag Name="Debug"/>
+				<Tag Name="ThirdPartyDebug"/>
+				<Tag Name="Win64Debug"/>
+				<Tag Name="Win64ThirdPartyDebug"/>
+				<Tag Name="Utils"/>
+				<Tag Name="UtilsDebug"/>
+				<Tag Name="LightmassDebug"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="RunTime" >
+			<Tags>
+				<Tag Name="Executable"/>
+				<Tag Name="ThirdPartyExecutable"/>
+				<Tag Name="Win64Executable"/>
+				<Tag Name="Win64ThirdPartyExecutable"/>
+				<Tag Name="Steamworks"/>
+				<Tag Name="SpeedTreeModeler"/>
+				<Tag Name="ArtistTools"/>
+				<Tag Name="Engine"/>
+				<Tag Name="CookedEngine"/>
+				<Tag Name="RunTimeEngine"/>
+				<Tag Name="RunTimeContent"/>
+				<Tag Name="RunTimeMisc"/>
+				<Tag Name="Movies"/>
+				<Tag Name="Music"/>
+				<Tag Name="Language"/>
+				<Tag Name="RunTimeUtils"/>
+				<Tag Name="Script"/>
+				<Tag Name="Lightmass"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="PIB" >
+			<Tags>
+				<Tag Name="PIBExecutable"/>
+				<Tag Name="ThirdPartyExecutable"/>
+				<Tag Name="Engine"/>
+				<Tag Name="CookedEngine"/>
+				<Tag Name="RunTimeEngine"/>
+				<Tag Name="Content"/>
+				<Tag Name="Movies"/>
+				<Tag Name="Music"/>
+				<Tag Name="Language"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="DedicatedServer" >
+			<Tags>
+				<Tag Name="Executable"/>
+				<Tag Name="ThirdPartyExecutable"/>
+				<Tag Name="Engine"/>
+				<Tag Name="Content"/>
+				<Tag Name="Language"/>
+
+				<Tag Name="Debug"/>
+				<Tag Name="ThirdPartyDebug"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="TU">
+			<Tags>
+				<Tag Name="TU"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="RunTimeContent" >
+			<Tags>
+				<Tag Name="RunTimeContent"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="Shipping">
+			<Tags>
+				<Tag Name="Executable"/>
+				<Tag Name="ThirdPartyExecutable"/>
+				<Tag Name="Win64Executable"/>
+				<Tag Name="Win64ThirdPartyExecutable"/>
+				<Tag Name="Steamworks"/>
+				<Tag Name="Engine"/>
+				<Tag Name="CookedEngine"/>
+				<Tag Name="Content"/>
+				<Tag Name="Movies"/>
+				<Tag Name="Music"/>
+				<Tag Name="Language"/>
+				<Tag Name="RunTimeUtils"/>
+				<Tag Name="Lightmass"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="Loc">
+			<Tags>
+				<Tag Name="Language"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="DLC">
+			<Tags>
+				<Tag Name="DLC"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="Shipped">
+			<Tags>
+				<Tag Name="Shipped"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="ConsoleSync">
+			<Tags>
+				<Tag Name="Executable"/>
+				<Tag Name="ThirdPartyExecutable"/>
+				<Tag Name="Engine"/>
+				<Tag Name="Content"/>
+				<Tag Name="Movies"/>
+				<Tag Name="Music"/>
+				<Tag Name="Language"/>
+
+				<Tag Name="Debug"/>
+				<Tag Name="ThirdPartyDebug"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="ConsoleSyncProgrammer">
+			<Tags>
+				<Tag Name="Executable"/>
+				<Tag Name="ThirdPartyExecutable"/>
+				<Tag Name="Engine"/>
+				<Tag Name="Content"/>
+				<Tag Name="Movies"/>
+				<Tag Name="Music"/>
+				<Tag Name="Language"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="CookedData">
+			<Tags>
+				<Tag Name="CookedEngine"/>
+				<Tag Name="Content"/>
+				<Tag Name="Language"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="UnrealBuildTool">
+			<Tags>
+				<Tag Name="Executable"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="MapSummary">
+			<Tags>
+				<Tag Name="MapSummary"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="ARCLogs">
+			<Tags>
+				<Tag Name="ARCLogs"/>
+			</Tags>
+		</TagSet>
+
+		<TagSet Name="iPhoneFinalIPAPackage">
+			<Tags>
+				<Tag Name="PackagedFinalIPAFiles"/>
+			</Tags>
+		</TagSet>
+		<TagSet Name="AndroidAPKs">
+			<Tags>
+				<Tag Name="AndroidAPKFiles"/>
+			</Tags>
+		</TagSet>
+
+
+		<TagSet Name="Test">
+			<Tags>
+				<Tag Name="Test"/>
+			</Tags>
+		</TagSet>
+
+	</TagSets>
+
+	<FileGroups>
+
+		<!-- ==========================
+				 For testing
+		 ========================== -->
+
+		<FileGroup Tag="Test" Platform="*" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\AutoReporter.exe" />
+				<FileSet Path="Development\Src\*.uc" bIsRecursive="true">
+					<FileFilters>
+						<FileFilter Name="%NOTGAME%*" bIsForDirectory="true" bIsForFilename="false"/>
+						<FileFilter Name="%NOTROOTGAME%*" bIsForDirectory="true" bIsForFilename="false"/>
+						<FileFilter Name="%GAME%*" />
+					</FileFilters>
+				</FileSet>
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 Executable
+		 ========================== -->
+
+		<FileGroup Tag="Executable" Platform="PC*">
+			<Files>
+				<FileSet Path="Binaries\Win32\libogg.dll" />
+				<FileSet Path="Binaries\Win32\libvorbis.dll" />
+				<FileSet Path="Binaries\Win32\libvorbisfile.dll" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Debug" Platform="PC*">
+			<Files>
+				<FileSet Path="Binaries\Win32\libogg.pdb" />
+				<FileSet Path="Binaries\Win32\libvorbis.pdb" />
+				<FileSet Path="Binaries\Win32\libvorbisfile.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Executable" Platform="PC">
+			<Files>
+				<FileSet Path="Binaries\%GAME%Lift.exe" />
+				<FileSet Path="Binaries\Win32\%GAME%.exe" />
+				<FileSet Path="Binaries\Win32\%GAME%.exe.config" />
+				<FileSet Path="Binaries\Win32\%GAME%.com" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Shipping.exe" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Shipping.exe.config" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Shipping.com" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Test.exe" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Test.exe.config" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Test.com" />
+				<FileSet Path="Binaries\UnrealEdCSharp.dll" />
+
+				<FileSet Path="Binaries\Win32\wxmsw28u_adv_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_aui_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_core_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_html_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_richtext_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_xml_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_xrc_vc_custom.dll" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Debug" Platform="PC">
+			<Files>
+				<FileSet Path="Binaries\%GAME%Lift.pdb" />
+
+				<FileSet Path="Binaries\Win32\%GAME%.pdb" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Shipping.pdb" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Test.pdb" />
+				<FileSet Path="Binaries\UnrealEdCSharp.pdb" />
+
+				<FileSet Path="Binaries\Win32\wxmsw28u_adv_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_aui_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_core_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_html_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_richtext_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_xml_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_xrc_vc_custom.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Executable" Platform="PCConsole">
+			<Files>
+				<FileSet Path="Binaries\Win32\%GAME%.exe" />
+				<FileSet Path="Binaries\Win32\%GAME%.com" />
+				<FileSet Path="Binaries\Win32\%GAME%.exe.cfg" />
+				<FileSet Path="Binaries\Win32\%GAME%.exe.cat" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Shipping.exe" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Shipping.com" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Shipping.exe.cfg" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Shipping.exe.cat" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Test.exe" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Test.com" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Test.exe.cfg" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Test.exe.cat" />
+				<FileSet Path="Binaries\Win32\%GAME%PerfCounters.xml" />
+
+				<FileSet Path="Binaries\Win32\wxmsw28u_adv_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_aui_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_core_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_html_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_richtext_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_xml_vc_custom.dll" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_xrc_vc_custom.dll" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Debug" Platform="PCConsole">
+			<Files>
+				<FileSet Path="Binaries\Win32\%GAME%.pdb" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Shipping.pdb" />
+				<FileSet Path="Binaries\Win32\%GAME%-Win32-Test.pdb" />
+
+				<FileSet Path="Binaries\Win32\wxmsw28u_adv_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_aui_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_core_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_html_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_richtext_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_xml_vc_custom.pdb" />
+				<FileSet Path="Binaries\Win32\wxmsw28u_xrc_vc_custom.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Executable" Platform="PCServer">
+			<Files>
+				<FileSet Path="Binaries\Win32\%GAME%Server.exe" />
+				<FileSet Path="Binaries\Win32\%GAME%Server.com" />
+				<FileSet Path="Binaries\Win32\%GAME%Server.exe.cfg" />
+				<FileSet Path="Binaries\Win32\%GAME%Server.exe.cat" />
+				<FileSet Path="Binaries\Win32\%GAME%Server.MProf.exe" />
+				<FileSet Path="Binaries\Win32\%GAME%Server.MProf.com" />
+				<FileSet Path="Binaries\Win32\%GAME%Server.MProf.exe.cfg" />
+				<FileSet Path="Binaries\Win32\%GAME%Server.MProf.exe.cat" />
+				<FileSet Path="Binaries\Win32\%GAME%Server-Win32-Shipping.exe" />
+				<FileSet Path="Binaries\Win32\%GAME%Server-Win32-Shipping.com" />
+				<FileSet Path="Binaries\Win32\%GAME%Server-Win32-Shipping.exe.cfg" />
+				<FileSet Path="Binaries\Win32\%GAME%Server-Win32-Shipping.exe.cat" />
+				<FileSet Path="Binaries\Win32\%GAME%Server-Win32-Test.exe" />
+				<FileSet Path="Binaries\Win32\%GAME%Server-Win32-Test.com" />
+				<FileSet Path="Binaries\Win32\%GAME%Server-Win32-Test.exe.cfg" />
+				<FileSet Path="Binaries\Win32\%GAME%Server-Win32-Test.exe.cat" />
+				<FileSet Path="Binaries\Win32\%GAME%PerfCounters.xml" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Debug" Platform="PCServer">
+			<Files>
+				<FileSet Path="Binaries\Win32\%GAME%Server.pdb" />
+				<FileSet Path="Binaries\Win32\%GAME%Server.MProf.pdb" />
+				<FileSet Path="Binaries\Win32\%GAME%Server-Win32-Shipping.pdb" />
+				<FileSet Path="Binaries\Win32\%GAME%Server-Win32-Test.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Executable" Platform="PS3">
+			<Files>
+				<FileSet Path="Binaries\%PLATFORM%\%GAME%-%PLATFORM%-*.elf" />
+
+				<FileSet Path="Binaries\%PLATFORM%\Bink\*.bin" />
+				<FileSet Path="Binaries\%PLATFORM%\Save\*.*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Debug" Platform="PS3">
+			<Files>
+				<FileSet Path="Binaries\%PLATFORM%\%GAME%-%PLATFORM%-*.map" />
+				<FileSet Path="Binaries\%PLATFORM%\formathdd.bat" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Executable" Platform="NGP">
+			<Files>
+				<FileSet Path="Binaries\NGP\%GAME%-%PLATFORM%-*.elf" />
+				<FileSet Path="Binaries\NGP\configuration.*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Executable" Platform="Xbox360" bIsForTOC="false" bDeploy="true" >
+			<Files>
+				<FileSet Path="Binaries\Xbox360\%GAME%-%PLATFORM%-*.xex" />
+			<FileSet Path="Binaries\Xbox360\FonixTtsDtSimple*.xex" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Debug" Platform="Xbox360" bIsForTOC="false" bDeploy="true" >
+			<Files>
+				<FileSet Path="Binaries\Xbox360\%GAME%-%PLATFORM%-*.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="PIBExecutable" Platform="PCConsole">
+			<Files>
+				<FileSet Path="Binaries\Win32\%GAME%DLLLauncher.exe" />
+				<FileSet Path="Binaries\Win32\%GAME%DLL.dll" />
+				<FileSet Path="Binaries\Win32\%GAME%DLL.dll.manifest" />
+
+				<FileSet Path="Binaries\Win32\libogg.dll" />
+				<FileSet Path="Binaries\Win32\libvorbis.dll" />
+				<FileSet Path="Binaries\Win32\libvorbisfile.dll" />
+
+				<FileSet Path="Binaries\EpicInternal.txt" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Executable" Platform="iPhone">
+			<Files>
+				<FileSet Path="Binaries\IPhone\%GAME%-IPhone-*.stub" />
+				<FileSet Path="Binaries\IPhone\%GAME%-IPhone-*." />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Debug" Platform="iPhone">
+			<Files>
+				<FileSet Path="Binaries\IPhone\%GAME%-IPhone-*.app.dSYM.zip" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="PackagedFinalIPAFiles" Platform="iPhone">
+			<Files>
+				<FileSet Path="Binaries\IPhone\%GAME%-IPhone-*.ipa" />
+				<FileSet Path="Binaries\IPhone\Distro_%GAME%-IPhone-*.ipa" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="AndroidAPKFiles" Platform="Android">
+			<Files>
+				<FileSet Path="Binaries\Android\%GAME%-Android-*.apk" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 Win64Executable
+		 ========================== -->
+
+		<FileGroup Tag="Win64Executable" Platform="PC*">
+			<Files>
+				<FileSet Path="Binaries\Win64\libogg_64.dll" />
+				<FileSet Path="Binaries\Win64\libvorbis_64.dll" />
+				<FileSet Path="Binaries\Win64\libvorbisfile_64.dll" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64Debug" Platform="PC*">
+			<Files>
+				<FileSet Path="Binaries\Win64\libogg_64.pdb" />
+				<FileSet Path="Binaries\Win64\libvorbis_64.pdb" />
+				<FileSet Path="Binaries\Win64\libvorbisfile_64.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64Executable" Platform="PC">
+			<Files>
+				<FileSet Path="Binaries\Win64\%GAME%.exe" />
+				<FileSet Path="Binaries\Win64\%GAME%.exe.config" />
+				<FileSet Path="Binaries\Win64\%GAME%.com" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Shipping.exe" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Shipping.exe.config" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Shipping.com" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Test.exe" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Test.exe.config" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Test.com" />
+				<FileSet Path="Binaries\UnrealEdCSharp.dll" />
+
+				<FileSet Path="Binaries\Win64\wxmsw28u_adv_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_aui_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_core_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_html_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_richtext_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_xml_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_xrc_vc_custom_64.dll" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64Debug" Platform="PC">
+			<Files>
+				<FileSet Path="Binaries\Win64\%GAME%.pdb" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Shipping.pdb" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Test.pdb" />
+				<FileSet Path="Binaries\UnrealEdCSharp.pdb" />
+
+				<FileSet Path="Binaries\Win64\wxmsw28u_adv_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_aui_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_core_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_html_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_richtext_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_xml_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_xrc_vc_custom_64.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64Executable" Platform="PCConsole">
+			<Files>
+				<FileSet Path="Binaries\Win64\%GAME%.exe" />
+				<FileSet Path="Binaries\Win64\%GAME%.exe.config" />
+				<FileSet Path="Binaries\Win64\%GAME%.com" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Shipping.exe" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Shipping.exe.config" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Shipping.com" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Test.exe" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Test.exe.config" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Test.com" />
+				<FileSet Path="Binaries\UnrealEdCSharp.dll" />
+
+				<FileSet Path="Binaries\Win64\wxmsw28u_adv_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_aui_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_core_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_html_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_richtext_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_xml_vc_custom_64.dll" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_xrc_vc_custom_64.dll" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64Debug" Platform="PCConsole">
+			<Files>
+				<FileSet Path="Binaries\Win64\%GAME%.pdb" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Shipping.pdb" />
+				<FileSet Path="Binaries\Win64\%GAME%-Win64-Test.pdb" />
+				<FileSet Path="Binaries\UnrealEdCSharp.pdb" />
+
+				<FileSet Path="Binaries\Win64\wxmsw28u_adv_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_aui_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_core_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_html_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_richtext_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_xml_vc_custom_64.pdb" />
+				<FileSet Path="Binaries\Win64\wxmsw28u_xrc_vc_custom_64.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64Executable" Platform="PCServer">
+			<Files>
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64Debug" Platform="PCServer">
+			<Files>
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 Steam
+		 ========================== -->
+
+		<FileGroup Tag="Steamworks" Platform="PC*">
+			<Files>
+				<FileSet Path="Binaries\Win32\steam_api.dll" />
+				<FileSet Path="Binaries\Win64\steam_api64.dll" />
+				<FileSet Path="Binaries\Win32\steam_appid.txt" />
+				<FileSet Path="Binaries\Win64\steam_appid.txt" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Steamworks" Platform="PC">
+			<Files>
+				<FileSet Path="%GAME%\Build\Steam\SteamMakeVersion.smd" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Steamworks" Platform="PCServer">
+			<Files>
+				<FileSet Path="Binaries\Win32\steam.dll" />
+				<FileSet Path="Binaries\Win32\steamclient.dll" />
+				<FileSet Path="Binaries\Win32\tier0_s.dll" />
+				<FileSet Path="Binaries\Win32\vstdlib_s.dll" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 ThirdPartyExecutable
+		 ========================== -->
+
+		<FileGroup Tag="ThirdPartyExecutable" Platform="PC*">
+			<Files>
+				<FileSet Path="Binaries\Win32\dbghelp.dll" />
+
+				<FileSet Path="Binaries\Win32\cudart32*.dll" />
+				<FileSet Path="Binaries\Win32\PhysXDevice.dll" />
+
+				<FileSet Path="Binaries\Win32\NxCharacter.dll" />
+				<FileSet Path="Binaries\Win32\PhysXCooking.dll" />
+				<FileSet Path="Binaries\Win32\PhysXCore.dll" />
+				<FileSet Path="Binaries\Win32\PhysXExtensions.dll" />
+				<FileSet Path="Binaries\Win32\PhysXLoader.dll" />
+				<FileSet Path="Binaries\Win32\PhysX3GpuCHECKED_x86.dll" />
+				<FileSet Path="Binaries\Win32\APEX*.dll" />
+				<FileSet Path="Binaries\Win32\GRB_1_x86.dll" />
+				
+				<FileSet Path="Binaries\Win32\atc_api.dll" />	
+				<FileSet Path="Binaries\Win32\Substance*.dll" />	
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="ThirdPartyDebug" Platform="PC*">
+			<Files>
+				<FileSet Path="Binaries\Win32\NxCharacter.pdb" />
+				<FileSet Path="Binaries\Win32\PhysXCooking.pdb" />
+				<FileSet Path="Binaries\Win32\PhysXCore.pdb" />
+				<FileSet Path="Binaries\Win32\PhysXExtensions.pdb" />
+				<FileSet Path="Binaries\Win32\PhysXLoader.pdb" />
+
+				<FileSet Path="Binaries\Win32\PhysX3GpuCHECKED_x86.dll.pdb" />
+				<FileSet Path="Binaries\Win32\APEX*.dll.pdb" />
+				
+				<FileSet Path="Binaries\Win32\Substance*.pdb" />				
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="ThirdPartyExecutable" Platform="PC">
+			<Files>
+				<FileSet Path="Binaries\p4api.dll" />
+				<FileSet Path="Binaries\Win32\p4dn.dll" />
+
+				<FileSet Path="Binaries\Win32\cudart.dll" />
+				<FileSet Path="Binaries\Win32\nvtt.dll" />
+
+				<FileSet Path="Binaries\Win32\FonixTtsDt*.dll" />
+
+				<FileSet Path="Binaries\Win32\EasyHook32.dll" />
+				<FileSet Path="Binaries\Win32\FxGraphLayout.dll" />
+				<FileSet Path="Binaries\Win32\libresample.dll" />
+
+				<FileSet Path="Binaries\Redist\*.*" bIsRecursive="true" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="ThirdPartyDebug" Platform="PC">
+			<Files>
+				<FileSet Path="Binaries\p4api.pdb" />
+				<FileSet Path="Binaries\Win32\p4dn.pdb" />
+
+				<FileSet Path="Binaries\Win32\cudart.pdb" />
+				<FileSet Path="Binaries\Win32\nvtt.pdb" />
+
+				<FileSet Path="Binaries\Win32\FonixTtsDt*.pdb" />
+
+				<FileSet Path="Binaries\Win32\EasyHook32.pdb" />
+				<FileSet Path="Binaries\Win32\FxGraphLayout.pdb" />
+				<FileSet Path="Binaries\Win32\libresample.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="ThirdPartyExecutable" Platform="PCConsole">
+			<Files>
+				<FileSet Path="Binaries\Win32\cudart.dll" />
+				<FileSet Path="Binaries\Win32\nvtt.dll" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="ThirdPartyDebug" Platform="PCConsole">
+			<Files>
+				<FileSet Path="Binaries\Win32\cudart.pdb" />
+				<FileSet Path="Binaries\Win32\nvtt.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="ThirdPartyExecutable" Platform="PCServer">
+			<Files>
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="ThirdPartyDebug" Platform="PCServer">
+			<Files>
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64ThirdPartyExecutable" Platform="PC*">
+			<Files>
+				<FileSet Path="Binaries\Win64\dbghelp.dll" />
+
+				<FileSet Path="Binaries\Win64\cudart64*.dll" />
+				<FileSet Path="Binaries\Win64\PhysXDevice64.dll" />
+
+				<FileSet Path="Binaries\Win64\NxCharacter64.dll" />
+				<FileSet Path="Binaries\Win64\PhysXCooking64.dll" />
+				<FileSet Path="Binaries\Win64\PhysXCore64.dll" />
+				<FileSet Path="Binaries\Win64\PhysXExtensions64.dll" />
+				<FileSet Path="Binaries\Win64\PhysXLoader64.dll" />
+				<FileSet Path="Binaries\Win64\APEX*.dll" />
+				<FileSet Path="Binaries\Win64\PhysX3GpuCHECKED_x64.dll" />
+				<FileSet Path="Binaries\Win64\GRB_1_x64.dll" />
+
+				<FileSet Path="Binaries\Win64\atc_api.dll" />					
+				<FileSet Path="Binaries\Win64\Substance*.dll" />		
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64ThirdPartyDebug" Platform="PC*">
+			<Files>
+				<FileSet Path="Binaries\Win64\NxCharacter64.pdb" />
+				<FileSet Path="Binaries\Win64\PhysXCooking64.pdb" />
+				<FileSet Path="Binaries\Win64\PhysXCore64.pdb" />
+				<FileSet Path="Binaries\Win64\PhysXExtensions64.pdb" />
+				<FileSet Path="Binaries\Win64\PhysXLoader64.pdb" />
+				<FileSet Path="Binaries\Win64\APEX*.dll.pdb" />
+				<FileSet Path="Binaries\Win64\PhysX3GpuCHECKED_x64.dll.pdb" />
+				
+				<FileSet Path="Binaries\Win64\Substance*.pdb" />	
+		</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64ThirdPartyExecutable" Platform="PC">
+			<Files>
+				<FileSet Path="Binaries\p4api.dll" />
+				<FileSet Path="Binaries\Win64\p4dn.dll" />
+
+				<FileSet Path="Binaries\Win64\cudart.dll" />
+				<FileSet Path="Binaries\Win64\nvtt_64.dll" />
+
+				<FileSet Path="Binaries\Win64\EasyHook64.dll" />
+				<FileSet Path="Binaries\Win64\tbbmalloc.dll" />
+				<FileSet Path="Binaries\Win64\FxGraphLayout_x64.dll" />
+				<FileSet Path="Binaries\Win64\libresample_x64.dll" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64ThirdPartyDebug" Platform="PC">
+			<Files>
+				<FileSet Path="Binaries\p4api.pdb" />
+				<FileSet Path="Binaries\Win64\p4dn.pdb" />
+
+				<FileSet Path="Binaries\Win64\cudart.pdb" />
+				<FileSet Path="Binaries\Win64\nvtt_64.pdb" />
+
+				<FileSet Path="Binaries\Win64\tbbmalloc.pdb" />
+				<FileSet Path="Binaries\Win64\FxGraphLayout_x64.pdb" />
+				<FileSet Path="Binaries\Win64\libresample_x64.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64ThirdPartyExecutable" Platform="PCConsole">
+			<Files>
+				<FileSet Path="Binaries\Win64\cudart.dll" />
+				<FileSet Path="Binaries\Win64\nvtt_64.dll" />
+
+				<FileSet Path="Binaries\Win64\EasyHook64.dll" />
+				<FileSet Path="Binaries\Win64\tbbmalloc.dll" />
+				<FileSet Path="Binaries\Win64\FxGraphLayout_x64.dll" />
+				<FileSet Path="Binaries\Win64\libresample_x64.dll" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64ThirdPartyDebug" Platform="PCConsole">
+			<Files>
+				<FileSet Path="Binaries\Win64\cudart.pdb" />
+				<FileSet Path="Binaries\Win64\nvtt_64.pdb" />
+
+				<FileSet Path="Binaries\Win64\tbbmalloc.pdb" />
+				<FileSet Path="Binaries\Win64\FxGraphLayout_x64.pdb" />
+				<FileSet Path="Binaries\Win64\libresample_x64.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64ThirdPartyExecutable" Platform="PCServer">
+			<Files>
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Win64ThirdPartyDebug" Platform="PCServer">
+			<Files>
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 Utils
+		 ========================== -->
+
+		<FileGroup Tag="Utils" Platform="*" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\ConsoleInterface.dll" />
+				<FileSet Path="Binaries\Ionic.Zip.Reduced.dll" />
+				<FileSet Path="Binaries\CookerSync.exe" />
+				<FileSet Path="Binaries\CookerSync.exe.config" />
+				<FileSet Path="Binaries\UnrealConsole.exe" />
+				<FileSet Path="Binaries\UnrealConsole.exe.config" />
+				<FileSet Path="Binaries\UnrealControls.dll" />
+				<FileSet Path="Binaries\UnrealConsoleRemoting.dll" />
+				<FileSet Path="Binaries\UnrealFrontend.exe" />
+				<FileSet Path="Binaries\UnrealFrontend.exe.config" />
+				<FileSet Path="%GAME%\Config\UnrealFrontend.DefaultProfiles\*.xml" />
+
+				<FileSet Path="Binaries\CookerSync.xml" />
+				<FileSet Path="%GAME%\Build\CookerSync_Game.xml" />
+				<FileSet Path="%GAME%\Build\%PLATFORM%\UnrealDVDLayout.Project.xml" />
+
+				<FileSet Path="Binaries\UnrealDVDLayout.exe" />
+				<FileSet Path="Binaries\UnrealDVDLayout.exe.config" />
+
+				<FileSet Path="Binaries\UnrealLoc.exe" />
+				<FileSet Path="Binaries\UnrealLoc.exe.config" />
+
+				<FileSet Path="Binaries\NetworkProfiler.exe" />
+				<FileSet Path="Binaries\NetworkProfiler.exe.config" />
+
+				<FileSet Path="Binaries\PackageDiffFrontEnd.exe" />
+				<FileSet Path="Binaries\PackageDiffFrontEnd.exe.config" />
+
+				<FileSet Path="Binaries\AutoReporter.exe" />
+				<FileSet Path="Binaries\AutoReporter.exe.config" />
+				<FileSet Path="Binaries\AutoReporter.XmlSerializers.dll" />
+
+				<FileSet Path="Binaries\Stats.dll" />
+				<FileSet Path="Binaries\StatsComparison.exe" />
+				<FileSet Path="Binaries\StatsComparison.exe.config" />
+				<FileSet Path="Binaries\StatsThreshold.exe" />
+				<FileSet Path="Binaries\StatsThreshold.exe.config" />
+				<FileSet Path="Binaries\StatsViewer.exe" />
+				<FileSet Path="Binaries\StatsViewer.exe.config" />
+
+				<FileSet Path="Binaries\MemLeakCheckDiffer.exe" />
+				<FileSet Path="Binaries\MemLeakCheckDiffer.exe.config" />
+
+				<FileSet Path="Binaries\MemoryProfiler2.exe" />
+				<FileSet Path="Binaries\MemoryProfiler2.exe.config" />
+
+				<FileSet Path="Binaries\GamePlayProfiler.exe" />
+				<FileSet Path="Binaries\GamePlayProfiler.exe.config" />
+
+				<FileSet Path="Binaries\ShaderKeyTool.exe" />
+				<FileSet Path="Binaries\ShaderKeyTool.exe.config" />
+
+				<FileSet Path="Binaries\RPCUtility.exe" />
+				<FileSet Path="Binaries\RPCUtility.exe.config" />
+
+				<FileSet Path="Binaries\UnrealCommand.exe" />
+				<FileSet Path="Binaries\UnrealCommand.exe.config" />
+
+				<FileSet Path="Binaries\UnrealImageDiff.exe" />
+				<FileSet Path="Binaries\UnrealImageDiff.exe.config" />
+
+				<FileSet Path="Binaries\Win32\StandaloneSymbolParser.dll" />
+				<FileSet Path="Binaries\Win64\StandaloneSymbolParser_x64.dll" />
+
+				<FileSet Path="Binaries\Win32\UE3ShaderCompileWorker.exe" />
+				<FileSet Path="Binaries\Win64\UE3ShaderCompileWorker.exe" />
+
+				<FileSet Path="Binaries\UnSetup.exe" />
+				<FileSet Path="Binaries\Win32\UserCode\UnSetupNativeWrapper.exe" />
+				<FileSet Path="Binaries\UnSetup.exe.config" />
+				<FileSet Path="Binaries\UnSetup.Manifests.*" />
+
+				<FileSet Path="Binaries\EpicInternal.txt" />
+				<FileSet Path="Binaries\Win32\WindowsTools*.dll" />
+				<FileSet Path="Binaries\Win64\WindowsTools*.dll" />
+				<FileSet Path="Binaries\Redist\UE3Redist.exe" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="UtilsDebug" Platform="*" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\ConsoleInterface.pdb" />
+				<FileSet Path="Binaries\CookerSync.pdb" />
+				<FileSet Path="Binaries\UnrealConsole.pdb" />
+				<FileSet Path="Binaries\UnrealControls.pdb" />
+				<FileSet Path="Binaries\UnrealConsoleRemoting.pdb" />
+				<FileSet Path="Binaries\UnrealFrontend.pdb" />
+
+				<FileSet Path="Binaries\UnrealDVDLayout.pdb" />
+
+				<FileSet Path="Binaries\UnrealLoc.pdb" />
+
+				<FileSet Path="Binaries\NetworkProfiler.pdb" />
+
+				<FileSet Path="Binaries\PackageDiffFrontEnd.pdb" />
+
+				<FileSet Path="Binaries\AutoReporter.pdb" />
+
+				<FileSet Path="Binaries\StatsComparison.pdb" />
+				<FileSet Path="Binaries\StatsThreshold.pdb" />
+				<FileSet Path="Binaries\StatsViewer.pdb" />
+
+				<FileSet Path="Binaries\MemLeakCheckDiffer.pdb" />
+				<FileSet Path="Binaries\MemoryProfiler2.pdb" />
+
+				<FileSet Path="Binaries\GamePlayProfiler.pdb" />
+
+				<FileSet Path="Binaries\ShaderKeyTool.pdb" />
+
+				<FileSet Path="Binaries\RPCUtility.pdb" />
+
+				<FileSet Path="Binaries\UnrealCommand.pdb" />
+
+				<FileSet Path="Binaries\UnrealImageDiff.pdb" />
+
+				<FileSet Path="Binaries\Win32\StandaloneSymbolParser.pdb" />
+				<FileSet Path="Binaries\Win64\StandaloneSymbolParser_x64.pdb" />
+
+				<FileSet Path="Binaries\Win32\UE3ShaderCompileWorker.pdb" />
+				<FileSet Path="Binaries\Win64\UE3ShaderCompileWorker.pdb" />
+
+				<FileSet Path="Binaries\UnSetup.pdb" />
+				<FileSet Path="Binaries\Win32\UserCode\UnSetupNativeWrapper.pdb" />
+
+				<FileSet Path="Binaries\Win32\WindowsTools*.pdb" />
+				<FileSet Path="Binaries\Win64\WindowsTools*.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Utils" Platform="Xbox360" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\%PLATFORM%\%PLATFORM%Tools*.dll" />
+				<FileSet Path="Binaries\%PLATFORM%\Interop.XDevkit.1.0.dll" />
+				<FileSet Path="Binaries\%PLATFORM%\%GAME%-%PLATFORM%-*.xdb" />
+				<FileSet Path="%GAME%\Build\%PLATFORM%\*.xgd" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="UtilsDebug" Platform="Xbox360" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\%PLATFORM%\%PLATFORM%Tools*.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Utils" Platform="PS3" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\%PLATFORM%\%PLATFORM%Tools*.dll" />
+				<FileSet Path="%GAME%\Build\%PLATFORM%\*.gp3*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="UtilsDebug" Platform="PS3" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\%PLATFORM%\%PLATFORM%Tools*.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Utils" Platform="iPhone" bIsForSync="false" bIsForTOC="false" >
+			<Files>
+				<FileSet Path="Binaries\%PLATFORM%\%PLATFORM%*.exe*" />
+				<FileSet Path="Binaries\%PLATFORM%\RPCUtility.exe*" />
+				<FileSet Path="Binaries\%PLATFORM%\%PLATFORM%Tools*.dll" />
+				<FileSet Path="Binaries\%PLATFORM%\UDKRemote.ipa" />
+				<FileSet Path="Binaries\%PLATFORM%\BouncyCastle.Crypto.dll" />
+				<FileSet Path="Binaries\%PLATFORM%\Ionic.Zip.Reduced.dll" />
+				<FileSet Path="Binaries\%PLATFORM%\MobileDeviceInterface.dll" />
+				<FileSet Path="Binaries\%PLATFORM%\openssl.exe" />
+				<FileSet Path="Binaries\%PLATFORM%\Apple*.pem" />
+				<FileSet Path="Binaries\%PLATFORM%\Resign\*" bIsRecursive="true" />
+				<FileSet Path="Binaries\%PLATFORM%\UE3.xcodeproj\*" bIsRecursive="true" />
+				<FileSet Path="Binaries\%PLATFORM%\UE3-Xcode\*" bIsRecursive="true" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="UtilsDebug" Platform="iPhone" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\%PLATFORM%\%PLATFORM%*.pdb" />
+				<FileSet Path="Binaries\%PLATFORM%\RPCUtility.pdb" />
+				<FileSet Path="Binaries\%PLATFORM%\UDKRemote.app.dSYM.zip" />
+				<FileSet Path="Binaries\%PLATFORM%\BouncyCastle.Crypto.pdb" />
+				<FileSet Path="Binaries\%PLATFORM%\Ionic.Zip.Reduced.pdb" />
+				<FileSet Path="Binaries\%PLATFORM%\MobileDeviceInterface.pdb" />
+				<FileSet Path="Binaries\%PLATFORM%\openssl.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Utils" Platform="NGP" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\NGP\NGPTools*.dll" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="UtilsDebug" Platform="NGP" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\NGP\NGPTools*.pdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Utils" Platform="Android" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\Android\%PLATFORM%Tools*.dll" />
+				<FileSet Path="Binaries\Android\AndroidExpansionPackager.exe" />
+				<FileSet Path="Binaries\Android\AndroidPackager.exe" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="UtilsDebug" Platform="Android" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\Android\%PLATFORM%Tools*.pdb" />
+				<FileSet Path="Binaries\Android\AndroidExpansionPackager.exe" />
+				<FileSet Path="Binaries\Android\AndroidPackager.exe" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="RunTimeUtils" Platform="*" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\ConsoleInterface.dll" />
+				<FileSet Path="Binaries\Ionic.Zip.Reduced.dll" />
+				<FileSet Path="Binaries\CookerSync.exe" />
+				<FileSet Path="Binaries\CookerSync.exe.config" />
+				<FileSet Path="Binaries\UnrealConsole.exe" />
+				<FileSet Path="Binaries\UnrealConsole.exe.config" />
+				<FileSet Path="Binaries\UnrealControls.dll" />
+				<FileSet Path="Binaries\UnrealConsoleRemoting.dll" />
+				<FileSet Path="Binaries\UnrealFrontend.exe" />
+				<FileSet Path="Binaries\UnrealFrontend.exe.config" />
+				<FileSet Path="%GAME%\Config\UnrealFrontend.DefaultProfiles\*.xml" />
+
+				<FileSet Path="Binaries\CookerSync.xml" />
+				<FileSet Path="%GAME%\Build\CookerSync_Game.xml" />
+
+				<FileSet Path="Binaries\UnrealLoc.exe" />
+				<FileSet Path="Binaries\UnrealLoc.exe.config" />
+
+				<FileSet Path="Binaries\NetworkProfiler.exe" />
+				<FileSet Path="Binaries\NetworkProfiler.exe.config" />
+
+				<FileSet Path="Binaries\PackageDiffFrontEnd.exe" />
+				<FileSet Path="Binaries\PackageDiffFrontEnd.exe.config" />
+
+				<FileSet Path="Binaries\Stats.dll" />
+				<FileSet Path="Binaries\StatsComparison.exe" />
+				<FileSet Path="Binaries\StatsComparison.exe.config" />
+				<FileSet Path="Binaries\StatsThreshold.exe" />
+				<FileSet Path="Binaries\StatsThreshold.exe.config" />
+				<FileSet Path="Binaries\StatsViewer.exe" />
+				<FileSet Path="Binaries\StatsViewer.exe.config" />
+
+				<FileSet Path="Binaries\MemLeakCheckDiffer.exe" />
+				<FileSet Path="Binaries\MemLeakCheckDiffer.exe.config" />
+
+				<FileSet Path="Binaries\GamePlayProfiler.exe" />
+				<FileSet Path="Binaries\GamePlayProfiler.exe.config" />
+
+				<FileSet Path="Binaries\ShaderKeyTool.exe" />
+				<FileSet Path="Binaries\ShaderKeyTool.exe.config" />
+
+        <FileSet Path="Binaries\RPCUtility.exe" />
+        <FileSet Path="Binaries\RPCUtility.exe.config" />
+
+        <FileSet Path="Binaries\UnrealCommand.exe" />
+				<FileSet Path="Binaries\UnrealCommand.exe.config" />
+
+				<FileSet Path="Binaries\Win32\UE3ShaderCompileWorker.exe" />
+				<FileSet Path="Binaries\Win64\UE3ShaderCompileWorker.exe" />
+
+				<FileSet Path="Binaries\UnSetup.exe" />
+				<FileSet Path="Binaries\Win32\UserCode\UnSetupNativeWrapper.exe" />
+				<FileSet Path="Binaries\UnSetup.exe.config" />
+				<FileSet Path="Binaries\UnSetup.Manifests.*" />
+
+				<FileSet Path="Binaries\Win32\WindowsTools*.dll" />
+				<FileSet Path="Binaries\Win64\WindowsTools*.dll" />
+				<FileSet Path="Binaries\Redist\UE3Redist.exe" />
+
+				<FileSet Path="Binaries\GFx\*.*" bIsRecursive="true" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="RunTimeUtils" Platform="Console" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Binaries\%PLATFORM%\%PLATFORM%Tools*.dll" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 Lightmass
+		 ========================== -->
+
+		<FileGroup Tag="Lightmass" Platform="PC">
+			<Files>
+				<FileSet Path="Binaries\AgentInterface.dll" />
+				<FileSet Path="Binaries\SwarmCoordinatorInterface.dll" />
+				<FileSet Path="Binaries\SwarmAgent.exe" />
+				<FileSet Path="Binaries\SwarmAgent.exe.config" />
+				<FileSet Path="Binaries\SwarmCoordinator.exe" />
+				<FileSet Path="Binaries\SwarmCoordinator.exe.config" />
+
+				<FileSet Path="Binaries\Win32\AgentInterface.dll" />
+				<FileSet Path="Binaries\Win32\UnrealLightmass.exe" />
+
+				<FileSet Path="Binaries\Win64\AgentInterface.dll" />
+				<FileSet Path="Binaries\Win64\UnrealLightmass.exe" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="LightmassDebug" Platform="PC">
+			<Files>
+				<FileSet Path="Binaries\AgentInterface.pdb" />
+				<FileSet Path="Binaries\SwarmCoordinatorInterface.pdb" />
+				<FileSet Path="Binaries\SwarmAgent.pdb" />
+				<FileSet Path="Binaries\SwarmCoordinator.pdb" />
+
+				<FileSet Path="Binaries\Win32\AgentInterface.pdb" />
+				<FileSet Path="Binaries\Win32\UnrealLightmass.pdb" />
+
+				<FileSet Path="Binaries\Win64\AgentInterface.pdb" />
+				<FileSet Path="Binaries\Win64\UnrealLightmass.pdb" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 Engine
+		 ========================== -->
+
+		<FileGroup Tag="Engine" Platform="*">
+			<Files>
+				<FileSet Path="Binaries\build.properties" />
+				<FileSet Path="Engine\Splash\%PLATFORM%\*.*" />
+				<FileSet Path="Engine\Stats\*.*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Engine" Platform="PC*">
+			<Files>
+				<FileSet Path="Engine\Config\*.ini" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Engine" Platform="PC">
+			<Files>
+				<FileSet Path="Engine\EditorResources\*.*" bIsRecursive="true" />
+				<FileSet Path="Engine\Extras\*.*" bIsRecursive="true" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Engine" Platform="PCServer">
+			<Files>
+				<FileSet Path="Engine\Config\%PLATFORM%\*.ini" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Engine" Platform="IPhone">
+			<Files>
+				<FileSet Path="Engine\Shaders\Mobile\*.msf" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Engine" Platform="Android">
+			<Files>
+				<FileSet Path="Engine\Shaders\Mobile\*.msf" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="CookedEngine" Platform="PC">
+			<Files>
+				<FileSet Path="Engine\Shaders\Binaries\*.bin" bIsRecursive="true"/>
+      </Files>
+		</FileGroup>
+
+		<FileGroup Tag="CookedEngine" Platform="PCConsole">
+			<Files>
+				<FileSet Path="Engine\Shaders\Binaries\*.bin" bIsRecursive="true"/>
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="RunTimeEngine" Platform="*" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Engine\Config\*.*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="RunTimeEngine" Platform="Console" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Engine\Config\%PLATFORM%\*.*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="RunTimeEngine" Platform="Mobile" bIsForTOC="false">
+			<Files>
+				<FileSet Path="Engine\Config\Mobile\*.*" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 Language
+		 ========================== -->
+
+		<FileGroup Tag="Language" Platform="PC*">
+			<Files>
+				<FileSet Path="Engine\Localization\%LANGUAGE%\*.*" bIsRecursive="true" >
+					<FileFilters>
+						<FileFilter Name="%NOTPLATFORM%*"/>
+					</FileFilters>
+				</FileSet>
+
+				<FileSet Path="%GAME%\Localization\%LANGUAGE%\*.*" bIsRecursive="true" >
+					<FileFilters>
+						<FileFilter Name="%NOTPLATFORM%*"/>
+					</FileFilters>
+				</FileSet>
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\*_%LANGUAGE%.*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Language" Platform="Console">
+			<Files>
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\*_%LANGUAGE%.*" bIsRecursive="true"/>
+				<FileSet Path="%GAME%\Movies\*_%LANGUAGE%.*" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 Content
+		 ========================== -->
+
+		<FileGroup Tag="Content" Platform="*!Mobile">
+			<Files>
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\*.*" bIsRecursive="true" >
+					<FileFilters>
+						<FileFilter Name="*_%LANGUAGE%.xxx" />
+						<FileFilter Name="*_%LANGUAGE%.xxx.uncompressed_size" />
+						<FileFilter Name="*_%LANGUAGE%.upk" />
+						<FileFilter Name="*_%LANGUAGE%.bin" />
+						<FileFilter Name="*_%NOTLANGUAGE%.xxx" />
+						<FileFilter Name="*_%NOTLANGUAGE%.xxx.uncompressed_size" />
+						<FileFilter Name="*_%NOTLANGUAGE%.upk" />
+						<FileFilter Name="*_%NOTLANGUAGE%.bin" />
+						<FileFilter Name="*_%NOTTEXEXTENSION%.tfc" />
+						<FileFilter Name="GlobalShaderCache-*" />
+						<FileFilter Name="RefShaderCache-*" />
+						<FileFilter Name="GeneratedGUDS*" bIsForDirectory="true" bIsForFilename="false" />
+						<FileFilter Name="GlobalPersistentCookerData.upk" />
+						<FileFilter Name="PersistentCookerShaderData.bin" />
+					</FileFilters>
+				</FileSet>
+				<FileSet Path="%GAME%\Demos\*.demo" />
+				<FileSet Path="%GAME%\Splash\%PLATFORM%\*.*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Content" Platform="Mobile">
+			<Files>
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\*.*" bIsRecursive="false" >
+					<FileFilters>
+						<FileFilter Name="*_%LANGUAGE%.xxx" />
+						<FileFilter Name="*_%LANGUAGE%.xxx.uncompressed_size" />
+						<FileFilter Name="*_%LANGUAGE%.upk" />
+						<FileFilter Name="*_%LANGUAGE%.bin" />
+						<FileFilter Name="*_%NOTLANGUAGE%.xxx" />
+						<FileFilter Name="*_%NOTLANGUAGE%.xxx.uncompressed_size" />
+						<FileFilter Name="*_%NOTLANGUAGE%.upk" />
+						<FileFilter Name="*_%NOTLANGUAGE%.bin" />
+						<FileFilter Name="*_%NOTTEXEXTENSION%.tfc" />
+						<FileFilter Name="GlobalShaderCache-*" />
+						<FileFilter Name="RefShaderCache-*" />
+						<FileFilter Name="GeneratedGUDS*" bIsForDirectory="true" bIsForFilename="false" />
+						<FileFilter Name="GlobalPersistentCookerData.upk" />
+						<FileFilter Name="PersistentCookerShaderData.bin" />
+					</FileFilters>
+				</FileSet>
+				<FileSet Path="%GAME%\Demos\*.demo" />
+				<FileSet Path="%GAME%\Splash\%PLATFORM%\*.*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Content" Platform="Mobile">
+			<Files>
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\GlobalShaderCache-*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Content" Platform="PC*">
+			<Files>
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\GlobalPersistentCookerData.upk" />
+				<FileSet Path="%GAME%\Config\Default*.ini" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Content" Platform="PC">
+			<Files>
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\GlobalShaderCache-*" />
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\RefShaderCache-*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Content" Platform="PCConsole">
+			<Files>
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\GlobalShaderCache-PC-D3D-SM3.bin" />
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\RefShaderCache-PC-D3D-SM3.upk" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Content" Platform="PCServer">
+			<Files>
+				<FileSet Path="%GAME%\Config\%PLATFORM%\PCServer*.ini" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Content" Platform="Xbox360">
+			<Files>
+				<FileSet Path="Binaries\UnrealFrontend_TmpExec.txt" />
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\GlobalPersistentCookerData.upk" />
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\GlobalShaderCache-*" />
+				<FileSet Path="%GAME%\*.xbx" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Content" Platform="WiiU">
+			<Files>
+				<FileSet Path="Binaries\UnrealFrontend_TmpExec.txt" />
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\GlobalPersistentCookerData.upk" />
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\GlobalShaderCache-*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Content" Platform="PS3">
+			<Files>
+				<FileSet Path="Binaries\UnrealFrontend_TmpExec.txt" />
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\GlobalPersistentCookerData.upk" />
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\GlobalShaderCache-*" />
+				<FileSet Path="%GAME%\Build\%PLATFORM%\BluRay\*.PNG" />
+				<FileSet Path="%GAME%\Build\%PLATFORM%\BluRay\*.PAM" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Content" Platform="IPhone">
+			<Files>
+				<FileSet Path="%GAME%\Build\IPhone\*.*" bIsRecursive="true" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="RunTimeContent" Platform="*">
+			<Files>
+				<FileSet Path="%GAME%\Flash\*.*" bIsRecursive="true" />
+				<FileSet Path="%GAME%\CutdownPackages\Engine\*.*" bIsRecursive="true" />
+				<FileSet Path="%GAME%\CutdownPackages\%GAME%\*.*" bIsRecursive="true" >
+					<FileFilters>
+						<FileFilter Name="DEU" bIsForDirectory="true" bIsForFilename="false" />
+					</FileFilters>
+				</FileSet>
+				<FileSet Path="%GAME%\Demos\*.demo" />
+				<FileSet Path="%GAME%\Config\Default*.ini" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="RunTimeContent" Platform="PC">
+			<Files>
+				<FileSet Path="%GAME%\Splash\%PLATFORM%\*.*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="RunTimeContent" Platform="Console">
+			<Files>
+				<FileSet Path="%GAME%\Config\%PLATFORM%\*.ini" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="RunTimeContent" Platform="Mobile">
+			<Files>
+				<FileSet Path="%GAME%\Config\Mobile\*.ini" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 RunTimeMisc
+		 ========================== -->
+
+		<FileGroup Tag="RunTimeMisc" Platform="*">
+			<Files>
+				<FileSet Path="%GAME%\Content\GameAssetDatabase.checkpoint" />
+				<FileSet Path="Engine\Localization\EULA.*" />
+				<FileSet Path="Engine\Localization\Readme.*" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="RunTimeMisc" Platform="PC">
+			<Files>
+				<FileSet Path="Binaries\InstallData\dotNetFx40_Full_setup.exe" />
+				<FileSet Path="Binaries\InstallData\*.ico" />
+				<FileSet Path="Binaries\InstallData\*.hta" />
+				<FileSet Path="Binaries\InstallData\ExtrasContent\*.*" bIsRecursive="true" />
+				<FileSet Path="Binaries\Win32\UserCode\*.txt" />
+				<FileSet Path="Binaries\Win32\UserCode\*.dll" />
+				<FileSet Path="Binaries\InstallData\Interop.IWshRuntimeLibrary.dll" />
+				<FileSet Path="%GAME%\Content\GlobalShaderCache-PC-D3D-SM3.bin" />
+				<FileSet Path="%GAME%\Content\RefShaderCache-PC-D3D-SM3.upk" />
+			</Files>
+		</FileGroup>
+
+
+		<!-- ==========================
+				 Script
+		 ========================== -->
+
+		<FileGroup Tag="Script" Platform="*">
+			<Files>
+				<FileSet Path="Development\Src\*.uc*" bIsRecursive="true" >
+					<!-- Filters out other games' script code, so ExampleGame won't have UTGame,
+						 UTGameContent, or UTEditor. NOTROOTGAME does not use the Game extension,
+						 like UT, not UTGame. NOTGAME uses the extension, like UTGame. -->
+					<FileFilters>
+						<FileFilter Name="%NOTROOTGAME%*" bIsForDirectory="true" bIsForFilename="false" />
+						<FileFilter Name="OnlineSubsystemGameSpy*" bIsForDirectory="true" bIsForFilename="false" />
+						<FileFilter Name="OnlineSubsystemLive*" bIsForDirectory="true" bIsForFilename="false" />
+						<FileFilter Name="SwordGame*" bIsForDirectory="true" bIsForFilename="false" />
+					</FileFilters>
+				</FileSet>
+				<FileSet Path="%GAME%\Script\*.*" bIsRecursive="false" />
+				<FileSet Path="%GAME%\ScriptFinalRelease\*.*" bIsRecursive="false" />
+				<FileSet Path="Development\Src\MyMod\Classes\*.txt" bIsRecursive="false" />
+				<FileSet Path="Development\Flash\*.*" bIsRecursive="true" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 Movies
+		 ========================== -->
+
+		<FileGroup Tag="Movies" Platform="*!Mobile">
+			<Files>
+				<FileSet Path="%GAME%\Movies\*.*" >
+					<FileFilters>
+						<FileFilter Name="*_%NOTLANGUAGE%.bik" />
+						<FileFilter Name="*_%NOTLANGUAGE%.txt" />
+						<FileFilter Name="*_%NOTPLATFORM%.bik" />
+						<FileFilter Name="*_%NOTPLATFORM%.txt" />
+						<FileFilter Name="*_%NOTPLATFORM%_*.bik" />
+						<FileFilter Name="*_%NOTPLATFORM%_*.txt" />
+						</FileFilters>
+				</FileSet>
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Movies" Platform="Mobile!NGP">
+			<Files>
+        <FileSet Path="%GAME%\Movies\*.mp4" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 Music
+		 ========================== -->
+
+		<FileGroup Tag="Music" Platform="Android">
+			<Files>
+				<FileSet Path="%GAME%\Music\*.mp3" />
+				<FileSet Path="%GAME%\Audio\*.wav" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="Music" Platform="NGP">
+			<Files>
+				<FileSet Path="%GAME%\Music\*.at9" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 MapSummary
+		 ========================== -->
+
+		<FileGroup Tag="MapSummary" Platform="*">
+			<Files>
+				<FileSet Path="%GAME%\Logs\MapSummaryData\*.txt" bIsRecursive="true" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 ARCLogs
+		 ========================== -->
+
+		<FileGroup Tag="ARCLogs" Platform="*">
+			<Files>
+				<FileSet Path="%GAME%\Logs\AnalyzeReferencedContentCSVs\*.*" bIsRecursive="true" />
+				<FileSet Path="%GAME%\Logs\ContentComparison\*.*" bIsRecursive="true" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 SpeedTreeModeler
+		 ========================== -->
+
+		<FileGroup Tag="SpeedTreeModeler" Platform="PC">
+			<Files>
+				<FileSet Path="Binaries\SpeedTreeModeler\*.*" bIsRecursive="true" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 ArtistTools
+		 ========================== -->
+
+		<FileGroup Tag="ArtistTools" Platform="PC">
+			<Files>
+				<FileSet Path="Binaries\ActorX\*.*" bIsRecursive="true" />
+				<FileSet Path="Binaries\FaceFXPlugins\*.*" bIsRecursive="true" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 DVD
+		 ========================== -->
+
+		<FileGroup Tag="DVD" Platform="Console" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="%GAME%\Build\hashes.sha" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="DVD" Platform="Xbox360" bIsForTOC="false" >
+			<Files>
+				<FileSet Path="default.xex" />
+				<FileSet Path="*.xdb" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="DVD" Platform="Xbox360" >
+			<Files>
+				<FileSet Path="nxeart" />
+				<FileSet Path="AvatarAwards" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="DVD" Platform="PS3" bIsForTOC="false">
+			<Files>
+				<FileSet Path="EBOOT.BIN" />
+				<FileSet Path="%GAME%\Build\%PLATFORM%\BluRay\*.PNG" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 DLC
+		 ========================== -->
+
+		<FileGroup Tag="DLC" Platform="Xbox360" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="%GAME%\DLC\%PLATFORM%\*.*" bIsRecursive="true" />
+			</Files>
+		</FileGroup>
+
+		<FileGroup Tag="TU" Platform="Xbox360" bIsForSync="false" bIsForTOC="false">
+			<Files>
+				<FileSet Path="%GAME%\TU\%PLATFORM%\*.*" bIsRecursive="true" />
+			</Files>
+		</FileGroup>
+
+		<!-- ==========================
+				 Shipped
+		 ========================== -->
+
+		<FileGroup Tag="Shipped" Platform="Xbox360" >
+			<Files>
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\GlobalPersistentCookerData.upk" />
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\MPCH_*" />
+				<FileSet Path="%GAME%\Cooked%PLATFORM%\HORDESET_*" />
+			</Files>
+		</FileGroup>
+
+	</FileGroups>
+
+</SharedSettings>

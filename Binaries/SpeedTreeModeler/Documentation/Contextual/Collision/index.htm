@@ -1,0 +1,151 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" property="text/html; charset=utf-8" />
+<title>Collision Object</title>
+<link href="../contextual.css" rel="stylesheet" type="text/css" media="screen">
+<script src="../contextual.js" type="text/javascript"></script>
+</head>
+<body scroll="auto" class="container" id="container" topmargin="0" marginheight="0" leftmargin="0" bottommargin="0" rightmargin="0" marginwidth="0">
+<div class="object_label" id="object_label">
+	<div class="btn_house">
+		<a name="reserved.this">
+			<b class="button-next"></b>
+			<b class="button-auto" title="resize"></b>
+			<b class="button-fixed" title="resize"></b>
+		&nbsp;</a>
+	</div>
+	<h5>Collision Object</h5>
+	<div class="object_desc">
+		<div class="object-collision"></div>
+		<p>An arbitrary number of sphere and capsule collision objects can be added to a tree. The transforms of these objects can be accessed via the SpeedTreeRT API and fed to a collision detection system.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Collision Object</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="collision_object.type">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Type</h2>
+	</div>
+	<div class="property">
+		<h3>Capsule</h3>
+		<p>A cylinder capped with hemispheres. The length of the cylinder is equal to the <a href="#collision_object.height">Height</a> value while the radius of each hemisphere is equal to the <a href="#collision_object.radius">Radius</a> value.</p>
+		<h3>Sphere</h3>
+		<p>A sphere object. The size of the sphere is determined by the <a href="#collision_object.radius">Radius</a> value.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="collision_object.radius">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Radius</h2>
+	</div>
+	<div class="property">
+		<p>The radius of a sphere collision object or the hemispherical caps of a capsule collision object.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="collision_object.height">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>height</span> Height</h2>
+	</div>
+	<div class="property">
+		<p>The length of the cylindrical portion of a capsule collision object.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="collision_object.user_data">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>string</span> User Data</h2>
+	</div>
+	<div class="property">
+		<p>The length of the cylindrical portion of a capsule collision object.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="collision_object.extra_data">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>string</span> Extra Data</h2>
+	</div>
+	<div class="property">
+		<p>A custom string can be included with each collision object.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Transform</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="transform.translation.y"></a><a name="transform.translation.z"></a>
+			<a name="transform.translation.x">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Translation: X, Y, &amp; Z</h2>
+	</div>
+	<div class="property">
+		<p>The position of the collision object along each axis.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="transform.rotation.axis_y"></a><a name="transform.rotation.axis_z"></a>
+			<a name="transform.rotation.axis_x">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Rotation: Axis: X, Y, &amp; Z</h2>
+	</div>
+	<div class="property">
+		<p>The X,Y, and Z components of the <a href="#transform.rotation.angle">Rotation: Angle</a>.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="transform.rotation.angle">
+				<b class="button-prev"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>degrees</span> Rotation: Angle</h2>
+	</div>
+	<div class="property">
+		<p>The amount of rotation around the rotation angle.</p>
+	</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resource version="2.3.0.1" xmlns="http://www.wxwidgets.org/wxxrc">
+    <object class="wxDialog" name="ID_TaskBrowserConfigDialog">
+        <style>wxCAPTION|wxSYSTEM_MENU|wxCLOSE_BOX|wxTAB_TRAVERSAL</style>
+        <exstyle>wxWS_EX_BLOCK_EVENTS</exstyle>
+        <title>TaskBrowserConfig_DialogCaption</title>
+        <centered>1</centered>
+        <object class="wxBoxSizer">
+            <orient>wxVERTICAL</orient>
+            <object class="spacer">
+                <flag>wxALIGN_CENTER_HORIZONTAL|wxALL</flag>
+                <border>5</border>
+                <size>5,5</size>
+            </object>
+            <object class="sizeritem">
+                <flag>wxGROW|wxALL</flag>
+                <border>5</border>
+                <object class="wxStaticBoxSizer" name="wxID_ANY">
+                    <orient>wxVERTICAL</orient>
+                    <label>TaskBrowserConfig_ConnectionSettingsLabel</label>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_LEFT|wxALL</flag>
+                        <border>0</border>
+                        <object class="wxBoxSizer">
+                            <orient>wxHORIZONTAL</orient>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxStaticText" name="wxID_STATIC">
+                                    <size>80,-1</size>
+                                    <style>wxALIGN_RIGHT</style>
+                                    <label>TaskBrowserConfig_ServerNameLabel</label>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxTextCtrl" name="ID_TaskBrowserConfig_ServerName">
+                                    <size>160,-1</size>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxStaticText" name="wxID_STATIC">
+                                    <size>30,-1</size>
+                                    <style>wxALIGN_RIGHT</style>
+                                    <label>TaskBrowserConfig_ServerPortLabel</label>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxTextCtrl" name="ID_TaskBrowserConfig_ServerPort">
+                                    <size>30,-1</size>
+                                </object>
+                            </object>
+                        </object>
+                    </object>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_LEFT|wxALL</flag>
+                        <border>0</border>
+                        <object class="wxBoxSizer">
+                            <orient>wxHORIZONTAL</orient>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxStaticText" name="wxID_STATIC">
+                                    <size>80,-1</size>
+                                    <style>wxALIGN_RIGHT</style>
+                                    <label>TaskBrowserConfig_UserNameLabel</label>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxTextCtrl" name="ID_TaskBrowserConfig_UserName">
+                                    <size>120,-1</size>
+                                </object>
+                            </object>
+                        </object>
+                    </object>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_LEFT|wxALL</flag>
+                        <border>0</border>
+                        <object class="wxBoxSizer">
+                            <orient>wxHORIZONTAL</orient>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxStaticText" name="wxID_STATIC">
+                                    <size>80,-1</size>
+                                    <style>wxALIGN_RIGHT</style>
+                                    <label>TaskBrowserConfig_PasswordLabel</label>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxTextCtrl" name="ID_TaskBrowserConfig_Password">
+                                    <size>120,-1</size>
+                                    <style>wxTE_PASSWORD</style>
+                                </object>
+                            </object>
+                        </object>
+                    </object>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_LEFT|wxALL</flag>
+                        <border>0</border>
+                        <object class="wxBoxSizer">
+                            <orient>wxHORIZONTAL</orient>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxStaticText" name="wxID_STATIC">
+                                    <size>80,-1</size>
+                                    <style>wxALIGN_RIGHT</style>
+                                    <label>TaskBrowserConfig_ProjectName</label>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxTextCtrl" name="ID_TaskBrowserConfig_ProjectName">
+                                    <size>120,-1</size>
+                                </object>
+                            </object>
+                        </object>
+                    </object>
+                </object>
+            </object>
+            <object class="spacer">
+                <flag>wxALIGN_CENTER_HORIZONTAL|wxALL</flag>
+                <border>5</border>
+                <size>5,5</size>
+            </object>
+            <object class="sizeritem">
+                <flag>wxGROW|wxALL</flag>
+                <border>5</border>
+                <object class="wxStaticBoxSizer" name="wxID_ANY">
+                    <orient>wxVERTICAL</orient>
+                    <label>TaskBrowserConfig_PreferencesLabel</label>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_LEFT|wxALL</flag>
+                        <border>5</border>
+                        <object class="wxCheckBox" name="ID_TaskBrowserConfig_AutoConnectAtStartup">
+                            <label>TaskBrowserConfig_AutoConnectAtStartupLabel</label>
+                            <checked>0</checked>
+                        </object>
+                    </object>
+                </object>
+            </object>
+            <object class="spacer">
+                <flag>wxALIGN_CENTER_HORIZONTAL|wxALL</flag>
+                <border>5</border>
+                <size>5,5</size>
+            </object>
+            <object class="sizeritem">
+                <flag>wxALIGN_RIGHT|wxALL</flag>
+                <border>0</border>
+                <object class="wxBoxSizer">
+                    <orient>wxHORIZONTAL</orient>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                        <border>5</border>
+                        <object class="wxButton" name="wxID_OK">
+                            <label>TaskBrowserConfig_OKButton</label>
+                            <default>1</default>
+                        </object>
+                    </object>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                        <border>5</border>
+                        <object class="wxButton" name="wxID_CANCEL">
+                            <label>TaskBrowserConfig_CancelButton</label>
+                        </object>
+                    </object>
+                </object>
+            </object>
+        </object>
+    </object>
+</resource>

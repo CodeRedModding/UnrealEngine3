@@ -1,0 +1,200 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+<UserControl
+	x:Class="ContentBrowser.AssetInspector"
+	x:Name="This"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:cb="clr-namespace:ContentBrowser"
+	xmlns:cc="clr-namespace:CustomControls"
+	xmlns:System="clr-namespace:System;assembly=mscorlib">
+	<UserControl.Resources>
+		<Storyboard x:Key="TagVisualErase">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.Opacity)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.2" Value="0"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
+		<!-- Collections list context menu -->
+		<ContextMenu x:Key="TagContextMenu" Placement="MousePoint" HasDropShadow="True">
+			<MenuItem Command="{x:Static cb:TagCommands.Create}" />
+			<MenuItem Command="{x:Static cb:TagCommands.Rename}" />
+			<MenuItem Command="{x:Static cb:TagCommands.CreateCopy}" />
+			<MenuItem Command="{x:Static cb:TagCommands.Destroy}" />
+		</ContextMenu>
+		
+	</UserControl.Resources>
+
+	<DockPanel Background="{StaticResource Slate_Panel_Background}" >
+		<!--<Label DockPanel.Dock="Top" x:Name="mNumAssets" HorizontalAlignment="Right" FontSize="14" />-->
+		<StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,5,0,0">
+			<!--<Image Source="{StaticResource imgDownArrow}" Width="13" Height="13" />-->
+			<Label Content="{DynamicResource ContentBrowser_AssetInspector_AppliedTags}" Style="{StaticResource Slate_SubpanelTitle}" Margin="2,0,0,0" FontSize="16" />
+		</StackPanel>
+        <cc:SlateBorder DockPanel.Dock="Top" Background="{StaticResource Slate_List_Background}" Margin="0,0,3,0" MinHeight="100" MaxHeight="250" >
+			<Grid Margin="5">
+				<TextBlock x:Name="mNoTagsLabel" DockPanel.Dock="Top" VerticalAlignment="Center" HorizontalAlignment="Center" Text="{StaticResource ContentBrowser_AssetInspector_NoTags}" />
+				<ScrollViewer VerticalScrollBarVisibility="Auto" >
+					<StackPanel x:Name="mTagsWrapPanel" DockPanel.Dock="Top" ScrollViewer.VerticalScrollBarVisibility="Auto">
+						<StackPanel.Resources>
+							<Style TargetType="{x:Type cc:TagVisual}">
+								<Setter Property="Margin" Value="2" />
+							</Style>
+						</StackPanel.Resources>
+					</StackPanel>
+				</ScrollViewer>
+			</Grid>
+		</cc:SlateBorder>
+
+		<cc:YesNoPrompt x:Name="mProceedWithTaggingPrompt" AffirmativeIsDefault="False"
+						WarningText="{StaticResource ContentBrowser_ApplyTagPrompt_Warning}"
+						AffirmativeText="{StaticResource ContentBrowser_ApplyTagPrompt_Apply}"
+						NegativeText="{StaticResource ContentBrowser_ApplyTagPrompt_Cancel}" />
+
+		<cc:YesNoPrompt x:Name="mProceedWithUntaggingPrompt" AffirmativeIsDefault="False"
+						WarningText="{StaticResource ContentBrowser_UntagPrompt_Warning}"
+						AffirmativeText="{StaticResource ContentBrowser_UntagPrompt_Remove}"
+						NegativeText="{StaticResource ContentBrowser_UntagPrompt_Cancel}" />
+
+	
+		<!-- Manage Tags -->
+		<StackPanel Orientation="Horizontal" DockPanel.Dock="Top" >
+			<!--<Image Source="{StaticResource imgDownArrow}" Width="13" Height="13" />-->
+			<Label Content="{StaticResource ContentBrowser_AssetInspector_ManageTags}" Style="{StaticResource Slate_SubpanelTitle}" Margin="2,0,0,0" FontSize="16" />
+		</StackPanel>
+
+		<!-- [Destroy Tag] / [Create Tag] Buttons -->
+		<UniformGrid DockPanel.Dock="Bottom" Margin="5,0,5,0" Rows="1" Columns="2">
+			<Button x:Name="mDestroyTagModeButton" Margin="5" Padding="4,4,5,5"
+					IsEnabled="False"
+					Content="{StaticResource ContentBrowser_AssetInspector_ActivateDestroyTagMode}"
+					ToolTip="{StaticResource ContentBrowser_AssetInspector_DestroyTagMode[ToolTip]}"/>
+			<Button IsEnabled="False" Margin="5" Padding="4,4,5,5" x:Name="mCreateTagButton" Content="{StaticResource ContentBrowser_AssetInspector_CreateTag}" ToolTip="{StaticResource ContentBrowser_AssetInspector_CreateTag[ToolTip]}"/>
+			<cc:NameEntryPrompt x:Name="mCreateTagPrompt"
+								SupportsGroupName="True"
+								Placement="Center" />
+			<cc:YesNoPrompt x:Name="mDestroyTagPrompt" AffirmativeIsDefault="False"
+							WarningText="{StaticResource ContentBrowser_DestroyTagPrompt_WarningText}"
+							AffirmativeText="{StaticResource ContentBrowser_DestroyTagPrompt_Destroy}"
+							NegativeText="{StaticResource ContentBrowser_DestroyTagPrompt_Cancel}" />
+		</UniformGrid>
+        
+        <cc:SlateBorder x:Name="mTagsPaletteBorder" DockPanel.Dock="Top" Background="{StaticResource Slate_List_Background}" Margin="0,0,3,0" >
+		    <DockPanel LastChildFill="True">
+			    <!-- Shadow -->
+			    <Rectangle HorizontalAlignment="Stretch" Panel.ZIndex="1000" Height="4" IsHitTestVisible="False" DockPanel.Dock="Top" >
+				    <Rectangle.Fill>
+					    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+						    <GradientStop Color="#00000000" Offset="1"/>
+						    <GradientStop Color="#44000000" Offset="0"/>
+					    </LinearGradientBrush>
+				    </Rectangle.Fill>
+			    </Rectangle>
+    			
+			    <!-- Filter -->
+			    <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Slate_Panel_Shadow}" >
+				    <DockPanel Margin="3,0,3,5">
+    					
+					    <!--Filter TextBox-->
+					    <cc:UnrealTextBox x:Name="mTagsPaletteFilter"
+									      DockPanel.Dock="Top" 
+									      Margin="0, 2, 0, 0"
+									      VerticalContentAlignment="Center"
+									      HintText="{StaticResource ContentBrowser_AssetInspector_FilterTagsPaletteHint}" />
+				    </DockPanel>
+			    </Border>
+
+			    <!-- Shadow -->
+			    <Rectangle HorizontalAlignment="Stretch" Panel.ZIndex="1000" Height="3" IsHitTestVisible="False" DockPanel.Dock="Top" >
+				    <Rectangle.Fill>
+					    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+						    <GradientStop Color="#00000000" Offset="1"/>
+						    <GradientStop Color="#44000000" Offset="0"/>
+					    </LinearGradientBrush>
+				    </Rectangle.Fill>
+			    </Rectangle>
+
+
+
+			    <!-- Manage Tags List contents -->
+			    <ListBox x:Name="mTagsPalette"
+					     Background="Transparent" 
+					     BorderThickness="0" 
+					     DockPanel.Dock="Top"
+					     Margin="2,0,0,0" 
+					     HorizontalContentAlignment="Stretch"
+					     VirtualizingStackPanel.IsVirtualizing="True"
+					     ItemsSource="{Binding ElementName=This, Path=TagsCatalog}">
+					<ListBox.GroupStyle>
+						<!-- Show tags in groups -->
+						<GroupStyle>
+							<GroupStyle.HeaderTemplate>
+								<DataTemplate>
+									<DockPanel LastChildFill="True" Margin="2, 5, 2, 0">
+										<TextBlock Foreground="{StaticResource Slate_Control_Foreground}" FontWeight="Bold" Text="{Binding Path=Name}" VerticalAlignment="Center" />
+										<Line Margin="5, 0" HorizontalAlignment="Stretch" VerticalAlignment="Center" Stretch="Fill" X1="0" X2="1" Y1="0" Y2="0" Stroke="{StaticResource Slate_Control_Foreground}" StrokeThickness="1" SnapsToDevicePixels="True" />
+									</DockPanel>
+								</DataTemplate>
+							</GroupStyle.HeaderTemplate>
+						</GroupStyle>
+					</ListBox.GroupStyle>
+				    <ListBox.ItemContainerStyle>
+						<Style TargetType="{x:Type ListBoxItem}">
+							<Setter Property="OverridesDefaultStyle" Value="true"/>
+						    <Setter Property="Background" Value="Transparent"/>
+						    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+						    <Setter Property="Template">
+							    <Setter.Value>
+								    <ControlTemplate TargetType="{x:Type ListBoxItem}">
+									    <Border x:Name="Bd" SnapsToDevicePixels="true" Background="{TemplateBinding Background}" >
+										    <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+									    </Border>
+								    </ControlTemplate>
+							    </Setter.Value>
+						    </Setter>
+					    </Style>
+				    </ListBox.ItemContainerStyle>
+				    <ListBox.Resources>
+					    <!-- Override TagVisual appearance so that the entire TagVisual is a click target; -->
+					    <!-- also add a button for destroying tags                                         -->
+					    <Style TargetType="{x:Type cc:TagVisual}" >
+							<Setter Property="ContextMenu" Value="{StaticResource TagContextMenu}"/>
+							<Setter Property="Background" Value="Transparent" />
+							<Setter Property="IsTagginAllowed" Value="{Binding ElementName=This, Path=IsTaggingAllowed}" />
+							<Setter Property="Template">
+							    <Setter.Value>
+								    <ControlTemplate TargetType="{x:Type cc:TagVisual}">
+										<DockPanel LastChildFill="True" Background="{TemplateBinding Background}">
+										    <!-- Button for destroying the tag (visible when in Destroy Mode) -->
+										    <Button Command="{x:Static cc:TagVisual.ClickCommand}"
+												    Style="{StaticResource RemoveTagButton}"
+												    Visibility="{Binding ElementName=This,
+															    Path=InTagDestroyMode,
+															    Converter={StaticResource BooleanToVisibilityConverter}}" />
+										    <Button Command="{x:Static cc:TagVisual.ClickCommand}"
+												    Content="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=AssetTag.Name}"
+												    Style="{StaticResource ApplyTagButton}"
+												    IsEnabled="{TemplateBinding IsTagginAllowed}" />											
+									    </DockPanel>
+										<ControlTemplate.Triggers>
+											<Trigger Property="IsMouseOver" Value="True">
+												<Setter Property="Background" Value="{StaticResource Slate_ListItem_Background_Hover}" />
+											</Trigger>											
+										</ControlTemplate.Triggers>
+									</ControlTemplate>
+							    </Setter.Value>
+						    </Setter>
+					    </Style>
+
+					    <DataTemplate DataType="{x:Type cb:Tag}">
+						    <cc:TagVisual AssetTag="{Binding}" Click="TagPaletteTagButton_Click" />
+					    </DataTemplate>
+				    </ListBox.Resources>
+			    </ListBox>
+
+		    </DockPanel>
+		</cc:SlateBorder>
+	</DockPanel>
+	
+	
+</UserControl>

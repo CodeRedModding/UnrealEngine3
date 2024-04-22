@@ -1,0 +1,13 @@
+UNIFORM( vec4, Transform2D[2] );
+ATTRIBUTE( vec4, Position, POSITION );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// E position
+
+
+  gl_Position = Position;
+  gl_Position.x = dot(Position, Transform2D[int(0.1+0.0)]);
+  gl_Position.y = dot(Position, Transform2D[int(0.1+1.0)]);  
+
+}
+

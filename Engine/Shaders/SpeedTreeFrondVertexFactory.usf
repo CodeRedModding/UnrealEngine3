@@ -1,0 +1,81 @@
+/*=============================================================================
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// struct FVertexFactoryInput
+
+#define NUM_INPUT_TEXCOORDS_SPEEDTREE 1
+
+struct FVertexFactoryInput
+{
+	float4	Position	: POSITION;
+	half3	TangentX	: TANGENT;
+	half3	TangentY	: BINORMAL;
+	half3	TangentZ	: NORMAL;
+	float4	WindInfo	: BLENDINDICES;
+	
+#if NUM_INPUT_TEXCOORDS_SPEEDTREE
+	float2	TexCoords[NUM_INPUT_TEXCOORDS_SPEEDTREE] : TEXCOORD0;
+#endif
+
+	float4	LODHint		: TEXCOORD1;
+	float2	FrondRipple	: TEXCOORD2;
+
+#if NEEDS_VERTEX_LIGHTMAP
+	float4 LightMapA : TEXCOORD5;
+	float4 LightMapB : TEXCOORD6;
+#elif NEEDS_SIMPLE_VERTEX_LIGHTMAP
+	float4 LightMapA : TEXCOORD5;
+#endif
+};
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Includes
+
+#include "SpeedTreeVertexFactoryBase.usf"
+
+
+///////////////////////////////////////////////////////////////////////  
+//  frond-specific global variables
+
+float3		WindFrondRipple;	// x = amount, y = u tile, z = v tile
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CalcWorldPosition
+
+float4 CalcWorldPosition(float4x4 Transform, FVertexFactoryInput Input)
+{
+	const float3 LODPosition = lerp(Input.Position.xyz, Input.LODHint.xyz, LODData.x);
+	
+	// frond ripple
+	const float3 RotatedNormal = MulMatrix((float3x3)RotationOnlyMatrix, TangentBias(Input.TangentZ.xyz));
+	float3 vOffset = RotatedNormal.xyz * (sin(Input.FrondRipple.x + WindTimes.z) * cos(Input.FrondRipple.x + WindTimes.z + Input.LODHint.w));
+	vOffset = vOffset * 0.5f * Input.FrondRipple.y * WindFrondRipple.x;
+	
+	return MulMatrix(Transform, CommonWindMotion(LODPosition + vOffset, Input.WindInfo));
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// GetWorldTangentBasis
+
+half3x3 GetWorldTangentBasis(FVertexFactoryInput Input)
+{
+	return MulMatrix(half3x3(TangentBias(Input.TangentX.xyz),
+							TangentBias(Input.TangentY.xyz),
+							TangentBias(Input.TangentZ.xyz)),
+					(half3x3)RotationOnlyMatrix);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ModifyInterpolants
+
+void ModifyInterpolants(FVertexFactoryInput Input, inout FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+}
+

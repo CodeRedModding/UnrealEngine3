@@ -1,0 +1,40 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+// @warning:	When you update this, you must add an entry to GPixelFormats(see UnRenderUtils.cpp)
+// @warning:	The *Tools DLLs will also need to be recompiled if the ordering is changed, but should not need code changes.
+// @warning:	The script compiler does not pick up changes in .uci files, you will need to do a full remake after changing this file.
+enum EPixelFormat
+{
+	PF_Unknown,
+	PF_A32B32G32R32F,
+	PF_A8R8G8B8,
+	PF_G8,
+	PF_G16,
+	PF_DXT1,
+	PF_DXT3,
+	PF_DXT5,
+	PF_UYVY,
+	PF_FloatRGB,		// A RGB FP format with platform-specific implementation, for use with render targets
+	PF_FloatRGBA,		// A RGBA FP format with platform-specific implementation, for use with render targets
+	PF_DepthStencil,	// A depth+stencil format with platform-specific implementation, for use with render targets
+	PF_ShadowDepth,		// A depth format with platform-specific implementation, for use with render targets
+	PF_FilteredShadowDepth, // A depth format with platform-specific implementation, that can be filtered by hardware
+	PF_R32F,
+	PF_G16R16,
+	PF_G16R16F,
+	PF_G16R16F_FILTER,
+	PF_G32R32F,
+	PF_A2B10G10R10,
+	PF_A16B16G16R16,
+	PF_D24,
+	PF_R16F,
+	PF_R16F_FILTER,
+	PF_BC5,
+	PF_V8U8,
+	PF_A1,
+	PF_FloatR11G11B10,	// A low precision floating point format.
+	PF_A4R4G4B4,
+	PF_R5G6B5,
+};

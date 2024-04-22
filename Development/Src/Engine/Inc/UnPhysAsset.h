@@ -1,9 +1,6 @@
 /*=============================================================================
 	UnPhysAsset.h: Physics Asset C++ declarations
-	Copyright 2003 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-	* Created by James Golding
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 enum EPhysAssetFitGeomType
@@ -33,109 +30,70 @@ struct FPhysAssetCreateParams
 	UBOOL						bAlignDownBone;
 	UBOOL						bCreateJoints;
 	UBOOL						bWalkPastSmall;
+	UBOOL						bBodyForAll;
 };
 
 #define		RB_MinSizeToLockDOF				(0.1)
 #define		RB_MinAngleToLockDOF			(5.0)
 
-
-class UPhysicsAsset : public UObject
+/**
+ * Endian save storage for a pair of rigid body indices used as a key in the CollisionDisableTable TMap.
+ */
+struct FRigidBodyIndexPair
 {
-	DECLARE_CLASS(UPhysicsAsset,UObject,0,Engine);
+	/** Pair of indices */
+	INT		Indices[2];
+	
+	/** Default constructor required for use with TMap */
+	FRigidBodyIndexPair()
+	{}
 
-	class USkeletalMesh*							DefaultSkelMesh;
+	/**
+	 * Constructor, taking unordered pair of indices and generating a key.
+	 *
+	 * @param	Index1	1st unordered index
+	 * @param	Index2	2nd unordered index
+	 */
+	FRigidBodyIndexPair( INT Index1, INT Index2 )
+	{
+		Indices[0] = Min( Index1, Index2 );
+		Indices[1] = Max( Index1, Index2 );
+	}
 
-	TArray<class URB_BodySetup*>					BodySetup;
-	TArray<class URB_ConstraintSetup*>				ConstraintSetup;
+	/**
+	 * == operator required for use with TMap
+	 *
+	 * @param	Other	FRigidBodyIndexPair to compare this one to.
+	 * @return	TRUE if the passed in FRigidBodyIndexPair is identical to this one, FALSE otherwise
+	 */
+	UBOOL operator==( const FRigidBodyIndexPair &Other ) const
+	{
+		return (Indices[0] == Other.Indices[0]) && (Indices[1] == Other.Indices[1]);
+	}
 
-	class UPhysicsAssetInstance*					DefaultInstance;
-
-	// UObject interface
-	virtual FString GetDesc();
-	virtual void DrawThumbnail( EThumbnailPrimType InPrimType, INT InX, INT InY, struct FChildViewport* InViewport, struct FRenderInterface* InRI, FLOAT InZoom, UBOOL InShowBackground, FLOAT InZoomPct, INT InFixedSz );
-	virtual FThumbnailDesc GetThumbnailDesc( FRenderInterface* InRI, FLOAT InZoom, INT InFixedSz );
-	virtual INT GetThumbnailLabels( TArray<FString>* InLabels );
-
-	// Creates a Physics Asset using the supplied Skeletal Mesh as a starting point.
-	UBOOL CreateFromSkeletalMesh( class USkeletalMesh* skelMesh, FPhysAssetCreateParams& Params );
-	static void CreateCollisionFromBone( URB_BodySetup* bs, class USkeletalMesh* skelMesh, INT BoneIndex, FPhysAssetCreateParams& Params, TArray<struct FBoneVertInfo>& Infos );
-
-	INT						FindControllingBodyIndex(class USkeletalMesh* skelMesh, INT BoneIndex);
-
-	INT						FindBodyIndex(FName bodyName);
-	INT						FindConstraintIndex(FName constraintName);
-
-	FBox					CalcAABB(class USkeletalMeshComponent* SkelComp);
-	UBOOL					LineCheck(FCheckResult& Result, class USkeletalMeshComponent* SkelComp, const FVector& Start, const FVector& End, const FVector& Extent);
-	void					UpdateMassProps();
-
-	// For PhAT only really...
-	INT CreateNewBody(FName bodyName);
-	void DestroyBody(INT bodyIndex);
-
-	INT CreateNewConstraint(FName constraintName, URB_ConstraintSetup* constraintSetup = NULL);
-	void DestroyConstraint(INT constraintIndex);
-
-	void BodyFindConstraints(INT bodyIndex, TArray<INT>& constraints);
-	void ClearShapeCaches();
-
-	void UpdateBodyIndices();
-
-	void WeldBodies(INT BaseBodyIndex, INT AddBodyIndex, USkeletalMeshComponent* SkelComp);
-
-	void DrawCollision(struct FPrimitiveRenderInterface* PRI, class USkeletalMeshComponent* SkelComp, FLOAT Scale);
-	void DrawConstraints(struct FPrimitiveRenderInterface* PRI, class USkeletalMeshComponent* SkelComp, FLOAT Scale);
-
-	void FixOuters();
+	/**
+	 * Serializes the rigid body index pair to the passed in archive.	
+	 *
+	 * @param	Ar		Archive to serialize data to.
+	 * @param	Pair	FRigidBodyIndexPair to serialize
+	 * @return	returns the passed in FArchive after using it for serialization
+	 */
+	friend FArchive& operator<< ( FArchive &Ar, FRigidBodyIndexPair &Pair )
+	{
+		Ar << Pair.Indices[0] << Pair.Indices[1];
+		return Ar;
+	}
 };
 
-class UPhysicsAssetInstance : public UObject
+/**
+ * Generates a hash value in accordance with the QWORD implementation of GetTypeHash which is
+ * required for backward compatibility as older versions of UPhysicsAssetInstance stored
+ * a TMap<QWORD,UBOOL>.
+ * 
+ * @param	Pair	FRigidBodyIndexPair to calculate the hash value for
+ * @return	the hash value for the passed in FRigidBodyIndexPair
+ */
+inline DWORD GetTypeHash( const FRigidBodyIndexPair Pair )
 {
-	DECLARE_CLASS(UPhysicsAssetInstance,UObject,0,Engine);
-
-	AActor*											Owner;
-
-	INT												RootBodyIndex;
-
-	TArrayNoInit<class URB_BodyInstance*>			Bodies;
-	TArrayNoInit<class URB_ConstraintInstance*>		Constraints;
-
-	TMap<QWORD, UBOOL>								CollisionDisableTable;
-
-	// UObject interface
-	virtual void			Serialize(FArchive& Ar);
-
-	// UPhysicsAssetInstance interface
-	void					InitInstance(class USkeletalMeshComponent* SkelComp, class UPhysicsAsset* PhysAsset);
-	void					TermInstance();
-
-	void					DisableCollision(class URB_BodyInstance* BodyA, class URB_BodyInstance* BodyB);
-	void					EnableCollision(class URB_BodyInstance* BodyA, class URB_BodyInstance* BodyB);
-};
-
-class URB_BodySetup : public UKMeshProps
-{
-	DECLARE_CLASS(URB_BodySetup,UKMeshProps,0,Engine);
-
-	FName BoneName;
-	BITFIELD bFixed:1 GCC_PACK(4);
-	BITFIELD bNoCollision:1;
-	BITFIELD bBlockZeroExtent:1;
-	BITFIELD bBlockNonZeroExtent:1;
-
-	class UClass* PhysicalMaterial GCC_PACK(4);
-	FLOAT MassScale;
-
-	FVector ApparentVelocity;	
-
-	// Scaled shape cache. Not serialised.
-	TArray<void*>			CollisionGeom;
-	TArray<FVector>			CollisionGeomScale3D;
-
-	// UObject interface.
-	virtual void Destroy();
-
-	// URB_BodySetup interface.
-	void	CopyBodyPropertiesFrom(class URB_BodySetup* fromSetup);
-	void	ClearShapeCache();
-};
+	return Pair.Indices[0] + (Pair.Indices[1] * 23);
+}

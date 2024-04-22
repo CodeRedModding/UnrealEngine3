@@ -1,9 +1,6 @@
 /*=============================================================================
 	UnURL.cpp: Various file-management functions.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "EnginePrivate.h"
@@ -17,24 +14,51 @@ FString FURL::DefaultProtocol;
 FString FURL::DefaultName;
 FString FURL::DefaultMap;
 FString FURL::DefaultLocalMap;
+FString FURL::DefaultLocalOptions;
+FString FURL::DefaultTransitionMap;
 FString FURL::DefaultHost;
 FString FURL::DefaultPortal;
 FString FURL::DefaultMapExt;
 FString FURL::DefaultSaveExt;
+FString FURL::AdditionalMapExt;
 INT		FURL::DefaultPort=0;
+INT		FURL::DefaultPeerPort=0;
+UBOOL	FURL::bDefaultsInitialized=FALSE;
 
 // Static init.
 void FURL::StaticInit()
 {
-	DefaultProtocol				= GConfig->GetStr( TEXT("URL"), TEXT("Protocol"),	GEngineIni );
-	DefaultName					= GConfig->GetStr( TEXT("URL"), TEXT("Name"),		GEngineIni );
-	DefaultMap					= GConfig->GetStr( TEXT("URL"), TEXT("Map"),		GEngineIni );
-	DefaultLocalMap				= GConfig->GetStr( TEXT("URL"), TEXT("LocalMap"),	GEngineIni );
-	DefaultHost					= GConfig->GetStr( TEXT("URL"), TEXT("Host"),		GEngineIni );
-	DefaultPortal				= GConfig->GetStr( TEXT("URL"), TEXT("Portal"),		GEngineIni );
-	DefaultMapExt				= GConfig->GetStr( TEXT("URL"), TEXT("MapExt"),		GEngineIni );
-	DefaultSaveExt				= GConfig->GetStr( TEXT("URL"), TEXT("SaveExt"),	GEngineIni );
-	DefaultPort					= appAtoi( *GConfig->GetStr( TEXT("URL"), TEXT("Port"), GEngineIni ) );
+	if (!GIsUCCMake)
+	{
+		DefaultProtocol				= GConfig->GetStr( TEXT("URL"), TEXT("Protocol"),	GEngineIni );
+		DefaultName					= GConfig->GetStr( TEXT("URL"), TEXT("Name"),		GEngineIni );
+		// strip off any file extensions from map names
+		DefaultMap					= FFilename(GConfig->GetStr( TEXT("URL"), TEXT("Map"),		GEngineIni )).GetBaseFilename();
+		DefaultLocalMap				= FFilename(GConfig->GetStr( TEXT("URL"), TEXT("LocalMap"),	GEngineIni )).GetBaseFilename();
+		DefaultLocalOptions			= FFilename(GConfig->GetStr( TEXT("URL"), TEXT("LocalOptions"),	GEngineIni ));
+		DefaultTransitionMap		= FFilename(GConfig->GetStr( TEXT("URL"), TEXT("TransitionMap"), GEngineIni )).GetBaseFilename();
+		DefaultHost					= GConfig->GetStr( TEXT("URL"), TEXT("Host"),		GEngineIni );
+		DefaultPortal				= GConfig->GetStr( TEXT("URL"), TEXT("Portal"),		GEngineIni );
+		DefaultMapExt				= GConfig->GetStr( TEXT("URL"), TEXT("MapExt"),		GEngineIni );
+		DefaultSaveExt				= GConfig->GetStr( TEXT("URL"), TEXT("SaveExt"),	GEngineIni );
+		AdditionalMapExt			= GConfig->GetStr( TEXT("URL"), TEXT("AdditionalMapExt"),	GEngineIni );
+
+		FString Port;
+		// Allow the command line to override the default port
+		if (Parse(appCmdLine(),TEXT("Port="),Port) == FALSE)
+		{
+			Port = GConfig->GetStr( TEXT("URL"), TEXT("Port"), GEngineIni );
+		}
+		DefaultPort					= appAtoi( *Port );
+		// Allow the command line to override the default peer port
+		FString PeerPort;
+		if (Parse(appCmdLine(),TEXT("PeerPort="),PeerPort) == FALSE)
+		{
+			PeerPort = GConfig->GetStr( TEXT("URL"), TEXT("PeerPort"), GEngineIni );
+		}
+		DefaultPeerPort				= appAtoi( *PeerPort );
+		bDefaultsInitialized		= TRUE;
+	}
 }
 void FURL::StaticExit()
 {
@@ -42,11 +66,15 @@ void FURL::StaticExit()
 	DefaultName					= TEXT("");
 	DefaultMap					= TEXT("");
 	DefaultLocalMap				= TEXT("");
+	DefaultLocalOptions			= TEXT("");
+	DefaultTransitionMap		= TEXT("");
 	DefaultHost					= TEXT("");
 	DefaultPortal				= TEXT("");
 	DefaultMapExt				= TEXT("");
 	DefaultSaveExt				= TEXT("");
+	bDefaultsInitialized		= FALSE;
 }
+
 
 FArchive& operator<<( FArchive& Ar, FURL& U )
 {
@@ -60,10 +88,22 @@ FArchive& operator<<( FArchive& Ar, FURL& U )
 
 static UBOOL ValidNetChar( const TCHAR* c )
 {
-	if( appStrchr(c,' ') )
-		return 0;
-	else
-		return 1;
+	// NOTE: We purposely allow for SPACE characters inside URL strings, since we need to support player aliases
+	//   on the URL that potentially have spaces in them.
+
+	// @todo: Support true URL character encode/decode (e.g. %20 for spaces), so that we can be compliant with
+	//   URL protocol specifications
+
+	// NOTE: EQUALS characters (=) are not checked here because they're valid within fragments, but incoming
+	//   option data should always be filtered of equals signs
+
+	if( appStrchr( c, ':' ) || appStrchr( c, '/' ) ||		// : and / are for protocol and user/password info
+		appStrchr( c, '?' ) || appStrchr( c, '#' ) )		// ? and # delimit fragments
+	{		
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 /*-----------------------------------------------------------------------------
@@ -76,12 +116,21 @@ static UBOOL ValidNetChar( const TCHAR* c )
 FURL::FURL( const TCHAR* LocalFilename )
 :	Protocol	( DefaultProtocol )
 ,	Host		( DefaultHost )
-,	Map			( LocalFilename ? FString(LocalFilename) : DefaultMap )
-,	Portal		( DefaultPortal )
 ,	Port		( DefaultPort )
 ,	Op			()
+,	Portal		( DefaultPortal )
 ,	Valid		( 1 )
-{}
+{
+	// strip off any extension from map name
+	if (LocalFilename)
+	{
+		Map = FFilename(LocalFilename).GetBaseFilename();
+	}
+	else
+	{
+		Map = DefaultMap;
+	}
+}
 
 //
 // Helper function.
@@ -93,23 +142,61 @@ static inline TCHAR* HelperStrchr( TCHAR* Src, TCHAR A, TCHAR B )
 	return (AA && (!BB || AA<BB)) ? AA : BB;
 }
 
+
+/**
+ * Static: Removes any special URL characters from the specified string
+ *
+ * @param Str String to be filtered
+ */
+void FURL::FilterURLString( FString& Str )
+{
+	FString NewString;
+	for( INT CurCharIndex = 0; CurCharIndex < Str.Len(); ++CurCharIndex )
+	{
+		const TCHAR CurChar = Str[ CurCharIndex ];
+
+		if( CurChar != ':' && CurChar != '?' && CurChar != '/' && CurChar != '#' && CurChar != '=' )
+		{
+			NewString.AppendChar( Str[ CurCharIndex ] );
+		}
+	}
+
+	Str = NewString;
+}
+
+
+
+
 //
 // Construct a URL from text and an optional relative base.
 //
 FURL::FURL( FURL* Base, const TCHAR* TextURL, ETravelType Type )
 :	Protocol	( DefaultProtocol )
 ,	Host		( DefaultHost )
-,	Map			( DefaultMap )
-,	Portal		( DefaultPortal )
 ,	Port		( DefaultPort )
+,	Map			( DefaultMap )
 ,	Op			()
+,	Portal		( DefaultPortal )
 ,	Valid		( 1 )
 {
 	check(TextURL);
 
+	if( !bDefaultsInitialized )
+	{
+		FURL::StaticInit();
+		Protocol = DefaultProtocol;
+		Host = DefaultHost;
+		Port = DefaultPort;
+		Map = DefaultMap;
+		Portal = DefaultPortal;
+	}
+
 	// Make a copy.
-	TCHAR Temp[1024], *URL=Temp;
-	appStrncpy( Temp, TextURL, ARRAY_COUNT(Temp) );
+	const INT URLLength = appStrlen(TextURL);
+	TCHAR* TempURL = (TCHAR*)appAlloca((URLLength+1)*sizeof(TCHAR));
+	TCHAR* URL = TempURL;
+
+	appStrcpy( TempURL, URLLength + 1, TextURL );
 
 	// Copy Base.
 	if( Type==TRAVEL_Relative )
@@ -192,10 +279,10 @@ FURL::FURL( FURL* Base, const TCHAR* TextURL, ETravelType Type )
 		&&	(appStrchr(URL,':')>URL+1)
 		&&	(appStrchr(URL,'.')==NULL || appStrchr(URL,':')<appStrchr(URL,'.')) )
 		{
-			TCHAR* s = URL;
+			TCHAR* ss = URL;
 			URL      = appStrchr(URL,':');
 			*URL++   = 0;
-			Protocol = s;
+			Protocol = ss;
 		}
 
 		// Parse optional leading slashes.
@@ -218,20 +305,22 @@ FURL::FURL( FURL* Base, const TCHAR* TextURL, ETravelType Type )
 		(	(Dot)
 		&&	(Dot-URL>0)
 		&&	(appStrnicmp( Dot+1,*DefaultMapExt,  DefaultMapExt .Len() )!=0 || appIsAlnum(Dot[DefaultMapExt .Len()+1]) )
-		&&	(appStrnicmp( Dot+1,*DefaultSaveExt, DefaultSaveExt.Len() )!=0 || appIsAlnum(Dot[DefaultSaveExt.Len()+1]) ) )
+		&&	(appStrnicmp( Dot+1,*AdditionalMapExt, AdditionalMapExt.Len() )!=0 || appIsAlnum(Dot[AdditionalMapExt.Len()+1]) )
+		&&	(appStrnicmp( Dot+1,*DefaultSaveExt, DefaultSaveExt.Len() )!=0 || appIsAlnum(Dot[DefaultSaveExt.Len()+1]) )
+		&&	(appStrnicmp( Dot+1,TEXT("demo"), 4 ) != 0 || appIsAlnum(Dot[5])) )
 		{
-			TCHAR* s = URL;
+			TCHAR* ss = URL;
 			URL     = appStrchr(URL,'/');
 			if( URL )
 				*URL++ = 0;
-			TCHAR* t = appStrchr(s,':');
+			TCHAR* t = appStrchr(ss,':');
 			if( t )
 			{
 				// Port.
 				*t++ = 0;
 				Port = appAtoi( t );
 			}
-			Host = s;
+			Host = ss;
 			if( appStricmp(*Protocol,*DefaultProtocol)==0 )
 				Map = DefaultMap;
 			else
@@ -254,19 +343,23 @@ FURL::FURL( FURL* Base, const TCHAR* TextURL, ETravelType Type )
 			||	appStrnicmp(*Base->Op(i),TEXT("Voice="),6 )==0 
 			||	appStrnicmp(*Base->Op(i),TEXT("OverrideClass="),14)==0 )
 			{
-				TCHAR OptName[100];
-				TCHAR *Pos;
+				const FString& BaseOption = Base->Op(i);
+				FString OptionName;
 
-				Pos = appStrchr( *Base->Op(i), '=');
-				if(Pos)
-					appStrncpy(	OptName, *Base->Op(i), Pos - *Base->Op(i) + 1);
-				else
-					appStrcpy( OptName, *Base->Op(i) );
-							
-				if( !appStrcmp( GetOption( OptName, TEXT("")), TEXT("") ) )
+				INT Pos = BaseOption.InStr(TEXT("="));
+				if ( Pos != INDEX_NONE )
 				{
-					debugf( TEXT("URL: Adding default option %s"), *Base->Op(i) );
-					new(Op)FString( Base->Op(i) );
+					OptionName = BaseOption.Left(Pos);
+				}
+				else
+				{
+					OptionName = BaseOption;
+				}
+
+				if ( !appStrcmp(GetOption(*OptionName, TEXT("")), TEXT("")) )
+				{
+					debugf(NAME_DevNet, TEXT("URL: Adding default option %s"), *BaseOption );
+					Op.AddItem(BaseOption);
 				}
 			}
 		}
@@ -354,7 +447,7 @@ FString FURL::String( UBOOL FullyQualified ) const
 	}
 
 	// Emit map.
-	if( Map )
+	if( Map.Len() > 0 )
 		Result += Map;
 
 	// Emit options.
@@ -365,7 +458,7 @@ FString FURL::String( UBOOL FullyQualified ) const
 	}
 
 	// Emit portal.
-	if( Portal )
+	if( Portal.Len() > 0 )
 	{
 		Result += TEXT("#");
 		Result += Portal;
@@ -403,13 +496,51 @@ UBOOL FURL::IsLocalInternal() const
 //
 void FURL::AddOption( const TCHAR* Str )
 {
-	INT Match = appStrchr(Str,'=') ? appStrchr(Str,'=')+1-Str : appStrlen(Str)+1;
+	INT Match = appStrchr(Str, '=') ? (appStrchr(Str, '=') - Str) : appStrlen(Str);
 	INT i;
-	for( i=0; i<Op.Num(); i++ )
-		if( appStrnicmp( *Op(i), Str, Match )==0 )
+	for (i = 0; i < Op.Num(); i++)
+	{
+		if (appStrnicmp(*Op(i), Str, Match) == 0 && ((*Op(i))[Match] == '=' || (*Op(i))[Match] == '\0'))
+		{
 			break;
-	if( i==Op.Num() )	new( Op )FString( Str );
-	else				Op( i ) = Str;
+		}
+	}
+	if (i == Op.Num())
+	{
+		new(Op) FString(Str);
+	}
+	else
+	{
+		Op(i) = Str;
+	}
+}
+
+
+//
+// Remove an option from the URL
+//
+void FURL::RemoveOption( const TCHAR* Key, const TCHAR* Section, const TCHAR* Filename )
+{
+	if ( !Key )
+		return;
+
+	if ( !Filename )
+		Filename = GGameIni;
+
+	for ( INT i = Op.Num() - 1; i >= 0; i-- )
+	{
+		if ( Op(i).Left(appStrlen(Key)) == Key )
+		{
+			FConfigSection* Sec = GConfig->GetSectionPrivate( Section ? Section : TEXT("DefaultPlayer"), 0, 0, Filename );
+			if ( Sec )
+			{
+				if (Sec->Remove( Key ) > 0)
+					GConfig->Flush( 0, Filename );
+			}
+
+			Op.Remove(i);
+		}
+	}
 }
 
 //
@@ -447,20 +578,28 @@ void FURL::SaveURLConfig( const TCHAR* Section, const TCHAR* Item, const TCHAR* 
 //
 UBOOL FURL::HasOption( const TCHAR* Test ) const
 {
-	for( INT i=0; i<Op.Num(); i++ )
-		if( appStricmp( *Op(i), Test )==0 )
-			return 1;
-	return 0;
+	return GetOption( Test, NULL ) != NULL;
 }
 
-//
-// Return an option if it exists.
-//
 const TCHAR* FURL::GetOption( const TCHAR* Match, const TCHAR* Default ) const
 {
-	for( INT i=0; i<Op.Num(); i++ )
-		if( appStrnicmp( *Op(i), Match, appStrlen(Match) )==0 )
-			return *Op(i) + appStrlen(Match);
+	const INT Len = appStrlen(Match);
+	
+	if( Len > 0 )
+	{
+		for( INT i = 0; i < Op.Num(); i++ ) 
+		{
+			const TCHAR* s = *Op(i);
+			if( appStrnicmp( s, Match, Len ) == 0 ) 
+			{
+				if (s[Len-1] == '=' || s[Len] == '=' || s[Len] == '\0') 
+				{
+					return s + Len;
+				}
+			}
+		}
+	}
+
 	return Default;
 }
 
@@ -481,15 +620,10 @@ UBOOL FURL::operator==( const FURL& Other ) const
 	||  Op.Num()    != Other.Op.Num() )
 		return 0;
 
-	for( int i=0; i<Op.Num(); i++ )
+	for( INT i=0; i<Op.Num(); i++ )
 		if( Op(i) != Other.Op(i) )
 			return 0;
 
 	return 1;
 }
-
-
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
 

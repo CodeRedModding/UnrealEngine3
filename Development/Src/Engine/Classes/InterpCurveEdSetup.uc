@@ -1,3 +1,6 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class InterpCurveEdSetup extends Object
 	native;
 
@@ -12,6 +15,10 @@ struct native CurveEdEntry
 
 	var int		bHideCurve;
 	var int		bColorCurve;
+	var int		bFloatingPointColorCurve;
+	var int		bClamp;
+	var float	ClampLow;
+	var float	ClampHigh;
 };
 
 struct native CurveEdTab
@@ -35,15 +42,22 @@ cpptext
 {
 	// UObject interface
 	void PostLoad();
-
+	void Serialize(FArchive& Ar);
+	
 	// InterpCurveEdSetup interface
 	static FCurveEdInterface* GetCurveEdInterfacePointer(const FCurveEdEntry& Entry);
-	void AddCurveToCurrentTab(UObject* InCurve, const FString& CurveName, const FColor& CurveColor, UBOOL bColorCurve=false);
+	void AddCurveToCurrentTab(UObject* InCurve, const FString& CurveName, const FColor& CurveColor, 
+			UBOOL bInColorCurve=false, UBOOL bInFloatingPointColor=false, UBOOL bInClamp=false,
+			FLOAT InClampLow=0.f, FLOAT InClampHigh=0.f);
 	void RemoveCurve(UObject* InCurve);
 	void ReplaceCurve(UObject* RemoveCurve, UObject* AddCurve);
 	void CreateNewTab(const FString& InTabName);
+	void RemoveTab(const FString& InTabName);
 	UBOOL ShowingCurve(UObject* InCurve);
-	
+
+	void ChangeCurveColor(UObject* InCurve, const FColor& CurveColor);
+	void ChangeCurveName(UObject* InCurve, const FString& NewCurveName);
+
 	void ResetTabs();
 }
 

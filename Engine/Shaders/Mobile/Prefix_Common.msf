@@ -1,0 +1,198 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+#if NGP
+
+	#define mat3	float3x3
+	#define mat4	float4x4
+	#define vec2	float2
+	#define vec3	float3
+	#define vec4	float4
+	#define ivec4	int4
+	
+	#define MulMatrix(Mtx, Vect)	mul(Vect, Mtx)
+	#define mix( A, B, Factor )		lerp( A, B, Factor )
+	#define lowp
+	#define mediump
+	#define highp
+
+	#define texture2DBias(Texture,UV,Bias)				tex2Dbias(Texture, vec4(UV.xy, 0, Bias))
+	#define texture2D(Texture,UV)						tex2D(Texture, UV.xy)
+	#define texture2DLod(Texture,UV,Lod)				tex2Dlod(Texture, vec4(UV.xy, 0, Lod))
+	#define texDepth2Dlod(Texture,UVLod)				tex2Dlod(Texture, UVLod)
+
+	// Helper macro to make sure the parameters are evaluated.
+	#define INTERPOLATOR(Dir,Precision,Type,Name)		Dir##_VARYING_##Precision##_##Type##_##Name
+	#define INTERPOLATOR2(Dir,Precision,Type,Name,Subs)	Dir##_VARYING2_##Subs##_##Precision##_##Type##_##Name
+
+	#define OUT_VARYING_HIGH(Type,Name,Semantics)		INTERPOLATOR(OUT,HIGH,Type,Name)
+	#define OUT_VARYING_MEDIUM(Type,Name,Semantics)		INTERPOLATOR(OUT,MEDIUM,Type,Name)
+	#define OUT_VARYING_LOW(Type,Name,Semantics)		INTERPOLATOR(OUT,LOW,Type,Name)
+	#define OUT_VARYING_DEFAULT(Type,Name,Semantics)	INTERPOLATOR(OUT,MEDIUM,Type,Name)
+	#define OUT_VARYING_ARRAY_DEFAULT(Type,Name,Subs,Semantics)	INTERPOLATOR2(OUT,MEDIUM,Type,Name,Subs)
+
+	#define IN_VARYING_HIGH(Type,Name,Semantics)		INTERPOLATOR(IN,HIGH,Type,Name)
+	#define IN_VARYING_MEDIUM(Type,Name,Semantics)		INTERPOLATOR(IN,MEDIUM,Type,Name)
+	#define IN_VARYING_LOW(Type,Name,Semantics)			INTERPOLATOR(IN,LOW,Type,Name)
+	#define IN_VARYING_DEFAULT(Type,Name,Semantics)		INTERPOLATOR(IN,MEDIUM,Type,Name)
+	#define IN_VARYING_ARRAY_DEFAULT(Type,Name,Subs,Semantics)	INTERPOLATOR2(IN,MEDIUM,Type,Name,Subs)
+
+	#define UNIFORM(Type,Name)							uniform Type Name
+	#define UNIFORM_SAMPLER2D(Name,Semantics)			UNIFORM(sampler2D,Name) : Semantics
+	#define UNIFORM_HIGH(Type,Name)						UNIFORM(Type,Name)
+	#define UNIFORM_MEDIUM(Type,Name)					UNIFORM(Type,Name)
+	#define UNIFORM_LOW(Type,Name)						UNIFORM(Type,Name)
+
+	#define ATTRIBUTE(Type,Name,Semantics)				in Type Name : Semantics
+
+	vec4 vecLessThan (vec4 A, vec4 B)
+	{
+		return vec4((A.x < B.x) ? 1.0 : 0.0, (A.y < B.y) ? 1.0 : 0.0, (A.z < B.z) ? 1.0 : 0.0, (A.w < B.w) ? 1.0 : 0.0);
+	}
+
+#else
+
+	// @todo: Looks like this is already defined?
+	#ifdef half
+		#undef half
+	#endif
+	#define half	float
+	#define half2	vec2
+	#define half3	vec3
+	#define half4	vec4
+	#define float2	vec2
+	#define float3	vec3
+	#define float4	vec4
+
+	#define MulMatrix(Mtx, Vect)	(Mtx * Vect)
+	#define saturate(x)				clamp(x, 0.0, 1.0)
+	#define frac(x)					fract(x)
+	#define lerp( A, B, Factor )	mix( A, B, Factor )
+
+	#define texture2DBias(Texture,UV,Bias)				texture2D(Texture, UV, Bias)
+	#if USE_GL_EXT_shader_texture_lod
+		#define texture2DLod(Texture,UV,Lod)			texture2DLodEXT(Texture, UV.xy, Lod)
+	#else
+		#define texture2DLod(Texture,UV,Lod)			texture2D(Texture, UV.xy)
+	#endif
+
+	#define tex2Dlod(Texture,UVLod)						texture2DLod(Texture, UVLod.xy, UVLod.w )
+	#define texDepth2Dlod(Texture,UVLod)				texture2DLod(Texture, UVLod.xy, UVLod.w )
+
+	#define OUT_VARYING_HIGH(Type,Name,Semantics)		varying highp Type Name
+	#define OUT_VARYING_MEDIUM(Type,Name,Semantics)		varying mediump Type Name
+	#define OUT_VARYING_LOW(Type,Name,Semantics)		varying lowp Type Name
+	#define OUT_VARYING_DEFAULT(Type,Name,Semantics)	OUT_VARYING_MEDIUM(Type,Name,Semantics)
+	#define OUT_VARYING_ARRAY_DEFAULT(Type,Name,Subs,Semantics)	OUT_VARYING_DEFAULT(Type,Name[Subs],Semantics)
+
+	#define IN_VARYING_HIGH(Type,Name,Semantics)		OUT_VARYING_HIGH(Type,Name,Semantics)
+	#define IN_VARYING_MEDIUM(Type,Name,Semantics)		OUT_VARYING_MEDIUM(Type,Name,Semantics)
+	#define IN_VARYING_LOW(Type,Name,Semantics)			OUT_VARYING_LOW(Type,Name,Semantics)
+	#define IN_VARYING_DEFAULT(Type,Name,Semantics)		OUT_VARYING_DEFAULT(Type,Name,Semantics)
+	#define IN_VARYING_ARRAY_DEFAULT(Type,Name,Subs,Semantics)	IN_VARYING_DEFAULT(Type,Name[Subs],Semantics)
+
+	// These statements MUST not be followed by semi-colons!
+	#define IN_BUILTIN(Type,Name,Semantics)				void DummyPreprocessorFixFunction();
+	#define OUT_BUILTIN(Type,Name,Semantics)			void DummyPreprocessorFixFunction();
+
+	#define UNIFORM(Type,Name)							uniform Type Name
+	#define UNIFORM_SAMPLER2D(Name,Semantics)			UNIFORM(sampler2D,Name)
+	#define UNIFORM_HIGH(Type,Name)						UNIFORM(highp Type,Name)
+	#define UNIFORM_MEDIUM(Type,Name)					UNIFORM(mediump Type,Name)
+	#define UNIFORM_LOW(Type,Name)						UNIFORM(lowp Type,Name)
+
+	#define ATTRIBUTE(Type,Name,Semantics)				attribute Type Name
+
+	#define vecLessThan(A, B) vec4(lessThan(A, B))
+#endif
+
+
+/**
+ * Performance settings
+ */
+ 
+/** When enabled (slower), we'll renormalize unit vectors interpolated per pixel */
+#define RENORMALIZE_INTERPOLATED_NORMALS 0
+
+/** When enabled (slower), we'll compute the binormal in the pixel shader instead of transporting it from the vertex shader */
+#define COMPUTE_BINORMAL_IN_PIXEL_SHADER 0
+
+/** When enabled (faster), we'll use a much faster power function for vertex specular lighting, but the power is fixed */
+#define USE_VERTEX_FIXED_SPECULAR_POWER_APPROXIMATION 0
+
+/** When enabled (faster), we'll use a much faster power function for per-pixel specular lighting, but the power is fixed */
+#define USE_PIXEL_FIXED_SPECULAR_POWER_APPROXIMATION 0
+
+/** When enabled (faster) we use blinn-phone half-vector specular instead of reflection-based phong spec */
+#define USE_HALF_VECTOR_SPECULAR_MODEL 1
+
+/** When enabled (slower), we use reflection-based environment maps, otherwise we use view-direction based look ups */
+// @todo: Expose this as a material option?
+#define USE_REFLECTION_BASED_ENVIRONMENT_MAPS 1
+
+/** When enabled (faster), we'll perform per-pixel lighting in tangent space, otherwise world space */
+#define PER_PIXEL_LIGHTING_IN_TANGENT_SPACE 1
+
+/** When enabled (slower), computes sky lighting per pixel */
+// @todo: Expose this as a material option?
+#define ALLOW_PER_PIXEL_DYNAMIC_SKY_LIGHT 0
+
+/** When enabled (slower), computes environment mapping per pixel */
+// @todo: Expose this as a material option?
+#define ALLOW_PER_PIXEL_ENVIRONMENT_MAPPING 1
+
+/** When enabled (slower), computes rim lighting per pixel */
+// @todo: Expose this as a material option?
+#define ALLOW_PER_PIXEL_RIM_LIGHTING 1
+
+/** When enabled (faster), uses a simple sky lighting model with linear falloff */
+#define USE_FASTER_SKY_LIGHT 1
+
+/** When enabled (faster), we approximate SRGB conversions using gamma 2.0 (sqr/sqrt) instead of 2.2 */
+#define USE_SRGB_APPROXIMATION 1
+
+// In the vertex or pixel shader, CameraWorldPosition is always equal to the local space origin as we
+// pre-translate the view around the mesh's local space before rendering
+#define CameraWorldPosition vec3( 0, 0, 0 )
+
+//UNUSED MUST be set somewhere.
+#define UNUSED 0
+
+/**
+ * Helper functions
+ */
+
+float Square(float A)
+{
+	return A * A;
+}
+
+float2 Square(float2 A)
+{
+	return A * A;
+}
+
+float3 Square(float3 A)
+{
+	return A * A;
+}
+
+float4 Square(float4 A)
+{
+	return A * A;
+}
+
+/** Converts a linear input value into a value to be stored in the light attenuation buffer. */
+float EncodeLightAttenuation(float InColor)
+{
+	// Apply a 1/2 power to the input, which allocates more bits for the darks and prevents banding
+	// Similar to storing colors in gamma space, except this uses less instructions than a pow(x, 1/2.2)
+	return sqrt(InColor);
+}
+
+/** Converts a linear input value into a value to be stored in the light attenuation buffer. */
+half4 EncodeLightAttenuation(half4 InColor)
+{
+	return sqrt(InColor);
+}

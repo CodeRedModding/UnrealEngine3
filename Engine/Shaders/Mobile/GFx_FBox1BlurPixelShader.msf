@@ -1,0 +1,22 @@
+#define RETURN_COLOR(Color) Color
+UNIFORM( vec4, OverlayColor );
+UNIFORM( vec4, ColorScale );
+UNIFORM( vec4, fsize );
+UNIFORM_SAMPLER2D( tex, TEXUNIT0 );
+UNIFORM( vec2, texscale );
+IN_VARYING_DEFAULT( vec2, tc, TEXCOORD0 );
+OUT_BUILTIN( vec4, gl_FragColor, COLOR )
+PIXEL_MAIN
+{
+// E Box1
+  vec4 color = vec4(0.0);
+  float  i = 0.0;
+  for (i = -fsize.x; i <= fsize.x; i++)
+// E Blur
+    color += texture2D(tex, tc + i * texscale);
+  gl_FragColor = color * fsize.w;
+// E cxformac
+  gl_FragColor = (gl_FragColor * vec4(ColorScale.rgb,1.0)) * ColorScale.a + OverlayColor * gl_FragColor.a;
+
+}
+

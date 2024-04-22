@@ -1,3 +1,6 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class ParticleSpriteEmitter extends ParticleEmitter
 	native(Particle)
 	collapsecategories		
@@ -8,16 +11,14 @@ enum EParticleScreenAlignment
 {
 	PSA_Square,
 	PSA_Rectangle,
-	PSA_Velocity
+	PSA_Velocity,
+	PSA_TypeSpecific
 };
-
-var(Particle) EParticleScreenAlignment			ScreenAlignment;
-var(Particle) MaterialInstance					Material;
 
 cpptext
 {
-	virtual FParticleEmitterInstance* CreateInstance( UParticleSystemComponent* InComponent );
+	virtual void PostLoad();
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent);
+	virtual FParticleEmitterInstance* CreateInstance(UParticleSystemComponent* InComponent);
 	virtual void SetToSensibleDefaults();
-
-	virtual DWORD GetLayerMask() const;
 }

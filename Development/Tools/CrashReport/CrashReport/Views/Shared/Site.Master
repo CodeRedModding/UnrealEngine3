@@ -1,0 +1,59 @@
+﻿<%-- // Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. --%>
+
+<%@ Master Language="C#" Inherits="System.Web.Mvc.ViewMasterPage" %>
+
+<!DOCTYPE html>
+<html >
+<head id="Head1" runat="server">
+
+	<title><asp:ContentPlaceHolder ID="TitleContent" runat="server" /></title>
+	<link href="../../Content/Site.css" rel="stylesheet" type="text/css" />
+	
+	<asp:ContentPlaceHolder ID="CssContent" runat="server" />
+	<!--[if IE 7]>
+		<link rel="stylesheet" type="text/css" href="/Content/IeSite.css" />
+	<![endif]-->
+	<script type="text/javascript" src = "/Scripts/jquery-1.4.1.min.js"></script>
+	<script type="text/javascript" src = "/Scripts/jquery-ui-1.8.4.custom.min.js"></script>
+	 <script type="text/javascript" src = "/Scripts/jquery.shiftcheckbox.js"></script>
+	<script src="/Scripts/jquery.blockUI.js" type="text/javascript"></script>
+	<link href="/Content/smoothness/jquery-ui-1.8.4.custom.css" rel="stylesheet" type="text/css" />
+	
+	<asp:ContentPlaceHolder ID="ScriptContent" runat="server" />
+
+</head>
+
+<body>
+	<div class="page">
+
+		<div id="header">
+			<div id="title">
+				<a href='/' border='0' style='border:none; text-decoration: none;'><img border=0 src="/Content/Images/CrashReporterLogo.png" /></a>
+				<!-- <h3 style="color:White;">
+						style='color:#778A99;text-decoration:none;'>CrashReport</a> :  <asp:ContentPlaceHolder ID="PageTitle" runat="server" />
+				</h3>-->
+			   
+			</div>
+			<div id="logindisplay">
+				<% Html.RenderPartial("LogOnUserControl"); %>
+			</div> 
+			<div id="menucontainer">
+			</div>
+		</div>
+
+		<asp:ContentPlaceHolder ID="AboveMainContent" runat="server" />
+
+		<div id="main">
+			<div id="mainRight">
+				<div id="mainLeft">
+			   
+					<asp:ContentPlaceHolder ID="MainContent" runat="server" />
+
+					<div id="footer">
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,29 @@
+/*=============================================================================
+	DOFAndBloomBlendPixelShader.usf: Pixel shader for blending the blurred depth of field and bloom colors with the scene color.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "DepthOfFieldCommon.usf"
+
+sampler2D FilterColor0Texture;
+
+void Main(
+	in float2 UV : TEXCOORD0,
+	in float2 SceneUV : TEXCOORD1,
+	out float4 OutColor : COLOR0
+	)
+{
+	half4 FocusedSceneColorAndDepth = CalcSceneColorAndDepth(SceneUV);
+
+	// 0..1
+	half FocusedWeight = 1 - CalcUnfocusedPercent(FocusedSceneColorAndDepth.a);
+	
+	//UnfocusedSceneColor in .rgb, UnfocusedWeight in .a
+	//Scale color back up as it was compressed to the [0-1] range to fit in the fixed point filter buffer
+	half4 UnfocusedSceneColorAndWeight = MAX_SCENE_COLOR * tex2D(FilterColor0Texture,UV);
+
+	half WeightSum = max(FocusedWeight + UnfocusedSceneColorAndWeight.a,0.001);
+
+	OutColor = RETURN_COLOR( float4((FocusedSceneColorAndDepth.rgb * FocusedWeight + UnfocusedSceneColorAndWeight.rgb) / WeightSum, FocusedSceneColorAndDepth.a ) );
+}

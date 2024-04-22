@@ -1,0 +1,75 @@
+﻿/*// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.*/
+
+body {
+}
+
+#BuggsShowContainer
+{
+	
+	padding: 25px;
+	margin: 5px;
+}
+
+#BuggData
+{
+	margin: 0 auto;
+	margin-top: 35px;
+	
+	padding: 10px;
+	background-color: #FEFEFE;
+	width: 1300px;
+}
+
+.bugg
+{
+	padding: 10px;
+}
+
+.crashes
+{
+	padding: 5px 5px 5px 0;
+	background-color:white;
+	border: thin solid black;
+	float: left;
+	width: 400px;
+	min-height: 250px;
+}
+
+.crashes ol
+{
+	padding-left: 3em;
+}
+
+#BuggCallStack{
+	float: right;
+	margin-right: 75px;
+	line-height:1.5em;
+}
+
+#BuggCallStack ul
+{
+	list-style-type: none
+}
+
+#BuggCallStack li
+{
+	clear:both;
+	border-bottom: thin dotted grey;
+}
+
+.FunctionName
+{
+	color: Black;
+}
+
+.LineNumber
+{
+	font-style:italic;
+	color: #333;
+}
+
+.FileName
+{
+	color: #778A99;
+	font-weight: bold;
+}

@@ -1,70 +1,34 @@
 /*=============================================================================
 	UnChan.cpp: Unreal datachannel implementation.
-	Copyright 1997-2004 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "EnginePrivate.h"
+#include "UnIpDrv.h"
 #include "UnNet.h"
 
-static inline void SerializeCompRotator( FArchive& Ar, FRotator& R )
-{
-	BYTE Pitch(R.Pitch>>8), Yaw(R.Yaw>>8), Roll(R.Roll>>8), B;
-	B = (Pitch!=0);
-	Ar.SerializeBits( &B, 1 );
-	if( B )
-		Ar << Pitch;
-	else
-		Pitch = 0;
-	B = (Yaw!=0);
-	Ar.SerializeBits( &B, 1 );
-	if( B )
-		Ar << Yaw;
-	else
-		Yaw = 0;
-	B = (Roll!=0);
-	Ar.SerializeBits( &B, 1 );
-	if( B )
-		Ar << Roll;
-	else
-		Roll = 0;
-	if( Ar.IsLoading() )
-		R = FRotator(Pitch<<8,Yaw<<8,Roll<<8);
-}
+#if WITH_UE3_NETWORKING
 
-static inline void SerializeCompVector( FArchive& Ar, FVector& V )
-{
-	INT X(appRound(V.X)), Y(appRound(V.Y)), Z(appRound(V.Z));
-	DWORD Bits = Clamp<DWORD>( appCeilLogTwo(1+Max(Max(Abs(X),Abs(Y)),Abs(Z))), 1, 20 )-1;
-	Ar.SerializeInt( Bits, 20 );
-	INT   Bias = 1<<(Bits+1);
-	DWORD Max  = 1<<(Bits+2);
-	DWORD DX(X+Bias), DY(Y+Bias), DZ(Z+Bias);
-	Ar.SerializeInt( DX, Max );
-	Ar.SerializeInt( DY, Max );
-	Ar.SerializeInt( DZ, Max );
-	if( Ar.IsLoading() )
-		V = FVector((INT)DX-Bias,(INT)DY-Bias,(INT)DZ-Bias);
-}
+#include "NetworkProfiler.h"
 
 // passing NULL for UActorChannel will skip recent property update
 static inline void SerializeCompressedInitial( FArchive& Bunch, FVector& Location, FRotator& Rotation, UBOOL bSerializeRotation, UActorChannel* Ch )
 {
     // read/write compressed location
-    SerializeCompVector( Bunch, Location );
+    Location.SerializeCompressed( Bunch );
     if( Ch && Ch->Recent.Num() )
         ((AActor*)&Ch->Recent(0))->Location = Location;
 
     // optionally read/write compressed rotation
     if( bSerializeRotation )
     {
-        SerializeCompRotator( Bunch, Rotation );
+		Rotation.SerializeCompressed( Bunch );
 	    if( Ch && Ch->Recent.Num() )
             ((AActor*)&Ch->Recent(0))->Rotation = Rotation;
     }
 }
+
+#endif	//#if WITH_UE3_NETWORKING
 
 /*-----------------------------------------------------------------------------
 	UChannel implementation.
@@ -75,28 +39,23 @@ static inline void SerializeCompressedInitial( FArchive& Bunch, FVector& Locatio
 //
 UChannel::UChannel()
 {}
-void UChannel::Init( UNetConnection* InConnection, INT InChIndex, INT InOpenedLocally )
+void UChannel::Init( UNetConnection* InConnection, INT InChIndex, UBOOL InOpenedLocally )
 {
-	Connection		= InConnection;
+#if WITH_UE3_NETWORKING
+	// if child connection then use its parent
+	if (InConnection->GetUChildConnection() != NULL)
+	{
+		Connection = ((UChildConnection*)InConnection)->Parent;
+	}
+	else
+	{
+		Connection = InConnection;
+	}
 	ChIndex			= InChIndex;
 	OpenedLocally	= InOpenedLocally;
 	OpenPacketId	= INDEX_NONE;
 	NegotiatedVer	= InConnection->NegotiatedVer;
-}
-
-//
-// Route the UObject::Destroy.
-//
-INT UChannel::RouteDestroy()
-{
-	if( Connection && (Connection->GetFlags() & RF_Unreachable) )
-	{
-		ClearFlags( RF_Destroyed );
-		if( Connection->ConditionalDestroy() )
-			return 1;
-		SetFlags( RF_Destroyed );
-	}
-	return 0;
+#endif	//#if WITH_UE3_NETWORKING
 }
 
 //
@@ -112,6 +71,7 @@ void UChannel::SetClosingFlag()
 //
 void UChannel::Close()
 {
+#if WITH_UE3_NETWORKING
 	check(Connection->Channels[ChIndex]==this);
 	if
 	(	!Closing
@@ -124,37 +84,61 @@ void UChannel::Close()
 		CloseBunch.bReliable = 1;
 		SendBunch( &CloseBunch, 0 );
 	}
+#endif	//#if WITH_UE3_NETWORKING
+}
+
+/** cleans up channel structures and NULLs references to the channel */
+void UChannel::CleanUp()
+{
+#if WITH_UE3_NETWORKING
+	checkSlow(Connection != NULL);
+	checkSlow(Connection->Channels[ChIndex] == this);
+
+	// if this is the control channel, make sure we properly killed the connection
+	if (ChIndex == 0 && !Closing)
+	{
+		Connection->Close();
+	}
+
+	// remember sequence number of first non-acked outgoing reliable bunch for this slot
+	if (OutRec != NULL)
+	{
+		Connection->PendingOutRec[ChIndex] = OutRec->ChSequence;
+		//debugf(TEXT("%i save pending out bunch %i"),ChIndex,Connection->PendingOutRec[ChIndex]);
+	}
+	// Free any pending incoming and outgoing bunches.
+	for (FOutBunch* Out = OutRec, *NextOut; Out != NULL; Out = NextOut)
+	{
+		NextOut = Out->Next;
+		delete Out;
+	}
+	for (FInBunch* In = InRec, *NextIn; In != NULL; In = NextIn)
+	{
+		NextIn = In->Next;
+		delete In;
+	}
+
+	// Remove from connection's channel table.
+	verifySlow(Connection->OpenChannels.RemoveItem(this) == 1);
+	Connection->Channels[ChIndex] = NULL;
+#endif	//#if WITH_UE3_NETWORKING
+	Connection = NULL;
 }
 
 //
 // Base channel destructor.
 //
-void UChannel::Destroy()
+void UChannel::BeginDestroy()
 {
-	check(Connection);
-	check(Connection->Channels[ChIndex]==this);
-
-	// remember sequence number of first non-acked outgoing reliable bunch for this slot
-	if ( OutRec )
+	if (!HasAnyFlags(RF_ClassDefaultObject))
 	{
-		Connection->PendingOutRec[ChIndex] = OutRec->ChSequence;
-		//debugf(TEXT("%i save pending out bunch %i"),ChIndex,Connection->PendingOutRec[ChIndex]);
+		ConditionalCleanUp();
 	}
-
-	// Free any pending incoming and outgoing bunches.
-	for( FOutBunch* Out=OutRec, *NextOut; Out; Out=NextOut )
-		{NextOut = Out->Next; delete Out;}
-	for( FInBunch* In=InRec, *NextIn; In; In=NextIn )
-		{NextIn = In->Next; delete In;}
-
-	// Remove from connection's channel table.
-	verify(Connection->OpenChannels.RemoveItem(this)==1);
-	Connection->Channels[ChIndex] = NULL;
-	Connection                    = NULL;
-
-	Super::Destroy();
+	
+	Super::BeginDestroy();
 }
 
+#if WITH_UE3_NETWORKING
 //
 // Handle an acknowledgement on this channel.
 //
@@ -172,6 +156,13 @@ void UChannel::ReceivedAcks()
 	UBOOL DoClose = 0;
 	while( OutRec && OutRec->ReceivedAck )
 	{
+#if SUPPORT_SUPPRESSED_LOGGING
+		if( OutRec->bReliable )
+		{
+			debugfSuppressed( NAME_DevNetTraffic, TEXT("   Received reliable ack, Channel %i Sequence %i: Packet %i"), OutRec->ChIndex, OutRec->ChSequence, OutRec->PacketId );
+		}
+#endif
+
 		DoClose |= OutRec->bClose;
 		FOutBunch* Release = OutRec;
 		OutRec = OutRec->Next;
@@ -183,23 +174,31 @@ void UChannel::ReceivedAcks()
 	if( DoClose || (OpenTemporary && OpenAcked) )
 	{
 		check(!OutRec);
-		delete this;
+		ConditionalCleanUp();
 	}
 
 }
+#endif	//#if WITH_UE3_NETWORKING
 
 //
 // Return the maximum amount of data that can be sent in this bunch without overflow.
 //
 INT UChannel::MaxSendBytes()
 {
+#if WITH_UE3_NETWORKING
 	INT ResultBits
 	=	Connection->MaxPacket*8
 	-	(Connection->Out.GetNumBits() ? 0 : MAX_PACKET_HEADER_BITS)
+#if WITH_STEAMWORKS_SOCKETS
+	-	((Connection->bUseSessionUID && Connection->Out.GetNumBits() == 0) ? SESSION_UID_BITS : 0)
+#endif
 	-	Connection->Out.GetNumBits()
 	-	MAX_PACKET_TRAILER_BITS
 	-	MAX_BUNCH_HEADER_BITS;
 	return Max( 0, ResultBits/8 );
+#else	//#if WITH_UE3_NETWORKING
+	return 0;
+#endif	//#if WITH_UE3_NETWORKING
 }
 
 //
@@ -207,31 +206,38 @@ INT UChannel::MaxSendBytes()
 //
 void UChannel::Tick()
 {
+#if WITH_UE3_NETWORKING
 	checkSlow(Connection->Channels[ChIndex]==this);
-	if( ChIndex==0 && !OpenAcked )
+
+	// Check if we have any reliable packets that have been blocked for too long
+	// For some reason we are seeing this from time to time on iOS devices
+	// Leave this failsafe in until we solve the underlying issue
+	// @todo ib2merge: Should this maybe be IPHONE only, or maybe removed?
+	if( NumInRec > 0 && Connection->Driver->Time - LastUnqueueTime > Connection->Driver->ConnectionTimeout )
 	{
-		INT Count = 0;
-		for( FOutBunch* Out=OutRec; Out; Out=Out->Next )
-			if( !Out->ReceivedAck )
-				Count++;
-		if ( Count > 8 )
-			return;
-		// Resend any pending packets if we didn't get the appropriate acks.
-		for( FOutBunch* Out=OutRec; Out; Out=Out->Next )
+		// Timeout.
+		if( Connection->State != USOCK_Closed )
 		{
-			if( !Out->ReceivedAck )
-			{
-				FLOAT Wait = Connection->Driver->Time-Out->Time;
-				checkSlow(Wait>=0.f);
-				if( Wait>1.f )
-				{
-					debugfSlow( NAME_DevNetTraffic, TEXT("Channel %i ack timeout; resending %i..."), ChIndex, Out->ChSequence );
-					check(Out->bReliable);
-					Connection->SendRawBunch( *Out, 0 );
-				}
-			}
+			debugf( NAME_DevNet, TEXT("%s Reliable packets blocked for %f seconds (%f)"), *Connection->Driver->GetName(), Connection->Driver->ConnectionTimeout, Connection->Driver->Time - LastUnqueueTime );
 		}
+		if (Connection->Driver->bIsPeer)
+		{
+			// Notify peer connection failure
+			GEngine->SetProgress(PMT_PeerConnectionFailure,
+				LocalizeError(TEXT("ConnectionFailed_Title"),TEXT("Engine")),
+				LocalizeError(TEXT("ConnectionTimeout"),TEXT("Engine")));
+				
+		}
+		else if (Connection->Actor != NULL)
+		{
+			// Let the player controller know why the connection was dropped
+			Connection->Actor->eventClientSetProgressMessage(PMT_ConnectionFailure,
+				LocalizeError(TEXT("ConnectionTimeout"),TEXT("Engine")),
+				LocalizeError(TEXT("ConnectionFailed_Title"),TEXT("Engine")));
+		}
+		Connection->Close();
 	}
+#endif	//#if WITH_UE3_NETWORKING
 }
 
 //
@@ -239,15 +245,19 @@ void UChannel::Tick()
 //
 void UChannel::AssertInSequenced()
 {
+#if WITH_UE3_NETWORKING
+#if DO_CHECK
 	// Verify that buffer is in order with no duplicates.
 	for( FInBunch* In=InRec; In && In->Next; In=In->Next )
 		check(In->Next->ChSequence>In->ChSequence);
-
+#endif
+#endif	//#if WITH_UE3_NETWORKING
 }
 
 //
 // Process a properly-sequenced bunch.
 //
+#if WITH_UE3_NETWORKING
 UBOOL UChannel::ReceivedSequencedBunch( FInBunch& Bunch )
 {
 	// Note this bunch's retirement.
@@ -263,14 +273,18 @@ UBOOL UChannel::ReceivedSequencedBunch( FInBunch& Bunch )
 	{
 		// Handle a close-notify.
 		if( InRec )
-			appErrorfSlow( TEXT("Close Anomaly %i / %i"), Bunch.ChSequence, InRec->ChSequence );
-		debugf( NAME_DevNetTraffic, TEXT("      Channel %i got close-notify"), ChIndex );
-		delete this;
+		{
+			appErrorfDebug( TEXT("Close Anomaly %i / %i"), Bunch.ChSequence, InRec->ChSequence );
+		}
+		debugfSuppressed( NAME_DevNetTraffic, TEXT("      Channel %i got close-notify"), ChIndex );
+		ConditionalCleanUp();
 		return 1;
 	}
 	return 0;
 }
+#endif	//#if WITH_UE3_NETWORKING
 
+#if WITH_UE3_NETWORKING
 //
 // Process a raw, possibly out-of-sequence bunch: either queue it or dispatch it.
 // The bunch is sure not to be discarded.
@@ -289,7 +303,7 @@ void UChannel::ReceivedRawBunch( FInBunch& Bunch )
 		check(Bunch.ChSequence>Connection->InReliable[ChIndex]);
 
 		// Find the place for this item, sorted in sequence.
-		debugfSlow( NAME_DevNetTraffic, TEXT("      Queuing bunch with unreceived dependency") );
+		debugfSuppressed( NAME_DevNetTraffic, TEXT("      Queuing bunch with unreceived dependency") );
 		FInBunch** InPtr;
 		for( InPtr=&InRec; *InPtr; InPtr=&(*InPtr)->Next )
 		{
@@ -310,31 +324,42 @@ void UChannel::ReceivedRawBunch( FInBunch& Bunch )
 		NumInRec++;
 		checkSlow(NumInRec<=RELIABLE_BUFFER);
 		//AssertInSequenced();
+		if( NumInRec == 1 )
+		{
+			LastUnqueueTime = Connection->Driver->Time;
+		}
 	}
 	else
 	{
 		// Receive it in sequence.
-		UBOOL Deleted = ReceivedSequencedBunch( Bunch );
-		if( Deleted )
+		UBOOL bDeleted = ReceivedSequencedBunch( Bunch );
+		if( bDeleted )
+		{
 			return;
+		}
 		// Dispatch any waiting bunches.
 		while( InRec )
 		{
 			if( InRec->ChSequence!=Connection->InReliable[ChIndex]+1 )
 				break;
-			debugfSlow( NAME_DevNetTraffic, TEXT("      Unleashing queued bunch") );
+			debugfSuppressed( NAME_DevNetTraffic, TEXT("      Unleashing queued bunch, %d left"), NumInRec-1 );
 			FInBunch* Release = InRec;
 			InRec = InRec->Next;
 			NumInRec--;
-			UBOOL Deleted = ReceivedSequencedBunch( *Release );
+			bDeleted = ReceivedSequencedBunch( *Release );
 			delete Release;
-			if( Deleted )
+			if (bDeleted)
+			{
 				return;
+			}
 			//AssertInSequenced();
+			LastUnqueueTime = Connection->Driver->Time;
 		}
 	}
 }
+#endif	//#if WITH_UE3_NETWORKING
 
+#if WITH_UE3_NETWORKING
 //
 // Send a bunch if it's not overflowed, and queue it if it's reliable.
 //
@@ -356,6 +381,7 @@ INT UChannel::SendBunch( FOutBunch* Bunch, UBOOL Merge )
 		check(!Bunch->bReliable);
 
 	// Contemplate merging.
+	INT PreExistingBits = 0;
 	FOutBunch* OutBunch = NULL;
 	if
 	(	Merge
@@ -367,6 +393,7 @@ INT UChannel::SendBunch( FOutBunch* Bunch, UBOOL Merge )
 	{
 		// Merge.
 		check(!Connection->LastOut.IsError());
+		PreExistingBits = Connection->LastOut.GetNumBits();
 		Connection->LastOut.SerializeBits( Bunch->GetData(), Bunch->GetNumBits() );
 		Connection->LastOut.bReliable |= Bunch->bReliable;
 		Connection->LastOut.bOpen     |= Bunch->bOpen;
@@ -375,9 +402,8 @@ INT UChannel::SendBunch( FOutBunch* Bunch, UBOOL Merge )
 		Bunch                          = &Connection->LastOut;
 		check(!Bunch->IsError());
 		Connection->LastStart.Pop( Connection->Out );
-		Connection->OutBunAcc--;
+		Connection->Driver->OutBunches--;
 	}
-	else Merge=0;
 
 	// Find outgoing bunch index.
 	if( Bunch->bReliable )
@@ -407,9 +433,11 @@ INT UChannel::SendBunch( FOutBunch* Bunch, UBOOL Merge )
 		Connection->LastOutBunch = NULL;//warning: Complex code, don't mess with this!
 	}
 
+	NETWORK_PROFILER(GNetworkProfiler.TrackSendBunch(OutBunch,OutBunch->GetNumBits()-PreExistingBits));
+
 	// Send the raw bunch.
 	OutBunch->ReceivedAck = 0;
-	INT PacketId = Connection->SendRawBunch( *OutBunch, 1 );
+	INT PacketId = Connection->SendRawBunch(*OutBunch, Merge);
 	if( OpenPacketId==INDEX_NONE && OpenedLocally )
 		OpenPacketId = PacketId;
 	if( OutBunch->bClose )
@@ -421,6 +449,7 @@ INT UChannel::SendBunch( FOutBunch* Bunch, UBOOL Merge )
 
 	return PacketId;
 }
+#endif	//#if WITH_UE3_NETWORKING
 
 //
 // Describe the channel.
@@ -435,11 +464,14 @@ FString UChannel::Describe()
 //
 INT UChannel::IsNetReady( UBOOL Saturate )
 {
+#if WITH_UE3_NETWORKING
 	// If saturation allowed, ignore queued byte count.
 	if( NumOutRec>=RELIABLE_BUFFER-1 )
 		return 0;
 	return Connection->IsNetReady( Saturate );
-
+#else	//#if WITH_UE3_NETWORKING
+	return FALSE;
+#endif	//#if WITH_UE3_NETWORKING
 }
 
 //
@@ -450,6 +482,7 @@ UBOOL UChannel::IsKnownChannelType( INT Type )
 	return Type>=0 && Type<CHTYPE_MAX && ChannelClasses[Type];
 }
 
+#if WITH_UE3_NETWORKING
 //
 // Negative acknowledgement processing.
 //
@@ -461,11 +494,12 @@ void UChannel::ReceivedNak( INT NakPacketId )
 		if( Out->PacketId==NakPacketId && !Out->ReceivedAck )
 		{
 			check(Out->bReliable);
-			debugfSlow( NAME_DevNetTraffic, TEXT("      Channel %i nak; resending %i..."), Out->ChIndex, Out->ChSequence );
+			debugfSuppressed( NAME_DevNetTraffic, TEXT("      Channel %i nak; resending %i..."), Out->ChIndex, Out->ChSequence );
 			Connection->SendRawBunch( *Out, 0 );
 		}
 	}
 }
+#endif	//#if WITH_UE3_NETWORKING
 
 // UChannel statics.
 UClass* UChannel::ChannelClasses[CHTYPE_MAX]={0,0,0,0,0,0,0,0};
@@ -475,64 +509,555 @@ IMPLEMENT_CLASS(UChannel)
 	UControlChannel implementation.
 -----------------------------------------------------------------------------*/
 
+const TCHAR* FNetControlMessageInfo::Names[255];
+
+// control channel message implementation
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Hello);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Welcome);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Upgrade);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Challenge);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Netspeed);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Login);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Failure);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Uses);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Have);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Join);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(JoinSplit);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(DLMgr);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Skip);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Abort);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Unload);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(PCSwap);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(ActorChannelFailure);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(DebugText);
+// peer control message implementations (only used for peer connections)
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(PeerListen);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(PeerConnect);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(PeerJoin);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(PeerJoinResponse);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(PeerDisconnectHost);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(PeerNewHostFound);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(PeerNewHostTravel);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(PeerNewHostTravelSession);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(HandshakeStart);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(HandshakeChallenge);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(HandshakeResponse);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(HandshakeComplete);
+#if WITH_STEAMWORKS_SOCKETS
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(Redirect);
+#endif
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(ClientAuthRequest);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(ServerAuthRequest);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(AuthRequestPeer);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(AuthBlob);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(AuthBlobPeer);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(ClientAuthEndSessionRequest);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(AuthKillPeer);
+IMPLEMENT_CONTROL_CHANNEL_MESSAGE(AuthRetry);
+
 //
-// Initialize the text channel.
+// Initialize the channel.
 //
 UControlChannel::UControlChannel()
 {}
-void UControlChannel::Init( UNetConnection* InConnection, INT InChannelIndex, INT InOpenedLocally )
+void UControlChannel::Init( UNetConnection* InConnection, INT InChannelIndex, UBOOL InOpenedLocally )
 {
 	Super::Init( InConnection, InChannelIndex, InOpenedLocally );
+
+	// Assume all clients use same byte order. So, skip endian swapping handshake.
+	UBOOL bIsPeerConnect = InConnection != NULL && InConnection->Driver != NULL && InConnection->Driver->bIsPeer;
+
+	// If we are opened as a server connection, do the endian checking
+	// The client assumes that the data will always have the correct byte order
+	if (!InOpenedLocally && !bIsPeerConnect)
+	{
+		// Mark this channel as needing endianess determination
+		bNeedsEndianInspection = TRUE;
+	}
 }
 
-//
-// UControlChannel destructor. 
-//
-void UControlChannel::Destroy()
+#if WITH_UE3_NETWORKING
+/**
+ * Inspects the packet for endianess information. Validates this information
+ * against what the client sent. If anything seems wrong, the connection is
+ * closed
+ *
+ * @param Bunch the packet to inspect
+ *
+ * @return TRUE if the packet is good, FALSE otherwise (closes socket)
+ */
+UBOOL UControlChannel::CheckEndianess(FInBunch& Bunch)
 {
-	check(Connection);
-	if( RouteDestroy() )
-		return;
-	check(Connection->Channels[ChIndex]==this);
+	// Assume the packet is bogus and the connection needs closing
+	UBOOL bConnectionOk = FALSE;
+	// Get pointers to the raw packet data
+	const BYTE* HelloMessage = Bunch.GetData();
+	// Check for a packet that is big enough to look at (message ID (1 byte) + platform identifier (1 byte))
+	if (Bunch.GetNumBytes() >= 2)
+	{
+		// check for an old version client still using text messages; if we have one, send it an old format upgrade message
+		if (Bunch.GetNumBytes() >= 13 &&
+			HelloMessage[4] == 'H' &&
+			HelloMessage[5] == 'E' &&
+			HelloMessage[6] == 'L' &&
+			HelloMessage[7] == 'L' &&
+			HelloMessage[8] == 'O' &&
+			HelloMessage[9] == ' ' &&
+			HelloMessage[10] == 'P' &&
+			HelloMessage[11] == '=')
+		{
+			FControlChannelOutBunch Bunch(this, FALSE);
+			FString Response(FString::Printf(TEXT("UPGRADE MINVER=%i VER=%i"), GEngineMinNetVersion, GEngineVersion));
+			Bunch << Response;
+			SendBunch(&Bunch, TRUE);
+			Connection->FlushNet();
+		}
+		else if (HelloMessage[0] == NMT_HandshakeStart)
+		{
+			// Get platform id
+			UE3::EPlatformType OtherPlatform = (UE3::EPlatformType)(HelloMessage[1]);
+			debugf(NAME_DevNet, TEXT("Remote platform is %d"), INT(OtherPlatform));
 
-	Super::Destroy();
+			// Check whether the other platform needs byte swapping by
+			// using the value sent in the packet. Note: we still validate it
+			if (appNetworkNeedsByteSwapping(OtherPlatform))
+			{
+#if NO_BYTE_ORDER_SERIALIZE && !WANTS_XBOX_BYTE_SWAPPING
+				// The xbox doesn't swap ever
+				debugf(NAME_Error, TEXT("Refusing PC client"));
+				return FALSE;
+#else
+				// Client has opposite endianess so swap this bunch
+				// and mark the connection as needing byte swapping
+				Bunch.SetByteSwapping(TRUE);
+				Connection->bNeedsByteSwapping = TRUE;
+#endif
+			}
+			else
+			{
+				// Disable all swapping
+				Bunch.SetByteSwapping(FALSE);
+				Connection->bNeedsByteSwapping = FALSE;
+			}
+
+			// We parsed everything so keep the connection open
+			bConnectionOk = TRUE;
+			bNeedsEndianInspection = FALSE;
+		}
+	}
+
+	return bConnectionOk;
 }
+#endif	//#if WITH_UE3_NETWORKING
 
+#if WITH_UE3_NETWORKING
 //
 // Handle an incoming bunch.
 //
 void UControlChannel::ReceivedBunch( FInBunch& Bunch )
 {
 	check(!Closing);
-	for( ; ; )
+	// If this is a new client connection inspect the raw packet for endianess
+	if (bNeedsEndianInspection && !CheckEndianess(Bunch))
 	{
-		FString Text;
-		Bunch << Text;
-		if( Bunch.IsError() )
+		// Send close bunch and shutdown this connection
+		Connection->Close();
+		return;
+	}
+
+	// Process the packet
+	while (!Bunch.AtEnd() && Connection != NULL && Connection->State != USOCK_Closed) // if the connection got closed, we don't care about the rest
+	{
+		BYTE MessageType;
+		Bunch << MessageType;
+		if (Bunch.IsError())
+		{
 			break;
-		Connection->Driver->Notify->NotifyReceivedText( Connection, *Text );
+		}
+		INT Pos = Bunch.GetPosBits();
+		if (Connection->Driver->bIsPeer)
+		{
+			// Process control message on peer connection 
+			Connection->Driver->Notify->NotifyPeerControlMessage(Connection, MessageType, Bunch);
+		}
+		else
+		{
+			// If this is the server, handle the handshake process, and block control commands if the handshake is not complete
+			// @todo JohnB: Eventually, add a 'HS_Complete' check to CreateChannel as well, to block channel creation before the handshake
+			//		(not implemented yet, as it may block the voice channel)
+			if (Connection->Driver->ServerConnection == NULL && Connection->HandshakeStatus != HS_Complete)
+			{
+				switch (MessageType)
+				{
+					case NMT_HandshakeStart:
+					{
+						// Ignore the message if we're not expecting it
+						if (Connection->HandshakeStatus != HS_NotStarted)
+						{
+							break;
+						}
+
+						// Generate a random number as the challenge, maximizing its range of values
+						Connection->HandshakeChallenge = (DWORD)RandHelper(255) |  ((DWORD)RandHelper(255) << 8) |
+							((DWORD)RandHelper(255) << 16) | ((DWORD)RandHelper(255) << 24);
+
+						Connection->HandshakeStatus = HS_SentChallenge;
+
+						// Send the challenge
+						FNetControlMessage<NMT_HandshakeChallenge>::Send(Connection, Connection->HandshakeChallenge);
+						Connection->FlushNet();
+
+#if WITH_STEAMWORKS_SOCKETS
+						// Only set the session UID >AFTER< sending the challenge, otherwise the client blocks
+						//	the packet, due to expecting a null-UID
+						if (Connection->bUseSessionUID)
+						{
+							Connection->SessionUID[0] = (Connection->HandshakeChallenge & 0xFF000000) >> 24;
+							Connection->SessionUID[1] = (Connection->HandshakeChallenge & 0x00FF0000) >> 16;
+							Connection->SessionUID[2] = (Connection->HandshakeChallenge & 0x0000FF00) >> 8;
+
+							debugfSuppressed(NAME_DevNet, TEXT("Server set session UID to: %i %i %i"),
+								Connection->SessionUID[0], Connection->SessionUID[1], Connection->SessionUID[2]);
+						}
+#endif
+
+						break;
+					}
+
+					case NMT_HandshakeResponse:
+					{
+						// Ignore the message if we're not expecting it
+						if (Connection->HandshakeStatus != HS_SentChallenge)
+						{
+							break;
+						}
+
+						// Very weak hashing, but isn't really important; handshake is primarily to verify IP
+						// @todo JohnB: Harden the hash creation later at some point, to make fake player exploits more difficult
+						FString HashStr = FString::Printf(TEXT("895fcf626f55798667e4e94cb7a636af %d"),
+											Connection->HandshakeChallenge);
+						DWORD ExpectedResponse = appStrCrc(*HashStr);
+						DWORD ChallengeResponse;
+
+						// Check the challenge response
+						FNetControlMessage<NMT_HandshakeResponse>::Receive(Bunch, ChallengeResponse);
+
+						if (ChallengeResponse != ExpectedResponse)
+						{
+							Connection->Close();
+							break;	
+						}
+
+#if WITH_STEAMWORKS_SOCKETS
+						// If the current net driver is for redirecting clients, pass on to the Online Subsystem
+						if (Connection->Driver->bRedirectDriver)
+						{
+							extern void appSteamHandleRedirect(UNetConnection* Connection);
+							appSteamHandleRedirect(Connection);
+
+							break;
+						}
+						// If it's a normal net driver, mark the handshake as complete and continue
+						else
+#endif
+						{
+							Connection->HandshakeStatus = HS_Complete;
+
+							// Notify the client that the challenge succeeded
+							FNetControlMessage<NMT_HandshakeComplete>::Send(Connection);
+							Connection->FlushNet();
+						}
+
+						break;
+					}
+
+					default:
+					{
+						// Discard all other control messages
+						break;
+					}
+				}
+			}
+			// we handle Actor channel failure notifications ourselves
+			else if (MessageType == NMT_ActorChannelFailure)
+			{
+				if (Connection->Driver->ServerConnection == NULL)
+				{
+					debugf(NAME_DevNet, TEXT("Server connection received: %s"), FNetControlMessageInfo::GetName(MessageType));
+					INT ChannelIndex;
+					FNetControlMessage<NMT_ActorChannelFailure>::Receive(Bunch, ChannelIndex);
+					if (ChannelIndex < ARRAY_COUNT(Connection->Channels))
+					{
+						UActorChannel* ActorChan = Cast<UActorChannel>(Connection->Channels[ChannelIndex]);
+						if (ActorChan != NULL && ActorChan->Actor != NULL)
+						{
+							// if the client failed to initialize the PlayerController channel, the connection is broken
+							if (ActorChan->Actor == Connection->Actor)
+							{
+								Connection->Close();
+							}
+							else if (Connection->Actor != NULL)
+							{
+								Connection->Actor->NotifyActorChannelFailure(ActorChan);
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				// Process control message on client/server connection
+				Connection->Driver->Notify->NotifyControlMessage(Connection, MessageType, Bunch);
+			}
+		}
+		// if the message was not handled, eat it ourselves
+		if (Pos == Bunch.GetPosBits() && !Bunch.IsError())
+		{
+			switch (MessageType)
+			{
+				case NMT_Hello:
+					FNetControlMessage<NMT_Hello>::Discard(Bunch);
+					break;
+				case NMT_Welcome:
+					FNetControlMessage<NMT_Welcome>::Discard(Bunch);
+					break;
+				case NMT_Upgrade:
+					FNetControlMessage<NMT_Upgrade>::Discard(Bunch);
+					break;
+				case NMT_Challenge:
+					FNetControlMessage<NMT_Challenge>::Discard(Bunch);
+					break;
+				case NMT_Netspeed:
+					FNetControlMessage<NMT_Netspeed>::Discard(Bunch);
+					break;
+				case NMT_Login:
+					FNetControlMessage<NMT_Login>::Discard(Bunch);
+					break;
+				case NMT_Failure:
+					FNetControlMessage<NMT_Failure>::Discard(Bunch);
+					break;
+				case NMT_Uses:
+					FNetControlMessage<NMT_Uses>::Discard(Bunch);
+					break;
+				case NMT_Have:
+					FNetControlMessage<NMT_Have>::Discard(Bunch);
+					break;
+				case NMT_Join:
+					break;
+				case NMT_JoinSplit:
+					FNetControlMessage<NMT_JoinSplit>::Discard(Bunch);
+					break;
+				case NMT_DLMgr:
+					FNetControlMessage<NMT_DLMgr>::Discard(Bunch);
+					break;
+				case NMT_Skip:
+					FNetControlMessage<NMT_Skip>::Discard(Bunch);
+					break;
+				case NMT_Abort:
+					FNetControlMessage<NMT_Abort>::Discard(Bunch);
+					break;
+				case NMT_Unload:
+					FNetControlMessage<NMT_Unload>::Discard(Bunch);
+					break;
+				case NMT_PCSwap:
+					FNetControlMessage<NMT_PCSwap>::Discard(Bunch);
+					break;
+				case NMT_ActorChannelFailure:
+					FNetControlMessage<NMT_ActorChannelFailure>::Discard(Bunch);
+					break;
+				case NMT_DebugText:
+					FNetControlMessage<NMT_DebugText>::Discard(Bunch);
+					break;
+				case NMT_PeerListen:
+					FNetControlMessage<NMT_PeerListen>::Discard(Bunch);
+					break;
+				case NMT_PeerConnect:
+					FNetControlMessage<NMT_PeerConnect>::Discard(Bunch);
+					break;
+				case NMT_PeerJoin:
+					FNetControlMessage<NMT_PeerJoin>::Discard(Bunch);
+					break;
+				case NMT_PeerJoinResponse:
+					FNetControlMessage<NMT_PeerJoinResponse>::Discard(Bunch);
+					break;
+				case NMT_PeerDisconnectHost:
+					FNetControlMessage<NMT_PeerDisconnectHost>::Discard(Bunch);
+					break;
+				case NMT_PeerNewHostFound:
+					FNetControlMessage<NMT_PeerNewHostFound>::Discard(Bunch);
+					break;
+				case NMT_PeerNewHostTravel:
+					FNetControlMessage<NMT_PeerNewHostTravel>::Discard(Bunch);
+					break;
+				case NMT_PeerNewHostTravelSession:
+					FNetControlMessage<NMT_PeerNewHostTravelSession>::Discard(Bunch);
+					break;
+				case NMT_HandshakeStart:
+					FNetControlMessage<NMT_HandshakeStart>::Discard(Bunch);
+					break;
+				case NMT_HandshakeChallenge:
+					FNetControlMessage<NMT_HandshakeChallenge>::Discard(Bunch);
+					break;
+				case NMT_HandshakeResponse:
+					FNetControlMessage<NMT_HandshakeResponse>::Discard(Bunch);
+					break;
+				case NMT_HandshakeComplete:
+					break;
+#if WITH_STEAMWORKS_SOCKETS
+				case NMT_Redirect:
+					FNetControlMessage<NMT_Redirect>::Discard(Bunch);
+					break;
+#endif
+				case NMT_ClientAuthRequest:
+					FNetControlMessage<NMT_ClientAuthRequest>::Discard(Bunch);
+					break;
+				case NMT_ServerAuthRequest:
+					break;
+				case NMT_AuthRequestPeer:
+					FNetControlMessage<NMT_AuthRequestPeer>::Discard(Bunch);
+					break;
+				case NMT_AuthBlob:
+					FNetControlMessage<NMT_AuthBlob>::Discard(Bunch);
+					break;
+				case NMT_AuthBlobPeer:
+					FNetControlMessage<NMT_AuthBlobPeer>::Discard(Bunch);
+					break;
+				case NMT_ClientAuthEndSessionRequest:
+					break;
+				case NMT_AuthKillPeer:
+					FNetControlMessage<NMT_AuthKillPeer>::Discard(Bunch);
+					break;
+				case NMT_AuthRetry:
+					break;
+				default:
+					check(!FNetControlMessageInfo::IsRegistered(MessageType)); // if this fails, a case is missing above for an implemented message type
+
+					debugf(NAME_Error, TEXT("Received unknown control channel message"));
+					appErrorfDebug(TEXT("Failed to read control channel message %i"), INT(MessageType));
+					Connection->Close();
+					return;
+			}
+		}
+		if (Bunch.IsError())
+		{
+			debugf(NAME_Error, TEXT("Failed to read control channel message '%s'"), FNetControlMessageInfo::GetName(MessageType));
+			appErrorfDebug(TEXT("Failed to read control channel message"));
+			Connection->Close();
+			break;
+		}
 	}
 }
+#endif	//#if WITH_UE3_NETWORKING
 
-//
-// Text channel FArchive interface.
-//
-void UControlChannel::Serialize( const TCHAR* Data, EName MsgType )
+/** adds the given string to the QueuedMessages list. Closes the connection if MAX_QUEUED_CONTROL_MESSAGES is exceeded */
+void UControlChannel::QueueMessage(const FOutBunch* Bunch)
 {
-	// Delivery is not guaranteed because NewBunch may fail.
-	FOutBunch Bunch( this, 0 );
-	Bunch.bReliable = 1;
-	FString Text=Data;
-	Bunch << Text;
-	if( !Bunch.IsError() )
+#if WITH_UE3_NETWORKING
+	if (QueuedMessages.Num() >= MAX_QUEUED_CONTROL_MESSAGES)
 	{
-		SendBunch( &Bunch, 1 );
+		// we're out of room in our extra buffer as well, so kill the connection
+		debugf(NAME_DevNet, TEXT("Overflowed control channel message queue, disconnecting client"));
+		// intentionally directly setting State as the messaging in Close() is not going to work in this case
+		Connection->State = USOCK_Closed;
 	}
 	else
 	{
-		debugf( NAME_DevNetTraffic, TEXT("Control channel bunch overflowed") );
-		//!!should signal error somehow
+		INT Index = QueuedMessages.AddZeroed();
+		QueuedMessages(Index).Add(Bunch->GetNumBytes());
+		appMemcpy(QueuedMessages(Index).GetTypedData(), Bunch->GetData(), Bunch->GetNumBytes());
 	}
+#endif	//#if WITH_UE3_NETWORKING
+}
+
+#if WITH_UE3_NETWORKING
+INT UControlChannel::SendBunch(FOutBunch* Bunch, UBOOL Merge)
+{
+	// if we already have queued messages, we need to queue subsequent ones to guarantee proper ordering
+	if (QueuedMessages.Num() > 0 || NumOutRec >= RELIABLE_BUFFER - 1 + Bunch->bClose)
+	{
+		QueueMessage(Bunch);
+		return INDEX_NONE;
+	}
+	else
+	{
+		if (!Bunch->IsError())
+		{
+			return Super::SendBunch(Bunch, Merge);
+		}
+		else
+		{
+			// an error here most likely indicates an unfixable error, such as the text using more than the maximum packet size
+			// so there is no point in queueing it as it will just fail again
+			appErrorfDebug(TEXT("Control channel bunch overflowed"));
+			debugf(NAME_Error, TEXT("Control channel bunch overflowed"));
+			Connection->Close();
+			return INDEX_NONE;
+		}
+	}
+}
+#endif	//#if WITH_UE3_NETWORKING
+
+void UControlChannel::Tick()
+{
+	Super::Tick();
+
+#if WITH_UE3_NETWORKING
+	if( !OpenAcked )
+	{
+		INT Count = 0;
+		for( FOutBunch* Out=OutRec; Out; Out=Out->Next )
+			if( !Out->ReceivedAck )
+				Count++;
+		if ( Count > 8 )
+			return;
+		// Resend any pending packets if we didn't get the appropriate acks.
+		for( FOutBunch* Out=OutRec; Out; Out=Out->Next )
+		{
+			if( !Out->ReceivedAck )
+			{
+				FLOAT Wait = Connection->Driver->Time-Out->Time;
+				checkSlow(Wait>=0.f);
+				if( Wait>1.f )
+				{
+					debugfSuppressed( NAME_DevNetTraffic, TEXT("Channel %i ack timeout; resending %i..."), ChIndex, Out->ChSequence );
+					check(Out->bReliable);
+					Connection->SendRawBunch( *Out, 0 );
+				}
+			}
+		}
+	}
+	else
+	{
+		// attempt to send queued messages
+		while (QueuedMessages.Num() > 0 && !Closing)
+		{
+			FControlChannelOutBunch Bunch(this, 0);
+			if (Bunch.IsError())
+			{
+				break;
+			}
+			else
+			{
+				Bunch.bReliable = 1;
+				Bunch.Serialize(QueuedMessages(0).GetData(), QueuedMessages(0).Num());
+				if (!Bunch.IsError())
+				{
+					Super::SendBunch(&Bunch, 1);
+					QueuedMessages.Remove(0, 1);
+				}
+				else
+				{
+					// an error here most likely indicates an unfixable error, such as the text using more than the maximum packet size
+					// so there is no point in queueing it as it will just fail again
+					appErrorfDebug(TEXT("Control channel bunch overflowed"));
+					debugf(NAME_Error, TEXT("Control channel bunch overflowed"));
+					Connection->Close();
+					break;
+				}
+			}
+		}
+	}
+#endif	//#if WITH_UE3_NETWORKING
 }
 
 //
@@ -554,16 +1079,17 @@ IMPLEMENT_CLASS(UControlChannel);
 //
 UActorChannel::UActorChannel()
 {}
-void UActorChannel::Init( UNetConnection* InConnection, INT InChannelIndex, INT InOpenedLocally )
+void UActorChannel::Init( UNetConnection* InConnection, INT InChannelIndex, UBOOL InOpenedLocally )
 {
 	Super::Init( InConnection, InChannelIndex, InOpenedLocally );
-	Level			= Connection->Driver->Notify->NotifyGetLevel();
+#if WITH_UE3_NETWORKING
+	World			= Connection->Driver->Notify->NotifyGetWorld();
 	RelevantTime	= Connection->Driver->Time;
 	LastUpdateTime	= Connection->Driver->Time - Connection->Driver->SpawnPrioritySeconds;
-	LastFullUpdateTime = -1.f;
-	ActorDirty = false;
-	bActorMustStayDirty = false;
-	bActorStillInitial = false;
+#endif	//#if WITH_UE3_NETWORKING
+	ActorDirty = TRUE;
+	bActorMustStayDirty = FALSE;
+	bActorStillInitial = FALSE;
 }
 
 //
@@ -582,66 +1108,108 @@ void UActorChannel::SetClosingFlag()
 void UActorChannel::Close()
 {
 	UChannel::Close();
-	Actor = NULL;
+	if (Actor != NULL)
+	{
+		// SetClosingFlag() might have already done this, but we need to make sure as that won't get called if the connection itself has already been closed
+		Connection->ActorChannels.Remove(Actor);
+
+		if (!Actor->IsStatic() && !Actor->bNoDelete && bClearRecentActorRefs)
+		{
+			// if transient actor lost relevance, clear references to it from other channels' Recent data to mirror what happens on the other side of the connection
+			// so that if it becomes relevant again, we know we need to resend those references
+			for (TMap<AActor*, UActorChannel*>::TIterator It(Connection->ActorChannels); It; ++It)
+			{
+				UActorChannel* Chan = It.Value();
+				if (Chan != NULL && Chan->Actor != NULL && !Chan->Closing && Chan->Recent.Num() > 0)
+				{
+					for (INT j = 0; j < Chan->ReplicatedActorProperties.Num(); j++)
+					{
+						AActor** ActorRef = (AActor**)((BYTE*)Chan->Recent.GetData() + Chan->ReplicatedActorProperties(j).Offset);
+						if (*ActorRef == Actor)
+						{
+							*ActorRef = NULL;
+							Chan->ActorDirty = TRUE;
+							debugfSuppressed( NAME_DevNetTraffic, TEXT("Clearing Recent ref to irrelevant Actor %s from channel %i (property %s, Actor %s)"), *Actor->GetName(), Chan->ChIndex,
+										*Chan->ReplicatedActorProperties(j).Property->GetPathName(), *Chan->Actor->GetName() );
+						}
+					}
+				}
+			}
+		}
+
+		Actor = NULL;
+	}
 }
 
-//
-// Time passes...
-//
-void UActorChannel::Tick()
+void UActorChannel::StaticConstructor()
 {
-	UChannel::Tick();
+#if WITH_UE3_NETWORKING
+	UClass* TheClass = GetClass();
+	TheClass->EmitObjectReference(STRUCT_OFFSET(UActorChannel,Actor));
+	TheClass->EmitObjectReference(STRUCT_OFFSET(UActorChannel,ActorClass));
+
+	const DWORD SkipIndexIndex = TheClass->EmitStructArrayBegin(STRUCT_OFFSET(UActorChannel, ReplicatedActorProperties), sizeof(FReplicatedActorProperty));
+	TheClass->EmitObjectReference(STRUCT_OFFSET(FReplicatedActorProperty, Property));
+	TheClass->EmitStructArrayEnd(SkipIndexIndex);
+#endif	//#if WITH_UE3_NETWORKING
 }
 
-//
-// Actor channel destructor.
-//
-void UActorChannel::Destroy()
+/** cleans up channel structures and NULLs references to the channel */
+void UActorChannel::CleanUp()
 {
-	check(Connection);
-	if( RouteDestroy() )
-		return;
-	check(Connection->Channels[ChIndex]==this);
-
 	// Remove from hash and stuff.
 	SetClosingFlag();
 
 	// Destroy Recent properties.
-	if( Recent.Num() )
+	if (Recent.Num() > 0)
 	{
-		check(ActorClass);
-		UObject::ExitProperties( &Recent(0), ActorClass );
+		checkSlow(ActorClass != NULL);
+		UObject::ExitProperties(&Recent(0), ActorClass);
 	}
 
 	// If we're the client, destroy this actor.
-	if( Connection->Driver->ServerConnection )
+	if (Connection->Driver->ServerConnection != NULL)
 	{
-		check(!Actor || Actor->IsValid());
-		checkSlow(Level);
-		checkSlow(Level->IsValid());
-		checkSlow(Connection);
+		check(Actor == NULL || Actor->IsValid());
+		checkSlow(Connection != NULL);
 		checkSlow(Connection->IsValid());
-		checkSlow(Connection->Driver);
+		checkSlow(Connection->Driver != NULL);
 		checkSlow(Connection->Driver->IsValid());
-		if( Actor )
+		if (Actor != NULL)
 		{
-			if( Actor->bTearOff )
+			if (Actor->bTearOff)
 			{
 				Actor->Role = ROLE_Authority;
 				Actor->RemoteRole = ROLE_None;
 			}
-			else if( !Actor->bNetTemporary )
-				Actor->GetLevel()->DestroyActor( Actor, 1 );
+			else if (!Actor->bNetTemporary && GWorld != NULL && !GIsRequestingExit)
+			{
+				if (Actor->bNoDelete)
+				{
+					// can't destroy bNoDelete actors, but send a separate notification to them so they can perform any cleanup
+					// since their replicated properties will be left in an arbitrary state
+					Actor->eventReplicationEnded();
+				}
+				else
+				{
+					// if actor should be destroyed and isn't already, then destroy it
+					GWorld->DestroyActor(Actor, 1);
+				}
+			}
 		}
 	}
-	else if( Actor && !OpenAcked )
+#if WITH_UE3_NETWORKING
+	else if (Actor && !OpenAcked)
 	{
 		// Resend temporary actors if nak'd.
-		Connection->SentTemporaries.RemoveItem( Actor );
+		Connection->SentTemporaries.RemoveItem(Actor);
 	}
-	Super::Destroy();
+#endif	//#if WITH_UE3_NETWORKING
+
+	Super::CleanUp();
 }
 
+#if WITH_UE3_NETWORKING
 //
 // Negative acknowledgements.
 //
@@ -653,6 +1221,38 @@ void UActorChannel::ReceivedNak( INT NakPacketId )
 			if( Retirement(i).OutPacketId==NakPacketId && !Retirement(i).Reliable )
 				Dirty.AddUniqueItem(i);
     ActorDirty = true; 
+}
+#endif	//#if WITH_UE3_NETWORKING
+
+/** internal helper function for adding Actor properties inside structs to the ReplicatedActorProperties array - @see SetChannelActor() */
+static void AddActorPropertiesFromStruct(const UStructProperty* StructProp, INT BaseOffset, TArray<FReplicatedActorProperty>& ReplicatedActorProperties)
+{
+	checkSlow(StructProp != NULL);
+	checkSlow(StructProp->Struct != NULL);
+
+	BaseOffset += StructProp->Offset;
+	for (INT i = 0; i < StructProp->ArrayDim; i++)
+	{
+		for (UProperty* Prop = StructProp->Struct->PropertyLink; Prop != NULL; Prop = Prop->PropertyLinkNext)
+		{
+			UObjectProperty* ObjectProp = Cast<UObjectProperty>(Prop, CLASS_IsAUObjectProperty);
+			if (ObjectProp != NULL)
+			{
+				if (ObjectProp->PropertyClass != NULL && ObjectProp->PropertyClass->IsChildOf(AActor::StaticClass()))
+				{
+					new(ReplicatedActorProperties) FReplicatedActorProperty(BaseOffset + i * StructProp->ElementSize + ObjectProp->Offset, ObjectProp);
+				}
+			}
+			else
+			{
+				UStructProperty* InnerStructProp = Cast<UStructProperty>(Prop, CLASS_IsAUStructProperty);
+				if (InnerStructProp != NULL)
+				{
+					AddActorPropertiesFromStruct(InnerStructProp, BaseOffset + i * StructProp->ElementSize, ReplicatedActorProperties);
+				}
+			}
+		}
+	}
 }
 
 //
@@ -671,13 +1271,14 @@ void UActorChannel::SetChannelActor( AActor* InActor )
 	if ( Connection->PendingOutRec[ChIndex] > 0 )
 	{
 		// send empty reliable bunches to synchronize both sides
-		// debugf(TEXT("%i Actor %s WILL BE sending %i vs first %i"), ChIndex, Actor->GetName(), Connection->PendingOutRec[ChIndex],Connection->OutReliable[ChIndex]);
+		// debugf(TEXT("%i Actor %s WILL BE sending %i vs first %i"), ChIndex, *Actor->GetName(), Connection->PendingOutRec[ChIndex],Connection->OutReliable[ChIndex]);
 		INT RealOutReliable = Connection->OutReliable[ChIndex];
 		Connection->OutReliable[ChIndex] = Connection->PendingOutRec[ChIndex] - 1;
 		while ( Connection->PendingOutRec[ChIndex] <= RealOutReliable )
 		{
 			// debugf(TEXT("%i SYNCHRONIZING by sending %i"), ChIndex, Connection->PendingOutRec[ChIndex]);
 
+#if WITH_UE3_NETWORKING
 			FOutBunch Bunch( this, 0 );
 			if( !Bunch.IsError() )
 			{
@@ -685,6 +1286,7 @@ void UActorChannel::SetChannelActor( AActor* InActor )
 				SendBunch( &Bunch, 0 );
 				Connection->PendingOutRec[ChIndex]++;
 			}
+#endif	//#if WITH_UE3_NETWORKING
 		}
 
 		Connection->OutReliable[ChIndex] = RealOutReliable;
@@ -702,21 +1304,19 @@ void UActorChannel::SetChannelActor( AActor* InActor )
 	if( !InActor->bNetTemporary )
 	{
 		// Allocate recent property list.
-		INT Size = ActorClass->Defaults.Num();
+		INT Size = ActorClass->GetDefaultsCount();
+		// use Reserve() first so we allocate exactly as much as we need
+		Recent.Reserve(Size);
 		Recent.Add( Size );
 		UObject::InitProperties( &Recent(0), Size, ActorClass, NULL, 0 );
-
-		// Init config properties, to force replicate them.
-		for( UProperty* It=ActorClass->ConfigLink; It; It=It->ConfigLinkNext )
+		BYTE* DefaultData = NULL;
+		INT DefaultCount = 0;
+		if (Actor->GetArchetype())
 		{
-			if( It->PropertyFlags & CPF_NeedCtorLink )
-				It->DestroyValue( &Recent(It->Offset) );
-            UBoolProperty* BoolProperty = Cast<UBoolProperty>(It,CLASS_IsAUBoolProperty);
-			if( !BoolProperty )
-				appMemzero( &Recent(It->Offset), It->GetSize() );
-			else
-				*(DWORD*)&Recent(It->Offset) &= ~BoolProperty->BitMask;
+			DefaultData = (BYTE*)Actor->GetArchetype();
+			DefaultCount = Size;
 		}
+		UObject::InitProperties( &Recent(0), Size, ActorClass, DefaultData, DefaultCount );
 	}
 
 	// Allocate retirement list.
@@ -724,16 +1324,46 @@ void UActorChannel::SetChannelActor( AActor* InActor )
 	while( Retirement.Num()<ActorClass->ClassReps.Num() )
 		new(Retirement)FPropertyRetirement;
 
+	// figure out list of replicated actor properties
+	for (UProperty* Prop = ActorClass->PropertyLink; Prop != NULL; Prop = Prop->PropertyLinkNext)
+	{
+		if (Prop->PropertyFlags & CPF_Net)
+		{
+			UObjectProperty* ObjectProp = Cast<UObjectProperty>(Prop, CLASS_IsAUObjectProperty);
+			if (ObjectProp != NULL)
+			{
+				if (ObjectProp->PropertyClass != NULL && ObjectProp->PropertyClass->IsChildOf(AActor::StaticClass()))
+				{
+					for (INT i = 0; i < ObjectProp->ArrayDim; i++)
+					{
+						new(ReplicatedActorProperties) FReplicatedActorProperty(ObjectProp->Offset + i * ObjectProp->ElementSize, ObjectProp);
+					}
+				}
+			}
+			else
+			{
+				UStructProperty* StructProp = Cast<UStructProperty>(Prop, CLASS_IsAUStructProperty);
+				if (StructProp != NULL)
+				{
+					AddActorPropertiesFromStruct(StructProp, 0, ReplicatedActorProperties);
+				}
+			}
+		}
+	}
 }
 
+#if WITH_UE3_NETWORKING
 //
 // Handle receiving a bunch of data on this actor channel.
 //
 void UActorChannel::ReceivedBunch( FInBunch& Bunch )
 {
 	check(!Closing);
+
 	if ( Broken || bTornOff )
+	{
 		return;
+	}
 
 	// Initialize client if first time through.
 	INT bJustSpawned = 0;
@@ -742,7 +1372,7 @@ void UActorChannel::ReceivedBunch( FInBunch& Bunch )
 	{
 		if( !Bunch.bOpen )
 		{
-			debugf(NAME_DevNetTraffic, TEXT("New actor channel received non-open packet: %i/%i/%i"),Bunch.bOpen,Bunch.bClose,Bunch.bReliable);
+			debugfSuppressed(NAME_DevNetTraffic, TEXT("New actor channel received non-open packet: %i/%i/%i"),Bunch.bOpen,Bunch.bClose,Bunch.bReliable);
 			return;
 		}
 
@@ -750,47 +1380,73 @@ void UActorChannel::ReceivedBunch( FInBunch& Bunch )
 		UObject* Object;
 		Bunch << Object;
 		AActor* InActor = Cast<AActor>( Object );
-		if( InActor==NULL )
+		if (InActor == NULL)
+		{
+			// We are unsynchronized. Instead of crashing, let's try to recover.
+			debugf(TEXT("Received invalid actor class on channel %i"), ChIndex);
+			Broken = 1;
+			FNetControlMessage<NMT_ActorChannelFailure>::Send(Connection, ChIndex);
+			return;
+		}
+		if (InActor->HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject))
 		{
 			// Transient actor.
-			UClass* ActorClass = Cast<UClass>( Object );
-			if (!ActorClass || !ActorClass->IsChildOf(AActor::StaticClass()))
-			{
-				// We are unsynchronized. Instead of crashing, let's try to recover.
-				warnf(TEXT("Received invalid actor class"));
-				Broken = 1;
-				return;
-			}
-			check(ActorClass);
-			check(ActorClass->IsChildOf(AActor::StaticClass()));
-
 			FVector Location;
-            FRotator Rotation(0,0,0);
-            SerializeCompressedInitial( Bunch, Location, Rotation, ActorClass->GetDefaultActor()->bNetInitialRotation, NULL );
+			FRotator Rotation(0,0,0);
+			SerializeCompressedInitial(Bunch, Location, Rotation, InActor->bNetInitialRotation, NULL);
 
-			InActor = Level->SpawnActor( ActorClass, NAME_None, Location, Rotation, NULL, 1, 1, NULL, NULL, 1 ); 
+			InActor = GWorld->SpawnActor(InActor->GetClass(), NAME_None, Location, Rotation, InActor, 1, 1, NULL, NULL, 1); 
 			bJustSpawned = 1;
 			if ( !InActor )
-				debugf(TEXT("Couldn't spawn %s high detail %d"),ActorClass->GetName() );
-else 			if ( InActor->bDeleteMe )
-				debugf(TEXT("Client received and deleted instantly %s"),InActor->GetName());
+			{
+				debugf(TEXT("Couldn't spawn %s replicated from server"), *ActorClass->GetName());
+			}
+			else if ( InActor->bDeleteMe )
+			{
+				debugf(TEXT("Client received and deleted instantly %s"),*InActor->GetName());
+			}
 			check(InActor);
 		}
-		debugf( NAME_DevNetTraffic, TEXT("      Spawn %s:"), *InActor->GetFullName() );
+		debugfSuppressed( NAME_DevNetTraffic, TEXT("      Spawn %s:"), *InActor->GetFullName() );
 		SetChannelActor( InActor );
 
-		// If this is the player's channel and the connection was pending, mark it open.
-		if
-		(	Connection->Driver
-		&&	Connection == Connection->Driver->ServerConnection
-		&&	Connection->State==USOCK_Pending
-		&&	Actor->GetAPlayerController() )
+		// if it's a PlayerController, attempt to match it to a local viewport
+		APlayerController* PC = Actor->GetAPlayerController();
+		if (PC != NULL)
 		{
-			Connection->HandleClientPlayer( (APlayerController*)(Actor) ); 
+			Bunch << PC->NetPlayerIndex;
+			if (Connection->Driver != NULL && Connection == Connection->Driver->ServerConnection)
+			{
+				if (PC->NetPlayerIndex == 0)
+				{
+					// main connection PlayerController
+					Connection->HandleClientPlayer(PC); 
+				}
+				else
+				{
+					INT ChildIndex = INT(PC->NetPlayerIndex) - 1;
+					if (Connection->Children.IsValidIndex(ChildIndex))
+					{
+						// received a new PlayerController for an already existing child
+						Connection->Children(ChildIndex)->HandleClientPlayer(PC);
+					}
+					else
+					{
+						// create a split connection on the client
+						UChildConnection* Child = Connection->Driver->CreateChild(Connection); 
+						Child->HandleClientPlayer(PC);
+						debugf(NAME_DevNet, TEXT("Client received PlayerController=%s. Num child connections=%i."), *Actor->GetName(), Connection->Children.Num());
+					}
+				}
+			}
 		}
 	}
-	else debugf( NAME_DevNetTraffic, TEXT("      Actor %s:"), *Actor->GetFullName() );
+	else
+	{
+		debugfSuppressed( NAME_DevNetTraffic, TEXT("      Actor %s:"), *Actor->GetFullName() );
+	}
 	ClassCache = Connection->PackageMap->GetClassNetCache(ActorClass);
+	checkSlow(ClassCache != NULL);
 
 	// Owned by connection's player?
 	Actor->bNetOwner = 0;
@@ -803,95 +1459,158 @@ else 			if ( InActor->bDeleteMe )
 		{
 			// We are the client.
 			if( Player && Player->IsA( ULocalPlayer::StaticClass() ) )
-				Actor->bNetOwner = 1;
+			{
+				Actor->bNetOwner = TRUE;
+			}
 		}
 		else
 		{
 			// We are the server.
-			if( Player==Connection )
-				Actor->bNetOwner = 1;
+			if (Player == Connection || (Player != NULL && Player->IsA(UChildConnection::StaticClass()) && ((UChildConnection*)Player)->Parent == Connection))
+			{
+				Actor->bNetOwner = TRUE;
+			}
 		}
 	}
+
 	// Handle the data stream.
 	INT             RepIndex   = Bunch.ReadInt( ClassCache->GetMaxIndex() );
 	FFieldNetCache* FieldCache = Bunch.IsError() ? NULL : ClassCache->GetFromIndex( RepIndex );
-	while( FieldCache || bJustSpawned )
+	const UBOOL bIsServer = (Connection->Driver->ServerConnection == NULL);
+	UFunction* RepNotifyFunc = NULL;
+
+	// Made a inline allocator to relieve malloc pressure
+	TArray<UProperty*,TInlineAllocator<32> > RepNotifies;
+
+	while (FieldCache || bJustSpawned)
 	{
-		// Save current properties.
+		// Save current properties.k
 		//debugf(TEXT("Rep %s: %i"),FieldCache->Field->GetFullName(),RepIndex);
-		UBOOL bHasFieldCache = (FieldCache != NULL);
-		if ( bHasFieldCache && (Actor->Role != ROLE_Authority) )
-		Actor->PreNetReceive();
+		UBOOL bHasReplicatedProperties = ((FieldCache != NULL) && Cast<UProperty>(FieldCache->Field, CLASS_IsAUProperty) != NULL);
+		if (bHasReplicatedProperties && !bIsServer)
+		{
+			Actor->PreNetReceive();
+		}
 
 		// Receive properties from the net.
-		UProperty* It;
-		while( FieldCache && (It=Cast<UProperty>(FieldCache->Field,CLASS_IsAUProperty))!=NULL )
+		// NOTE: Even though servers do not support receiving replicated properties, they must be processed anyway
+		//			(this is because RPC's may be merged into the same bunch as variables, and servers need to execute them)
+		RepNotifies.Reset();
+		UProperty* ReplicatedProp;
+		while( FieldCache && (ReplicatedProp=Cast<UProperty>(FieldCache->Field,CLASS_IsAUProperty))!=NULL )
 		{
+			// Server shouldn't receive properties.
+			if (bIsServer)
+			{
+				debugfSlow( TEXT("Server received unwanted property value %s in %s"), *ReplicatedProp->GetName(), *Actor->GetFullName() );
+			}
+
+
+			// Whether or not to discard the current replicated property (servers do by default anyway)
+			UBOOL bDiscard = bIsServer;
+
 			// Receive array index.
 			BYTE Element=0;
-			if( It->ArrayDim != 1 )
+			if( ReplicatedProp->ArrayDim != 1 )
+			{
 				Bunch << Element;
 
-			// Pointer to destiation.
-			BYTE* DestActor  = (BYTE*)Actor;
-			BYTE* DestRecent = Recent.Num() ? &Recent(0) : NULL;
-
-			// Server, shouldn't receive properties.
-			if( !Connection->Driver->ServerConnection )
-			{
-				debugfSlow( TEXT("Server received unwanted property value %s in %s"), It->GetName(), Actor->GetFullName() );
-					DestActor  = NULL;
-					DestRecent = NULL;
+				if (Element >= ReplicatedProp->ArrayDim)
+				{
+					Element = ReplicatedProp->ArrayDim-1;
+					bDiscard = TRUE;
+				}
 			}
 
 			// Check property ordering.
-			FPropertyRetirement& Retire = Retirement( It->RepIndex + Element );
-			if( Bunch.PacketId>=Retire.InPacketId ) //!! problem with reliable pkts containing dynamic references, being retransmitted, and overriding newer versions. Want "OriginalPacketId" for retransmissions?
+			if (!bDiscard)
 			{
-				// Receive this new property.
-				Retire.InPacketId = Bunch.PacketId;
+				FPropertyRetirement& Retire = Retirement( ReplicatedProp->RepIndex + Element );
+
+				if( Bunch.PacketId>=Retire.InPacketId ) //!! problem with reliable pkts containing dynamic references, being retransmitted, and overriding newer versions. Want "OriginalPacketId" for retransmissions?
+				{
+					// Receive this new property.
+					Retire.InPacketId = Bunch.PacketId;
+				}
+				else
+				{
+					// Skip this property, because it's out-of-date.
+					debugfSuppressed( NAME_DevNetTraffic, TEXT("Received out-of-date %s"), *ReplicatedProp->GetName() );
+					bDiscard = TRUE;
+				}
 			}
-			else
+
+			// Pointer to destiation.
+			BYTE* DestActor  = NULL;
+			BYTE* DestRecent = NULL;
+
+			if (!bDiscard)
 			{
-				// Skip this property, because it's out-of-date.
-				debugfSlow( NAME_DevNetTraffic, TEXT("Received out-of-date %s"), It->GetName() );
-				DestActor  = NULL;
-				DestRecent = NULL;
+				DestActor = (BYTE*)Actor;
+				DestRecent = Recent.Num() ? &Recent(0) : NULL;
 			}
 
 			// Receive property.
-			FMemMark Mark(GMem);
-			INT   Offset = It->Offset + Element*It->ElementSize;
-			BYTE* Data   = DestActor ? (DestActor + Offset) : NewZeroed<BYTE>(GMem,It->ElementSize);
-			It->NetSerializeItem( Bunch, Connection->PackageMap, Data );
+			FMemMark Mark(GMainThreadMemStack);
+			INT   Offset = ReplicatedProp->Offset + Element*ReplicatedProp->ElementSize;
+			BYTE* Data   = DestActor ? (DestActor + Offset) : NewZeroed<BYTE>(GMainThreadMemStack,ReplicatedProp->ElementSize);
+			ReplicatedProp->NetSerializeItem( Bunch, Connection->PackageMap, Data );
 			if( DestRecent )
-				It->CopySingleValue( DestRecent + Offset, Data );
+			{
+				ReplicatedProp->CopySingleValue( DestRecent + Offset, Data );
+			}
 			Mark.Pop();
 			// Successfully received it.
-			debugf( NAME_DevNetTraffic, TEXT("         %s"), It->GetName() );
+			debugfSuppressed( NAME_DevNetTraffic, TEXT("         %s"), *ReplicatedProp->GetName() );
 
 			// Notify the actor if this var is RepNotify
-
-			if ( It->PropertyFlags & CPF_RepNotify )
+			if ( ReplicatedProp->HasAnyPropertyFlags(CPF_RepNotify) )
 			{
-//				debugf( TEXT("Calling Actor->eventReplicatedEvent with %s"),It->GetName() );
-				Actor->eventReplicatedEvent( It->GetName() );
+				//@note: AddUniqueItem() here for static arrays since RepNotify() currently doesn't indicate index,
+				//			so reporting the same property multiple times is not useful and wastes CPU
+				//			were that changed, this should go back to AddItem() for efficiency
+				RepNotifies.AddUniqueItem(ReplicatedProp);
 			}
 
 			// Get next.
 			RepIndex   = Bunch.ReadInt( ClassCache->GetMaxIndex() );
 			FieldCache = Bunch.IsError() ? NULL : ClassCache->GetFromIndex( RepIndex );
 		}
+		
 		// Process important changed properties.
-		if ( Actor->Role != ROLE_Authority )
+		if (!bIsServer)
 		{
-			if ( bHasFieldCache )
-		Actor->PostNetReceive();
-		if ( bJustSpawned )
-		{
+			if ( bHasReplicatedProperties )
+			{
+				Actor->PostNetReceive();
+				if (Actor == NULL || Actor->bDeleteMe)
+				{
+					// PostNetReceive() destroyed Actor
+					return;
+				}
+
+				if ( RepNotifies.Num() > 0 )
+				{
+					if ( RepNotifyFunc == NULL )
+					{
+						RepNotifyFunc = Actor->FindFunctionChecked(ENGINE_ReplicatedEvent);
+					}
+
+					Actor_eventReplicatedEvent_Parms RepNotifyParms(EC_EventParm);
+					for (INT RepNotifyIdx = 0; RepNotifyIdx < RepNotifies.Num(); RepNotifyIdx++)
+					{
+						//debugf( TEXT("Calling Actor->eventReplicatedEvent with %s"), RepNotifies(RepNotifyIdx)->GetName());
+						RepNotifyParms.VarName = RepNotifies(RepNotifyIdx)->GetFName();
+						Actor->ProcessEvent(RepNotifyFunc, &RepNotifyParms);
+						if (Actor == NULL || Actor->bDeleteMe)
+						{
+							// script event destroyed Actor
+							return;
+						}
+					}
+				}
+			}
 			bJustSpawned = 0;
-			Actor->eventPostNetBeginPlay();
-		}
 		}
 
 		// Handle function calls.
@@ -901,44 +1620,37 @@ else 			if ( InActor->bDeleteMe )
 			UFunction* Function = Actor->FindFunction( Message );
 			check(Function);
 
-			// See if UnrealScript replication condition is met.
-			UBOOL Ignore=0;
-			if ( !(Function->FunctionFlags & FUNC_NetServer) )
-			{
-			if( !Connection->Driver->ServerConnection )
-			{
-					UFunction* Test;
-					for( Test=Function; Test->GetSuperFunction(); Test=Test->GetSuperFunction() );
-				Exchange(Actor->Role,Actor->RemoteRole);
-				DWORD Val=0;
-				FFrame( Actor, Test->GetOwnerClass(), Test->RepOffset, NULL ).Step( Actor, &Val );
-				Exchange(Actor->Role,Actor->RemoteRole);
-				if( !Val || !Actor->bNetOwner )
-				{
-						debugf( NAME_DevNetTraffic, TEXT("Received unwanted function %s in %s"), *Message, Actor->GetFullName() );
-					Ignore = 1;
-				}
-					else
-						Function->FunctionFlags = Function->FunctionFlags | FUNC_NetServer; 
-				}
-				else
-					Function->FunctionFlags = Function->FunctionFlags | FUNC_NetServer; 
-			}
-			debugf( NAME_DevNetTraffic, TEXT("      Received RPC: %s"), *Message );
+			debugfSuppressed( NAME_DevNetTraffic, TEXT("      Received RPC: %s"), *Message.ToString() );
 
 			// Get the parameters.
-			FMemMark Mark(GMem);
-			BYTE* Parms = new(GMem,MEM_Zeroed,Function->ParmsSize)BYTE;
-			for( TFieldIterator<UProperty,CLASS_IsAUProperty> It(Function); It && (It->PropertyFlags & (CPF_Parm|CPF_ReturnParm))==CPF_Parm; ++It )
-				if( Connection->PackageMap->ObjectToIndex(*It)!=INDEX_NONE )
-					if( Cast<UBoolProperty>(*It,CLASS_IsAUBoolProperty) || Bunch.ReadBit() ) 
-						It->NetSerializeItem(Bunch,Connection->PackageMap,Parms+It->Offset);
-
-			// Call the function.
-			if( !Ignore )
+			FMemMark Mark(GMainThreadMemStack);
+			BYTE* Parms = new(GMainThreadMemStack,MEM_Zeroed,Function->ParmsSize)BYTE;
+			for( TFieldIterator<UProperty> Itr(Function); Itr && (Itr->PropertyFlags & (CPF_Parm|CPF_ReturnParm))==CPF_Parm; ++Itr )
 			{
+				if( Connection->PackageMap->SupportsObject(*Itr) )
+				{
+					if( Cast<UBoolProperty>(*Itr,CLASS_IsAUBoolProperty) || Bunch.ReadBit() ) 
+					{
+						for (INT i = 0; i < Itr->ArrayDim; i++)
+						{
+							Itr->NetSerializeItem(Bunch, Connection->PackageMap, Parms + Itr->Offset + (i * Itr->ElementSize));
+						}
+					}
+				}
+			}
+
+			// validate that the function is callable here
+			UBOOL bCanExecute = ( (Function->FunctionFlags & FUNC_Net) && (Function->FunctionFlags & (Connection->Driver->ServerConnection ? FUNC_NetClient : FUNC_NetServer)) &&
+									(Connection->Driver->ServerConnection != NULL || Actor->bNetOwner) );
+			if (bCanExecute)
+			{
+				// Call the function.
 				Actor->ProcessEvent( Function, Parms );
-//				debugf( NAME_DevNetTraffic, TEXT("      Call RPC: %s"), Function->GetName() );
+				//debugfSuppressed( NAME_DevNetTraffic, TEXT("      Call RPC: %s"), *Function->GetName() );
+			}
+			else
+			{
+				debugf(NAME_DevNet, TEXT("Rejected unwanted function %s in %s"), *Message.ToString(), *Actor->GetFullName());
 			}
 
 			// Destroy the parameters.
@@ -948,18 +1660,24 @@ else 			if ( InActor->bDeleteMe )
 					Destruct->DestroyValue( Parms + Destruct->Offset );}
 			Mark.Pop();
 
+			if (Actor == NULL || Actor->bDeleteMe)
+			{
+				// replicated function destroyed Actor
+				return;
+			}
+
 			// Next.
 			RepIndex   = Bunch.ReadInt( ClassCache->GetMaxIndex() );
 			FieldCache = Bunch.IsError() ? NULL : ClassCache->GetFromIndex( RepIndex );
 		}
 		else if( FieldCache )
 		{
-			appErrorfSlow( TEXT("Invalid replicated field %i in %s"), RepIndex, *Actor->GetFullName() );
+			appErrorfDebug( TEXT("Invalid replicated field %i in %s"), RepIndex, *Actor->GetFullName() );
 			return;
 		}
 	}
 	// Tear off an actor on the client-side
-	if ( Actor->bTearOff && (Actor->Level->NetMode == NM_Client) )
+	if ( Actor && Actor->bTearOff && GWorld->GetNetMode() == NM_Client )
 	{
 		Actor->Role = ROLE_Authority;
 		Actor->RemoteRole = ROLE_None;
@@ -967,23 +1685,34 @@ else 			if ( InActor->bDeleteMe )
 		Connection->ActorChannels.Remove( Actor );
 		Actor->eventTornOff();
 		Actor = NULL;
-		return;
 	}
-
 }
+#endif	//#if WITH_UE3_NETWORKING
 
 //
 // Replicate this channel's actor differences.
 //
 void UActorChannel::ReplicateActor()
 {
+#if WITH_UE3_NETWORKING
 	checkSlow(Actor);
 	checkSlow(!Closing);
+
+	// triggering replication of an Actor while already in the middle of replication can result in invalid data being sent and is therefore illegal
+	if (bIsReplicatingActor)
+	{
+		FString Error(FString::Printf(TEXT("Attempt to replicate '%s' while already replicating that Actor!"), *Actor->GetName()));
+		debugf(*Error);
+		appErrorfDebug(*Error);
+		return;
+	}
 
 	// Create an outgoing bunch, and skip this actor if the channel is saturated.
 	FOutBunch Bunch( this, 0 );
 	if( Bunch.IsError() )
 		return;
+
+	bIsReplicatingActor = TRUE;
 
 	// Send initial stuff.
 	if( OpenPacketId!=INDEX_NONE )
@@ -1014,14 +1743,32 @@ void UActorChannel::ReplicateActor()
 	Actor->bNetOwner = 0;
 	APlayerController* Top = Actor->GetTopPlayerController();
 	UPlayer* Player = Top ? Top->Player : NULL;
-	
+
 	// Set quickie replication variables.
-	Actor->bNetOwner = Connection->Driver->ServerConnection ? Cast<ULocalPlayer>(Player)!=NULL : Player==Connection;
+	UBOOL bDemoOwner = 0;
+	if (Actor->bDemoRecording)
+	{
+		Actor->bNetOwner = 1;
+		bDemoOwner = (Actor->WorldInfo->NetMode == NM_Client) ? (Cast<ULocalPlayer>(Player) != NULL) : Actor->bDemoOwner;
+	}
+	else
+	{
+		Actor->bNetOwner = Connection->Driver->ServerConnection ? Cast<ULocalPlayer>(Player)!=NULL : Player==Connection;
+		// use child connection's parent
+		if (Connection->Driver->ServerConnection == NULL &&	Player != NULL && Player->IsA(UChildConnection::StaticClass()) &&
+			((UChildConnection*)Player)->Parent == Connection )
+		{
+			Actor->bNetOwner = 1;
+		}
+	}
+#if CLIENT_DEMO
+	Actor->bRepClientDemo = Actor->bNetOwner && Top && Top->bClientDemo;
+#endif
 
 	// If initial, send init data.
 	if( Actor->bNetInitial && OpenedLocally )
 	{
-		if( Actor->bStatic || Actor->bNoDelete )
+		if (Actor->IsStatic() || Actor->bNoDelete)
 		{
 			// Persistent actor.
 			Bunch << Actor;
@@ -1029,74 +1776,133 @@ void UActorChannel::ReplicateActor()
 		else
 		{
 			// Transient actor.
-            Bunch << ActorClass;
-            SerializeCompressedInitial( Bunch, Actor->Location, Actor->Rotation, Actor->bNetInitialRotation, this );
+			
+			// check for conditions that would result in the client being unable to properly receive this Actor
+			if (Actor->GetArchetype()->GetClass() != Actor->GetClass())
+			{
+				debugf( NAME_Warning, TEXT("Attempt to replicate %s with archetype class (%s) different from Actor class (%s)"),
+						*Actor->GetName(), *Actor->GetArchetype()->GetClass()->GetName(), *Actor->GetClass()->GetName() );
+			}
+
+			// serialize it
+			UObject* Archetype = Actor->GetArchetype();
+			Bunch << Archetype;
+			SerializeCompressedInitial( Bunch, Actor->Location, Actor->Rotation, Actor->bNetInitialRotation, this );
+
+			// serialize PlayerIndex as part of the initial bunch for PlayerControllers so they can be matched to the correct clientside viewport
+			APlayerController* PC = Actor->GetAPlayerController();
+			if (PC != NULL)
+			{
+				Bunch << PC->NetPlayerIndex;
+			}
 		}
 	}
 
 	// Save out the actor's RemoteRole, and downgrade it if necessary.
 	BYTE ActualRemoteRole=Actor->RemoteRole;
-	if( Actor->RemoteRole==ROLE_AutonomousProxy && Actor->Instigator && !Actor->Instigator->bNetOwner && !Actor->bNetOwner )
+	if (Actor->RemoteRole==ROLE_AutonomousProxy && (((Actor->Instigator == NULL || !Actor->Instigator->bNetOwner) && !Actor->bNetOwner) || (Actor->bDemoRecording && !bDemoOwner)))
+	{
 		Actor->RemoteRole=ROLE_SimulatedProxy;
+	}
 
 	Actor->bNetDirty = ActorDirty || Actor->bNetInitial;
 	Actor->bNetInitial = Actor->bNetInitial || bActorStillInitial; // for replication purposes, bNetInitial stays true until all properties sent
 	bActorMustStayDirty = false;
 	bActorStillInitial = false;
-	debugf(NAME_DevNetTraffic,TEXT("Replicate %s: NetDirty %d Still Initial %d"),ActorClass->GetName(), Actor->bNetDirty,Actor->bNetInitial);
+
+	debugfSuppressed(NAME_DevNetTrafficDetail, TEXT("Replicate %s, bNetDirty: %d, bNetInitial: %d, bNetOwner: %d"), *Actor->GetName(), Actor->bNetDirty, Actor->bNetInitial, Actor->bNetOwner );
+	NETWORK_PROFILER(GNetworkProfiler.TrackReplicateActor(Actor));
 
 	// Get memory for retirement list.
-	FMemMark Mark(GMem);
+	FMemMark MemMark(GMainThreadMemStack);
 	appMemzero( &RepEval(0), RepEval.Num() );
-	INT* Reps = New<INT>( GMem, Retirement.Num() ), *LastRep;
+	INT* Reps = New<INT>( GMainThreadMemStack, Retirement.Num() ), *LastRep;
 	UBOOL		FilledUp = 0;
 
 	// Figure out which properties to replicate.
-	BYTE*   CompareBin = Recent.Num() ? &Recent(0) : &ActorClass->Defaults(0);
+	BYTE*   CompareBin = NULL;
+	if (Recent.Num())
+	{
+		CompareBin = &Recent(0);
+	}
+	else
+	{
+		if (Actor->GetArchetype())
+		{
+			CompareBin = (BYTE*)Actor->GetArchetype();
+		}
+		else
+		{
+			CompareBin = ActorClass->GetDefaults();
+		}
+	}
+
 	INT     iCount     = ClassCache->RepProperties.Num();
 	LastRep            = Actor->GetOptimizedRepList( CompareBin, &Retirement(0), Reps, Connection->PackageMap,this );
 	if ( Actor->bNetDirty )
 	{
-		if ( Actor->DelayScriptReplication(LastFullUpdateTime) )
+		//if ( iCount > 0 ) debugf(TEXT("%s iCount %d"),Actor->GetName(), iCount);
+		for( INT iField=0; iField<iCount; iField++  )
 		{
-			bActorMustStayDirty = true;
-		}
-		else
-		{
-			for( INT iField=0; iField<iCount; iField++  )
+			FFieldNetCache* FieldCache = ClassCache->RepProperties(iField);
+			UProperty* It = (UProperty*)(FieldCache->Field);  
+			BYTE& Eval = RepEval(FieldCache->ConditionIndex);
+			if( Eval!=2 )
 			{
-				FFieldNetCache* FieldCache = ClassCache->RepProperties(iField);
-				UProperty* It = (UProperty*)(FieldCache->Field);  
-				BYTE& Eval = RepEval(FieldCache->ConditionIndex);
-				if( Eval!=2 )
+				UObjectProperty* Op = Cast<UObjectProperty>(It,CLASS_IsAUObjectProperty);
+				for( INT Index=0; Index<It->ArrayDim; Index++ )
 				{
-					UObjectProperty* Op = Cast<UObjectProperty>(It,CLASS_IsAUObjectProperty);
-					for( INT Index=0; Index<It->ArrayDim; Index++ )
+					// Evaluate need to send the property.
+					INT Offset = It->Offset + Index*It->ElementSize;
+					BYTE* Src = (BYTE*)Actor + Offset;
+					if( Op && !Connection->PackageMap->CanSerializeObject(*(UObject**)Src) )
 					{
-						// Evaluate need to send the property.
-						INT Offset = It->Offset + Index*It->ElementSize;
-						BYTE* Src = (BYTE*)Actor + Offset;
-						if( Op && !Connection->PackageMap->CanSerializeObject(*(UObject**)Src) )
-						{
-							debugf(NAME_DevNetTraffic,TEXT("MUST STAY DIRTY Because of %s"),(*(UObject**)Src)->GetName());
-							if (!(*(UObject**)Src)->IsPendingKill())
-							{
-								bActorMustStayDirty = true;
-							}
-							Src = NULL;
-						}
-						if( !It->Identical(CompareBin+Offset,Src) )
+						if (!(*(UObject**)Src)->IsPendingKill())
 						{
 							if( !(Eval & 2) )
 							{
+								checkSlow(It->GetRepOwner());
 								DWORD Val=0;
-								FFrame( Actor, It->RepOwner->GetOwnerClass(), It->RepOwner->RepOffset, NULL ).Step( Actor, &Val );
+								FFrame( Actor, It->GetOwnerClass(), It->RepOffset, NULL ).Step( Actor, &Val );
 								Eval = Val | 2;
 							}
 							if( Eval & 1 )
-								*LastRep++ = It->RepIndex+Index;
+							{
+								debugfSuppressed(NAME_DevNetTraffic,TEXT("MUST STAY DIRTY Because of %s"),*(*(UObject**)Src)->GetName());
+								bActorMustStayDirty = true;
+							}
+						}
+						Src = NULL;
+					}
+					if ((OpenPacketId == INDEX_NONE && (It->PropertyFlags & CPF_Config)) || !It->Identical(CompareBin + Offset, Src))
+					{
+						if( !(Eval & 2) )
+						{
+							checkSlow(It->GetRepOwner());
+							DWORD Val=0;
+							FFrame( Actor, It->GetOwnerClass(), It->RepOffset, NULL ).Step( Actor, &Val );
+							Eval = Val | 2;
+						}
+						if( Eval & 1 )
+						{
+							*LastRep++ = It->RepIndex+Index;
 						}
 					}
+				}
+			}
+		}
+	}
+	if (Actor->bNetInitial)
+	{
+		// add forced initial replicated properties to dirty list
+		const TArray<UProperty*>* PropArray = Connection->Driver->ForcedInitialReplicationMap.Find(Actor);
+		if (PropArray != NULL)
+		{
+			for (INT i = 0; i < PropArray->Num(); i++)
+			{
+				for (INT j = 0; j < (*PropArray)(i)->ArrayDim; j++)
+				{
+					Dirty.AddItem((*PropArray)(i)->RepIndex + j);
 				}
 			}
 		}
@@ -1125,6 +1931,12 @@ void UActorChannel::ReplicateActor()
 		INT         Index  = Rep->Index;
 		INT         Offset = It->Offset + Index*It->ElementSize;
 
+		if (It->ArrayDim != 1 && Index > 255)
+		{
+			debugf(NAME_DevNet, TEXT("Failed to replicate element '%i/%i' of property '%s' in class '%s'; can only replicate elements 0-255"), Index, It->ArrayDim-1, *It->GetName(), *ActorClass->GetName());
+			continue;
+		}
+
 		// Figure out field to replicate.
 		FFieldNetCache* FieldCache
 		=	It->GetFName()==NAME_Role
@@ -1135,8 +1947,9 @@ void UActorChannel::ReplicateActor()
 		checkSlow(FieldCache);
 
 		// Send property name and optional array index.
-		FBitWriterMark Mark( Bunch );
-		Bunch.WriteInt( FieldCache->FieldNetIndex, ClassCache->GetMaxIndex() );
+		INT BitsWrittenBeforeThis = Bunch.GetNumBits();
+		FBitWriterMark WriterMark( Bunch );
+		Bunch.WriteIntWrapped(FieldCache->FieldNetIndex, ClassCache->GetMaxIndex());
 		if( It->ArrayDim != 1 )
 		{
 			BYTE Element = Index;
@@ -1145,9 +1958,12 @@ void UActorChannel::ReplicateActor()
 
 		// Send property.
 		UBOOL Mapped = It->NetSerializeItem( Bunch, Connection->PackageMap, (BYTE*)Actor + Offset );
-		debugf(NAME_DevNetTraffic,TEXT("   Send %s %i"),It->GetName(),Mapped);
 		if( !Bunch.IsError() )
 		{
+			INT BitsWritten = Bunch.GetNumBits() - BitsWrittenBeforeThis;
+			NETWORK_PROFILER(GNetworkProfiler.TrackReplicateProperty(It,BitsWritten));
+			debugfSuppressed( NAME_DevNetTraffic, TEXT("   Send %s [%.1f bytes] %s"), *It->GetName(), BitsWritten / 8.f, Mapped ? TEXT("Mapped") : TEXT("") );
+
 			// Update recent value.
 			if( Recent.Num() )
 			{
@@ -1160,9 +1976,9 @@ void UActorChannel::ReplicateActor()
 		else
 		{
 			// Stop the changes because we overflowed.
-			Mark.Pop( Bunch );
+			WriterMark.Pop( Bunch );
 			LastRep  = iPtr;
-			//debugf(NAME_DevNetTraffic,TEXT("FILLED UP"));
+			//debugfSuppressed(NAME_DevNetTraffic,TEXT("FILLED UP"));
 			FilledUp = 1;
 			break;
 		}
@@ -1189,7 +2005,7 @@ void UActorChannel::ReplicateActor()
 	// If we evaluated everything, mark LastUpdateTime, even if nothing changed.
 	if ( FilledUp )
 	{
-		debugfSlow(NAME_DevNetTraffic,TEXT("Filled packet up before finishing %s still initial %d"),Actor->GetName(),bActorStillInitial);
+		debugfSuppressed(NAME_DevNetTraffic,TEXT("Filled packet up before finishing %s still initial %d"),*Actor->GetName(),bActorStillInitial);
 	}
 	else
 	{
@@ -1204,7 +2020,10 @@ void UActorChannel::ReplicateActor()
 	Actor->RemoteRole = ActualRemoteRole;
 	Actor->bNetDirty = 0;
 
-	Mark.Pop();
+	MemMark.Pop();
+
+	bIsReplicatingActor = FALSE;
+#endif	//#if WITH_UE3_NETWORKING
 }
 
 //
@@ -1218,6 +2037,25 @@ FString UActorChannel::Describe()
 		return FString::Printf(TEXT("Actor=%s (Role=%i RemoteRole=%i) "), *Actor->GetFullName(), Actor->Role, Actor->RemoteRole) + UChannel::Describe();
 }
 
+/**
+* Tracks how much memory is being used by this object (no persistence)
+*
+* @param Ar the archive to serialize against
+*/
+void UActorChannel::Serialize(FArchive& Ar)
+{
+	Super::Serialize(Ar);
+	
+	if (Ar.IsCountingMemory())
+	{
+		Recent.CountBytes(Ar);
+		RepEval.CountBytes(Ar);
+		Dirty.CountBytes(Ar);
+		Retirement.CountBytes(Ar);
+		ReplicatedActorProperties.CountBytes(Ar);
+	}
+}
+
 IMPLEMENT_CLASS(UActorChannel);
 
 /*-----------------------------------------------------------------------------
@@ -1225,13 +2063,18 @@ IMPLEMENT_CLASS(UActorChannel);
 -----------------------------------------------------------------------------*/
 
 UFileChannel::UFileChannel()
+	: Download(NULL)
+	, SendFileAr(NULL)
+	, PackageGUID(0,0,0,0)
+	, SentData(0)
 {
-	Download = NULL;
 }
-void UFileChannel::Init( UNetConnection* InConnection, INT InChannelIndex, INT InOpenedLocally )
+void UFileChannel::Init( UNetConnection* InConnection, INT InChannelIndex, UBOOL InOpenedLocally )
 {
 	Super::Init( InConnection, InChannelIndex, InOpenedLocally );
 }
+
+#if WITH_UE3_NETWORKING
 void UFileChannel::ReceivedBunch( FInBunch& Bunch )
 {
 	check(!Closing);
@@ -1242,7 +2085,12 @@ void UFileChannel::ReceivedBunch( FInBunch& Bunch )
 	}
 	else
 	{
+#if IPHONE
+		// Currently, we do not allow downloading on iDevices
+		// Just execute the 'AllowDownloads == false' handling code...
+#else
 		if( !Connection->Driver->AllowDownloads )
+#endif
 		{
 			// Refuse the download by sending a 0 bunch.
 			debugf( NAME_DevNet, *LocalizeError(TEXT("NetInvalid"),TEXT("Engine")) );
@@ -1250,16 +2098,42 @@ void UFileChannel::ReceivedBunch( FInBunch& Bunch )
 			SendBunch( &Bunch, 0 );
 			return;
 		}
+#if IPHONE
+		// Currently, we do not allow downloading on iDevices
+		// So don't bother compiling the remaining code
+#else
 		if( SendFileAr )
 		{
 			FString Cmd;
 			Bunch << Cmd;
-			if( !Bunch.IsError() && Cmd==TEXT("SKIP") )
+
+			if (!Bunch.IsError() && Cmd==TEXT("SKIP"))
 			{
-				// User cancelled optional file download.
-				// Remove it from the package map
-				debugf( TEXT("User skipped download of '%s'"), SrcFilename );
-				Connection->PackageMap->List.Remove( PackageIndex );
+				if (PackageGUID.IsValid())
+				{
+					INT PackageIndex = INDEX_NONE;
+
+					for (INT i=0; i<Connection->PackageMap->List.Num(); i++)
+					{
+						if (Connection->PackageMap->List(i).Guid == PackageGUID)
+						{
+							PackageIndex = i;
+							break;
+						}
+					}
+
+					// User cancelled optional file download.
+					// Remove it from the package map
+					if (PackageIndex != INDEX_NONE)
+					{
+						debugf(NAME_DevNet, TEXT("User skipped download of '%s'"), SrcFilename);
+						Connection->PackageMap->List.Remove( PackageIndex );
+					}
+
+					// Reset PackageGUID now that the package is removed
+					PackageGUID.Invalidate();
+				}
+
 				return;
 			}
 		}
@@ -1268,29 +2142,51 @@ void UFileChannel::ReceivedBunch( FInBunch& Bunch )
 			// Request to send a file.
 			FGuid Guid;
 			Bunch << Guid;
+
 			if( !Bunch.IsError() )
 			{
+				FPackageInfo* Info = NULL;
+
 				for( INT i=0; i<Connection->PackageMap->List.Num(); i++ )
 				{
-					FPackageInfo& Info = Connection->PackageMap->List(i);
-					if( Info.Guid==Guid && Info.URL!=TEXT("") )
+					FPackageInfo& CurInfo = Connection->PackageMap->List(i);
+
+					if (CurInfo.Guid == Guid && CurInfo.PackageName != NAME_None)
 					{
-						if( Connection->Driver->MaxDownloadSize>0 &&
-							GFileManager->FileSize(*Info.URL)>Connection->Driver->MaxDownloadSize )
-							break;							
-						appStrncpy( SrcFilename, *Info.URL, ARRAY_COUNT(SrcFilename) );
-						if( Connection->Driver->Notify->NotifySendingFile( Connection, Guid ) )
+						Info = &CurInfo;
+						break;
+					}
+				}
+
+				if (Info != NULL)
+				{
+					FString ServerPackage;
+
+					if (GPackageFileCache->FindPackageFile(*Info->PackageName.ToString(), NULL, ServerPackage))
+					{
+						// Check that the file does not exceed MaxDownloadSize, and that it does not have its 'AllowDownload' package flag set to false
+						if ((Connection->Driver->MaxDownloadSize <= 0 || (GFileManager->FileSize(*ServerPackage) <= Connection->Driver->MaxDownloadSize)) &&
+								(Info->PackageFlags & PKG_AllowDownload) != 0)
 						{
-							check(Info.Linker);
-							SendFileAr = GFileManager->CreateFileReader( SrcFilename );
-							if( SendFileAr )
+							// find the path to the source package file
+							appStrncpy(SrcFilename, *ServerPackage, ARRAY_COUNT(SrcFilename));
+							if( Connection->Driver->Notify->NotifySendingFile( Connection, Guid ) )
 							{
-								// Accepted! Now initiate file sending.
-								debugf( NAME_DevNet, *LocalizeProgress(TEXT("NetSend"),TEXT("Engine")), SrcFilename );
-								PackageIndex = i;
-								return;
+								SendFileAr = GFileManager->CreateFileReader( SrcFilename );
+								if( SendFileAr )
+								{
+									// Accepted! Now initiate file sending.
+									debugf( NAME_DevNet, LocalizeSecure(LocalizeProgress(TEXT("NetSend"),TEXT("Engine")), SrcFilename) );
+									PackageGUID = Guid;
+
+									return;
+								}
 							}
 						}
+					}
+					else
+					{
+						debugf(NAME_DevNet, TEXT("ERROR: Server failed to find a package file that it reported was in its PackageMap [%s]"), *Info->PackageName.ToString());
 					}
 				}
 			}
@@ -1300,24 +2196,49 @@ void UFileChannel::ReceivedBunch( FInBunch& Bunch )
 		debugf( NAME_DevNet, *LocalizeError(TEXT("NetInvalid"),TEXT("Engine")) );
 		FOutBunch Bunch( this, 1 );
 		SendBunch( &Bunch, 0 );
+#endif
 	}
 }
+#endif	//#if WITH_UE3_NETWORKING
+
 void UFileChannel::Tick()
 {
 	UChannel::Tick();
+#if WITH_UE3_NETWORKING
 	Connection->TimeSensitive = 1;
 	INT Size;
 	//TIM: IsNetReady(1) causes the client's bandwidth to be saturated. Good for clients, very bad
 	// for bandwidth-limited servers. IsNetReady(0) caps the clients bandwidth.
 	static UBOOL LanPlay = ParseParam(appCmdLine(),TEXT("lanplay"));
-	while( !OpenedLocally && SendFileAr && IsNetReady(LanPlay) && (Size=MaxSendBytes())!=0 )
+
+	// JohnB: Added !Closing check, as otherwise SendBunch can crash if the client closes first
+	while( !Closing && !OpenedLocally && SendFileAr && IsNetReady(LanPlay) && (Size=MaxSendBytes())!=0 )
 	{
 		// Sending.
-		INT Remaining = Connection->PackageMap->List(PackageIndex).FileSize-SentData;
+		// get the filesize (we can't use the PackageInfo's size, because this may be a streaming texture pacakge
+		// and so the size will be zero
+		INT FileSize = SendFileAr->TotalSize();
+
+		INT Remaining = (sizeof(INT) + FileSize) - SentData;
 		FOutBunch Bunch( this, Size>=Remaining );
 		Size = Min( Size, Remaining );
 		BYTE* Buffer = (BYTE*)appAlloca( Size );
-		SendFileAr->Serialize( Buffer, Size );
+
+		// first chunk gets total size prepended to it
+		if (SentData == 0)
+		{
+			// put it in the buffer
+			appMemcpy(Buffer, &FileSize, sizeof(INT));
+
+			// read a little less then Size of the source data
+			SendFileAr->Serialize(Buffer + sizeof(INT), Size - sizeof(INT));
+		}
+		else
+		{
+			// normal case, just read Size amount
+			SendFileAr->Serialize(Buffer, Size);
+		}
+
 		if( SendFileAr->IsError() )
 		{
 			//!!
@@ -1335,44 +2256,272 @@ void UFileChannel::Tick()
 			SendFileAr = NULL;
 		}
 	}
+#endif	//#if WITH_UE3_NETWORKING
 }
-void UFileChannel::Destroy()
-{
-	check(Connection);
-	if( RouteDestroy() )
-		return;
-	check(Connection->Channels[ChIndex]==this);
 
+/** cleans up channel structures and NULLs references to the channel */
+void UFileChannel::CleanUp()
+{
 	// Close the file.
-	if( SendFileAr )
+	if (SendFileAr != NULL)
 	{
 		delete SendFileAr;
 		SendFileAr = NULL;
 	}
 
 	// Notify that the receive succeeded or failed.
-	if( OpenedLocally && Download )
+	if (OpenedLocally && Download != NULL)
 	{
 		Download->DownloadDone();
-		delete Download;
+		Download->CleanUp();
 	}
-	Super::Destroy();
+
+	Super::CleanUp();
 }
+
 FString UFileChannel::Describe()
 {
-	FPackageInfo& Info = Connection->PackageMap->List( PackageIndex );
 	return FString::Printf
 	(
-		TEXT("File='%s', %s=%i/%i "),
+		TEXT("File='%s', %s=%i "),
 		OpenedLocally ? (Download?Download->TempFilename:TEXT("")): SrcFilename,
 		OpenedLocally ? TEXT("Received") : TEXT("Sent"),
-		OpenedLocally ? (Download?Download->Transfered:0): SentData,
-		Info.FileSize
+		OpenedLocally ? (Download?Download->Transfered:0): SentData
 	) + UChannel::Describe();
 }
 IMPLEMENT_CLASS(UFileChannel)
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
 
+IMPLEMENT_CLASS(UVoiceChannel)
+
+/**
+ * Serializes the voice packet data into/from an archive
+ *
+ * @param Ar the archive to serialize with
+ * @param VoicePacket the voice data to serialize
+ */
+FArchive& operator<<(FArchive& Ar,FVoicePacket& VoicePacket)
+{
+	Ar << (QWORD&)VoicePacket.Sender;
+	Ar << VoicePacket.Length;
+	// Make sure not to overflow the buffer by reading an invalid amount
+	if (Ar.IsLoading())
+	{
+		// Verify the packet is a valid size
+		if (VoicePacket.Length <= MAX_VOICE_DATA_SIZE)
+		{
+			Ar.Serialize(VoicePacket.Buffer,VoicePacket.Length);
+		}
+		else
+		{
+			VoicePacket.Length = 0;
+		}
+	}
+	else
+	{
+		// Always safe to save the data as the voice code prevents overwrites
+		Ar.Serialize(VoicePacket.Buffer,VoicePacket.Length);
+	}
+	return Ar;
+}
+
+#if WITH_UE3_NETWORKING
+/**
+ * Processes the in bound bunch to extract the voice data
+ *
+ * @param Bunch the voice data to process
+ */
+void UVoiceChannel::ReceivedBunch(FInBunch& Bunch)
+{
+	while (Bunch.IsError() == FALSE)
+	{
+		// Construct a new voice packet with ref counting
+		FVoicePacket* VoicePacket = new FVoicePacket(1);
+		Bunch << *VoicePacket;
+		if (Bunch.IsError() == FALSE && VoicePacket->Length > 0)
+		{
+			// Now add the packet to the list to process
+			GVoiceData.RemotePackets.AddItem(VoicePacket);
+			// Send this packet to other clients as needed if we are a server
+			if (Connection->Driver->ServerConnection == NULL && 
+				// Client peers send voice data on peer connection directly
+				!Connection->Driver->bIsPeer)
+			{
+				Connection->Driver->ReplicateVoicePacket(VoicePacket,Connection);
+			}
+#if STATS
+			// Increment the number of voice packets we've received
+			Connection->Driver->VoicePacketsRecv++;
+			Connection->Driver->VoiceBytesRecv += VoicePacket->Length;
+#endif
+		}
+		else
+		{
+			// Overflow reading the packet so delete it
+			VoicePacket->DecRef();
+		}
+	}
+}
+#endif	//#if WITH_UE3_NETWORKING
+
+#if !XBOX && !WITH_PANORAMA // Send voice not merged with game data
+
+/**
+ * Takes any pending packets and sends them via the channel
+ */
+void UVoiceChannel::Tick(void)
+{
+#if WITH_UE3_NETWORKING
+	// If the handshaking hasn't completed throw away all voice data
+	if (Connection->Actor &&
+		Connection->Actor->bHasVoiceHandshakeCompleted)
+	{
+		// Try to append each packet in turn
+		for (INT Index = 0; Index < VoicePackets.Num(); Index++)
+		{
+			FOutBunch Bunch(this,0);
+			// Don't want reliable delivery. The bunch will be lost if the connection is saturated
+			// First send needs to be reliable
+			Bunch.bReliable = OpenAcked == FALSE;
+			FVoicePacket* Packet = VoicePackets(Index);
+			// Append the packet data (copies into the bunch)
+			Bunch << *Packet;
+#if STATS
+			// Increment the number of voice packets we've sent
+			Connection->Driver->VoicePacketsSent++;
+			Connection->Driver->VoiceBytesSent += Packet->Length;
+#endif
+			// Let the packet free itself if no longer in use
+			Packet->DecRef();
+			// Don't submit the bunch if something went wrong
+			if (Bunch.IsError() == FALSE)
+			{
+				// Submit the bunching with merging on
+				SendBunch(&Bunch,1);
+			}
+			// If the network is saturated, throw away any remaining packets
+			if (Connection->IsNetReady(0) == FALSE)
+			{
+				// Iterate from the current location to end discarding
+				for (INT DiscardIndex = Index + 1; DiscardIndex < VoicePackets.Num(); DiscardIndex++)
+				{
+					VoicePackets(DiscardIndex)->DecRef();
+				}
+				VoicePackets.Empty();
+			}
+		}
+	}
+	VoicePackets.Empty();
+#endif
+}
+#endif
+
+/** Cleans up any voice data remaining in the queue */
+void UVoiceChannel::CleanUp(void)
+{
+	// Clear out refs to any voice packets so we don't leak
+	for (INT Index = 0; Index < VoicePackets.Num(); Index++)
+	{
+		VoicePackets(Index)->DecRef();
+	}
+	VoicePackets.Empty();
+	// Route to the parent class for their cleanup
+	Super::CleanUp();
+}
+
+/**
+ * Adds the voice packet to the list to send for this channel
+ *
+ * @param VoicePacket the voice packet to send
+ */
+void UVoiceChannel::AddVoicePacket(FVoicePacket* VoicePacket)
+{
+#if WITH_UE3_NETWORKING
+	if (VoicePacket != NULL)
+	{
+		VoicePackets.AddItem(VoicePacket);
+		VoicePacket->AddRef();
+
+#if 0
+		debugf(NAME_DevNetTraffic,TEXT("AddVoicePacket: %s [%s] to=0x%016I64X from=0x%016I64X"),
+			Connection->PlayerId.Uid,
+			*Connection->Driver->GetDescription(),
+			*Connection->LowLevelDescribe(),
+			VoicePacket->Sender.Uid);
+#endif
+	}
+#endif
+}
+
+/**
+ * Tracks how much memory is being used by this object (no persistence)
+ *
+ * @param Ar the archive to serialize against
+ */
+void UVoiceChannel::Serialize(FArchive& Ar)
+{
+	Super::Serialize(Ar);
+	// Don't persist the data since we are transient
+	if (!Ar.IsLoading() && !Ar.IsSaving())
+	{
+		// Serialize any pending packets
+		for (INT Index = 0; Index < VoicePackets.Num(); Index++)
+		{
+			Ar << *VoicePackets(Index);
+		}
+	}
+}
+
+/** 
+ * Serialize FClientPeerInfo to archive to send in bunch packet 
+ *
+ * @param Ar the archive to serialize against
+ * @param Info struct to read/write with the Archive
+ */
+FArchive& operator<<(FArchive& Ar, FClientPeerInfo& Info)
+{
+	Ar << Info.PlayerId << Info.PeerPort;
+#if WITH_UE3_NETWORKING
+	if (Ar.IsLoading())
+	{
+		// Platform ip data read in as byte array
+		Ar << Info.PlatformConnectAddr;
+		FPlatformIpAddr PlatformIpAddr;
+		// Convert platform data to ip addr
+		if (PlatformIpAddr.SerializeFromBuffer(Info.PlatformConnectAddr))
+		{
+			Info.PeerIpAddrAsInt = PlatformIpAddr.Addr;
+		}
+		else
+		{
+			Info.PeerIpAddrAsInt = 0;
+		}
+	}
+	else
+	{
+		// Copy platform ip data to buffer from the ipaddr
+		FPlatformIpAddr PlatformIpAddr(Info.PeerIpAddrAsInt,Info.PeerPort);
+		PlatformIpAddr.SerializeToBuffer(Info.PlatformConnectAddr);
+		Ar << Info.PlatformConnectAddr;
+	}
+#else
+	Ar << Info.PlatformConnectAddr;
+#endif
+	return Ar;
+}
+
+/**
+ * Convert the remote ip:port for the client to string
+ *
+ * @param bAppendPort TRUE to add ":port" to string
+ * @return "ip:port" string for the peer connection 
+ */
+FString FClientPeerInfo::GetPeerConnectStr(UBOOL bAppendPort) const
+{
+#if WITH_UE3_NETWORKING
+	FIpAddr IpAddr(PeerIpAddrAsInt,PeerPort);
+	return IpAddr.ToString(bAppendPort);
+#else
+	return FString();
+#endif 
+}

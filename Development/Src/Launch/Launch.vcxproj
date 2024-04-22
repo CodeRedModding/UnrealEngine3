@@ -1,0 +1,205 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="BuiltWithUnrealBuildTool|Win32">
+      <Configuration>BuiltWithUnrealBuildTool</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{559F6F18-3B99-4A8B-A384-BCF2A9FD69EF}</ProjectGuid>
+    <RootNamespace>Launch</RootNamespace>
+    <SccProjectName>
+    </SccProjectName>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+    <Keyword>MakeFileProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</IntDir>
+    <NMakeBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeReBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeCleanCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeOutput Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\Launch.cpp" />
+    <ClCompile Include="Src\LaunchEngineLoop.cpp" />
+    <ClCompile Include="Src\LaunchMisc.cpp" />
+    <ClCompile Include="Src\PIB.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\LaunchApp.h" />
+    <ClInclude Include="Inc\LaunchEngineLoop.h" />
+    <ClInclude Include="Inc\LaunchGames.h" />
+    <ClInclude Include="Inc\LaunchPrivate.h" />
+    <ClInclude Include="Inc\PIB.h" />
+    <ClInclude Include="Resources\resource.h" />
+    <ClInclude Include="Resources\Version.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\add.cur" />
+    <None Include="Resources\arrow.cur" />
+    <None Include="Resources\arrowcop.cur" />
+    <None Include="Resources\bb_grid1.bmp" />
+    <None Include="Resources\bb_lock1.bmp" />
+    <None Include="Resources\bb_log_w.bmp" />
+    <None Include="Resources\bb_rotat.bmp" />
+    <None Include="Resources\bb_vtx_s.bmp" />
+    <None Include="Resources\bb_zoomc.bmp" />
+    <None Include="Resources\bmp00001.bmp" />
+    <None Include="Resources\bmp00002.bmp" />
+    <None Include="Resources\bmp00003.bmp" />
+    <None Include="Resources\bmp00004.bmp" />
+    <None Include="Resources\bmp00005.bmp" />
+    <None Include="Resources\bmp00006.bmp" />
+    <None Include="Resources\bmp00007.bmp" />
+    <None Include="Resources\bmp00008.bmp" />
+    <None Include="Resources\bmp00009.bmp" />
+    <None Include="Resources\bmp00010.bmp" />
+    <None Include="Resources\bmp00011.bmp" />
+    <None Include="Resources\bmp00012.bmp" />
+    <None Include="Resources\bmp00013.bmp" />
+    <None Include="Resources\bmp00014.bmp" />
+    <None Include="Resources\bmp00015.bmp" />
+    <None Include="Resources\bmp00016.bmp" />
+    <None Include="Resources\bmp00017.bmp" />
+    <None Include="Resources\bmp00018.bmp" />
+    <None Include="Resources\bmp00019.bmp" />
+    <None Include="Resources\bmp00020.bmp" />
+    <None Include="Resources\bmp00021.bmp" />
+    <None Include="Resources\bmp00022.bmp" />
+    <None Include="Resources\bmp00023.bmp" />
+    <None Include="Resources\bmp00024.bmp" />
+    <None Include="Resources\bmp00025.bmp" />
+    <None Include="Resources\bmp00026.bmp" />
+    <None Include="Resources\bmp00027.bmp" />
+    <None Include="Resources\bmp00028.bmp" />
+    <None Include="Resources\bmp00029.bmp" />
+    <None Include="Resources\bmp00030.bmp" />
+    <None Include="Resources\bmp00031.bmp" />
+    <None Include="Resources\bmp00032.bmp" />
+    <None Include="Resources\bmp00033.bmp" />
+    <None Include="Resources\bmp00034.bmp" />
+    <None Include="Resources\bmp00035.bmp" />
+    <None Include="Resources\bmp00036.bmp" />
+    <None Include="Resources\bmp7839.bmp" />
+    <None Include="Resources\browserg.bmp" />
+    <None Include="Resources\browserm.bmp" />
+    <None Include="Resources\browsers.bmp" />
+    <None Include="Resources\browsert.bmp" />
+    <None Include="Resources\BuildChangedLights.bmp" />
+    <None Include="Resources\cf_toolb.bmp" />
+    <None Include="Resources\checkbox_off.bmp" />
+    <None Include="Resources\checkbox_on.bmp" />
+    <None Include="Resources\colours.bmp" />
+    <None Include="Resources\crosshai.cur" />
+    <None Include="Resources\cur00001.cur" />
+    <None Include="Resources\DemoEditor.ico" />
+    <None Include="Resources\Demogame.ico" />
+    <None Include="Resources\disable.bmp" />
+    <None Include="Resources\dragitem.cur" />
+    <None Include="Resources\draw.cur" />
+    <None Include="Resources\dtp_backdrop.bmp" />
+    <None Include="Resources\dtp_cube.bmp" />
+    <None Include="Resources\dtp_plane.bmp" />
+    <None Include="Resources\dtp_sphere.bmp" />
+    <None Include="Resources\dtp_toplevel.bmp" />
+    <None Include="Resources\Envy.ico" />
+    <None Include="Resources\EnvyEditor.ico" />
+    <None Include="Resources\GearsEditor.ico" />
+    <None Include="Resources\GearsOfWar.ico" />
+    <None Include="Resources\GoW.ico" />
+    <None Include="Resources\grabhand.cur" />
+    <None Include="Resources\hand.cur" />
+    <None Include="Resources\hand1.cur" />
+    <None Include="Resources\idbm_2ds.bmp" />
+    <None Include="Resources\idbm_an_backward.bmp" />
+    <None Include="Resources\idbm_an_begin.bmp" />
+    <None Include="Resources\idbm_an_end.bmp" />
+    <None Include="Resources\idbm_an_forward.bmp" />
+    <None Include="Resources\idbm_an_loop.bmp" />
+    <None Include="Resources\idbm_an_noloop.bmp" />
+    <None Include="Resources\idbm_an_pause.bmp" />
+    <None Include="Resources\idbm_an_play.bmp" />
+    <None Include="Resources\idbm_bac.bmp" />
+    <None Include="Resources\idbm_bui.bmp" />
+    <None Include="Resources\idbm_buildall.bmp" />
+    <None Include="Resources\idbm_cam.bmp" />
+    <None Include="Resources\idbm_del.bmp" />
+    <None Include="Resources\idbm_dow.bmp" />
+    <None Include="Resources\idbm_dup.bmp" />
+    <None Include="Resources\idbm_edi.bmp" />
+    <None Include="Resources\idbm_exe.bmp" />
+    <None Include="Resources\idbm_fil.bmp" />
+    <None Include="Resources\idbm_for.bmp" />
+    <None Include="Resources\idbm_gri.bmp" />
+    <None Include="Resources\idbm_map.bmp" />
+    <None Include="Resources\idbm_mes.bmp" />
+    <None Include="Resources\idbm_mov.bmp" />
+    <None Include="Resources\idbm_mus.bmp" />
+    <None Include="Resources\idbm_new.bmp" />
+    <None Include="Resources\idbm_pla.bmp" />
+    <None Include="Resources\idbm_pre.bmp" />
+    <None Include="Resources\idbm_sur.bmp" />
+    <None Include="Resources\idbm_tex.bmp" />
+    <None Include="Resources\idbm_tim.bmp" />
+    <None Include="Resources\idbm_unr.bmp" />
+    <None Include="Resources\idbm_up.bmp" />
+    <None Include="Resources\idbm_vie.bmp" />
+    <None Include="Resources\littlear.cur" />
+    <None Include="Resources\littlepo.cur" />
+    <None Include="Resources\nodrop.cur" />
+    <None Include="Resources\PCLaunch.aps" />
+    <None Include="Resources\splitall.cur" />
+    <None Include="Resources\splitns.cur" />
+    <None Include="Resources\splitwe.cur" />
+    <None Include="Resources\StaticMeshEditorToolbar.bmp" />
+    <None Include="Resources\totd.bmp" />
+    <None Include="Resources\UDK.ico" />
+    <None Include="Resources\udn_help.cur" />
+    <None Include="Resources\UdnContextHelp.bmp" />
+    <None Include="Resources\Unreal.ico" />
+    <None Include="Resources\UnrealEd.ico" />
+    <None Include="Resources\zoomin.cur" />
+    <None Include="Resources\zoomout.cur" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="Resources\Debug-PCLaunch-Win32.manifest" />
+    <Manifest Include="Resources\Debug-PCLaunch-Win64.manifest" />
+    <Manifest Include="Resources\PCLaunch-Win32.manifest" />
+    <Manifest Include="Resources\PCLaunch-Win64.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resources\PCLaunch.rc">
+      <DeploymentContent>true</DeploymentContent>
+    </ResourceCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

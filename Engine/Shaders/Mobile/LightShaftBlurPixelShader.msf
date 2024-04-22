@@ -1,0 +1,32 @@
+/*=============================================================================
+	LightShaftBlurPixelShader.usf: Shaders for rendering light shafts
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+UNIFORM_SAMPLER2D(SourceTexture, TEXUNIT0);
+UNIFORM_HIGH(vec4, LightShaftBlurParameters);
+
+IN_VARYING_DEFAULT(vec2, TexCoord0, TEXCOORD0);
+IN_VARYING_DEFAULT(vec2, TexCoord1, TEXCOORD1);
+IN_VARYING_DEFAULT(vec2, TexCoord2, TEXCOORD2);
+IN_VARYING_DEFAULT(vec2, TexCoord3, TEXCOORD3);
+IN_VARYING_DEFAULT(vec2, TexCoord4, TEXCOORD4);
+IN_VARYING_DEFAULT(vec2, TexCoord5, TEXCOORD5);
+IN_VARYING_DEFAULT(vec2, TexCoord6, TEXCOORD6);
+IN_VARYING_DEFAULT(vec2, TexCoord7, TEXCOORD7);
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+// BlurLightShaftsMain
+PIXEL_MAIN
+{
+	vec4 BlurredValues = vec4(0,0,0,0);
+	BlurredValues += USE_SCENECOLOR( texture2D(SourceTexture, TexCoord0.xy) );
+	BlurredValues += USE_SCENECOLOR( texture2D(SourceTexture, TexCoord1.xy) );
+	BlurredValues += USE_SCENECOLOR( texture2D(SourceTexture, TexCoord2.xy) );
+	BlurredValues += USE_SCENECOLOR( texture2D(SourceTexture, TexCoord3.xy) );
+	BlurredValues += USE_SCENECOLOR( texture2D(SourceTexture, TexCoord4.xy) );
+	BlurredValues += USE_SCENECOLOR( texture2D(SourceTexture, TexCoord5.xy) );
+	BlurredValues += USE_SCENECOLOR( texture2D(SourceTexture, TexCoord6.xy) );
+	BlurredValues += USE_SCENECOLOR( texture2D(SourceTexture, TexCoord7.xy) );
+	gl_FragColor = BlurredValues / (LightShaftBlurParameters.z * 8.0);
+}

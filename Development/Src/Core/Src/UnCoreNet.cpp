@@ -1,9 +1,6 @@
 /*=============================================================================
 	UnCoreNet.cpp: Core networking support.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "CorePrivate.h"
@@ -15,23 +12,27 @@
 //
 // FPackageInfo constructor.
 //
-FPackageInfo::FPackageInfo( ULinkerLoad* InLinker )
-:	Linker			( InLinker )
-,	Parent			( InLinker ? InLinker->LinkerRoot : NULL )
-,	Guid			( InLinker ? InLinker->Summary.Guid : FGuid(0,0,0,0) )
-,	FileSize		( InLinker ? InLinker->Loader->TotalSize() : 0 )
-,	DownloadSize	( InLinker ? InLinker->Loader->TotalSize() : 0 )
-,	PackageFlags	( InLinker ? InLinker->Summary.PackageFlags : 0 )
+FPackageInfo::FPackageInfo(UPackage* Package)
+:	PackageName		(Package != NULL ? Package->GetFName() : NAME_None)
+,	Parent			(Package)
+,	Guid			(Package != NULL ? Package->GetGuid() : FGuid(0,0,0,0))
 ,	ObjectBase		( INDEX_NONE )
-,	ObjectCount		( INDEX_NONE )
-,	NameBase		( INDEX_NONE )
-,	NameCount		( INDEX_NONE )
-,	LocalGeneration	( 0 )
+,	ObjectCount		( 0 )
+,	LocalGeneration	(Package != NULL ? Package->GetGenerationNetObjectCount().Num() : 0)
 ,	RemoteGeneration( 0 )
-,	URL				()
+,	PackageFlags	(Package != NULL ? Package->PackageFlags : 0)
+,	ForcedExportBasePackageName(NAME_None)
+,	FileName		(Package != NULL ? Package->FileName : NAME_None)
 {
-	if( InLinker && *InLinker->Filename && (InLinker->Summary.PackageFlags & PKG_AllowDownload) )
-		URL = *InLinker->Filename;
+	// if we have a pacakge, find it's source file so that we can send the extension of the file
+	if (Package != NULL)
+	{
+		FFilename PackageFile;
+		if (GPackageFileCache->FindPackageFile(*Package->GetName(), NULL, PackageFile, NULL))
+		{
+			Extension = PackageFile.GetExtension();
+		}
+	}
 }
 
 //
@@ -39,16 +40,7 @@ FPackageInfo::FPackageInfo( ULinkerLoad* InLinker )
 //
 FArchive& operator<<( FArchive& Ar, FPackageInfo& I )
 {
-	return Ar << I.Parent << I.Linker;
-}
-
-/*-----------------------------------------------------------------------------
-	FFieldNetCache implementation.
------------------------------------------------------------------------------*/
-
-FArchive& operator<<( FArchive& Ar, FFieldNetCache& F )
-{
-	return Ar << F.Field;
+	return Ar << I.Parent;
 }
 
 /*-----------------------------------------------------------------------------
@@ -60,61 +52,73 @@ FClassNetCache::FClassNetCache()
 FClassNetCache::FClassNetCache( UClass* InClass )
 : Class( InClass )
 {}
-FArchive& operator<<( FArchive& Ar, FClassNetCache& Cache )
-{
-	return Ar << Cache.Class << Cache.Fields;
-	if( Cache.Super )
-		Ar << *Cache.Super;
-}
 
 /*-----------------------------------------------------------------------------
 	UPackageMap implementation.
 -----------------------------------------------------------------------------*/
 
-//
-// General.
-//
+/**
+ * Static constructor called once per class during static initialization via IMPLEMENT_CLASS
+ * macro. Used to e.g. emit object reference tokens for realtime garbage collection or expose
+ * properties for native- only classes.
+ */
+void UPackageMap::StaticConstructor()
+{
+	UClass* TheClass = GetClass();
+	const DWORD SkipIndexIndex = TheClass->EmitStructArrayBegin( STRUCT_OFFSET( UPackageMap, List ), sizeof(FPackageInfo) );
+	TheClass->EmitObjectReference( STRUCT_OFFSET( FPackageInfo, Parent ) );
+	TheClass->EmitStructArrayEnd( SkipIndexIndex );
+}
+
 void UPackageMap::Copy( UPackageMap* Other )
 {
-	List              = Other->List;
-	LinkerMap         = Other->LinkerMap;
-	MaxObjectIndex    = Other->MaxObjectIndex;
-	MaxNameIndex      = Other->MaxNameIndex;
-	ClassFieldIndices = Other->ClassFieldIndices;
-	NameIndices       = Other->NameIndices;
+	List = Other->List;
+	PackageListMap = Other->PackageListMap;
 }
 
-void UPackageMap::CopyLinkers( UPackageMap* Other )
+UBOOL UPackageMap::SerializeName(FArchive& Ar, FName& Name)
 {
-	for(INT i=0; i < Other->List.Num(); i++)
-		if( Other->List(i).Linker )
-			AddLinker( Other->List(i).Linker );
-	Compute();
-}
-
-UBOOL UPackageMap::SerializeName( FArchive& Ar, FName& Name )
-{
-	DWORD Index = Name.GetIndex()<NameIndices.Num() ? NameIndices(Name.GetIndex()) : MaxNameIndex;
-	Ar.SerializeInt( Index, MaxNameIndex+1 );
-	if( Ar.IsLoading() )
+	if (Ar.IsLoading())
 	{
-		Name = NAME_None;
-		if( Index<MaxNameIndex && !Ar.IsError() )
+		BYTE bHardcoded = 0;
+		Ar.SerializeBits(&bHardcoded, 1);
+		if (bHardcoded)
 		{
-			for( INT i=0; i<List.Num(); i++ )
-			{
-				FPackageInfo& Info = List(i);
-				if( Index < (DWORD)Info.NameCount )
-				{
-					Name = Info.Linker->NameMap(Index);
-					break;
-				}
-				Index -= Info.NameCount;
-			}
+			// replicated by hardcoded index
+			DWORD NameIndex;
+			Ar.SerializeInt(NameIndex, MAX_NETWORKED_HARDCODED_NAME + 1);
+			Name = EName(NameIndex);
+			// hardcoded names never have a Number
 		}
-		return 1;
+		else
+		{
+			// replicated by string
+			FString InString;
+			INT InNumber;
+			Ar << InString << InNumber;
+			Name = FName(*InString, InNumber);
+		}
 	}
-	else return Index!=MaxNameIndex;
+	else if (Ar.IsSaving())
+	{
+		BYTE bHardcoded = Name.GetIndex() <= MAX_NETWORKED_HARDCODED_NAME;
+		Ar.SerializeBits(&bHardcoded, 1);
+		if (bHardcoded)
+		{
+			// send by hardcoded index
+			checkSlow(Name.GetNumber() <= 0); // hardcoded names should never have a Number
+			DWORD NameIndex = DWORD(Name.GetIndex());
+			Ar.SerializeInt(NameIndex, MAX_NETWORKED_HARDCODED_NAME + 1);
+		}
+		else
+		{
+			// send by string
+			FString OutString = Name.GetNameString();
+			INT OutNumber = Name.GetNumber();
+			Ar << OutString << OutNumber;
+		}
+	}
+	return TRUE;
 }
 UBOOL UPackageMap::CanSerializeObject( UObject* Obj )
 {
@@ -133,7 +137,7 @@ UBOOL UPackageMap::SerializeObject( FArchive& Ar, UClass* Class, UObject*& Obj )
 FClassNetCache* UPackageMap::GetClassNetCache( UClass* Class )
 {
 	FClassNetCache* Result = ClassFieldIndices.FindRef(Class);
-	if( !Result && ObjectToIndex(Class)!=INDEX_NONE )
+	if( !Result && SupportsObject(Class) )
 	{
 		Result                       = ClassFieldIndices.Set( Class, new FClassNetCache(Class) );
 		Result->Super                = NULL;
@@ -146,65 +150,58 @@ FClassNetCache* UPackageMap::GetClassNetCache( UClass* Class )
 			Result->RepConditionCount    = Result->Super->RepConditionCount;
 			Result->FieldsBase           = Result->Super->GetMaxIndex();
 		}
+
 		Result->Fields.Empty( Class->NetFields.Num() );
-		{for( INT i=0; i<Class->NetFields.Num(); i++ )
+		for( INT i=0; i<Class->NetFields.Num(); i++ )
 		{
 			// Add sandboxed items to net cache.
 			UField* Field = Class->NetFields(i);
-			if( ObjectToIndex(Field)!=INDEX_NONE )
+			if( SupportsObject(Field ) )
 			{
 				INT ConditionIndex = INDEX_NONE;
 				INT ThisIndex      = Result->GetMaxIndex();
                 UProperty* ItP     = Cast<UProperty>(Field,CLASS_IsAUProperty);
-				if( ItP && (ItP->RepOwner==ItP || ObjectToIndex(ItP->RepOwner)==INDEX_NONE) )
+				if( ItP )
+				{
 					ConditionIndex = Result->RepConditionCount++;
+				}
 				new(Result->Fields)FFieldNetCache( Field, ThisIndex, ConditionIndex );
 			}
-		}}
+		}
+
 		Result->Fields.Shrink();
-		{for( TArray<FFieldNetCache>::TIterator It(Result->Fields); It; ++It )
-			Result->FieldMap.Set( It->Field, &*It );}
-		{for( TArray<FFieldNetCache>::TIterator It(Result->Fields); It; ++It )
+		for( TArray<FFieldNetCache>::TIterator It(Result->Fields); It; ++It )
+		{
+			Result->FieldMap.Set( It->Field, &*It );
+		}
+
+		for( TArray<FFieldNetCache>::TIterator It(Result->Fields); It; ++It )
 		{
             UProperty* P = Cast<UProperty>(It->Field,CLASS_IsAUProperty);
 			if( P )
 			{
 				if( It->ConditionIndex==INDEX_NONE )
-					It->ConditionIndex = Result->GetFromField(P->RepOwner)->ConditionIndex;
+				{
+					It->ConditionIndex = Result->GetFromField(P)->ConditionIndex;
+				}
 				if( !(P->GetOwnerClass()->ClassFlags & CLASS_NativeReplication) )
+				{
 					Result->RepProperties.AddItem(&*It);
+				}
 			}
-		}}
+		}
 	}
 	return Result;
 }
 
-//
-// Add a linker to this linker map.
-//
-INT UPackageMap::AddLinker( ULinkerLoad* Linker )
+/** remove the cached field to index mappings for the given class (usually, because the class is being GC'ed) */
+void UPackageMap::RemoveClassNetCache(UClass* Class)
 {
-	// Skip if server only.
-	if( Linker->Summary.PackageFlags & PKG_ServerSideOnly )
-		return INDEX_NONE;
-
-	// Skip if already on list.
-	{for( INT i=0; i<List.Num(); i++ )
-		if( List(i).Parent == Linker->LinkerRoot )
-			return i;}
-
-	// Add to list.
-	INT Index = List.Num();
-	new(List)FPackageInfo( Linker );
-
-	// Recurse.
-	{for( INT i=0; i<Linker->ImportMap.Num(); i++ )
-		if( Linker->ImportMap(i).ClassName==NAME_Package && Linker->ImportMap(i).PackageIndex==0 )
-			for( INT j=0; j<UObject::GObjLoaders.Num(); j++ )
-				if( UObject::GetLoader(j)->LinkerRoot->GetFName()==Linker->ImportMap(i).ObjectName )
-					AddLinker( UObject::GetLoader(j) );}
-
-	return Index;
+	FClassNetCache* CacheToRemove = NULL;
+	if (ClassFieldIndices.RemoveAndCopyValue(Class, CacheToRemove))
+	{
+		delete CacheToRemove;
+	}
 }
 
 //
@@ -212,40 +209,234 @@ INT UPackageMap::AddLinker( ULinkerLoad* Linker )
 //
 void UPackageMap::Compute()
 {
-	{for( INT i=0; i<List.Num(); i++ )
-		check(List(i).Linker);}
-	NameIndices.Empty( FName::GetMaxNames() );
-	NameIndices.Add( FName::GetMaxNames() );
-	{for( INT i=0; i<NameIndices.Num(); i++ )
-		NameIndices(i) = -1;}
-	LinkerMap.Empty();
-	MaxObjectIndex = 0;
-	MaxNameIndex   = 0;
-	{for( INT i=0; i<List.Num(); i++ )
+	PackageListMap.Reset();
+	DWORD MaxObjectIndex = 0;
+	for (INT i = 0; i < List.Num(); i++)
 	{
-		FPackageInfo& Info    = List(i);
-		Info.ObjectBase       = MaxObjectIndex;
-		Info.NameBase         = MaxNameIndex;
-		Info.ObjectCount      = Info.Linker->ExportMap.Num();
-		Info.NameCount        = Info.Linker->NameMap.Num();
-		Info.LocalGeneration  = Info.Linker->Summary.Generations.Num();
-		if( Info.RemoteGeneration==0 )
+		FPackageInfo& Info = List(i);
+		Info.ObjectBase = MaxObjectIndex;
+		
+		// update ObjectCount if both sides have loaded the package
+		if (Info.RemoteGeneration > 0 && Info.Parent != NULL)
 		{
-			Info.RemoteGeneration = Info.LocalGeneration;
+			if (Min<INT>(Info.RemoteGeneration, Info.LocalGeneration) - 1 < Info.Parent->GetGenerationNetObjectCount().Num())
+			{
+				// we can only update the ObjectCount if the package is loaded
+				if (Info.LocalGeneration - 1 < Info.Parent->GetGenerationNetObjectCount().Num())
+				{
+					Info.ObjectCount = Info.Parent->GetNetObjectCount(Info.LocalGeneration - 1);
+					if (Info.RemoteGeneration < Info.LocalGeneration)
+					{
+						Info.ObjectCount = Min(Info.ObjectCount, Info.Parent->GetNetObjectCount(Info.RemoteGeneration - 1));
+					}
+				}
+				else
+				{
+					Info.ObjectCount = Info.Parent->GetNetObjectCount(Info.RemoteGeneration - 1);
+				}
+			}
+			// add to PackageListMap for quick lookup in ObjectToIndex()
+			PackageListMap.Set(Info.Parent->GetFName(), i);
 		}
-		if( Info.RemoteGeneration<Info.LocalGeneration )
+		MaxObjectIndex += Info.ObjectCount;
+		if (MaxObjectIndex > MAX_OBJECT_INDEX)
 		{
-			Info.ObjectCount  = Min( Info.ObjectCount, Info.Linker->Summary.Generations(Info.RemoteGeneration-1).ExportCount );
-			Info.NameCount    = Min( Info.NameCount,   Info.Linker->Summary.Generations(Info.RemoteGeneration-1).NameCount   );
+			debugf(TEXT("Exceeded maximum of %u net serializable objects, listing packagemap:"), MAX_OBJECT_INDEX);
+			LogDebugInfo(*GLog);
+			appErrorf(TEXT("Exceeded maximum of %u net serializable objects"), MAX_OBJECT_INDEX);
 		}
-		MaxObjectIndex       += Info.ObjectCount;
-		MaxNameIndex         += Info.NameCount;
-		//debugf( TEXT("** Package %s: %i objs, %i names, gen %i-%i"), *Info.URL. Info.ObjectCount, Info.NameCount, Info.LocalGeneration, Info.RemoveGeneration );
-		for( INT j=0; j<Min(Info.Linker->NameMap.Num(),Info.NameCount); j++ )
-			if( NameIndices(Info.Linker->NameMap(j).GetIndex()) == -1 )
-				NameIndices(Info.Linker->NameMap(j).GetIndex()) = Info.NameBase + j;
-		LinkerMap.Set( Info.Linker, i );
-	}}
+	}
+}
+
+/** logs debug info (package list, etc) to the specified output device
+ * @param Ar - the device to log to
+ */
+void UPackageMap::LogDebugInfo(FOutputDevice& Ar)
+{
+	for (INT i = 0; i < List.Num(); i++)
+	{
+		Ar.Logf( TEXT("      Package %i: Name - %s, LocalGeneration - %i, RemoteGeneration - %i, BaseIndex - %i, ObjectCount - %i"),
+					i, *List(i).PackageName.ToString(), List(i).LocalGeneration, List(i).RemoteGeneration, List(i).ObjectBase, List(i).ObjectCount );
+	}
+}
+
+/** adds all packages from UPackage::GetNetPackages() to the package map */
+void UPackageMap::AddNetPackages()
+{
+	// clear everything
+	List.Reset();
+	PackageListMap.Reset();
+
+	const TArray<UPackage*> NetPackages = UPackage::GetNetPackages();
+	for (INT i = 0; i < NetPackages.Num(); i++)
+	{
+		new(List) FPackageInfo(NetPackages(i));
+	}
+
+	Compute();
+}
+
+/** adds a single package to the package map */
+INT UPackageMap::AddPackage(UPackage* Package)
+{
+	// make sure this package isn't already in the map
+	for (INT i = 0; i < List.Num(); i++)
+	{
+		if (List(i).Parent == Package)
+		{
+			// do nothing
+			return i;
+		}
+		else if (List(i).PackageName == Package->GetFName() && List(i).Guid == Package->GetGuid())
+		{
+			// there is an entry, but it's not hooked up to the UPackage reference
+			List(i).Parent = Package;
+			return i;
+		}
+	}
+
+	new(List) FPackageInfo(Package);
+
+	Compute();
+	return (List.Num() - 1);
+}
+
+/** removes a package from the package map
+ * @param Package the package to remove
+ * @param bAllowEntryDeletion (optional) whether to actually delete the entry in List or to leave the entry around to maintain indices
+ */
+void UPackageMap::RemovePackage(UPackage* Package, UBOOL bAllowEntryDeletion)
+{
+	INT* Found = PackageListMap.Find(Package->GetFName());
+	INT Index = INDEX_NONE;
+	if (Found != NULL)
+	{
+		Index = *Found;
+		PackageListMap.Remove(Package->GetFName());
+	}
+	else
+	{
+		// we need to fall back to manually iterating the List as PackageListMap only contains packages that have been fully synchronized
+		for (INT i = 0; i < List.Num(); i++)
+		{
+			if (List(i).Parent == Package)
+			{
+				Index = i;
+				break;
+			}
+		}
+	}
+	if (Index != INDEX_NONE)
+	{
+		if (bAllowEntryDeletion)
+		{
+			// actually remove the entry
+			List.Remove(Index);
+			if (PackageListMap.Num() > 0)
+			{
+				Compute();
+			}
+		}
+		else
+		{
+			// dissociate the Package reference
+			List(Index).Parent = NULL;
+			List(Index).RemoteGeneration = 0;
+		}
+	}
+}
+
+/** removes a package from the package map by GUID instead of by package reference */
+void UPackageMap::RemovePackageByGuid(const FGuid& Guid)
+{
+	for (INT i = 0; i < List.Num(); i++)
+	{
+		if (List(i).Guid == Guid)
+		{
+			UPackage* Package = List(i).Parent;
+			if (Package != NULL)
+			{
+				List(i).Parent = NULL;
+				List(i).RemoteGeneration = 0;
+				PackageListMap.Remove(Package->GetFName());
+				return;
+			}
+		}
+	}
+}
+
+/** removes the passed in package only if both sides have completely sychronized it
+ * @param Package the package to remove
+ * @return TRUE if the package was removed or was not in the package map, FALSE if it was not removed because it has not been fully synchronized
+ */
+UBOOL UPackageMap::RemovePackageOnlyIfSynced(UPackage* Package)
+{
+	INT* Found = PackageListMap.Find(Package->GetFName());
+	INT Index = INDEX_NONE;
+	if (Found != NULL)
+	{
+		Index = *Found;
+	}
+	else
+	{
+		// we need to fall back to manually iterating the List as PackageListMap only contains packages that have been fully synchronized
+		for (INT i = 0; i < List.Num(); i++)
+		{
+			if (List(i).Parent == Package)
+			{
+				Index = i;
+				break;
+			}
+		}
+	}
+	if (Index != INDEX_NONE)
+	{
+		if (List(Index).RemoteGeneration == 0)
+		{
+			// other side has not synchronized this package
+			return FALSE;
+		}
+		else
+		{
+			// dissociate the Package reference
+			List(Index).Parent = NULL;
+			List(Index).RemoteGeneration = 0;
+			if (Found != NULL)
+			{
+				PackageListMap.Remove(Package->GetFName());
+			}
+			return TRUE;
+		}
+	}
+	else
+	{
+		// package was not found at all
+		return TRUE;
+	}
+}
+
+/** adds a package info for a package that may or may not be loaded
+ * if an entry for the given package already exists, updates it
+ * @param Info the info to add
+ */
+void UPackageMap::AddPackageInfo(const FPackageInfo& Info)
+{
+	// if this is a duplicate entry, update the old one
+	for (INT i = 0; i < List.Num(); i++)
+	{
+		if (List(i).PackageName == Info.PackageName && List(i).Guid == Info.Guid)
+		{
+			List(i).Parent = Info.Parent;
+			List(i).RemoteGeneration = Info.RemoteGeneration;
+			List(i).LocalGeneration = Info.LocalGeneration;
+			Compute();
+			return;
+		}
+	}
+
+	// add new entry
+	List.AddItem(Info);
+	Compute();
 }
 
 //
@@ -253,17 +444,24 @@ void UPackageMap::Compute()
 //
 INT UPackageMap::ObjectToIndex( UObject* Object )
 {
-	if( Object && Object->GetLinker() && Object->_LinkerIndex!=INDEX_NONE )
+	if (Object != NULL && Object->NetIndex != INDEX_NONE)
 	{
-		INT* Found = LinkerMap.Find( Object->GetLinker() );
-		if( Found )
+		INT* Found = PackageListMap.Find(Object->GetOutermost()->GetFName());
+		if (Found != NULL)
 		{
-			FPackageInfo& Info = List( *Found );
-			if( Object->_LinkerIndex<Info.ObjectCount )
-				return Info.ObjectBase + Object->_LinkerIndex;
+			FPackageInfo& Info = List(*Found);
+			if (Object->NetIndex < Info.ObjectCount)
+			{
+				return Info.ObjectBase + Object->NetIndex;
+			}
 		}
 	}
 	return INDEX_NONE;
+}
+
+UBOOL UPackageMap::SupportsObject( UObject* Object )
+{
+	return ObjectToIndex( Object ) != INDEX_NONE;
 }
 UBOOL UPackageMap::SupportsPackage( UObject* InOuter )
 {
@@ -272,25 +470,70 @@ UBOOL UPackageMap::SupportsPackage( UObject* InOuter )
 			return 1;
 	return 0;
 }
-UObject* UPackageMap::IndexToObject( INT Index, UBOOL Load )
+
+UObject* UPackageMap::IndexToObject( INT InIndex, UBOOL bLoad )
 {
-	if( Index>=0 )
+	if (InIndex >= 0)
 	{
-		for( INT i=0; i<List.Num(); i++ )
+		for (INT i = 0; i < List.Num(); i++)
 		{
 			FPackageInfo& Info = List(i);
-			if( Index < Info.ObjectCount )
+			if (InIndex < Info.ObjectCount)
 			{
-				UObject* Result = Info.Linker->ExportMap(Index)._Object;
-				if( !Result && Load )
+				if (Info.Parent != NULL)
 				{
-					UObject::BeginLoad();
-					Result = Info.Linker->CreateExport(Index);
-					UObject::EndLoad();
+					UObject* Result = Info.Parent->GetNetObjectAtIndex(InIndex);
+					if (Result != NULL)
+					{
+						return Result;
+					}
+					else if (bLoad)
+					{
+						//@fixme: in the case where the client has a newer version of a conformed package with some objects removed
+						//		this code causes unnecessary flushing of async loading as it will be impossible to actually load the object requested
+#if CONSOLE	|| DEDICATED_SERVER
+						if( GUseSeekFreeLoading )
+						{
+							// we can't load the linker from disk using seekfree loading because the indices don't match up to the seekfree packages
+							// so we just flush async loading and see if that works
+							FlushAsyncLoading();
+							Result = Info.Parent->GetNetObjectAtIndex(InIndex);
+							if (Result != NULL)
+							{
+								debugf(NAME_Warning, TEXT("Flushed async loading to find replicated reference to '%s'"), *Result->GetFullName());
+							}
+							else
+							{
+								debugf(NAME_Warning, TEXT("Received non-loaded object at index %i in package %s"), InIndex, *Info.PackageName.ToString());
+							}
+						}
+						else
+#endif
+						{
+							UBOOL bWasAsyncLoading = IsAsyncLoading();
+							UObject::BeginLoad();
+							ULinkerLoad* Linker = GetPackageLinker(NULL, *Info.PackageName.ToString(), LOAD_None, NULL, &Info.Guid);
+							Result = (Linker != NULL) ? Result = Linker->CreateExport(InIndex) : NULL;
+							if (bWasAsyncLoading)
+							{
+								debugf(NAME_Warning, TEXT("Flushed async loading to load replicated reference to '%s'"), *Result->GetFullName());
+							}
+							UObject::EndLoad();
+						}
+						return Result;
+					}
+					else
+					{
+						return NULL;
+					}
 				}
-				return Result;
+				else
+				{
+					debugf(NAME_Warning, TEXT("Received index %i for removed/unloaded package %s"), InIndex, *Info.PackageName.ToString());
+					return NULL;
+				}
 			}
-			Index -= Info.ObjectCount;
+			InIndex -= Info.ObjectCount;
 		}
 	}
 	return NULL;
@@ -298,17 +541,17 @@ UObject* UPackageMap::IndexToObject( INT Index, UBOOL Load )
 void UPackageMap::Serialize( FArchive& Ar )
 {
 	Super::Serialize( Ar );
-	Ar << List << LinkerMap << ClassFieldIndices;
+	Ar << List;
 }
-void UPackageMap::Destroy()
+void UPackageMap::FinishDestroy()
 {
-	Super::Destroy();
-	for( TMap<UObject*,FClassNetCache*>::TIterator It(ClassFieldIndices); It; ++It )
+	for( TMap<UClass*, FClassNetCache*>::TIterator It(ClassFieldIndices); It; ++It )
+	{
+		// if this assertion crashes, memory is being leaked due to FClassNetCaches not being cleaned up for classes that are destroyed
+		check(It.Key()->IsValid());
 		delete It.Value();
+	}
+	Super::FinishDestroy();
 }
 IMPLEMENT_CLASS(UPackageMap);
-
-/*----------------------------------------------------------------------------
-	The End.
-----------------------------------------------------------------------------*/
 

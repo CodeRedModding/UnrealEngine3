@@ -1,0 +1,36 @@
+/*=============================================================================
+	UberPostprocessVertexShader.usf:
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+UNIFORM(vec4, SceneCoordinate1ScaleBias);
+UNIFORM(vec4, SceneCoordinate2ScaleBias);
+UNIFORM(vec4, SceneCoordinate3ScaleBias);
+
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+ATTRIBUTE(vec4, Position, POSITION);
+ATTRIBUTE(vec2, TexCoords0, TEXCOORD0);
+
+// full resolution 
+OUT_VARYING_DEFAULT(vec2, ScreenPosition, TEXCOORD0);
+// quarter resolution
+OUT_VARYING_DEFAULT(vec2, FilterBufferUV, TEXCOORD1);
+
+void main()
+{
+	// Target position
+	gl_Position = Position;								
+	
+	// full resolution
+	ScreenPosition = TexCoords0;
+
+	// compute pixel position from screen pos, unify D3D9 half texel shift (done like this for cleaner code), flip y
+	vec2 PixelPos = Position.xy / Position.w * SceneCoordinate1ScaleBias.xy + SceneCoordinate1ScaleBias.wz;
+
+	// quarter resolution
+	FilterBufferUV = PixelPos * SceneCoordinate3ScaleBias.xy + SceneCoordinate3ScaleBias.wz;
+#if !NGP
+	FilterBufferUV = vec2(FilterBufferUV.x, 1.0 - FilterBufferUV.y);
+#endif
+}

@@ -1,0 +1,39 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+<UserControl
+	x:Class="CustomControls.SortableColumnHeader"
+	x:Name="This" 
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	<UserControl.Resources>
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/ArrowBrightDown.png" x:Key="imgDownArrow"/>
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/ArrowBrightUp.png" x:Key="imgUpArrow"/>
+	</UserControl.Resources>
+
+	<!-- Arrange the items horizontally -->
+	<DockPanel HorizontalAlignment="Stretch" VerticalAlignment="Center">
+
+		<!-- The up / down arrow -->
+		<Image x:Name="mUpArrow"   DockPanel.Dock="Right" Source="{StaticResource imgUpArrow}" SnapsToDevicePixels="True"  HorizontalAlignment="Right" Width="13" Height="13"/>
+		<Image x:Name="mDownArrow" DockPanel.Dock="Right" Source="{StaticResource imgDownArrow}" SnapsToDevicePixels="True" HorizontalAlignment="Right" Width="13" Height="13" />
+		
+
+		<!-- The Text -->
+		<Grid DockPanel.Dock="Left">
+
+			<TextBlock x:Name="mTextShadow"
+					   Margin="1,1,0,0" 
+					   FontWeight="Bold" 
+					   Text="{Binding ElementName=This, Path=Text}"
+					   Foreground="{DynamicResource Slate_Control_Shadow}"
+					   SnapsToDevicePixels="True" />
+			
+			<TextBlock x:Name="mText"
+					   FontWeight="Bold"
+					   Text="{Binding ElementName=This, Path=Text}"
+					   SnapsToDevicePixels="True" />
+
+		</Grid>
+
+	</DockPanel>
+	
+</UserControl>

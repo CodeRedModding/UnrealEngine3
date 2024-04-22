@@ -1,0 +1,1521 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+#include "OnlineSubsystemGameSpy.h"
+
+#if WITH_UE3_NETWORKING && WITH_GAMESPY
+
+#define DEBUG_ADVERTISEMENT_AND_QUERYING 1
+
+#if DEBUG_ADVERTISEMENT_AND_QUERYING
+	#define gsdebugf debugf
+#else
+	#define gsdebugf debugfSuppressed
+#endif
+
+#if PS3 && WANTS_NAT_TRAVERSAL
+/** Used to enable UDPP2P */
+UBOOL GWantsNatTraversal = FALSE;
+#endif
+
+/**
+ * Searches the WorldInfo's PRI array for the specified player so that the
+ * player's net connection can be found
+ *
+ * @param Player the player that is being searched for
+ *
+ * @return the net connection for the player
+ */
+static UNetConnection* FindConnectionForUniqueId(FUniqueNetId Player)
+{
+	AWorldInfo* WorldInfo = GWorld->GetWorldInfo();
+	if (WorldInfo)
+	{
+		AGameReplicationInfo* GRI = WorldInfo->GRI;
+		if (GRI != NULL)
+		{
+			// Find the PRI that matches the net id
+			for (INT Index = 0; Index < GRI->PRIArray.Num(); Index++)
+			{
+				APlayerReplicationInfo* PRI = GRI->PRIArray(Index);
+				// If this PRI matches, get the owning actor
+				if (PRI && PRI->UniqueId == Player)
+				{
+					// Get the player controller so we can get the player (which is the net connection)
+					APlayerController* PC = Cast<APlayerController>(PRI->Owner);
+					if (PC)
+					{
+						return Cast<UNetConnection>(PC->Player);
+					}
+				}
+			}
+		}
+	}
+	// Couldn't be found
+	return NULL;
+}
+
+/**
+ * Determines if a settings object's UProperty should be advertised via GameSpy
+ *
+ * @param PropertyName the property to check
+ */
+static inline UBOOL ShouldAdvertiseUProperty(FName PropertyName)
+{
+	if (FName(TEXT("NumPublicConnections"),FNAME_Find) == PropertyName)
+	{
+		return TRUE;
+	}
+	if (FName(TEXT("bUsesStats"),FNAME_Find) == PropertyName)
+	{
+		return TRUE;
+	}
+	if (FName(TEXT("bIsDedicated"),FNAME_Find) == PropertyName)
+	{
+		return TRUE;
+	}
+	if (FName(TEXT("OwningPlayerName"),FNAME_Find) == PropertyName)
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/**
+ * Casts the pointer to the GameSpy subsystem and verifies the type
+ *
+ * @param Pointer the chunk of memory to validate is the GameSpy interface
+ */
+static FORCEINLINE UOnlineGameInterfaceGameSpy* CastToGameInterface(void* Pointer)
+{
+	return CastChecked<UOnlineGameInterfaceGameSpy>((UObject*)Pointer);
+}
+
+/**
+ * Called when a Server key needs to be reported
+ *
+ * @param KeyId the key that is being requested
+ * @param OutBuf the buffer to append to
+ * @param UserData pointer to the subsystem
+ */
+static void ServerKeyCallback(INT KeyId, qr2_buffer_t OutBuf, void *UserData)
+{
+	UOnlineGameInterfaceGameSpy* GameInterface = CastToGameInterface(UserData);
+	GameInterface->ServerKeyCallback(KeyId, OutBuf);
+}
+
+/**
+ * Called when a player key needs to be reported
+ *
+ * @param KeyId the key that is being requested
+ * @param Index the index of the player being queried
+ * @param OutBuf the buffer to append to
+ * @param UserData pointer to the subsystem
+ */
+static void PlayerKeyCallback(INT KeyId, INT Index, qr2_buffer_t OutBuf, void *UserData)
+{
+	UOnlineGameInterfaceGameSpy* GameInterface = CastToGameInterface(UserData);
+	GameInterface->PlayerKeyCallback(KeyId, Index, OutBuf);
+}
+
+/**
+ * Called when a team key needs to be reported
+ *
+ * @param KeyId the key that is being requested
+ * @param Index the index of the team being queried
+ * @param OutBuf the buffer to append to
+ * @param UserData pointer to the subsystem
+ */
+static void TeamKeyCallback(INT KeyId, INT Index, qr2_buffer_t OutBuf, void *UserData)
+{
+	UOnlineGameInterfaceGameSpy* GameInterface = CastToGameInterface(UserData);
+	GameInterface->TeamKeyCallback(KeyId, Index, OutBuf);
+}	
+
+/**
+ * Called when we need to report the list of keys we report values for
+ *
+ * @param KeyId the key that is being requested
+ * @param KeyBuffer the buffer to append to
+ * @param UserData pointer to the subsystem
+ */
+static void KeyListCallback(qr2_key_type KeyType, qr2_keybuffer_t KeyBuffer, void *UserData)
+{
+	UOnlineGameInterfaceGameSpy* GameInterface = CastToGameInterface(UserData);
+	GameInterface->KeyListCallback(KeyType, KeyBuffer);
+}
+
+/**
+ * Called when we need to report the number of players and teams
+ *
+ * @param KeyType the type of object that needs the count reported for
+ * @param UserData pointer to the subsystem
+ */
+static int CountCallback(qr2_key_type KeyType, void *UserData)
+{
+	UOnlineGameInterfaceGameSpy* GameInterface = CastToGameInterface(UserData);
+	return GameInterface->CountCallback(KeyType);	
+}
+
+/**
+ * Called if our registration with the GameSpy master Server failed
+ *
+ * @param Error the error code that occured
+ * @param ErrorMessage message form of the error
+ * @param UserData pointer to the subsystem
+ */
+static void AddErrorCallback(qr2_error_t Error, gsi_char *ErrorMessage, void *UserData)
+{
+	UOnlineGameInterfaceGameSpy* GameInterface = CastToGameInterface(UserData);
+	GameInterface->AddErrorCallback(Error, ErrorMessage);
+}
+
+/**
+ * Called when negotiating NAT handshaking between two endpoints
+ *
+ * @param Cookie the random data generated by the Server to allow unique identification
+ * @param UserData pointer to the subsystem
+ */
+static void NATNegCallback(INT Cookie, void *UserData)
+{
+	// Unused so ignore
+}
+
+/**
+ * Called with updates from the ServerBrowsing SDK (Server adds, details ready, etc)
+ *
+ * @param SB the GameSpy server browser object
+ * @param Reason the reason the callback happened
+ * @param Server the server object that was updated
+ * @param UserData pointer to the subsystem
+ */
+static void SBCallback(ServerBrowser SB, SBCallbackReason Reason, SBServer Server, void *UserData)
+{
+	UOnlineGameInterfaceGameSpy* GameInterface = CastToGameInterface(UserData);
+	GameInterface->SBCallback(SB, Reason, Server);
+}
+
+/**
+ * Called when a server key needs to be reported
+ *
+ * @param KeyId the key that is being requested
+ * @param OutBuf the buffer to append to
+ */
+void UOnlineGameInterfaceGameSpy::ServerKeyCallback(INT KeyId, qr2_buffer_t OutBuf)
+{
+	if (GameSettings == NULL || SessionInfo == NULL)
+	{
+		debugf(NAME_DevOnline,TEXT("ServerKeyCallback called with no game settings present"));
+		return;
+	}
+#if PS3 && WANTS_NAT_TRAVERSAL
+	// Check for the NpId key
+	if (KeyId == QR2NpIdKeyId)
+	{
+		qr2_buffer_add(OutBuf,(const UCS2String)*QR2NpIdString);
+		return;
+	}
+#endif
+	// Check for the OwningPlayerId key
+	if (KeyId == QR2OwningPlayerIdKeyId)
+	{
+		qr2_buffer_add_int(OutBuf, (INT)GameSettings->OwningPlayerId.ToDWORD());
+		return;
+	}
+
+	// Check for a data bindable key
+	if ((KeyId >= QR2FirstDataBindableKeyId) && (KeyId < (QR2FirstDataBindableKeyId + QR2NumDataBindableKeys)))
+	{
+		FName PropertyName = QR2DataBindableKeyNames(KeyId - QR2FirstDataBindableKeyId);
+		for (UProperty* Property = GameSettings->GetClass()->PropertyLink; Property != NULL; Property = Property->PropertyLinkNext)
+		{
+			if (Property->GetFName() == PropertyName)
+			{
+				BYTE* ValueAddress = (BYTE*)GameSettings + Property->Offset;
+				FString StringValue;
+				// Use the property code to export to text
+				Property->ExportTextItem(StringValue,ValueAddress,NULL,GameSettings,
+					(Property->PropertyFlags & CPF_Localized) ? PPF_Localized : 0);
+				qr2_buffer_add(OutBuf, (const UCS2String)*StringValue);
+				gsdebugf(NAME_DevOnline,TEXT("Advertising: %s=%s"),*Property->GetName(),*StringValue);
+				break;
+			}
+		}
+		return;
+	}
+
+	// Check for a settings key
+	if ((KeyId >= QR2FirstSettingKeyId) && (KeyId < (QR2FirstSettingKeyId + QR2NumSettingKeys)))
+	{
+		qr2_buffer_add_int(OutBuf, GameSettings->LocalizedSettings(KeyId - QR2FirstSettingKeyId).ValueIndex);
+		gsdebugf(NAME_DevOnline,TEXT("Advertising: s%d=%d"),
+			GameSettings->LocalizedSettings(KeyId - QR2FirstSettingKeyId).Id,
+			GameSettings->LocalizedSettings(KeyId - QR2FirstSettingKeyId).ValueIndex);
+		return;
+	}
+
+	// Check for a property key
+	if ((KeyId >= QR2FirstPropertyKeyId) && (KeyId < (QR2FirstPropertyKeyId + QR2NumPropertyKeys)))
+	{
+		qr2_buffer_add(OutBuf, (const UCS2String)*GameSettings->Properties(KeyId - QR2FirstPropertyKeyId).Data.ToString());
+		gsdebugf(NAME_DevOnline,TEXT("Advertising: p%d=%s"),
+			GameSettings->Properties(KeyId - QR2FirstPropertyKeyId).PropertyId,
+			*GameSettings->Properties(KeyId - QR2FirstPropertyKeyId).Data.ToString());
+		return;
+	}
+
+	switch (KeyId)
+	{
+		case HOSTNAME_KEY:
+		{
+			qr2_buffer_add(OutBuf, (const UCS2String)*GameSettings->OwningPlayerName);
+			gsdebugf(NAME_DevOnline,TEXT("Advertising: HOSTNAME_KEY=%s"),
+				*GameSettings->OwningPlayerName);
+			break;
+		}
+		case HOSTPORT_KEY:
+		{
+			qr2_buffer_add_int(OutBuf, SessionInfo->HostAddr.GetPort());
+			gsdebugf(NAME_DevOnline,TEXT("Advertising: HOSTPORT_KEY=%d"),
+				SessionInfo->HostAddr.GetPort());
+			break;
+		}
+		case NUMPLAYERS_KEY:
+		{
+			qr2_buffer_add_int(OutBuf, GameSettings->NumPublicConnections - GameSettings->NumOpenPublicConnections);
+			gsdebugf(NAME_DevOnline,TEXT("Advertising: NUMPLAYERS_KEY=%d"),
+				GameSettings->NumPublicConnections - GameSettings->NumOpenPublicConnections);
+			break;
+		}
+		case MAXPLAYERS_KEY:
+		{
+			qr2_buffer_add_int(OutBuf, GameSettings->NumPublicConnections);
+			gsdebugf(NAME_DevOnline,TEXT("Advertising: MAXPLAYERS_KEY=%d"),
+				GameSettings->NumPublicConnections);
+			break;
+		}
+		case GAMEMODE_KEY:
+		{
+			const UCS2String gamemode;
+			if (GameSettings->bAllowJoinInProgress == TRUE)
+			{
+				gamemode = (const UCS2String)TEXT("openplaying");
+			}
+			else
+			{
+				gamemode = (const UCS2String)TEXT("closedplaying");
+			}
+			qr2_buffer_add(OutBuf, gamemode);
+			break;
+		}
+		default:
+		{
+			qr2_buffer_add(OutBuf, (const UCS2String)TEXT(""));
+			break;
+		}
+	}
+}
+
+/**
+ * Called when a player key needs to be reported
+ *
+ * @param KeyId the key that is being requested
+ * @param Index the index of the player being queried
+ * @param OutBuf the buffer to append to
+ * @param UserData pointer to the subsystem
+ */
+void UOnlineGameInterfaceGameSpy::PlayerKeyCallback(INT KeyId, int Index, qr2_buffer_t OutBuf)
+{
+	// this isn't used
+	qr2_buffer_add(OutBuf, (const UCS2String)TEXT(""));
+}
+
+/**
+ * Called when a team key needs to be reported
+ *
+ * @param KeyId the key that is being requested
+ * @param Index the index of the team being queried
+ * @param OutBuf the buffer to append to
+ */
+void UOnlineGameInterfaceGameSpy::TeamKeyCallback(INT KeyId, int Index, qr2_buffer_t OutBuf)
+{
+	// this isn't used
+	qr2_buffer_add(OutBuf, (const UCS2String)TEXT(""));
+}	
+
+/**
+ * Called when we need to report the list of keys we report values for
+ *
+ * @param KeyId the key that is being requested
+ * @param KeyBuffer the buffer to append to
+ */
+void UOnlineGameInterfaceGameSpy::KeyListCallback(qr2_key_type KeyType, qr2_keybuffer_t KeyBuffer)
+{
+	switch (KeyType)
+	{
+		case key_server:
+		{
+			qr2_keybuffer_add(KeyBuffer, HOSTNAME_KEY);
+			qr2_keybuffer_add(KeyBuffer, HOSTPORT_KEY);
+			qr2_keybuffer_add(KeyBuffer, NUMPLAYERS_KEY);
+			qr2_keybuffer_add(KeyBuffer, MAXPLAYERS_KEY);
+			qr2_keybuffer_add(KeyBuffer, GAMEMODE_KEY);
+			qr2_keybuffer_add(KeyBuffer, QR2OwningPlayerIdKeyId);
+#if PS3 && WANTS_NAT_TRAVERSAL
+			qr2_keybuffer_add(KeyBuffer,QR2NpIdKeyId);
+#endif
+			// Add databinding property data (members of game settings)
+			for(INT Index = 0 ; Index < QR2NumDataBindableKeys ; Index++)
+			{
+				qr2_keybuffer_add(KeyBuffer, QR2FirstDataBindableKeyId + Index);
+			}
+			// Add all of the localized string setting data
+			for(INT Index = 0 ; Index < QR2NumSettingKeys ; Index++)
+			{
+				qr2_keybuffer_add(KeyBuffer, QR2FirstSettingKeyId + Index);
+			}
+			// Add all of the property data
+			for(INT Index = 0 ; Index < QR2NumPropertyKeys ; Index++)
+			{
+				qr2_keybuffer_add(KeyBuffer, QR2FirstPropertyKeyId + Index);
+			}
+			break;
+		}
+		case key_player:
+		case key_team:
+		default:
+		{
+			break;
+		}
+	}
+}
+
+/**
+ * Called when we need to report the number of players and teams
+ *
+ * @param KeyType the type of object that needs the count reported for
+ *
+ * @return the number of items for this key type
+ */
+INT UOnlineGameInterfaceGameSpy::CountCallback(qr2_key_type KeyType)
+{
+	// this isn't used
+	return 0;
+}
+
+/**
+ * Called if our registration with the GameSpy master Server failed
+ *
+ * @param Error the error code that occured
+ * @param ErrorMessage message form of the error
+ */
+void UOnlineGameInterfaceGameSpy::AddErrorCallback(qr2_error_t Error, gsi_char *ErrorMessage)
+{
+	if (Error != e_qrnoerror)
+	{
+		// Since this callback only happens upon error and not all the time
+		// there is nothing we can do with this information, so we just log it
+		debugf(NAME_DevOnline,
+			TEXT("Failed to register server with error 0x%08X (%s)"),
+			(INT)Error,
+			ErrorMessage);
+		debugf(NAME_DevOnline,TEXT("Treating server as private (invite, follow only)"));
+	}
+}
+
+/**
+ * Adds a Server to the search results
+ *
+ * @param Server the server object to convert to UE3's format
+ */
+void UOnlineGameInterfaceGameSpy::AddServerToSearchResults(SBServer Server)
+{
+	check(Server);
+	// Make sure we haven't processed it
+	if(SBServerGetIntValue(Server, (const UCS2String)TEXT("ue3_processed"), 0) == 1)
+	{
+		return;
+	}
+	// Create an object that we'll copy the data to
+	UOnlineGameSettings* NewServer = ConstructObject<UOnlineGameSettings>(GameSearch->GameSettingsClass);
+	if (NewServer != NULL)
+	{
+		// Add space in the search results array
+		INT Position = GameSearch->Results.AddZeroed();
+		FOnlineGameSearchResult& Result = GameSearch->Results(Position);
+		// Link the settings to this result
+		Result.GameSettings = NewServer;
+		// Allocate and read the session data
+		FSessionInfo* SessInfo = CreateSessionInfo();
+		// Use the public address
+		SessInfo->HostAddr.SetIp(ntohl(SBServerGetPublicInetAddress(Server)));
+		SessInfo->HostAddr.SetPort(SBServerGetIntValue(Server,(const UCS2String)TEXT("hostport"),FURL::DefaultPort));
+		// Store this in the results
+		Result.PlatformData = SessInfo;
+#if PS3 && WANTS_NAT_TRAVERSAL
+		// Get the NP ID from the GameSpy keys
+		const TCHAR* NpUrl = (const TCHAR*)SBServerGetStringValue(Server,(const UCS2String)TEXT("NpId"),NULL);
+		if (NpUrl != NULL)
+		{
+			FSessionInfoPS3* SessInfoPs3 = (FSessionInfoPS3*)SessInfo;
+			// Parse as an URL and then copy into the session info
+			FURL Url(NULL,NpUrl,TRAVEL_Absolute);
+			appCopyPs3SessionInfoFromUrl(SessInfoPs3,Url);
+		}
+#endif
+		// Store this in the results
+		Result.PlatformData = SessInfo;
+		// Read the data from the SB API and update the object
+		UpdateGameSettingsData(NewServer,Server);
+	}
+	else
+	{
+		debugf(NAME_Error,TEXT("Failed to create new online game settings object"));
+	}
+}
+
+/**
+ * Updates the server details with the new data
+ *
+ * @param GameSettings the game settings to update
+ * @param Server the GameSpy data to update with
+ */
+void UOnlineGameInterfaceGameSpy::UpdateGameSettingsData(UOnlineGameSettings* GameSettings,SBServer Server)
+{
+	if (GameSettings && Server)
+	{
+		// Read the owning player id
+		const UCS2String PlayerIdValue = SBServerGetStringValue(Server, (const UCS2String)TEXT("OwningPlayerId"), NULL);
+		if (PlayerIdValue != NULL)
+		{
+			GameSettings->OwningPlayerId = (DWORD)appAtoi((const TCHAR*)PlayerIdValue);
+		}
+		// Read the data bindable properties
+		for (UProperty* Property = GameSettings->GetClass()->PropertyLink;
+			Property != NULL;
+			Property = Property->PropertyLinkNext)
+		{
+			// If the property is databindable and is not an object, we'll check for it
+			if ((Property->PropertyFlags & CPF_DataBinding) != 0 &&
+				Cast<UObjectProperty>(Property,CLASS_IsAUObjectProperty) == NULL)
+			{
+				BYTE* ValueAddress = (BYTE*)GameSettings + Property->Offset;
+				const FString& DataBindableName = Property->GetName();
+				const UCS2String DataBindableValue = SBServerGetStringValue(Server, (const UCS2String)*DataBindableName, NULL);
+				if (DataBindableValue != NULL)
+				{
+					Property->ImportText((const TCHAR*)DataBindableValue,ValueAddress,PPF_Localized,GameSettings);
+				}
+			}
+		}
+		// Read the settings
+		for (INT Index = 0; Index < GameSettings->LocalizedSettings.Num(); Index++)
+		{
+			INT SettingId = GameSettings->LocalizedSettings(Index).Id;
+			FString SettingName(TEXT("s"));
+			SettingName += appItoa(SettingId);
+			const UCS2String SettingValue = SBServerGetStringValue(Server, (const UCS2String)*SettingName, NULL);
+			if (SettingValue != NULL)
+			{
+				GameSettings->LocalizedSettings(Index).ValueIndex = appAtoi((const TCHAR*)SettingValue);
+			}
+		}
+		// Read the properties
+		for (INT Index = 0; Index < GameSettings->Properties.Num(); Index++)
+		{
+			INT PropertyId = GameSettings->Properties(Index).PropertyId;
+			FString PropertyName(TEXT("p"));
+			PropertyName += appItoa(PropertyId);
+			const UCS2String PropertyValue = SBServerGetStringValue(Server, (const UCS2String)*PropertyName, NULL);
+			if (PropertyValue != NULL)
+			{
+				GameSettings->Properties(Index).Data.FromString(FString((const TCHAR*)PropertyValue));
+			}
+		}
+		GameSettings->PingInMs = Clamp(SBServerGetPing(Server),0,MAX_QUERY_MSEC);
+		// Mark this as a processed server
+		SBServerAddIntKeyValue(Server, "ue3_processed", 1);
+	}
+}
+
+/**
+ * Marks a server in the server list as unreachable
+ *
+ * @param Addr the IP addr of the server to update
+ */
+void UOnlineGameInterfaceGameSpy::MarkServerAsUnreachable(const FInternetIpAddr& Addr)
+{
+	if (GameSearch)
+	{
+		// Search the results for the server that needs updating
+		for (INT Index = 0; Index < GameSearch->Results.Num(); Index++)
+		{
+			FOnlineGameSearchResult& Result = GameSearch->Results(Index);
+			if (Result.PlatformData)
+			{
+				FSessionInfo* SessInfo = (FSessionInfo*)Result.PlatformData;
+				// If the IPs match, then this is the right one
+				if (SessInfo->HostAddr == Addr)
+				{
+					Result.GameSettings->PingInMs = MAX_QUERY_MSEC;
+					break;
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Called with updates from the ServerBrowsing SDK (Server adds, details ready, etc)
+ *
+ * @param SB the GameSpy server browser object
+ * @param Reason the reason the callback happened
+ * @param Server the server object that was updated
+ */
+void UOnlineGameInterfaceGameSpy::SBCallback(ServerBrowser SB, SBCallbackReason Reason, SBServer Server)
+{
+	UBOOL bShouldFireDelegate = TRUE;
+	DWORD Result = S_OK;
+	switch (Reason)
+	{
+		case sbc_serveradded:
+		{
+			AddServerToSearchResults(Server);
+			break;
+		}
+		case sbc_serverupdatefailed:
+		{
+			bShouldFireDelegate = FALSE;
+			// NOTE: purposefully falling through to the update path
+		}
+		case sbc_serverupdated:
+		{
+			UOnlineGameSettings* GameSettings = NULL;
+			// Find the game settings for this server
+			for (INT GameIndex = 0;
+				GameIndex < GameSearch->Results.Num() && GameSettings == NULL;
+				GameIndex++)
+			{
+				if (ServerBrowserGetServer(SB,GameIndex) == Server)
+				{
+					GameSettings = GameSearch->Results(GameIndex).GameSettings;
+				}
+			}
+			// Skip the update if it was not found
+			if (GameSettings)
+			{
+				UpdateGameSettingsData(GameSettings,Server);
+			}
+			break;
+		}
+		case sbc_queryerror:
+		{
+			debugf(NAME_DevOnline,TEXT("SBCallback() got sbc_queryerror"));
+			bShouldFireDelegate = TRUE;
+			Result = E_FAIL;
+			CleanupServerBrowserQuery();
+			break;
+		}
+		case sbc_updatecomplete:
+		{
+			debugf(NAME_DevOnline,TEXT("SBCallback() got sbc_updatecomplete"));
+			CleanupServerBrowserQuery();
+			break;
+		}
+		default:
+		{
+			break;
+		}
+	}
+	// If the game needs notification send it
+	if (bShouldFireDelegate)
+	{
+		FAsyncTaskDelegateResults Params(Result);
+		TriggerOnlineDelegates(this,FindOnlineGamesCompleteDelegates,&Params);
+	}
+}
+
+/**
+ * Registers all the properties & localized settings as QR2 objects
+ */
+void UOnlineGameInterfaceGameSpy::QR2SetupCustomKeys(void)
+{
+	// owning player id
+	QR2OwningPlayerIdKeyId = NUM_RESERVED_KEYS;
+	qr2_register_key(QR2OwningPlayerIdKeyId, (const UCS2String)TEXT("OwningPlayerId"));
+#if PS3 && WANTS_NAT_TRAVERSAL
+	// Register the NP ID
+	QR2NpIdKeyId = QR2OwningPlayerIdKeyId + 1;
+	qr2_register_key(QR2NpIdKeyId, (const UCS2String)TEXT("NpId"));
+	// Now do the bindable data
+	QR2FirstDataBindableKeyId = QR2NpIdKeyId + 1;
+#else
+	// bindable data
+	QR2FirstDataBindableKeyId = QR2OwningPlayerIdKeyId + 1;
+#endif
+	QR2NumDataBindableKeys = 0;
+	QR2DataBindableKeyNames.Empty();
+	for (UProperty* Property = GameSettings->GetClass()->PropertyLink;
+		Property != NULL;
+		Property = Property->PropertyLinkNext)
+	{
+		// If the property is databindable and is not an object, we want to report it
+		if ((Property->PropertyFlags & CPF_DataBinding) != 0 &&
+			Cast<UObjectProperty>(Property,CLASS_IsAUObjectProperty) == NULL &&
+			ShouldAdvertiseUProperty(Property->GetFName()))
+		{
+			qr2_register_key(QR2FirstDataBindableKeyId + QR2NumDataBindableKeys, (const UCS2String)*Property->GetName());
+			QR2DataBindableKeyNames.Push(Property->GetFName());
+			QR2NumDataBindableKeys++;
+		}
+	}
+	// settings
+	QR2FirstSettingKeyId = (QR2FirstDataBindableKeyId + QR2NumDataBindableKeys);
+	QR2NumSettingKeys = GameSettings->LocalizedSettings.Num();
+	for(INT Index = 0 ; Index < QR2NumSettingKeys ; Index++)
+	{
+		INT SettingId = GameSettings->LocalizedSettings(Index).Id;
+		FString SettingName(TEXT("s"));
+		SettingName += appItoa(SettingId);
+		qr2_register_key(QR2FirstSettingKeyId + Index, (const UCS2String)*SettingName);
+	}
+	//properties
+	QR2FirstPropertyKeyId = (QR2FirstSettingKeyId + QR2NumSettingKeys);
+	QR2NumPropertyKeys = GameSettings->Properties.Num();
+	for(INT Index = 0 ; Index < QR2NumPropertyKeys ; Index++)
+	{
+		INT PropertyId = GameSettings->Properties(Index).PropertyId;
+		FString PropertyName(TEXT("p"));
+		PropertyName += appItoa(PropertyId);
+		qr2_register_key(QR2FirstPropertyKeyId + Index, (const UCS2String)*PropertyName);
+	}
+}
+
+/**
+ * Builds a filter string based on the current GameSearch
+ *
+ * @param Filter the filter string will be placed here
+ */
+void UOnlineGameInterfaceGameSpy::BuildFilter(FString& Filter)
+{
+	// Cache the number of properties and settings
+	INT NumProperties = GameSearch->Properties.Num();
+	INT NumSettings = GameSearch->LocalizedSettings.Num();
+
+	// Loop through the clauses
+	INT NumClauses = GameSearch->FilterQuery.OrClauses.Num();
+	UBOOL bIsFirstClause = TRUE;
+	for(INT ClauseIndex = 0 ; ClauseIndex < NumClauses ; ClauseIndex++)
+	{
+		FOnlineGameSearchORClause* Clause = &GameSearch->FilterQuery.OrClauses(ClauseIndex);
+		INT NumSearchParameters = Clause->OrParams.Num();
+
+		// Loop through the params
+		FString ClauseFilter;
+		UBOOL bIsFirstParameter = TRUE;
+		for(INT ParameterIndex = 0 ; ParameterIndex < NumSearchParameters ; ParameterIndex++)
+		{
+			FOnlineGameSearchParameter* Parameter = &Clause->OrParams(ParameterIndex);
+
+			FString ParameterName;
+			FString ParameterValue;
+			// Determine the parameter type so we can get it from the right place
+			switch (Parameter->EntryType)
+			{
+				case OGSET_Property:
+				{
+					ParameterName = TEXT("p");
+					ParameterName += appItoa(Parameter->EntryId);
+
+					FSettingsProperty* Property = NULL;
+					for(INT Index = 0 ; Index < NumProperties ; Index++)
+					{
+						if(GameSearch->Properties(Index).PropertyId == Parameter->EntryId)
+						{
+							Property = &GameSearch->Properties(Index);
+							break;
+						}
+					}
+					if(Property == NULL)
+					{
+						continue;
+					}
+					UBOOL bNeedsQuotes = (Property->Data.Type == SDT_String);
+					if(bNeedsQuotes)
+					{
+						ParameterValue += TEXT("'");
+					}
+					ParameterValue += Property->Data.ToString();
+					if(bNeedsQuotes)
+					{
+						ParameterValue += TEXT("'");
+					}
+					break;
+				}
+				case OGSET_LocalizedSetting:
+				{
+					if(GameSearch->IsWildcardStringSetting(Parameter->EntryId))
+					{
+						continue;
+					}
+
+					ParameterName = TEXT("s");
+					ParameterName += appItoa(Parameter->EntryId);
+
+					FLocalizedStringSetting* Setting = NULL;
+					for(INT Index = 0 ; Index < NumSettings ; Index++)
+					{
+						if(GameSearch->LocalizedSettings(Index).Id == Parameter->EntryId)
+						{
+							Setting = &GameSearch->LocalizedSettings(Index);
+							break;
+						}
+					}
+					if(Setting == NULL)
+					{
+						continue;
+					}
+					ParameterValue = appItoa(Setting->ValueIndex);
+					break;
+				}
+				case OGSET_ObjectProperty:
+				{
+					ParameterName = Parameter->ObjectPropertyName.ToString();
+					// Search through the properties so we can find the corresponding value
+					for (INT Index = 0; Index < GameSearch->NamedProperties.Num(); Index++)
+					{
+						if (GameSearch->NamedProperties(Index).ObjectPropertyName == Parameter->ObjectPropertyName)
+						{
+							ParameterValue = GameSearch->NamedProperties(Index).ObjectPropertyValue;
+							break;
+						}
+					}
+					break;
+				}
+			}
+
+			FString ParameterOperator;
+			switch(Parameter->ComparisonType)
+			{
+			case OGSCT_Equals:
+				ParameterOperator = TEXT("=");
+				break;
+			case OGSCT_NotEquals:
+				ParameterOperator = TEXT("!=");
+				break;
+			case OGSCT_GreaterThan:
+				ParameterOperator = TEXT(">");
+				break;
+			case OGSCT_GreaterThanEquals:
+				ParameterOperator = TEXT(">=");
+				break;
+			case OGSCT_LessThan:
+				ParameterOperator = TEXT("<");
+				break;
+			case OGSCT_LessThanEquals:
+				ParameterOperator = TEXT("<=");
+				break;
+			default:
+				//todo: error
+				break;
+			}
+
+			if(bIsFirstParameter)
+			{
+				bIsFirstParameter = FALSE;
+			}
+			else
+			{
+				ClauseFilter += TEXT("OR");
+			}
+			ClauseFilter += TEXT("(");
+			ClauseFilter += ParameterName;
+			ClauseFilter += ParameterOperator;
+			ClauseFilter += ParameterValue;
+			ClauseFilter += TEXT(")");
+		}
+
+		if(ClauseFilter.Len() == 0)
+		{
+			continue;
+		}
+
+		if(bIsFirstClause)
+		{
+			bIsFirstClause = FALSE;
+		}
+		else
+		{
+			Filter += TEXT("AND");
+		}
+		Filter += TEXT("(");
+		Filter += ClauseFilter;
+		Filter += TEXT(")");
+	}
+	// Wrap with the additional if present
+	if (GameSearch->AdditionalSearchCriteria.Len())
+	{
+		if ( Filter.Len() > 0 )
+		{
+			FString AdditionalSearch(TEXT("("));
+			AdditionalSearch += Filter;
+			AdditionalSearch += TEXT("AND");
+			AdditionalSearch += TEXT("(");
+			AdditionalSearch += GameSearch->AdditionalSearchCriteria;
+			AdditionalSearch += TEXT(")");
+			AdditionalSearch += TEXT(")");
+
+			Filter = AdditionalSearch;
+		}
+		else
+		{
+			Filter = GameSearch->AdditionalSearchCriteria;
+		}
+	}
+	gsdebugf(NAME_DevOnline,TEXT("Query filter is '%s'"),*Filter);
+}
+
+/**
+ * Builds a GameSpy query and submits it to the GameSpy backend
+ *
+ * @return an Error/success code
+ */
+DWORD UOnlineGameInterfaceGameSpy::FindInternetGames(void)
+{
+	DWORD Return = E_FAIL;
+	// Don't try to search if the network device is broken
+	if (GSocketSubsystem->HasNetworkDevice())
+	{
+		// Make sure they are logged in to play online
+		if (CastChecked<UOnlineSubsystemGameSpy>(OwningSubsystem)->LoggedInStatus == LS_LoggedIn)
+		{
+			// Create a new Server browser object
+			INT QueryFromVersion = 0;
+			INT MaxConcurrentUpdates = 30;
+			INT QueryVersion = QVERSION_QR2;
+			SBHandle = ServerBrowserNew((const UCS2String)appGetGameSpyGameName(),
+				(const UCS2String)appGetGameSpyGameName(),
+				(const UCS2String)appGetGameSpySecretKey(),
+				QueryFromVersion,
+				MaxConcurrentUpdates,
+				QueryVersion,
+				SBFalse,
+				::SBCallback,
+				this);
+			if (SBHandle != NULL)
+			{
+				// Begin the update
+				SBBool Async = SBTrue;
+				SBBool DisconnectOnComplete = SBTrue;
+				FString ServerFilter;
+				BuildFilter(ServerFilter);
+				
+				// *NOTE* 
+				// In order to retrieve keys on the initial query, the Basic Fields struct must be filled out below
+				// Add the key identifiers for any keys required for your game (params 4 and 5 below)
+
+				// Submit the query
+				SBError Result = ServerBrowserLimitUpdate(SBHandle,
+					Async,
+					DisconnectOnComplete,
+					NULL,
+					0,
+					(const UCS2String)*ServerFilter,
+					GameSearch->MaxSearchResults);
+				debugf(NAME_DevOnline,
+					TEXT("ServerBrowserLimitUpdate() returned 0x%08X"),
+					(DWORD)Result);
+				if (Result == sbe_noerror)
+				{
+					GameSearch->bIsSearchInProgress = TRUE;
+					Return = ERROR_IO_PENDING;
+				}
+				else
+				{
+					CleanupServerBrowserQuery();
+					Return = E_FAIL;
+				}
+			}
+			else
+			{
+				debugf(NAME_DevOnline,TEXT("Failed to allocate a new server browser object"));
+				Return = E_FAIL;
+			}
+		}
+		else
+		{
+			debugf(NAME_DevOnline,TEXT("You must be logged in to an online profile to search for internet games"));
+		}
+	}
+	else
+	{
+		debugf(NAME_DevOnline,TEXT("Can't search for an internet game without a network connection"));
+	}
+	return Return;
+}
+
+/**
+ * Fetches the additional data a session exposes outside of the online service.
+ * NOTE: notifications will come from the OnFindOnlineGamesComplete delegate
+ *
+ * @param StartAt the search result index to start gathering the extra information for
+ * @param NumberToQuery the number of additional search results to get the data for
+ *
+ * @return true if the query was started, false otherwise
+ */
+UBOOL UOnlineGameInterfaceGameSpy::QueryNonAdvertisedData(INT StartAt,INT NumberToQuery)
+{
+	if (SBHandle && GameSearch)
+	{
+		// Go fetch the extra data for each one
+		for (INT SearchIndex = StartAt;
+			SearchIndex < GameSearch->Results.Num() && NumberToQuery;
+			SearchIndex++)
+		{
+			// Tell GameSpy to get the details for this server
+			SBServer Server = ServerBrowserGetServer(SBHandle,SearchIndex);
+			ServerBrowserAuxUpdateServer(SBHandle,Server,SBTrue,SBTrue);
+			NumberToQuery--;
+		}
+	}
+	return SBHandle && GameSearch;
+}
+
+/**
+ * Attempts to cancel an internet game search
+ *
+ * @return an error/success code
+ */
+DWORD UOnlineGameInterfaceGameSpy::CancelFindInternetGames(void)
+{
+	debugf(NAME_DevOnline,TEXT("Canceling internet game search"));
+	CleanupServerBrowserQuery();
+	return S_OK;
+}
+
+/** Frees the current server browser query and marks the search as done */
+void UOnlineGameInterfaceGameSpy::CleanupServerBrowserQuery(void)
+{
+	if (SBHandle != NULL)
+	{
+		UOnlineSubsystemGameSpy* OnlineSub = CastChecked<UOnlineSubsystemGameSpy>(OwningSubsystem);
+		// Add an async task to clean up later
+		OnlineSub->AsyncTasks.AddItem(new FOnlineAsyncTaskGameSpyDelayedServerBrowserFree(SBHandle));
+		SBHandle = NULL;
+	}
+	if (GameSearch)
+	{
+		GameSearch->bIsSearchInProgress = FALSE;
+	}
+}
+
+/**
+ * Creates a new GameSpy enabled game and registers it with the backend
+ *
+ * @param HostingPlayerNum the player hosting the game
+ *
+ * @return S_OK if it succeeded, otherwise an Error code
+ */
+DWORD UOnlineGameInterfaceGameSpy::CreateInternetGame(BYTE HostingPlayerNum)
+{
+	check(SessionInfo);
+	DWORD Return = E_FAIL;
+	UOnlineSubsystemGameSpy* OnlineSub = CastChecked<UOnlineSubsystemGameSpy>(OwningSubsystem);
+	// Don't try to create the session if the network device is broken
+	if (GSocketSubsystem->HasNetworkDevice())
+	{
+		if (OnlineSub->GetLoginStatus(HostingPlayerNum) == LS_LoggedIn &&
+			// Kick off a CD key validation
+			OnlineSub->CheckServerProductKey())
+		{
+			if (GameSettings != NULL)
+			{
+				// Skip advertising if it is not required
+				if (GameSettings->bShouldAdvertise && GameSettings->NumPublicConnections > 0)
+				{
+					FString IpAddress(SessionInfo->HostAddr.ToString(FALSE));
+					// Setup QR2 custom keys
+					QR2SetupCustomKeys();
+					// initialize QR2
+					INT IsPublic = 1;
+					INT NatNegotiate = 1;
+					qr2_error_t Result = qr2_init(&QR2Handle,
+						(const UCS2String)*IpAddress,
+						6500,
+						(const UCS2String)appGetGameSpyGameName(),
+						(const UCS2String)appGetGameSpySecretKey(),
+						IsPublic,
+						NatNegotiate,
+						::ServerKeyCallback,
+						::PlayerKeyCallback,
+						::TeamKeyCallback,
+						::KeyListCallback,
+						::CountCallback,
+						::AddErrorCallback,
+						this);
+					debugf(NAME_DevOnline,TEXT("qr2_init() return 0x%08X"),(DWORD)Result);
+					if (Result == e_qrnoerror)
+					{
+						Return = S_OK;
+					}
+				}
+				else
+				{
+					// Creating a private match so indicate ok
+					debugf(NAME_DevOnline,TEXT("Creating a private match (not registered with GameSpy)"));
+					Return = S_OK;
+				}
+
+				if (Return == S_OK)
+				{
+					GameSettings->GameState = OGS_Pending;
+				}
+			}
+			else
+			{
+				debugf(NAME_DevOnline, TEXT("CreateInternetGame: GameSettings == NULL"));
+			}
+		}
+		else
+		{
+			debugf(NAME_DevOnline,TEXT("Can't create an Internet game without being signed in"));
+		}
+	}
+	else
+	{
+		debugf(NAME_DevOnline,TEXT("Can't create an Internet game without a network connection"));
+	}
+	if (Return == S_OK)
+	{
+#if PS3 && WANTS_NAT_TRAVERSAL
+		FSessionInfoPS3* SessInfoPs3 = (FSessionInfoPS3*)SessionInfo;
+		// Copy the NP ID so that traversal can work
+		appMemcpy(&SessInfoPs3->NpId,&OnlineSub->NpData->NpId,sizeof(SceNpId));
+		QR2NpIdString = appNpIdToUrl(SessInfoPs3);
+		GWantsNatTraversal = TRUE;
+#endif
+		// Register all local talkers
+		RegisterLocalTalkers();
+	}
+	return Return;
+}
+
+/**
+ * Updates the localized settings/properties for the game in question
+ *
+ * @param SessionName the name of the session to update
+ * @param UpdatedGameSettings the object to update the game settings with
+ * @param ignored GameSpy always needs to be updated
+ *
+ * @return true if successful creating the session, false otherwsie
+ */
+UBOOL UOnlineGameInterfaceGameSpy::UpdateOnlineGame(FName SessionName,UOnlineGameSettings* UpdatedGameSettings,UBOOL)
+{
+	// Don't try to without a network device
+	if (GSocketSubsystem->HasNetworkDevice())
+	{
+		if (UpdatedGameSettings != NULL)
+		{
+			GameSettings = UpdatedGameSettings;
+			// Make sure this isn't a LAN match
+			if (GameSettings->bIsLanMatch == FALSE)
+			{
+				if (QR2Handle)
+				{
+					// Tell the backend to request more data
+					qr2_send_statechanged(QR2Handle);
+				}
+			}
+		}
+		else
+		{
+			debugf(NAME_Error,TEXT("Can't update game settings with a NULL object"));
+		}
+	}
+	FAsyncTaskDelegateResultsNamedSession Results(SessionName,0);
+	TriggerOnlineDelegates(this,UpdateOnlineGameCompleteDelegates,&Results);
+	return TRUE;
+}
+
+/**
+ * Joins the specified internet enabled game
+ *
+ * @param PlayerNum the player joining the game
+ *
+ * @return S_OK if it succeeded, otherwise an Error code
+ */
+DWORD UOnlineGameInterfaceGameSpy::JoinInternetGame(BYTE PlayerNum)
+{
+	DWORD Return = E_FAIL;
+	// Don't try to without a network device
+	if (GSocketSubsystem->HasNetworkDevice())
+	{
+		UOnlineSubsystemGameSpy* OnlineSub = CastChecked<UOnlineSubsystemGameSpy>(OwningSubsystem);
+		// Make sure they are logged in to play online
+		if (OnlineSub->LoggedInStatus == LS_LoggedIn)
+		{
+			// Register all local talkers
+			RegisterLocalTalkers();
+			// Check if we need to NAT Negotiation
+			GameSettings->GameState = OGS_Pending;
+			// Update the stats flag if present
+			OnlineSub->bIsStatsSessionOk = GameWantsStats();
+#if PS3 && WANTS_NAT_TRAVERSAL
+			FSessionInfoPS3* SessInfoPs3 = (FSessionInfoPS3*)SessionInfo;
+			// Kick off the NAT handshaking
+			if (OnlineSub->NpData &&
+				OnlineSub->NpData->AddNatConnection(&SessInfoPs3->NpId))
+			{
+				// Create an async task for polling the nat connection
+				OnlineSub->AsyncTasks.AddItem(
+					new FOnlineAsyncTaskAddNatConnection(OnlineSub->NpData,
+						&SessInfoPs3->NpId,
+						SessInfoPs3,
+						&JoinOnlineGameCompleteDelegates));
+				// We need to wait for the NAT handshaking to occur
+				Return = ERROR_IO_PENDING;
+				GWantsNatTraversal = TRUE;
+			}
+#else
+			Return = S_OK;
+#endif
+		}
+		else
+		{
+			debugf(NAME_DevOnline,TEXT("Can't join an internet game without being logged into an online profile"));
+		}
+	}
+	else
+	{
+		debugf(NAME_DevOnline,TEXT("Can't join an internet game without a network connection"));
+	}
+	return Return;
+}
+
+/**
+ * Starts the specified internet enabled game
+ *
+ * @return S_OK if it succeeded, otherwise an Error code
+ */
+DWORD UOnlineGameInterfaceGameSpy::StartInternetGame(void)
+{
+	DWORD Return = E_FAIL;
+	// Don't try to search if the network device is broken
+	if (GSocketSubsystem->HasNetworkDevice())
+	{
+		GameSettings->GameState = OGS_InProgress;
+		CastChecked<UOnlineSubsystemGameSpy>(OwningSubsystem)->CreateStatsSession();
+		Return = ERROR_IO_PENDING;
+	}
+	else
+	{
+		debugf(NAME_DevOnline,TEXT("Can't start an internet game without a network connection"));
+	}
+	return Return;
+}
+
+/**
+ * Ends the specified internet enabled game
+ *
+ * @return S_OK if it succeeded, otherwise an Error code
+ */
+DWORD UOnlineGameInterfaceGameSpy::EndInternetGame(void)
+{
+	DWORD Return = E_FAIL;
+	// Don't try to search if the network device is broken
+	if (GSocketSubsystem->HasNetworkDevice())
+	{
+		GameSettings->GameState = OGS_Ended;
+		CastChecked<UOnlineSubsystemGameSpy>(OwningSubsystem)->FlushOnlineStats(FName(TEXT("Game")));
+		Return = S_OK;
+	}
+	else
+	{
+		debugf(NAME_DevOnline,TEXT("Can't end an internet game without a network connection"));
+	}
+	return Return;
+}
+
+/**
+ * Terminates a GameSpy session, removing it from the GameSpy backend
+ *
+ * @return an Error/success code
+ */
+DWORD UOnlineGameInterfaceGameSpy::DestroyInternetGame(void)
+{
+	check(SessionInfo);
+	UOnlineSubsystemGameSpy* OnlineSub = CastChecked<UOnlineSubsystemGameSpy>(OwningSubsystem);
+	// Update the stats flag if present
+	OnlineSub->bIsStatsSessionOk = FALSE;
+	OnlineSub->UnregisterLocalTalkers();
+	OnlineSub->UnregisterRemoteTalkers();
+#if WANTS_CD_KEY_AUTH
+	// Mark all players as done in terms of CD key
+	gcd_disconnect_all(OnlineSub->GameID);
+#endif
+#if PS3 && WANTS_NAT_TRAVERSAL
+	GWantsNatTraversal = FALSE;
+	if (OnlineSub->NpData)
+	{
+		// Clean up any outstanding connections
+		OnlineSub->NpData->RemoveAllNatConnections();
+	}
+#endif
+	// shutdown and cleanup QR2
+	if (QR2Handle != NULL)
+	{
+		qr2_shutdown(QR2Handle);
+		qr2_internal_key_list_free();
+		QR2Handle = NULL;
+	}
+	// Clean up before firing the delegate
+	delete SessionInfo;
+	SessionInfo = NULL;
+	// Save this off so we can trigger the right delegates
+	UBOOL bIsDedicated = GameSettings->bIsDedicated;
+	// Null out the no longer valid game settings
+	GameSettings = NULL;
+	return S_OK;
+}
+
+/**
+ * Updates any pending internet tasks and fires event notifications as needed
+ *
+ * @param DeltaTime the amount of time that has elapsed since the last call
+ */
+void UOnlineGameInterfaceGameSpy::TickInternetTasks(FLOAT DeltaTime)
+{
+	if (QR2Handle != NULL)
+	{
+		qr2_think(QR2Handle);
+	}
+	if (SBHandle != NULL)
+	{
+		ServerBrowserThink(SBHandle);
+	}
+}
+
+/**
+ * Tells the online subsystem to accept the game invite that is currently pending
+ *
+ * @param LocalUserNum the local user accepting the invite
+ * @param SessionName the name of the session this invite is to be known as
+ */
+UBOOL UOnlineGameInterfaceGameSpy::AcceptGameInvite(BYTE LocalUserNum,FName SessionName)
+{
+	if (InviteGameSearch && InviteGameSearch->Results.Num() > 0)
+	{
+		// If there is an invite pending, make it our game
+		if (JoinOnlineGame(LocalUserNum,FName(TEXT("Game")),InviteGameSearch->Results(0)) == FALSE)
+		{
+			debugf(NAME_Error,TEXT("Failed to join the invite game, aborting"));
+		}
+		// Clean up the invite data
+		delete (FSessionInfo*)InviteGameSearch->Results(0).PlatformData;
+		InviteGameSearch->Results(0).PlatformData = NULL;
+		InviteGameSearch = NULL;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/**
+ * Creates a game settings object populated with the information from the location string
+ *
+ * @param LocationString the string to parse
+ */
+void UOnlineGameInterfaceGameSpy::SetInviteInfo(const TCHAR* LocationString)
+{
+	// Get rid of the old stuff if applicable
+	if (InviteGameSearch && InviteGameSearch->Results.Num() > 0)
+	{
+		FOnlineGameSearchResult& Result = InviteGameSearch->Results(0);
+		FSessionInfo* InviteSessionInfo = (FSessionInfo*)Result.PlatformData;
+		// Free the old first
+		delete InviteSessionInfo;
+		Result.PlatformData = NULL;
+		InviteGameSearch->Results.Empty();
+	}
+	InviteGameSearch = NULL;
+	InviteLocationUrl.Empty();
+	if (LocationString != NULL)
+	{
+		InviteLocationUrl = LocationString;
+		InviteGameSearch = ConstructObject<UOnlineGameSearch>(UOnlineGameSearch::StaticClass());
+		INT AddIndex = InviteGameSearch->Results.AddZeroed();
+		FOnlineGameSearchResult& Result = InviteGameSearch->Results(AddIndex);
+		Result.GameSettings = ConstructObject<UOnlineGameSettings>(UOnlineGameSettings::StaticClass());
+		// Parse the URL to get the server and options
+		FURL Url(NULL,LocationString,TRAVEL_Absolute);
+		// Get the numbers from the location string
+		INT MaxPub = appAtoi(Url.GetOption(TEXT("MaxPub="),TEXT("4")));
+		INT MaxPri = appAtoi(Url.GetOption(TEXT("MaxPri="),TEXT("4")));
+		// Set the number of slots and the hardcoded values
+		Result.GameSettings->NumOpenPublicConnections = MaxPub;
+		Result.GameSettings->NumOpenPrivateConnections = MaxPri;
+		Result.GameSettings->NumPublicConnections = MaxPub;
+		Result.GameSettings->NumPrivateConnections = MaxPri;
+		Result.GameSettings->bIsLanMatch = FALSE;
+		Result.GameSettings->bWasFromInvite = TRUE;
+		// Create the session info and stash on the object
+		FSessionInfo* SessInfo = CreateSessionInfo();
+		UBOOL bIsValid;
+		SessInfo->HostAddr.SetIp(*Url.Host,bIsValid);
+		SessInfo->HostAddr.SetPort(Url.Port);
+#if PS3 && WANTS_NAT_TRAVERSAL
+		FSessionInfoPS3* SessInfoPs3 = (FSessionInfoPS3*)SessInfo;
+		appCopyPs3SessionInfoFromUrl(SessInfoPs3,Url);
+#endif
+		// Store the session data
+		Result.PlatformData = SessInfo;
+	}
+}
+
+/** Registers all of the local talkers with the voice engine */
+void UOnlineGameInterfaceGameSpy::RegisterLocalTalkers(void)
+{
+	UOnlineSubsystemGameSpy* GSSub = Cast<UOnlineSubsystemGameSpy>(OwningSubsystem);
+	if (GSSub != NULL)
+	{
+		GSSub->RegisterLocalTalkers();
+	}
+}
+
+/** Unregisters all of the local talkers from the voice engine */
+void UOnlineGameInterfaceGameSpy::UnregisterLocalTalkers(void)
+{
+	UOnlineSubsystemGameSpy* GSSub = Cast<UOnlineSubsystemGameSpy>(OwningSubsystem);
+	if (GSSub != NULL)
+	{
+		GSSub->UnregisterLocalTalkers();
+	}
+}
+
+/**
+ * Passes the new player to the subsystem so that voice is registered for this player
+ *
+ * @param SessionName the name of the session that the player is being added to
+ * @param UniquePlayerId the player to register with the online service
+ * @param bWasInvited whether the player was invited to the game or searched for it
+ *
+ * @return true if the call succeeds, false otherwise
+ */
+UBOOL UOnlineGameInterfaceGameSpy::RegisterPlayer(FName SessionName,FUniqueNetId PlayerID,UBOOL bWasInvited)
+{
+	UOnlineSubsystemGameSpy* GSSub = Cast<UOnlineSubsystemGameSpy>(OwningSubsystem);
+	if (GSSub != NULL)
+	{
+		GSSub->RegisterRemoteTalker(PlayerID);
+	}
+	FAsyncTaskDelegateResultsNamedSession Params(FName(TEXT("Game")),S_OK);
+	TriggerOnlineDelegates(this,RegisterPlayerCompleteDelegates,&Params);
+	return TRUE;
+}
+
+/**
+ * Passes the removed player to the subsystem so that voice is unregistered for this player
+ *
+ * @param SessionName the name of the session to remove the player from
+ * @param PlayerId the player to unregister with the online service
+ *
+ * @return true if the call succeeds, false otherwise
+ */
+UBOOL UOnlineGameInterfaceGameSpy::UnregisterPlayer(FName SessionName,FUniqueNetId PlayerID)
+{
+	UOnlineSubsystemGameSpy* GSSub = Cast<UOnlineSubsystemGameSpy>(OwningSubsystem);
+	if (GSSub != NULL)
+	{
+		GSSub->UnregisterRemoteTalker(PlayerID);
+	}
+#if WANTS_CD_KEY_AUTH
+	// Skip if we aren't playing a networked match
+	if (GWorld && GWorld->GetNetDriver())
+	{
+		// Look up the connection for the specified player
+		UNetConnection* Connection = FindConnectionForUniqueId(PlayerID);
+		if (Connection)
+		{
+			// Mark this player as disconnected so they can reuse their cd key
+			gcd_disconnect_user(Cast<UOnlineSubsystemGameSpy>(OwningSubsystem)->GameID,
+				Connection->ResponseId);
+		}
+	}
+#endif
+	FAsyncTaskDelegateResultsNamedSession Params(FName(TEXT("Game")),S_OK);
+	TriggerOnlineDelegates(this,UnregisterPlayerCompleteDelegates,&Params);
+	return TRUE;
+}
+
+/**
+ * Serializes the platform specific data into the provided buffer for the specified search result
+ *
+ * @param DesiredGame the game to copy the platform specific data for
+ * @param PlatformSpecificInfo the buffer to fill with the platform specific information
+ *
+ * @return true if successful serializing the data, false otherwise
+ */
+DWORD UOnlineGameInterfaceGameSpy::ReadPlatformSpecificInternetSessionInfo(const FOnlineGameSearchResult& DesiredGame,BYTE PlatformSpecificInfo[80])
+{
+	DWORD Return = E_FAIL;
+//@todo joeg -- Support NP serialization of information
+#if !(PS3 && WANTS_NAT_TRAVERSAL)
+	FNboSerializeToBuffer Buffer(80);
+	FSessionInfo* SessionInfo = (FSessionInfo*)DesiredGame.PlatformData;
+	// Write the connection data
+	Buffer << SessionInfo->HostAddr;
+	if (Buffer.GetByteCount() <= 80)
+	{
+		// Copy the built up data
+		appMemcpy(PlatformSpecificInfo,Buffer.GetRawBuffer(0),Buffer.GetByteCount());
+		Return = S_OK;
+	}
+	else
+	{
+		debugf(NAME_DevOnline,
+			TEXT("Platform data is larger (%d) than the supplied buffer (64)"),
+			Buffer.GetByteCount());
+	}
+#endif
+	return Return;
+}
+
+/**
+ * Creates a search result out of the platform specific data and adds that to the specified search object
+ *
+ * @param SearchingPlayerNum the index of the player searching for a match
+ * @param SearchSettings the desired search to bind the session to
+ * @param PlatformSpecificInfo the platform specific information to convert to a server object
+ *
+ * @return the result code for the operation
+ */
+DWORD UOnlineGameInterfaceGameSpy::BindPlatformSpecificSessionToInternetSearch(BYTE SearchingPlayerNum,UOnlineGameSearch* SearchSettings,BYTE* PlatformSpecificInfo)
+{
+	DWORD Return = E_FAIL;
+//@todo joeg -- Support NP serialization of information
+#if !(PS3 && WANTS_NAT_TRAVERSAL)
+	// Create an object that we'll copy the data to
+	UOnlineGameSettings* NewServer = ConstructObject<UOnlineGameSettings>(
+		GameSearch->GameSettingsClass);
+	if (NewServer != NULL)
+	{
+		// Add space in the search results array
+		INT NewSearch = GameSearch->Results.Add();
+		FOnlineGameSearchResult& Result = GameSearch->Results(NewSearch);
+		// Link the settings to this result
+		Result.GameSettings = NewServer;
+		// Allocate and read the session data
+		FSessionInfo* SessInfo = new FSessionInfo(E_NoInit);
+		// Read the serialized data from the buffer
+		FNboSerializeFromBuffer Packet(PlatformSpecificInfo,80);
+		// Read the connection data
+		Packet >> SessInfo->HostAddr;
+		// Store this in the results
+		Result.PlatformData = SessInfo;
+		Return = S_OK;
+	}
+#endif
+	return Return;
+}
+
+#endif

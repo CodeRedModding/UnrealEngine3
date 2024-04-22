@@ -1,0 +1,112 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="BuiltWithUnrealBuildTool|Win32">
+      <Configuration>BuiltWithUnrealBuildTool</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{53ADE45D-BB75-4F27-9AAA-41A2262058A9}</ProjectGuid>
+    <RootNamespace>GFxUI</RootNamespace>
+    <SccProjectName>
+    </SccProjectName>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</IntDir>
+    <NMakeBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeReBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeCleanCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeOutput Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="Classes\FlashMovie.uc" />
+    <None Include="Classes\GFxAction_CloseMovie.uc" />
+    <None Include="Classes\GFxAction_GetVariable.uc" />
+    <None Include="Classes\GFxAction_Invoke.uc" />
+    <None Include="Classes\GFxAction_OpenMovie.uc" />
+    <None Include="Classes\GFxAction_SetCaptureKeys.uc" />
+    <None Include="Classes\GFxAction_SetVariable.uc" />
+    <None Include="Classes\GFxClikWidget.uc" />
+    <None Include="Classes\GFxEngine.uc" />
+    <None Include="Classes\GFxEvent_FsCommand.uc" />
+    <None Include="Classes\GFxFSCmdHandler.uc" />
+    <None Include="Classes\GFxFSCmdHandler_Kismet.uc" />
+    <None Include="Classes\GFxInteraction.uc" />
+    <None Include="Classes\GFxMoviePlayer.uc" />
+    <None Include="Classes\GFxObject.uc" />
+    <None Include="Classes\GFxRawData.uc" />
+    <None Include="Classes\SwfMovie.uc" />
+    <None Include="Src\Render\RHI_Shaders.inl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\GFxUI.h" />
+    <ClInclude Include="Inc\GFxUIClasses.h" />
+    <ClInclude Include="Inc\GFxUINames.h" />
+    <ClInclude Include="Inc\GFxUIUIPrivateClasses.h" />
+    <ClInclude Include="Inc\GFxUIUISequenceClasses.h" />
+    <ClInclude Include="Inc\ScaleformAllocator.h" />
+    <ClInclude Include="Inc\ScaleformEngine.h" />
+    <ClInclude Include="Inc\ScaleformFile.h" />
+    <ClInclude Include="Inc\ScaleformFont.h" />
+    <ClInclude Include="Inc\ScaleformFullscreenMovie.h" />
+    <ClInclude Include="Inc\ScaleformStats.h" />
+    <ClInclude Include="Src\Render\RHI_ConsoleMeshCache.h" />
+    <ClInclude Include="Src\Render\RHI_HAL.h" />
+    <ClInclude Include="Src\Render\RHI_MeshCache.h" />
+    <ClInclude Include="Src\Render\RHI_Shader.h" />
+    <ClInclude Include="Src\Render\RHI_Shaders.h" />
+    <ClInclude Include="Src\Render\RHI_Texture.h" />
+    <ClInclude Include="Src\Render\RHI_XeBufferMemory.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\GFxUI.cpp" />
+    <ClCompile Include="Src\Render\RHI_ConsoleMeshCache.cpp" />
+    <ClCompile Include="Src\Render\RHI_HAL.cpp" />
+    <ClCompile Include="Src\Render\RHI_HALSetup.cpp" />
+    <ClCompile Include="Src\Render\RHI_MeshCache.cpp" />
+    <ClCompile Include="Src\Render\RHI_Shader.cpp" />
+    <ClCompile Include="Src\Render\RHI_Texture.cpp" />
+    <ClCompile Include="Src\Render\RHI_XeBufferMemory.cpp" />
+    <ClCompile Include="Src\Render\RHI_XeRenderTarget.cpp" />
+    <ClCompile Include="Src\ScaleformDataStore.cpp" />
+    <ClCompile Include="Src\ScaleformEngine.cpp" />
+    <ClCompile Include="Src\ScaleformFile.cpp" />
+    <ClCompile Include="Src\ScaleformFont.cpp" />
+    <ClCompile Include="Src\ScaleformFullscreenMovie.cpp" />
+    <ClCompile Include="Src\ScaleformInteraction.cpp" />
+    <ClCompile Include="Src\ScaleformLocalization.cpp" />
+    <ClCompile Include="Src\ScaleformMovie.cpp" />
+    <ClCompile Include="Src\ScaleformSound.cpp" />
+    <ClCompile Include="Src\ScaleformStats.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

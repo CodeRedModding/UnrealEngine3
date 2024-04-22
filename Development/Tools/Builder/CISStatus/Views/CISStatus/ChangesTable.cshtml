@@ -1,0 +1,41 @@
+﻿@model CISStatus.Models.GeneralViewModel
+
+<div id="ChangesTable">
+
+<table width="90%">
+
+@foreach( CISStatus.Controllers.ChangelistInfo Change in Model.Changelists )
+{
+    if( Model.bIsFirst )
+    {
+        <tr>
+        <td style="width:1%"></td>
+        <td style="width:5%" align="center"><b>Changelist</b></td>
+        
+        @foreach( CISStatus.Controllers.JobStateInfo Job in Change.JobStates )
+        {
+            <td style="width:4%" align="center"><b>@Job.TaskName</b></td>
+        }
+        
+        <td style="width:6%" align="center"><b>User</b></td>
+        <td style="width:25%"><b>Description</b></td>
+        </tr>
+        
+        Model.bIsFirst = false;
+    }
+    
+    <tr style="@Change.GetRowBackground();">
+        <td bgcolor="@Change.GetBackground()"></td>
+        <td><a href="@Change.GetP4WebLink()">@Change.GetChangeNumber()</a></td>
+
+        @foreach( CISStatus.Controllers.JobStateInfo Job in Change.JobStates )
+        {
+            <td align="center"><img alt="@Change.GetImage( Job.StateOfJob )" src="@Url.Content( "~/Content/themes/base/images/" + @Change.GetImage( Job.StateOfJob ) )" title="@Job.GetError()"/></td>
+        }
+
+        <td>@Change.GetUser()</td>
+        <td>@Change.GetDescription()</td>
+    </tr>
+}
+</table>
+</div>

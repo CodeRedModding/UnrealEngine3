@@ -1,0 +1,15 @@
+﻿<Border
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:UnrealEd="clr-namespace:UnrealEd;assembly=UnrealEdCSharp"
+    xmlns:CustomControls="clr-namespace:CustomControls;assembly=UnrealEdCSharp"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d"
+	x:Name="MainBorder"
+	BorderBrush="{DynamicResource Slate_Panel_Background}"
+	BorderThickness="2,2,2,2" Background="#FFEA0D0D"
+	>
+	<DockPanel Background="{DynamicResource Slate_Panel_Background}">
+		<Border x:Name="ViewportBorder" BorderBrush="Black" BorderThickness="1" Width="800" Height="600"/>
+	</DockPanel>
+</Border>

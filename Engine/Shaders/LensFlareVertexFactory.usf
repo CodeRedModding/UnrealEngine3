@@ -1,0 +1,240 @@
+/*=============================================================================
+	LensFlareVertexFactory.usf: Lens flare vertex factory shader code.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+float4		CameraRight;
+float4		CameraUp;
+
+struct FVertexFactoryInput
+{
+	float4	Position				: POSITION;
+	float4	Size					: TANGENT;
+	float2	Rotation				: BLENDWEIGHT0;
+	float2	TexCoord				: TEXCOORD0;
+	float4	Color					: TEXCOORD1;
+	float4	RadialDist_SourceRatio_Intensity	: TEXCOORD2;
+};
+
+struct FVertexFactoryInterpolantsVSToPS
+{
+#if WORLD_COORDS
+	// First row of the tangent to world matrix
+	float3	TangentToWorld0	: TANGENTTOWORLD0;
+	// Last row of the tangent to world matrix in xyz
+	float4	TangentToWorld2	: TANGENTTOWORLD2;
+#endif
+	float2	TexCoord				: TEXCOORD0;
+	float4	Color					: TEXCOORD1;
+	float4	RadialDist_SourceRatio_Intensity	: TEXCOORD2;
+};
+
+struct FVertexFactoryIntermediates
+{
+	float Dummy;
+};
+
+/** Converts from vertex factory specific interpolants to a FMaterialPixelParameters, which is used by material inputs. */
+FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	FMaterialPixelParameters	Result;
+#if NUM_MATERIAL_TEXCOORDS
+	for(int CoordinateIndex = 0;CoordinateIndex < NUM_MATERIAL_TEXCOORDS;CoordinateIndex++)
+	{
+		Result.TexCoords[CoordinateIndex] = Interpolants.TexCoord;
+		for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+		{
+			Result.SampleTexCoords[SampleIndex][CoordinateIndex] = EvaluateAttributeAtSample(Interpolants.TexCoord,SampleIndex);
+		}
+	}
+#endif	//#if NUM_MATERIAL_TEXCOORDS
+	Result.VertexColor = Interpolants.Color;
+	Result.TangentNormal = 0;
+	Result.TangentCameraVector = 0;
+	Result.TangentReflectionVector = 0;
+	Result.TangentLightVector = 0;
+	Result.ScreenPosition = 0;
+#if WORLD_COORDS
+	half3 TangentToWorld0 = UnpackColor3( Interpolants.TangentToWorld0.xyz );
+	half4 TangentToWorld2 = UnpackColor4( Interpolants.TangentToWorld2 );
+	Result.TangentToWorld = CalcTangentToWorld( TangentToWorld0, TangentToWorld2 );
+	Result.UnMirrored = 1;
+#endif
+#if MATERIAL_DECAL
+	Result.DecalAttenuation = 1;
+	Result.DecalPlaneDistance = 0;
+#endif
+#if USE_LENSFLARE
+	Result.LensFlareSourceDistance = Interpolants.RadialDist_SourceRatio_Intensity.x;
+	Result.LensFlareRadialDistance = Interpolants.RadialDist_SourceRatio_Intensity.y;
+	Result.LensFlareRayDistance	= Interpolants.RadialDist_SourceRatio_Intensity.z;
+	Result.LensFlareIntensity = Interpolants.RadialDist_SourceRatio_Intensity.w;
+#endif	//#if USE_LENSFLARE
+
+#if LIGHTMAP_UV_ACCESS
+	Result.LightmapUVs = Interpolants.TexCoord;
+#endif
+
+	Result.TwoSidedSign = 1;
+	return Result;
+}
+
+float4 VertexFactoryGetVertexColor(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return Input.Color;
+}
+
+/** Converts from vertex factory specific input to a FMaterialVertexParameters, which is used by vertex shader material inputs. */
+FMaterialVertexParameters GetMaterialVertexParameters( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentBasis )
+{
+	FMaterialVertexParameters Result;
+	Result.WorldPosition = WorldPosition - PreViewTranslation.xyz;
+	Result.VertexColor = VertexFactoryGetVertexColor(Input, Intermediates);
+
+	float3x3 TangentToLocal = transpose(TangentBasis);
+
+	#if ROW_MAJOR
+		// does not handle instancing!
+		float3x3 TangentToWorld = mul((float3x3)LocalToWorld, TangentToLocal); 
+	#else
+		float3x3 TangentToWorld = mul(transpose((float3x3)LocalToWorld), TangentToLocal); 
+	#endif
+
+	Result.TangentToWorld = TangentToWorld;
+#if NUM_MATERIAL_TEXCOORDS && !(DECAL_FACTORY && MATERIAL_DECAL)
+	for(int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS; CoordinateIndex++)
+	{
+		Result.TexCoords[CoordinateIndex] = Input.TexCoord;
+	}
+#endif
+	return Result;
+}
+
+#if !VERTEX_LIGHTMAP // AJS: If this is an emissive+vertex light-map shader, we can save an interpolator by skipping the light-map coordinate.
+float2 GetLightMapCoordinate(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	return Interpolants.TexCoord;
+}
+
+#endif	//#if !VERTEX_LIGHTMAP
+
+float3 SafeNormalize(float3 V)
+{
+	return V / sqrt(max(dot(V,V),0.01));
+}
+
+void GetTangents(FVertexFactoryInput Input,out float4 Right,out float4 Up)
+{
+	float4	Position			= MulMatrix(LocalToWorld, Input.Position);
+
+	float4	Right_Square		= CameraRight,
+			Up_Square			= CameraUp;
+			
+	Right	= (-1.0 * cos(Input.Rotation.x) * Up_Square) + (sin(Input.Rotation.x) * Right_Square),
+	Up		= (      sin(Input.Rotation.x) * Up_Square) + (cos(Input.Rotation.x) * Right_Square);
+}
+
+float4 CalcWorldPosition(FVertexFactoryInput Input)
+{
+	float4	WorldPosition = MulMatrix(LocalToWorld,Input.Position);
+
+	float4	Right, Up;
+	GetTangents(Input,Right,Up);
+
+	WorldPosition += Input.Size.x * Input.Size.z * (Input.TexCoord.x - 0.5) * Right;
+	WorldPosition += Input.Size.y * Input.Size.w * (Input.TexCoord.y - 0.5) * Up;
+
+	return WorldPosition;
+}
+
+/** derive basis vectors */
+float3x3 CalcTangentBasis(FVertexFactoryInput Input)
+{
+	float4	Right,
+			Up;
+	GetTangents(Input,Right,Up);
+	return float3x3(
+			Right.xyz,
+			Up.xyz,
+			normalize(cross(Right.xyz,Up.xyz))
+			);
+}
+
+FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
+{
+	FVertexFactoryIntermediates Intermediates;
+	Intermediates.Dummy = 0;
+	return Intermediates;
+}
+
+float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return CalcWorldPosition(Input);
+}
+
+FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	FVertexFactoryInterpolantsVSToPS Interpolants;
+	Interpolants.TexCoord				= Input.TexCoord;
+	Interpolants.Color					= VertexFactoryGetVertexColor(Input, Intermediates);
+	Interpolants.RadialDist_SourceRatio_Intensity	= Input.RadialDist_SourceRatio_Intensity;
+
+#if WORLD_COORDS
+	float3x3 LocalToTangent = CalcTangentBasis(Input);
+	float3x3 TangentToLocal = transpose(LocalToTangent);
+
+	// Calculate the transform from tangent to world space
+	#if ROW_MAJOR
+		float3x3 TangentToWorld = mul((float3x3)LocalToWorld, TangentToLocal); 
+	#else
+		float3x3 TangentToWorld = mul(transpose((float3x3)LocalToWorld), TangentToLocal); 
+	#endif
+
+	Interpolants.TangentToWorld0 = TangentToWorld[0];
+	Interpolants.TangentToWorld2 = float4(TangentToWorld[2], sign(determinant(LocalToTangent)));
+
+	Interpolants.TangentToWorld0 = PackColor3( Interpolants.TangentToWorld0 );
+	Interpolants.TangentToWorld2 = PackColor4( Interpolants.TangentToWorld2 );
+#endif
+
+	return Interpolants;
+}
+
+float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return VertexFactoryGetWorldPosition(Input, Intermediates);
+}
+
+/**
+* Get the 3x3 tangent basis vectors for this vertex factory
+*
+* @param Input - vertex input stream structure
+* @return 3x3 matrix
+*/
+float3x3 VertexFactoryGetTangentBasis( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates )
+{
+	return CalcTangentBasis(Input);
+}
+
+/**
+* Transform a vector from world space to tangent space
+*
+* @param Input - vertex input stream structure
+* @param TangentBasis - 3x3 matrix to transform to tangent space
+* @param WorldVector - vector in world space to transform 
+* @return vector in tangent space
+*/
+float3 VertexFactoryWorldToTangentSpace( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3x3 TangentBasis, float3 WorldVector )
+{
+	// we use a straight mul here because we are generating the matrix, so we don't worry about column major vs row major (which is what MulMatrix manages per-platform)
+	return mul(
+		TangentBasis,
+		WorldVector
+		);
+}
+
+half3 VertexFactoryGetWorldNormal(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	float3x3 TangentBasis = VertexFactoryGetTangentBasis(Input, Intermediates);
+	return TangentBasis[2];
+}

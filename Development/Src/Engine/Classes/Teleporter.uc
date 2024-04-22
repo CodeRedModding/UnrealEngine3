@@ -1,6 +1,7 @@
 ///=============================================================================
 // Teleports actors either between different teleporters within a level
 // or to matching teleporters on other levels, or to general Internet URLs.
+// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 //=============================================================================
 class Teleporter extends NavigationPoint
 	placeable
@@ -8,7 +9,9 @@ class Teleporter extends NavigationPoint
 
 cpptext
 {
+#if WITH_EDITOR
 	void addReachSpecs(AScout *Scout, UBOOL bOnlyChanged=0);
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -40,6 +43,8 @@ var() bool    bReversesZ;       // Reverses Z-component of velocity.
 
 // Teleporter flags
 var() bool	  bEnabled;			// Teleporter is turned on;
+/** whether this Teleporter works on vehicles */
+var() bool bCanTeleportVehicles;
 
 //-----------------------------------------------------------------------------
 // Teleporter destination directions.
@@ -52,68 +57,79 @@ var float LastFired;
 
 replication
 {
-	reliable if( Role==ROLE_Authority )
+	if( Role==ROLE_Authority )
 		bEnabled, URL;
-	reliable if ( bNetInitial && (Role == ROLE_Authority) )
+	if ( bNetInitial && (Role == ROLE_Authority) )
 		bChangesVelocity, bChangesYaw, bReversesX, bReversesY, bReversesZ, TargetVelocity;
 }
 
-function PostBeginPlay()
+/** returns whether this NavigationPoint is a teleporter that can teleport the given Actor */
+native function bool CanTeleport(Actor A);
+
+event PostBeginPlay()
 {
 	if (URL ~= "")
 		SetCollision(false, false); //destination only
-		
+
 	Super.PostBeginPlay();
 }
 
 // Accept an actor that has teleported in.
-simulated function bool Accept( actor Incoming, Actor Source )
+simulated event bool Accept( actor Incoming, Actor Source )
 {
-	local rotator newRot, oldRot;
+	local rotator NewRot, oldRot;
 	local float mag;
 	local vector oldDir;
-	local Controller P;
+	local Controller C;
 
 	if ( Incoming == None )
 		return false;
-		
+
 	// Move the actor here.
 	Disable('Touch');
-	newRot = Incoming.Rotation;
+	NewRot = Incoming.Rotation;
 	if (bChangesYaw)
 	{
 		oldRot = Incoming.Rotation;
-		newRot.Yaw = Rotation.Yaw;
+		NewRot.Yaw = Rotation.Yaw;
 		if ( Source != None )
-			newRot.Yaw += (32768 + Incoming.Rotation.Yaw - Source.Rotation.Yaw);
+		{
+			NewRot.Yaw += (32768 + Incoming.Rotation.Yaw - Source.Rotation.Yaw);
+		}
 	}
 
 	if ( Pawn(Incoming) != None )
 	{
 		//tell enemies about teleport
 		if ( Role == ROLE_Authority )
-			For ( P=Level.ControllerList; P!=None; P=P.NextController )
-				if ( P.Enemy == Incoming )
-					P.LineOfSightTo(Incoming);
+		{
+			foreach WorldInfo.AllControllers(class'Controller', C)
+			{
+				if ( C.Enemy == Incoming )
+				{
+					C.EnemyJustTeleported();
+				}
+			}
+		}
 
 		if ( !Pawn(Incoming).SetLocation(Location) )
 		{
-			log(self$" Teleport failed for "$Incoming);
+			`log(self$" Teleport failed for "$Incoming);
 			return false;
 		}
 		if ( (Role == ROLE_Authority)
-			|| (Level.TimeSeconds - LastFired > 0.5) )
+			|| (WorldInfo.TimeSeconds - LastFired > 0.5) )
 		{
-			newRot.Roll = 0;
-			Pawn(Incoming).SetRotation(newRot);
-			Pawn(Incoming).SetViewRotation(newRot);
-			Pawn(Incoming).ClientSetRotation(newRot);
-			LastFired = Level.TimeSeconds;
+			NewRot.Roll = 0;
+			Pawn(Incoming).SetRotation(NewRot);
+			Pawn(Incoming).SetViewRotation(NewRot);
+			Pawn(Incoming).ClientSetRotation(NewRot);
+			LastFired = WorldInfo.TimeSeconds;
 		}
 		if ( Pawn(Incoming).Controller != None )
 		{
 			Pawn(Incoming).Controller.MoveTimer = -1.0;
-			Pawn(Incoming).Anchor = self;
+			Pawn(Incoming).SetAnchor(self);
 			Pawn(Incoming).SetMoveTarget(self);
 		}
 		Incoming.PlayTeleportEffect(false, true);
@@ -126,7 +142,7 @@ simulated function bool Accept( actor Incoming, Actor Source )
 			return false;
 		}
 		if ( bChangesYaw )
-			Incoming.SetRotation(newRot);
+			Incoming.SetRotation(NewRot);
 	}
 	Enable('Touch');
 
@@ -139,7 +155,7 @@ simulated function bool Accept( actor Incoming, Actor Source )
 			if ( Incoming.Physics == PHYS_Walking )
 				OldRot.Pitch = 0;
 			oldDir = vector(OldRot);
-			mag = Incoming.Velocity Dot oldDir;		
+			mag = Incoming.Velocity Dot oldDir;
 			Incoming.Velocity = Incoming.Velocity - mag * oldDir + mag * vector(Incoming.Rotation);
 		}
 		if ( bReversesX )
@@ -148,19 +164,22 @@ simulated function bool Accept( actor Incoming, Actor Source )
 			Incoming.Velocity.Y *= -1.0;
 		if ( bReversesZ )
 			Incoming.Velocity.Z *= -1.0;
-	}	
+	}
+	Incoming.PostTeleport(self);
 	return true;
 }
 
 //-----------------------------------------------------------------------------
 // Teleporter functions.
 
-event Touch( Actor Other, vector HitLocation, vector HitNormal )
+event Touch( Actor Other, PrimitiveComponent OtherComp, vector HitLocation, vector HitNormal )
 {
 	if ( !bEnabled || (Other == None) )
+	{
 		return;
+	}
 
-	if( Other.bCanTeleport && Other.PreTeleport(Self)==false )
+	if (CanTeleport(Other) && !Other.PreTeleport(self))
 	{
 		PendingTouch = Other.PendingTouch;
 		Other.PendingTouch = self;
@@ -168,76 +187,74 @@ event Touch( Actor Other, vector HitLocation, vector HitNormal )
 }
 
 // Teleporter was touched by an actor.
-simulated function PostTouch( actor Other )
+simulated event PostTouch( actor Other )
 {
 	local Teleporter D,Dest[16];
 	local int i;
 
-		if( (InStr( URL, "/" ) >= 0) || (InStr( URL, "#" ) >= 0) )
-		{
-			// Teleport to a level on the net.
-			if( (Role == ROLE_Authority) && (Pawn(Other) != None)
-				&& Pawn(Other).IsHumanControlled() )
-				Level.Game.SendPlayer(PlayerController(Pawn(Other).Controller), URL);
-		}
-		else
-		{
-			// Teleport to a random teleporter in this local level, if more than one pick random.
+	if( (InStr( URL, "/" ) >= 0) || (InStr( URL, "#" ) >= 0) )
+	{
+		// Teleport to a level on the net.
+		if( (Role == ROLE_Authority) && (Pawn(Other) != None)
+			&& Pawn(Other).IsHumanControlled() )
+			WorldInfo.Game.SendPlayer(PlayerController(Pawn(Other).Controller), URL);
+	}
+	else
+	{
+		// Teleport to a random teleporter in this local level, if more than one pick random.
 
-			foreach AllActors( class 'Teleporter', D )
-				if( string(D.tag)~=URL && D!=Self )
-				{
-					Dest[i] = D;
-					i++;
-					if ( i > arraycount(Dest) )
-						break;
-				}
-
-			i = rand(i);
-			if( Dest[i] != None )
+		foreach AllActors( class 'Teleporter', D )
+			if( string(D.tag)~=URL && D!=Self )
 			{
-				// Teleport the actor into the other teleporter.
-				if ( Other.IsA('Pawn') )
-					Other.PlayTeleportEffect(false, true);
-				Dest[i].Accept( Other, self );
+				Dest[i] = D;
+				i++;
+				if ( i > arraycount(Dest) )
+					break;
 			}
+
+		i = rand(i);
+		if( Dest[i] != None )
+		{
+			// Teleport the actor into the other teleporter.
+			if ( Other.IsA('Pawn') )
+			{
+				Other.PlayTeleportEffect(true, true);
+			}
+			Dest[i].Accept( Other, self );
 		}
 	}
+}
 
 /* SpecialHandling is called by the navigation code when the next path has been found.
 It gives that path an opportunity to modify the result based on any special considerations
 */
-
-function Actor SpecialHandling(Pawn Other)
+event Actor SpecialHandling(Pawn Other)
 {
-	if ( bEnabled && (Teleporter(Other.Controller.RouteCache[1]) != None)
+	if ( bEnabled && (Other.Controller.RouteCache.Length > 1) && (Teleporter(Other.Controller.RouteCache[1]) != None)
 		&& (string(Other.Controller.RouteCache[1].tag)~=URL) )
 	{
-		if( TouchingActor(Other) ) 
+		if(IsOverlapping(Other))
+		{
 			PostTouch(Other);
+		}
 
 		return self;
 	}
-	// FIXMESTEVE - need to tell bot how to enable me			
-	return None;			
-}	
-	
+	return None;
+}
+
 
 defaultproperties
 {
 	Begin Object NAME=CollisionCylinder
 		CollisionRadius=+00040.000000
 		CollisionHeight=+00080.000000
+		CollideActors=true
 	End Object
 
 	Begin Object NAME=Sprite
-		Sprite=Texture2D'EngineResources.S_Teleport'
+		Sprite=Texture2D'EditorResources.S_Teleport'
 	End Object
-
-	Begin Object Class=ArrowComponent Name=Arrow
-		ArrowColor=(R=150,G=200,B=255)
-	End Object
-	Components.Add(Arrow)
 
 	RemoteRole=ROLE_SimulatedProxy
 	bChangesYaw=true

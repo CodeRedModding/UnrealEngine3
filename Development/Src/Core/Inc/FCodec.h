@@ -1,9 +1,6 @@
 /*=============================================================================
 	UnCodec.h: Data compression codecs.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-Revision history:
-	* Created by Tim Sweeney.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 /*-----------------------------------------------------------------------------
@@ -17,6 +14,7 @@ class FCodec
 public:
 	virtual UBOOL Encode( FArchive& In, FArchive& Out )=0;
 	virtual UBOOL Decode( FArchive& In, FArchive& Out )=0;
+	virtual ~FCodec(){}
 };
 
 /*-----------------------------------------------------------------------------
@@ -192,6 +190,7 @@ private:
 			for( INT i=0; i<Child.Num(); i++ )
 				Child(i)->PrependBit( B );
 		}
+#if WITH_UE3_NETWORKING
 		void WriteTable( FBitWriter& Writer )
 		{
 			Writer.WriteBit( Child.Num()!=0 );
@@ -217,6 +216,7 @@ private:
 			}
 			else Ch = Arctor<BYTE>( Reader );
 		}
+#endif	//#if WITH_UE3_NETWORKING
 	};
 	static QSORT_RETURN CDECL CompareHuffman( const FHuffman** A, const FHuffman** B )
 	{
@@ -225,6 +225,7 @@ private:
 public:
 	UBOOL Encode( FArchive& In, FArchive& Out )
 	{
+#if WITH_UE3_NETWORKING
 		INT SavedPos = In.Tell();
 		INT Total=0, i;
 
@@ -272,8 +273,8 @@ public:
 		while( !In.AtEnd() )
 		{
 			FHuffman* P = Index(Arctor<BYTE>(In));
-			for( INT i=0; i<P->Bits.Num(); i++ )
-				Writer.WriteBit( P->Bits(i) );
+			for( INT j=0; j < P->Bits.Num(); j++ )
+				Writer.WriteBit( P->Bits(j) );
 		}
 		check(!Writer.IsError());
 		check(Writer.GetNumBits()==BitCount);
@@ -281,10 +282,12 @@ public:
 
 		// Finish up.
 		delete Root;
+#endif	//#if WITH_UE3_NETWORKING
 		return 0;
 	}
 	UBOOL Decode( FArchive& In, FArchive& Out )
 	{
+#if WITH_UE3_NETWORKING
 		INT Total;
 		In << Total;
 		TArray<BYTE> InArray( In.TotalSize()-In.Tell() );
@@ -301,6 +304,7 @@ public:
 			BYTE B = Node->Ch;
 			Out << B;
 		}
+#endif	//#if WITH_UE3_NETWORKING
 		return 1;
 	}
 };
@@ -328,7 +332,7 @@ public:
 			C = i;
 			Out << C;
 			INT NewPos=0;
-			for( i; i>NewPos; i-- )
+			for( ; i>NewPos; i-- )
 				List[i]=List[i-1];
 			List[NewPos] = B;
 		}
@@ -367,8 +371,8 @@ private:
 		TArray<BYTE> InData, OutData;
 		for( INT i=0; i<Codecs.Num(); i++ )
 		{
-			FBufferReader Reader(InData);
-			FBufferWriter Writer(OutData);
+			FMemoryReader Reader(InData);
+			FMemoryWriter Writer(OutData);
 			(Codecs(First + Step*i)->*Func)( *(i ? &Reader : &In), *(i<Codecs.Num()-1 ? &Writer : &Out) );
 			if( i<Codecs.Num()-1 )
 			{
@@ -399,8 +403,4 @@ public:
 	}
 };
 #endif
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
-
 

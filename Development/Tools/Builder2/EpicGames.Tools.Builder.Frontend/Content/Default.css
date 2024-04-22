@@ -1,0 +1,84 @@
+﻿/*
+    Base on Yahoo's YUI 2 Reset CSS, version: 2.9.0
+    http://developer.yahoo.com/yui/license.html
+*/
+
+body, div, dl, dt, dd, ul, ol, li, h1, h2, h3, h4, h5, h6,
+html, pre, code, form, fieldset, legend, input, button,
+textarea, select, p, blockquote, th, td
+{
+    margin: 0;
+    padding: 0;
+}
+
+table
+{
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+fieldset, img
+{
+    border:0;
+}
+
+address, button, caption, cite, code, dfn, em, input, optgroup,
+option, select, strong, textarea, th, var
+{
+    font: inherit;
+}
+
+del, ins
+{
+    text-decoration: none
+}
+
+li
+{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+ul
+{
+    margin-left: 0;
+    padding-left: 0;
+}
+
+caption, th
+{
+    text-align: left;
+}
+
+h1, h2, h3, h4, h5, h6
+{
+    font-size: 100%;
+    font-weight: normal;
+}
+
+q:before, q:after
+{
+    content: '';
+}
+
+abbr, acronym
+{
+    border: 0;
+    font-variant: normal;
+}
+
+sup
+{
+    vertical-align: baseline;
+}
+
+sub
+{
+    vertical-align: baseline;
+}
+
+article, aside, dialog, figure, footer, header, hgroup, nav, section
+{
+    display: block;
+}

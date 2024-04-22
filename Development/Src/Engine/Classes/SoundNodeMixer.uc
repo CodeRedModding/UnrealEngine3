@@ -1,16 +1,18 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+ 
+/** 
+ * Defines how concurrent sounds are mixed together
+ */
+ 
 class SoundNodeMixer extends SoundNode
-	native(Sound)
-	collapsecategories
-	hidecategories(Object)
+	native( Sound )
+	hidecategories( Object )
 	editinlinenew;
 
-cpptext
-{
-	// USoundNode interface.
-
-	virtual void ParseNodes( class UAudioComponent* AudioComponent, TArray<FWaveInstance*>& WaveInstances );
-	virtual INT GetMaxChildNodes() { return -1; }
-}
+/** A volume for each input.  Automatically sized. */
+var()	export	editfixedsize	array<float>	InputVolume;
 
 defaultproperties
 {

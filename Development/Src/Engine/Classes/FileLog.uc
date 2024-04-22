@@ -2,48 +2,39 @@
  * Opens a file on disk for logging purposes.  Spawn one, then call
  * OpenLog() with the desired file name, output using Logf(), and then
  * finally call CloseLog(), or destroy the FileLog actor.
+ *
+ * This functionality has been moved to the new FileWriter class.  Stubs
+ * have been left here for compatibility
+ *
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
  */
-class FileLog extends Info 
+class FileLog extends FileWriter
 	native;
-
-cpptext
-{
-	void OpenLog(FString &fileName,FString &extension);
-	void Logf(FString &logString);
-}
-
-/** Internal FArchive pointer */
-var const pointer LogAr;
-
-/** Log file name, created via OpenLog() */
-var const string LogFileName;
 
 /**
  * Opens the actual file using the specified name.
- * 
- * @param	fileName - name of file to open
- * 
+ *
+ * @param	LogFilename - name of file to open
+ *
  * @param	extension - optional file extension to use, defaults to
  * 			.txt if none is specified
+ *
+ * @param	bUnique - Makes sure the file is unique
+
  */
-native final function OpenLog(coerce string fileName, optional string extension);
+
+function OpenLog(coerce string LogFilename, optional string extension, optional bool bUnique)
+{
+	OpenFile(LogFilename, FWFT_Log, extension, bUnique);
+}
 
 /**
  * Closes the log file.
  */
-native final function CloseLog();
 
-/**
- * Logs the given string to the log file.
- * 
- * @param	logString - string to dump
- */
-native final function Logf(string logString);
-
-/**
- * Overridden to automatically close the logfile on destruction.
- */
-event Destroyed()
+function CloseLog()
 {
-	CloseLog();
+	CloseFile();
 }
+
+

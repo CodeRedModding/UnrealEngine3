@@ -1,0 +1,26 @@
+UNIFORM( vec4, BatchFloat[60] );
+ATTRIBUTE( vec4, Position, POSITION );
+ATTRIBUTE( vec4, Color, COLOR0 );
+ATTRIBUTE( vec4, VertexColor, COLOR1 );
+OUT_VARYING_LOW( vec4, color, COLOR0 );
+OUT_VARYING_DEFAULT( vec4, factor, COLOR1 );
+OUT_VARYING_DEFAULT( vec2, TexCoords0, TEXCOORD0 );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// S TexTG
+
+  TexCoords0.x = dot(Position, BatchFloat[int(0.1+4.0*(255.01*float(VertexColor.b))+(0.0))]);
+  TexCoords0.y = dot(Position, BatchFloat[int(0.1+4.0*(255.01*float(VertexColor.b))+(1.0))]);
+// E position
+
+
+  gl_Position = Position;
+  gl_Position.x = dot(Position, BatchFloat[int(0.1+4.0*(255.01*float(VertexColor.b))+2.0+(0.0))]);
+  gl_Position.y = dot(Position, BatchFloat[int(0.1+4.0*(255.01*float(VertexColor.b))+2.0+(1.0))]);  
+// E Vacolor
+  color = Color;
+// E Vafactor
+  factor = VertexColor;
+
+}
+

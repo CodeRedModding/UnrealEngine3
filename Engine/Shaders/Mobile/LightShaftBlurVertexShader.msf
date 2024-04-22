@@ -1,0 +1,65 @@
+/*=============================================================================
+	LightShaftBlurVertexShader.usf: Shaders for rendering light shafts
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+/** Origin in texture coordinates in xy. */
+UNIFORM(vec2, TextureSpaceBlurOrigin);
+
+UNIFORM(vec4, AspectRatioAndInvAspectRatio);
+
+/** Mins in xy, Maxes in zw. */
+UNIFORM(vec4, UVMinMax);
+
+/** 1.0 / OcclusionDepthRange in x, BloomScale in y, RadialBlurPercent / 100 in z, OcclusionMaskDarkness in w. */
+UNIFORM(vec4, LightShaftParameters);
+
+#define InvOcclusionDepthRange	LightShaftParameters.x
+#define BloomScale				LightShaftParameters.y
+#define RadialBlurPercent		LightShaftParameters.z
+#define OcclusionMaskDarkness	LightShaftParameters.w
+
+/** X: BlurVectorScale, Y: BlurVectorOffset */
+UNIFORM_HIGH(vec4, LightShaftBlurParameters);
+
+#define BlurVectorScale			LightShaftBlurParameters.x
+#define BlurVectorOffset		LightShaftBlurParameters.y
+
+ATTRIBUTE(vec2, Position, POSITION);
+ATTRIBUTE(vec2, TexCoords0, TEXCOORD0);
+
+OUT_VARYING_DEFAULT(vec2, TexCoord0, TEXCOORD0);
+OUT_VARYING_DEFAULT(vec2, TexCoord1, TEXCOORD1);
+OUT_VARYING_DEFAULT(vec2, TexCoord2, TEXCOORD2);
+OUT_VARYING_DEFAULT(vec2, TexCoord3, TEXCOORD3);
+OUT_VARYING_DEFAULT(vec2, TexCoord4, TEXCOORD4);
+OUT_VARYING_DEFAULT(vec2, TexCoord5, TEXCOORD5);
+OUT_VARYING_DEFAULT(vec2, TexCoord6, TEXCOORD6);
+OUT_VARYING_DEFAULT(vec2, TexCoord7, TEXCOORD7);
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+void main()
+{
+	gl_Position = vec4( Position, 0, 1 );
+
+	// Scale the UVs so that the blur will be the same pixel distance in x and y
+	vec2 AspectCorrectedUV = TexCoords0 * AspectRatioAndInvAspectRatio.zw;
+	vec2 BlurVector = TextureSpaceBlurOrigin - AspectCorrectedUV;
+
+	BlurVector *= RadialBlurPercent;
+
+	vec2 SampleUVs = AspectCorrectedUV + BlurVector * BlurVectorOffset;
+	vec2 SampleUVsDelta = BlurVector * BlurVectorScale / 8.0;
+	
+	SampleUVs *= AspectRatioAndInvAspectRatio.xy;
+	SampleUVsDelta *= AspectRatioAndInvAspectRatio.xy;
+
+	TexCoord0 = clamp(SampleUVs + 0.0 * SampleUVsDelta, UVMinMax.xy, UVMinMax.zw);
+	TexCoord1 = clamp(SampleUVs + 1.0 * SampleUVsDelta, UVMinMax.xy, UVMinMax.zw);
+	TexCoord2 = clamp(SampleUVs + 2.0 * SampleUVsDelta, UVMinMax.xy, UVMinMax.zw);
+	TexCoord3 = clamp(SampleUVs + 3.0 * SampleUVsDelta, UVMinMax.xy, UVMinMax.zw);
+	TexCoord4 = clamp(SampleUVs + 4.0 * SampleUVsDelta, UVMinMax.xy, UVMinMax.zw);
+	TexCoord5 = clamp(SampleUVs + 5.0 * SampleUVsDelta, UVMinMax.xy, UVMinMax.zw);
+	TexCoord6 = clamp(SampleUVs + 6.0 * SampleUVsDelta, UVMinMax.xy, UVMinMax.zw);
+	TexCoord7 = clamp(SampleUVs + 7.0 * SampleUVsDelta, UVMinMax.xy, UVMinMax.zw);
+}

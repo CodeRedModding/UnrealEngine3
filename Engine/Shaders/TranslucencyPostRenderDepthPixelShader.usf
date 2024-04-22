@@ -1,0 +1,45 @@
+/*=============================================================================
+	TranslucencyPostRenderDepthPixelShader.usf: Depth pixel shader for
+	post-translucency depth rendering.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+void Main(
+#if MATERIAL_USE_SCREEN_DOOR_FADE && MATERIALBLENDING_SOFTMASKED
+	OPTIONAL_PixelShaderScreenPosition
+#endif
+#if !MATERIALBLENDING_SOLID
+	FVertexFactoryInterpolantsVSToPS FactoryInterpolants,
+	float4 CameraVectorOrVertexColor : TEXCOORD4,
+	float4 PixelPosition : TEXCOORD5,
+	OPTIONAL_FacingSign
+#endif
+	OPTIONAL_PixelShaderCoverageInputOutput
+	out float4 OutColor : COLOR0
+	)
+{
+#if !MATERIALBLENDING_SOLID
+
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(FactoryInterpolants);
+	CalcMaterialParameters(MaterialParameters, FacingSign, CameraVectorOrVertexColor, PixelPosition);
+
+#if MATERIAL_LIT_TRANSLUCENCY_DEPTH_POSTPASS
+	GetMaterialClippingLitTranslucencyDepthPostPass(MaterialParameters);
+#endif
+
+#if MATERIALBLENDING_SOFTMASKED
+	GetMaterialCoverageAndClipping(MaterialParameters,PixelShaderScreenPosition.xy,InCoverage,OutCoverage);
+#endif
+
+#endif
+
+#if SUPPORTS_DEPTH_TEXTURES 
+	OutColor = 0;
+#else
+	OutColor = RETURN_COLOR(float4(0,0,0,EncodeFloatW(MaterialParameters.ScreenPosition.w)));
+#endif
+}

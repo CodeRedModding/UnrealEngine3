@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="Tasks" targetNamespace="http://tempuri.org/Tasks.xsd" xmlns:mstns="http://tempuri.org/Tasks.xsd" xmlns="http://tempuri.org/Tasks.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:msprop="urn:schemas-microsoft-com:xml-msprop" attributeFormDefault="qualified" elementFormDefault="qualified">
+  <xs:annotation>
+    <xs:appinfo source="urn:schemas-microsoft-com:xml-msdatasource">
+      <DataSource DefaultConnectionIndex="0" FunctionsComponentName="QueriesTableAdapter" Modifier="AutoLayout, AnsiClass, Class, Public" SchemaSerializationMode="IncludeSchema" xmlns="urn:schemas-microsoft-com:xml-msdatasource">
+        <Connections>
+          <Connection AppSettingsObjectName="Settings" AppSettingsPropertyName="UPropConnectionString" ConnectionStringObject="" IsAppSettingsProperty="true" Modifier="Assembly" Name="UPropConnectionString (Settings)" ParameterPrefix="@" PropertyReference="ApplicationSettings.RemotableType.Properties.Settings.GlobalReference.Default.UPropConnectionString" Provider="System.Data.SqlClient" />
+        </Connections>
+        <Tables>
+          <TableAdapter BaseClass="System.ComponentModel.Component" DataAccessorModifier="AutoLayout, AnsiClass, Class, Public" DataAccessorName="TasksTableAdapter" GeneratorDataComponentClassName="TasksTableAdapter" Name="Tasks" UserDataComponentName="TasksTableAdapter">
+            <MainSource>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectType="Unknown" FillMethodModifier="Public" FillMethodName="Fill" GenerateMethods="Both" GenerateShortCommands="false" GeneratorGetMethodName="GetData" GeneratorSourceName="Fill" GetMethodModifier="Public" GetMethodName="GetData" QueryType="Rowset" ScalarCallRetval="System.Object, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="false" UserGetMethodName="GetData" UserSourceName="Fill">
+                <SelectCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>SELECT Tasks.ID, Tasks.RunAfterProp, UPDSNames.UPDSName AS AssignedUPDS, Tasks.ClientMachineID, Tasks.SubmissionTime, Tasks.ScheduleTime, Tasks.Recurring, Tasks.CompletionTime, BuildConfigs.BuildConfig AS BuildConfig, Tasks.StatusID, 
+                         Tasks.PlatformBuildID, Errors.Error AS Error, Tasks.Progress, CommandLines.CommandLine AS CommandLine, ClientMachines.Name AS ClientMachineName, Platforms.Name AS TargetPlatform, 
+                         PlatformBuilds.Title AS Title, Projects.Title AS Project, TaskStatuses.Description AS Status, Tasks.Priority, UserNames.Email AS Email, ClientMachines.Path AS Path, ClientMachines.Name AS FriendlyName, Tasks.UserNameID AS TaskerUserNameID, ClientMachines.UserNameID AS TaskeeUserNameID, ClientMachines.Reboot AS Reboot
+FROM [Tasks] 
+INNER JOIN UserNames ON Tasks.UserNameID = UserNames.ID
+INNER JOIN Errors ON Tasks.ErrorID = Errors.ID
+INNER JOIN UPDSNames ON Tasks.AssignedUPDSID = UPDSNames.ID 
+INNER JOIN CommandLines ON Tasks.CommandLineID = CommandLines.ID
+INNER JOIN ClientMachines ON Tasks.ClientMachineID = ClientMachines.ID 
+INNER JOIN PlatformBuilds ON Tasks.PlatformBuildID = PlatformBuilds.ID 
+INNER JOIN Platforms ON ClientMachines.PlatformID = Platforms.ID 
+INNER JOIN Projects ON PlatformBuilds.ProjectID = Projects.ID 
+INNER JOIN TaskStatuses ON Tasks.StatusID = TaskStatuses.ID 
+INNER JOIN BuildConfigs ON Tasks.BuildConfigID = BuildConfigs.ID</CommandText>
+                    <Parameters />
+                  </DbCommand>
+                </SelectCommand>
+              </DbSource>
+            </MainSource>
+            <Mappings>
+              <Mapping SourceColumn="ID" DataSetColumn="ID" />
+              <Mapping SourceColumn="AssignedUPDS" DataSetColumn="AssignedUPDS" />
+              <Mapping SourceColumn="SubmissionTime" DataSetColumn="SubmissionTime" />
+              <Mapping SourceColumn="ScheduleTime" DataSetColumn="ScheduleTime" />
+              <Mapping SourceColumn="CompletionTime" DataSetColumn="CompletionTime" />
+              <Mapping SourceColumn="StatusID" DataSetColumn="StatusID" />
+              <Mapping SourceColumn="PlatformBuildID" DataSetColumn="PlatformBuildID" />
+              <Mapping SourceColumn="Progress" DataSetColumn="Progress" />
+              <Mapping SourceColumn="ClientMachineName" DataSetColumn="ClientMachineName" />
+              <Mapping SourceColumn="Project" DataSetColumn="Project" />
+              <Mapping SourceColumn="Status" DataSetColumn="Status" />
+              <Mapping SourceColumn="Priority" DataSetColumn="Priority" />
+              <Mapping SourceColumn="RunAfterProp" DataSetColumn="RunAfterProp" />
+              <Mapping SourceColumn="CommandLine" DataSetColumn="CommandLine" />
+              <Mapping SourceColumn="BuildConfig" DataSetColumn="BuildConfig" />
+              <Mapping SourceColumn="Recurring" DataSetColumn="Recurring" />
+              <Mapping SourceColumn="Reboot" DataSetColumn="Reboot" />
+              <Mapping SourceColumn="Title" DataSetColumn="Title" />
+              <Mapping SourceColumn="FriendlyName" DataSetColumn="FriendlyName" />
+              <Mapping SourceColumn="Path" DataSetColumn="Path" />
+              <Mapping SourceColumn="ClientMachineID" DataSetColumn="ClientMachineID" />
+              <Mapping SourceColumn="Error" DataSetColumn="Error" />
+              <Mapping SourceColumn="TaskerUserNameID" DataSetColumn="TaskerUserNameID" />
+              <Mapping SourceColumn="TaskeeUserNameID" DataSetColumn="TaskeeUserNameID" />
+              <Mapping SourceColumn="TargetPlatform" DataSetColumn="TargetPlatform" />
+              <Mapping SourceColumn="Email" DataSetColumn="Email" />
+            </Mappings>
+            <Sources>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectType="Unknown" FillMethodModifier="Public" FillMethodName="FillByID" GenerateMethods="Both" GenerateShortCommands="true" GeneratorGetMethodName="GetDataByID" GeneratorSourceName="FillByID" GetMethodModifier="Public" GetMethodName="GetDataByID" QueryType="Rowset" ScalarCallRetval="System.Object, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="true" UserGetMethodName="GetDataByID" UserSourceName="FillByID">
+                <SelectCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>SELECT Tasks.ID, Tasks.RunAfterProp, UPDSNames.UPDSName AS AssignedUPDS, Tasks.ClientMachineID, Tasks.SubmissionTime, Tasks.ScheduleTime, Tasks.Recurring, Tasks.CompletionTime, BuildConfigs.BuildConfig AS BuildConfig, Tasks.StatusID, 
+                         Tasks.PlatformBuildID, Errors.Error AS Error, Tasks.Progress, CommandLines.CommandLine AS CommandLine, ClientMachines.Name AS ClientMachineName, Platforms.Name AS TargetPlatform, 
+                         PlatformBuilds.Title AS Title, Projects.Title AS Project, TaskStatuses.Description AS Status, Tasks.Priority, UserNames.Email AS Email, ClientMachines.Path AS Path, ClientMachines.Name AS FriendlyName, Tasks.UserNameID AS TaskerUserNameID, ClientMachines.UserNameID AS TaskeeUserNameID, ClientMachines.Reboot AS Reboot
+FROM [Tasks] 
+INNER JOIN UserNames ON Tasks.UserNameID = UserNames.ID
+INNER JOIN Errors ON Tasks.ErrorID = Errors.ID
+INNER JOIN UPDSNames ON Tasks.AssignedUPDSID = UPDSNames.ID 
+INNER JOIN CommandLines ON Tasks.CommandLineID = CommandLines.ID
+INNER JOIN ClientMachines ON Tasks.ClientMachineID = ClientMachines.ID 
+INNER JOIN PlatformBuilds ON Tasks.PlatformBuildID = PlatformBuilds.ID 
+INNER JOIN Platforms ON ClientMachines.PlatformID = Platforms.ID 
+INNER JOIN Projects ON PlatformBuilds.ProjectID = Projects.ID 
+INNER JOIN TaskStatuses ON Tasks.StatusID = TaskStatuses.ID 
+INNER JOIN BuildConfigs ON Tasks.BuildConfigID = BuildConfigs.ID
+                         WHERE ( Tasks.ID = @ID )</CommandText>
+                    <Parameters>
+                      <Parameter AllowDbNull="false" AutogeneratedName="ID" ColumnName="ID" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="bigint" DbType="Int64" Direction="Input" ParameterName="@ID" Precision="0" ProviderType="BigInt" Scale="0" Size="8" SourceColumn="ID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                    </Parameters>
+                  </DbCommand>
+                </SelectCommand>
+              </DbSource>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectType="Unknown" FillMethodModifier="Public" FillMethodName="FillScheduled" GenerateMethods="Both" GenerateShortCommands="true" GeneratorGetMethodName="GetDataScheduled" GeneratorSourceName="FillScheduled" GetMethodModifier="Public" GetMethodName="GetDataScheduled" QueryType="Rowset" ScalarCallRetval="System.Object, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="true" UserGetMethodName="GetDataScheduled" UserSourceName="FillScheduled">
+                <SelectCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>SELECT Tasks.ID, Tasks.RunAfterProp, UPDSNames.UPDSName AS AssignedUPDS, Tasks.ClientMachineID, Tasks.SubmissionTime, Tasks.ScheduleTime, Tasks.Recurring, Tasks.CompletionTime, BuildConfigs.BuildConfig AS BuildConfig, Tasks.StatusID, 
+                         Tasks.PlatformBuildID, Errors.Error AS Error, Tasks.Progress, CommandLines.CommandLine AS CommandLine, ClientMachines.Name AS ClientMachineName, Platforms.Name AS TargetPlatform, 
+                         PlatformBuilds.Title AS Title, Projects.Title AS Project, TaskStatuses.Description AS Status, Tasks.Priority, UserNames.Email AS Email, ClientMachines.Path AS Path, ClientMachines.Name AS FriendlyName, Tasks.UserNameID AS TaskerUserNameID, ClientMachines.UserNameID AS TaskeeUserNameID, ClientMachines.Reboot AS Reboot
+FROM [Tasks] 
+INNER JOIN UserNames ON Tasks.UserNameID = UserNames.ID
+INNER JOIN Errors ON Tasks.ErrorID = Errors.ID
+INNER JOIN UPDSNames ON Tasks.AssignedUPDSID = UPDSNames.ID 
+INNER JOIN CommandLines ON Tasks.CommandLineID = CommandLines.ID
+INNER JOIN ClientMachines ON Tasks.ClientMachineID = ClientMachines.ID 
+INNER JOIN PlatformBuilds ON Tasks.PlatformBuildID = PlatformBuilds.ID 
+INNER JOIN Platforms ON ClientMachines.PlatformID = Platforms.ID 
+INNER JOIN Projects ON PlatformBuilds.ProjectID = Projects.ID 
+INNER JOIN TaskStatuses ON Tasks.StatusID = TaskStatuses.ID 
+INNER JOIN BuildConfigs ON Tasks.BuildConfigID = BuildConfigs.ID
+                         WHERE ( Tasks.StatusID = 1 )
+                         ORDER BY Tasks.ScheduleTime ASC</CommandText>
+                    <Parameters />
+                  </DbCommand>
+                </SelectCommand>
+              </DbSource>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectName="" DbObjectType="Unknown" GenerateShortCommands="true" GeneratorGetMethodName="GetDataBy" GeneratorSourceName="InsertQuery" Modifier="Public" Name="InsertQuery" QueryType="NoData" ScalarCallRetval="System.Object, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="true" UserGetMethodName="GetDataBy" UserSourceName="InsertQuery">
+                <InsertCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>INSERT INTO [Tasks]  ( PlatformBuildID, ScheduleTime, Recurring, SubmissionTime, ClientMachineID, StatusID, UserNameID, AssignedUPDSID, RunAfterProp, BuildConfigID, CommandLineID )
+VALUES ( @PlatformBuildID, @ScheduleTime, @Recurring, @SubmissionTime, @ClientMachineID, @StatusID, @UserNameID, @AssignedUPDSID, @RunAfterProp, @BuildConfigID, @CommandLineID );    
+SELECT SCOPE_IDENTITY() AS ID</CommandText>
+                    <Parameters>
+                      <Parameter AllowDbNull="false" AutogeneratedName="PlatformBuildID" ColumnName="PlatformBuildID" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="bigint" DbType="Int64" Direction="Input" ParameterName="@PlatformBuildID" Precision="0" ProviderType="BigInt" Scale="0" Size="8" SourceColumn="PlatformBuildID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="ScheduleTime" ColumnName="ScheduleTime" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="datetime" DbType="DateTime" Direction="Input" ParameterName="@ScheduleTime" Precision="0" ProviderType="DateTime" Scale="0" Size="8" SourceColumn="ScheduleTime" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="Recurring" ColumnName="Recurring" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="bit" DbType="Boolean" Direction="Input" ParameterName="@Recurring" Precision="0" ProviderType="Bit" Scale="0" Size="1" SourceColumn="Recurring" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="SubmissionTime" ColumnName="SubmissionTime" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="datetime" DbType="DateTime" Direction="Input" ParameterName="@SubmissionTime" Precision="0" ProviderType="DateTime" Scale="0" Size="8" SourceColumn="SubmissionTime" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="ClientMachineID" ColumnName="ClientMachineID" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="int" DbType="Int32" Direction="Input" ParameterName="@ClientMachineID" Precision="0" ProviderType="Int" Scale="0" Size="4" SourceColumn="ClientMachineID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="StatusID" ColumnName="StatusID" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="smallint" DbType="Int16" Direction="Input" ParameterName="@StatusID" Precision="0" ProviderType="SmallInt" Scale="0" Size="2" SourceColumn="StatusID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="UserNameID" ColumnName="UserNameID" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="int" DbType="Int32" Direction="Input" ParameterName="@UserNameID" Precision="0" ProviderType="Int" Scale="0" Size="4" SourceColumn="UserNameID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="true" AutogeneratedName="AssignedUPDSID" ColumnName="AssignedUPDSID" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="int" DbType="Int32" Direction="Input" ParameterName="@AssignedUPDSID" Precision="0" ProviderType="Int" Scale="0" Size="4" SourceColumn="AssignedUPDSID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="RunAfterProp" ColumnName="RunAfterProp" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="bit" DbType="Boolean" Direction="Input" ParameterName="@RunAfterProp" Precision="0" ProviderType="Bit" Scale="0" Size="1" SourceColumn="RunAfterProp" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="BuildConfigID" ColumnName="BuildConfigID" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="smallint" DbType="Int16" Direction="Input" ParameterName="@BuildConfigID" Precision="0" ProviderType="SmallInt" Scale="0" Size="2" SourceColumn="BuildConfigID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="CommandLineID" ColumnName="CommandLineID" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="int" DbType="Int32" Direction="Input" ParameterName="@CommandLineID" Precision="0" ProviderType="Int" Scale="0" Size="4" SourceColumn="CommandLineID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                    </Parameters>
+                  </DbCommand>
+                </InsertCommand>
+              </DbSource>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectName="" DbObjectType="Unknown" GenerateShortCommands="true" GeneratorSourceName="UpdateCompletionTime" Modifier="Public" Name="UpdateCompletionTime" QueryType="NoData" ScalarCallRetval="System.Object, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="true" UserGetMethodName="GetDataBy1" UserSourceName="UpdateCompletionTime">
+                <UpdateCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>UPDATE Tasks SET CompletionTime = @CompletionTime WHERE ( ID = @ID )</CommandText>
+                    <Parameters>
+                      <Parameter AllowDbNull="true" AutogeneratedName="CompletionTime" ColumnName="CompletionTime" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="datetime" DbType="DateTime" Direction="Input" ParameterName="@CompletionTime" Precision="0" ProviderType="DateTime" Scale="0" Size="8" SourceColumn="CompletionTime" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="ID" ColumnName="ID" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="bigint" DbType="Int64" Direction="Input" ParameterName="@ID" Precision="0" ProviderType="BigInt" Scale="0" Size="8" SourceColumn="ID" SourceColumnNullMapping="false" SourceVersion="Original" />
+                    </Parameters>
+                  </DbCommand>
+                </UpdateCommand>
+              </DbSource>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectName="" DbObjectType="Unknown" GenerateShortCommands="true" GeneratorGetMethodName="GetDataBy1" GeneratorSourceName="UpdateStatus" Modifier="Public" Name="UpdateStatus" QueryType="NoData" ScalarCallRetval="System.Object, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="true" UserGetMethodName="GetDataBy2" UserSourceName="UpdateStatus">
+                <UpdateCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>UPDATE Tasks SET StatusID = @StatusID, ErrorID =@ErrorID WHERE ( ID=@ID )</CommandText>
+                    <Parameters>
+                      <Parameter AllowDbNull="false" AutogeneratedName="StatusID" ColumnName="StatusID" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="smallint" DbType="Int16" Direction="Input" ParameterName="@StatusID" Precision="0" ProviderType="SmallInt" Scale="0" Size="2" SourceColumn="StatusID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="ErrorID" ColumnName="ErrorID" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="int" DbType="Int32" Direction="Input" ParameterName="@ErrorID" Precision="0" ProviderType="Int" Scale="0" Size="4" SourceColumn="ErrorID" SourceColumnNullMapping="false" SourceVersion="Current" />
+                      <Parameter AllowDbNull="false" AutogeneratedName="ID" ColumnName="ID" DataSourceName="UnrealProp.dbo.Tasks" DataTypeServer="bigint" DbType="Int64" Direction="Input" ParameterName="@ID" Precision="0" ProviderType="BigInt" Scale="0" Size="8" SourceColumn="ID" SourceColumnNullMapping="false" SourceVersion="Original" />
+                    </Parameters>
+                  </DbCommand>
+                </UpdateCommand>
+              </DbSource>
+            </Sources>
+          </TableAdapter>
+        </Tables>
+        <Sources />
+      </DataSource>
+    </xs:appinfo>
+  </xs:annotation>
+  <xs:element name="Tasks" msdata:IsDataSet="true" msdata:UseCurrentLocale="true" msprop:Generator_UserDSName="Tasks" msprop:Generator_DataSetName="Tasks">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Tasks" msprop:Generator_UserTableName="Tasks" msprop:Generator_RowDeletedName="TasksRowDeleted" msprop:Generator_RowChangedName="TasksRowChanged" msprop:Generator_RowClassName="TasksRow" msprop:Generator_RowChangingName="TasksRowChanging" msprop:Generator_RowEvArgName="TasksRowChangeEvent" msprop:Generator_RowEvHandlerName="TasksRowChangeEventHandler" msprop:Generator_TableClassName="TasksDataTable" msprop:Generator_TableVarName="tableTasks" msprop:Generator_RowDeletingName="TasksRowDeleting" msprop:Generator_TablePropName="_Tasks">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="ID" msdata:ReadOnly="true" msdata:AutoIncrement="true" msprop:Generator_UserColumnName="ID" msprop:Generator_ColumnPropNameInRow="ID" msprop:Generator_ColumnVarNameInTable="columnID" msprop:Generator_ColumnPropNameInTable="IDColumn" type="xs:long" />
+              <xs:element name="AssignedUPDS" msprop:Generator_UserColumnName="AssignedUPDS" msprop:Generator_ColumnPropNameInRow="AssignedUPDS" msprop:Generator_ColumnVarNameInTable="columnAssignedUPDS" msprop:Generator_ColumnPropNameInTable="AssignedUPDSColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="100" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="SubmissionTime" msprop:Generator_UserColumnName="SubmissionTime" msprop:Generator_ColumnPropNameInRow="SubmissionTime" msprop:Generator_ColumnVarNameInTable="columnSubmissionTime" msprop:Generator_ColumnPropNameInTable="SubmissionTimeColumn" type="xs:dateTime" />
+              <xs:element name="ScheduleTime" msprop:Generator_UserColumnName="ScheduleTime" msprop:Generator_ColumnPropNameInRow="ScheduleTime" msprop:Generator_ColumnVarNameInTable="columnScheduleTime" msprop:Generator_ColumnPropNameInTable="ScheduleTimeColumn" type="xs:dateTime" />
+              <xs:element name="CompletionTime" msprop:Generator_UserColumnName="CompletionTime" msprop:Generator_ColumnPropNameInRow="CompletionTime" msprop:Generator_ColumnVarNameInTable="columnCompletionTime" msprop:Generator_ColumnPropNameInTable="CompletionTimeColumn" type="xs:dateTime" minOccurs="0" />
+              <xs:element name="StatusID" msprop:Generator_UserColumnName="StatusID" msprop:Generator_ColumnPropNameInRow="StatusID" msprop:Generator_ColumnVarNameInTable="columnStatusID" msprop:Generator_ColumnPropNameInTable="StatusIDColumn" type="xs:short" />
+              <xs:element name="PlatformBuildID" msprop:Generator_UserColumnName="PlatformBuildID" msprop:Generator_ColumnPropNameInRow="PlatformBuildID" msprop:Generator_ColumnVarNameInTable="columnPlatformBuildID" msprop:Generator_ColumnPropNameInTable="PlatformBuildIDColumn" type="xs:long" />
+              <xs:element name="Progress" msprop:Generator_UserColumnName="Progress" msprop:Generator_ColumnPropNameInRow="Progress" msprop:Generator_ColumnVarNameInTable="columnProgress" msprop:Generator_ColumnPropNameInTable="ProgressColumn" type="xs:short" />
+              <xs:element name="ClientMachineName" msprop:Generator_UserColumnName="ClientMachineName" msprop:Generator_ColumnPropNameInRow="ClientMachineName" msprop:Generator_ColumnVarNameInTable="columnClientMachineName" msprop:Generator_ColumnPropNameInTable="ClientMachineNameColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="50" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="Project" msprop:Generator_UserColumnName="Project" msprop:Generator_ColumnPropNameInRow="Project" msprop:Generator_ColumnVarNameInTable="columnProject" msprop:Generator_ColumnPropNameInTable="ProjectColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="255" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="Status" msprop:Generator_UserColumnName="Status" msprop:Generator_ColumnPropNameInRow="Status" msprop:Generator_ColumnVarNameInTable="columnStatus" msprop:Generator_ColumnPropNameInTable="StatusColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="15" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="Priority" msprop:Generator_UserColumnName="Priority" msprop:Generator_ColumnPropNameInRow="Priority" msprop:Generator_ColumnVarNameInTable="columnPriority" msprop:Generator_ColumnPropNameInTable="PriorityColumn" type="xs:short" />
+              <xs:element name="RunAfterProp" msprop:Generator_UserColumnName="RunAfterProp" msprop:Generator_ColumnPropNameInRow="RunAfterProp" msprop:Generator_ColumnVarNameInTable="columnRunAfterProp" msprop:Generator_ColumnPropNameInTable="RunAfterPropColumn" type="xs:boolean" />
+              <xs:element name="CommandLine" msprop:Generator_UserColumnName="CommandLine" msprop:Generator_ColumnPropNameInRow="CommandLine" msprop:Generator_ColumnVarNameInTable="columnCommandLine" msprop:Generator_ColumnPropNameInTable="CommandLineColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="1024" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="BuildConfig" msprop:Generator_UserColumnName="BuildConfig" msprop:Generator_ColumnPropNameInRow="BuildConfig" msprop:Generator_ColumnVarNameInTable="columnBuildConfig" msprop:Generator_ColumnPropNameInTable="BuildConfigColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="32" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="Recurring" msprop:Generator_UserColumnName="Recurring" msprop:Generator_ColumnPropNameInRow="Recurring" msprop:Generator_ColumnVarNameInTable="columnRecurring" msprop:Generator_ColumnPropNameInTable="RecurringColumn" type="xs:boolean" />
+              <xs:element name="Reboot" msprop:Generator_UserColumnName="Reboot" msprop:Generator_ColumnPropNameInRow="Reboot" msprop:Generator_ColumnVarNameInTable="columnReboot" msprop:Generator_ColumnPropNameInTable="RebootColumn" type="xs:boolean" />
+              <xs:element name="Title" msprop:Generator_UserColumnName="Title" msprop:Generator_ColumnVarNameInTable="columnTitle" msprop:Generator_ColumnPropNameInRow="Title" msprop:Generator_ColumnPropNameInTable="TitleColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="40" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="FriendlyName" msprop:Generator_UserColumnName="FriendlyName" msprop:Generator_ColumnVarNameInTable="columnFriendlyName" msprop:Generator_ColumnPropNameInRow="FriendlyName" msprop:Generator_ColumnPropNameInTable="FriendlyNameColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="32" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="Path" msprop:Generator_UserColumnName="Path" msprop:Generator_ColumnVarNameInTable="columnPath" msprop:Generator_ColumnPropNameInRow="Path" msprop:Generator_ColumnPropNameInTable="PathColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="1024" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="ClientMachineID" msprop:Generator_UserColumnName="ClientMachineID" msprop:Generator_ColumnPropNameInRow="ClientMachineID" msprop:Generator_ColumnVarNameInTable="columnClientMachineID" msprop:Generator_ColumnPropNameInTable="ClientMachineIDColumn" type="xs:int" />
+              <xs:element name="Error" msprop:Generator_UserColumnName="Error" msprop:Generator_ColumnPropNameInRow="Error" msprop:Generator_ColumnVarNameInTable="columnError" msprop:Generator_ColumnPropNameInTable="ErrorColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="1024" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="TaskerUserNameID" msprop:Generator_UserColumnName="TaskerUserNameID" msprop:Generator_ColumnVarNameInTable="columnTaskerUserNameID" msprop:Generator_ColumnPropNameInRow="TaskerUserNameID" msprop:Generator_ColumnPropNameInTable="TaskerUserNameIDColumn" type="xs:int" />
+              <xs:element name="TaskeeUserNameID" msprop:Generator_UserColumnName="TaskeeUserNameID" msprop:Generator_ColumnVarNameInTable="columnTaskeeUserNameID" msprop:Generator_ColumnPropNameInRow="TaskeeUserNameID" msprop:Generator_ColumnPropNameInTable="TaskeeUserNameIDColumn" type="xs:int" />
+              <xs:element name="TargetPlatform" msprop:Generator_UserColumnName="TargetPlatform" msprop:Generator_ColumnPropNameInRow="TargetPlatform" msprop:Generator_ColumnVarNameInTable="columnTargetPlatform" msprop:Generator_ColumnPropNameInTable="TargetPlatformColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="16" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="Email" msprop:Generator_UserColumnName="Email" msprop:Generator_ColumnPropNameInRow="Email" msprop:Generator_ColumnVarNameInTable="columnEmail" msprop:Generator_ColumnPropNameInTable="EmailColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="64" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:complexType>
+    <xs:unique name="Constraint1" msdata:PrimaryKey="true">
+      <xs:selector xpath=".//mstns:Tasks" />
+      <xs:field xpath="mstns:ID" />
+    </xs:unique>
+  </xs:element>
+</xs:schema>

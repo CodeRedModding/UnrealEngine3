@@ -1,0 +1,10 @@
+UNIFORM( mat4, Transform );
+ATTRIBUTE( vec4, Position, POSITION );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// E Position3d
+
+  gl_Position = MulMatrix(Position, Transform);
+
+}
+

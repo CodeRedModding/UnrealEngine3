@@ -1,0 +1,572 @@
+﻿<Border
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:UnrealEd="clr-namespace:UnrealEd;assembly=UnrealEdCSharp"
+    xmlns:CustomControls="clr-namespace:CustomControls;assembly=UnrealEdCSharp"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d"
+	x:Name="MainBorder"
+	Height="Auto"
+	Background="{DynamicResource Slate_Panel_Background}"
+	BorderBrush="{DynamicResource Slate_Panel_Shadow}"
+	BorderThickness="2,2,2,2"
+	>
+
+	<Border.Resources>
+	
+		<Style x:Key="NewButtonStyle" TargetType="{x:Type Button}" >
+			<Setter Property="Foreground" Value="{DynamicResource Slate_Control_Foreground}" />
+			<Setter Property="Background" Value="{DynamicResource Slate_Panel_Background}" />
+			<Setter Property="BorderBrush" Value="#FF000000"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="{x:Type ButtonBase}">
+						<ControlTemplate.Resources>
+							<Storyboard x:Key="OnMouseEnter1">
+								<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverCue" Storyboard.TargetProperty="(UIElement.Opacity)">
+									<SplineDoubleKeyFrame KeyTime="00:00:00.1000000" Value="1"/>
+								</DoubleAnimationUsingKeyFrames>
+							</Storyboard>
+							<Storyboard x:Key="OnMouseLeave1">
+								<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverCue" Storyboard.TargetProperty="(UIElement.Opacity)">
+									<SplineDoubleKeyFrame KeyTime="00:00:00.1000000" Value="0.0"/>
+								</DoubleAnimationUsingKeyFrames>
+							</Storyboard>
+						</ControlTemplate.Resources>
+						<Grid>
+							<CustomControls:SlateBorder x:Name="slateBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1,1,1,1" BorderStyle="Raised" >
+								<ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" Content="{TemplateBinding Content}" ContentStringFormat="{TemplateBinding ContentStringFormat}" ContentTemplate="{TemplateBinding ContentTemplate}" RecognizesAccessKey="True"/>
+							</CustomControls:SlateBorder>
+							<Rectangle x:Name="HoverCue" Stroke="#FF000000" Opacity="0">
+								<Rectangle.Fill>
+									<LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+										<GradientStop Color="#64000000" Offset="0"/>
+										<GradientStop Color="#64FFFFFF" Offset="0.901"/>
+										<GradientStop Color="#64000000" Offset="1"/>
+									</LinearGradientBrush>
+								</Rectangle.Fill>
+							</Rectangle>
+						</Grid>
+						<ControlTemplate.Triggers>
+							<EventTrigger RoutedEvent="Mouse.MouseLeave">
+								<BeginStoryboard x:Name="OnMouseLeave1_BeginStoryboard" Storyboard="{StaticResource OnMouseLeave1}"/>
+							</EventTrigger>
+							<Trigger Property="IsEnabled" Value="False">
+								<Setter Property="Foreground" Value="#FF626262"/>
+                                <Setter Property="Opacity" Value="0.60"/>
+							</Trigger>
+							<EventTrigger RoutedEvent="Mouse.MouseEnter">
+								<BeginStoryboard Storyboard="{StaticResource OnMouseEnter1}"/>
+							</EventTrigger>
+
+							<Trigger Property="IsKeyboardFocused" Value="True">
+			<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedFocused"/> -->
+							</Trigger>
+							<Trigger Property="Button.IsDefaulted" Value="True">
+			<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedFocused"/> -->
+							</Trigger>
+							<Trigger Property="IsPressed" Value="True">
+								<Setter Property="BorderStyle" TargetName="slateBorder" Value="ButtonPressed"/>
+			<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedPressed"/> -->
+							</Trigger>
+							<Trigger Property="ToggleButton.IsChecked" Value="True">
+			<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedPressed"/> -->
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+
+
+		<ControlTemplate x:Key="SwappyButton" TargetType="{x:Type ButtonBase}">
+			<ControlTemplate.Resources>
+				<Storyboard x:Key="OnMouseEnter1">
+					<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="path" Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)">
+						<SplineColorKeyFrame KeyTime="00:00:00.1000000" Value="#FFFFFFFF"/>
+					</ColorAnimationUsingKeyFrames>
+				</Storyboard>
+				<Storyboard x:Key="OnMouseLeave1">
+					<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="path" Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)">
+						<SplineColorKeyFrame KeyTime="00:00:00.1000000" Value="#FFB6B6B6"/>
+					</ColorAnimationUsingKeyFrames>
+				</Storyboard>
+			</ControlTemplate.Resources>
+			<Grid>
+				<CustomControls:SlateBorder x:Name="ContentContainer" SnapsToDevicePixels="True" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderStyle="Button">
+					<Path x:Name="path" Fill="#FFB6B6B6" Stretch="Fill" Stroke="#FF000000" VerticalAlignment="Stretch" Data="M3.6708304,0.76682552 L6.0946088,0.76653786 6.0946088,3.3557344 5.2866826,2.4928743 C5.2866826,2.4928743 3.2607647,3.36478 3.2607647,3.9980173 3.2607647,4.6337383 5.2866826,5.0819476 5.2866826,5.0816699 L6.0946088,4.2186504 6.0946088,6.8077089 3.6708292,6.8074213 4.4787557,5.9446894 C4.4787565,5.944972 1.7708882,4.9132305 1.7771497,3.9896823 1.7834112,3.0661342 4.4787565,1.6298499 4.4787565,1.6298499 z" StrokeThickness="0.25" RenderTransformOrigin="0.5,0.5">
+						<Path.RenderTransform>
+							<TransformGroup>
+								<ScaleTransform ScaleX="-1" ScaleY="1"/>
+								<SkewTransform AngleX="0" AngleY="0"/>
+								<RotateTransform Angle="0"/>
+								<TranslateTransform X="0" Y="0"/>
+							</TransformGroup>
+						</Path.RenderTransform>
+					</Path>
+				</CustomControls:SlateBorder>
+			</Grid>
+			<ControlTemplate.Triggers>
+				<Trigger Property="IsKeyboardFocused" Value="True">
+<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedFocused"/> -->
+				</Trigger>
+				<Trigger Property="Button.IsDefaulted" Value="True">
+<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedFocused"/> -->
+				</Trigger>
+				<Trigger Property="IsPressed" Value="True">
+					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="ButtonPressed"/>
+				</Trigger>
+				<EventTrigger RoutedEvent="Mouse.MouseEnter">
+					<BeginStoryboard Storyboard="{StaticResource OnMouseEnter1}"/>
+				</EventTrigger>
+				<EventTrigger RoutedEvent="Mouse.MouseLeave">
+					<BeginStoryboard x:Name="OnMouseLeave1_BeginStoryboard" Storyboard="{StaticResource OnMouseLeave1}"/>
+				</EventTrigger>
+				<Trigger Property="ToggleButton.IsChecked" Value="True">
+<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedPressed"/> -->
+				</Trigger>
+				<Trigger Property="IsEnabled" Value="False">
+<!--					<Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/> -->
+				</Trigger>
+			</ControlTemplate.Triggers>
+		</ControlTemplate>
+		
+		<Style x:Key="ColorPreviewButtonStyle" TargetType="{x:Type Button}" >
+			<Setter Property="Foreground" Value="{DynamicResource Slate_Control_Foreground}" />
+			<Setter Property="Background" Value="{DynamicResource Slate_Panel_Background}" />
+			<Setter Property="BorderBrush" Value="#FF000000"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="{x:Type ButtonBase}">
+						<Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1,1,1,1">
+							<ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" Content="{TemplateBinding Content}" ContentStringFormat="{TemplateBinding ContentStringFormat}" ContentTemplate="{TemplateBinding ContentTemplate}" RecognizesAccessKey="True"/>
+						</Border>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+		
+		<Storyboard x:Key="FadeInTitle">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="TitleHighlightRect" Storyboard.TargetProperty="(UIElement.Opacity)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.2000000" Value="1"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+
+		<Storyboard x:Key="FadeOutTitle">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="TitleHighlightRect" Storyboard.TargetProperty="(UIElement.Opacity)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.3000000" Value="0"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Key="FadeInBorderHoverCue">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverCueBorder" Storyboard.TargetProperty="(UIElement.Opacity)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.0500000" Value="1"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Key="FadeOutBorderHoverCue">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverCueBorder" Storyboard.TargetProperty="(UIElement.Opacity)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.1000000" Value="0"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<DrawingBrush x:Key="CheckboardTileBrush" TileMode="Tile" Stretch="None" Viewport="0,0,0.5,0.25">
+			<DrawingBrush.Drawing>
+				<DrawingGroup>
+					<GeometryDrawing Brush="#7F7F7F">
+						<GeometryDrawing.Geometry>
+							<RectangleGeometry Rect="0,0,20,20"/>
+						</GeometryDrawing.Geometry>
+					</GeometryDrawing>
+					<GeometryDrawing Brush="#afafaf">
+						<GeometryDrawing.Geometry>
+							<RectangleGeometry Rect="0,0,10,10"/>
+						</GeometryDrawing.Geometry>
+					</GeometryDrawing>
+					<GeometryDrawing Brush="#afafaf">
+						<GeometryDrawing.Geometry>
+							<RectangleGeometry Rect="10,10,10,10"/>
+						</GeometryDrawing.Geometry>
+					</GeometryDrawing>
+				</DrawingGroup>
+			</DrawingBrush.Drawing>
+		</DrawingBrush>
+
+		<!-- Template used to define the layout of individual texture elements inside the paint target combobox  -->
+		<DataTemplate x:Key="TextureInfoTemplate">
+			<DockPanel>
+				<Grid Width="210">
+					<Grid.RowDefinitions>
+						<RowDefinition />
+						<RowDefinition />
+					</Grid.RowDefinitions>
+					<TextBlock FontSize="10" FontWeight="Bold" Text="{Binding Path=TargetName}"  Margin="0,0,0,0" Grid.Row="0"/>
+					<StackPanel VerticalAlignment="Center" Grid.Row="1" >
+						<TextBlock FontSize="9" Text="{Binding Path=TargetPathName}" Margin="6,0,0,0" />
+						<TextBlock FontSize="10" Text="{Binding Path=DimensionAndFormat}" Margin="6,0,0,0" />
+						<TextBlock FontSize="10" Text="{Binding Path=KiloByteSize}" Margin="6,0,0,3" />
+						<TextBlock FontSize="10" Text="{Binding Path=UndoCount}" Margin="6,0,0,3" />
+					</StackPanel>
+					<Rectangle RadiusX="0" RadiusY="0" HorizontalAlignment="Right" Width="64" Height="64" Margin="0,3,0,3" Grid.Row="1">
+						<Rectangle.Fill>
+							<ImageBrush ImageSource="{Binding Path=Bitmap}"/>
+						</Rectangle.Fill>
+					</Rectangle>
+				</Grid>
+			</DockPanel>
+		</DataTemplate>
+		
+		<!-- @todo MeshPaint: These styles share common traits.  Break those out to a common area once we are done prototyping the UI -->
+		<Style x:Key="UVContainerStyle" TargetType="{x:Type ComboBoxItem}">
+			<Style.Resources>
+				<SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#ff724d0f"/>
+			</Style.Resources>
+			<Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisualStyle}" />
+			<Setter Property="BorderThickness" Value="0,0,0,2" />
+			<Setter Property="BorderBrush" Value="{DynamicResource Slate_ListItem_Separator}" />
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="Padding" Value="6,0,6,0" />
+			<Setter Property="VerticalContentAlignment" Value="Center" />
+		</Style>
+
+		<!-- Texture paint specific settings, visible in texture paint mode only  -->
+		<Style x:Key="TextureListItem" TargetType="{x:Type ComboBoxItem}">
+			<Style.Resources>
+				<!--<SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#ff724d0f"/>-->
+				<SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#ff724d0f"/>
+			</Style.Resources>
+			<Setter Property="IsSelected" Value="{Binding Path=IsSelected, Mode=TwoWay}"/>
+			<Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisualStyle}" />
+			<Setter Property="BorderThickness" Value="0,0,0,2" />
+			<Setter Property="BorderBrush" Value="{DynamicResource Slate_ListItem_Separator}" />
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="Padding" Value="5,0,18,0" />
+			<Setter Property="VerticalContentAlignment" Value="Center" />
+
+		</Style>
+
+		<BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/MeshPaint_SyncCB.png" x:Key="SyncContentBrowserImage"/>
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/MeshPaint_SaveTexture.png" x:Key="SavePackageImage"/>
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/MeshPaint_CommitChanges.png" x:Key="CommitTextureChangesImage"/>
+		
+
+	</Border.Resources>
+	
+	
+	<Border.Triggers>
+	
+		<EventTrigger RoutedEvent="Mouse.MouseEnter">
+			<BeginStoryboard x:Name="FadeInBorderHoverCue_BeginStoryboard" Storyboard="{StaticResource FadeInBorderHoverCue}"/>
+		</EventTrigger>
+		<EventTrigger RoutedEvent="Mouse.MouseLeave">
+			<BeginStoryboard x:Name="FadeOutBorderHoverCue_BeginStoryboard" Storyboard="{StaticResource FadeOutBorderHoverCue}"/>
+		</EventTrigger>
+		
+	</Border.Triggers>
+
+	
+	<Grid>
+
+		<StackPanel x:Name="TitleSeparatorStack">
+			<Grid x:Name="MainContentGrid">
+				<CustomControls:SlateBorder Background="{DynamicResource Slate_List_Background}" Margin="4,4,4,4">
+					<StackPanel Margin="6,6,6,6">
+						<DockPanel Height="24" x:Name="ToolSelectionDockPanel">
+							<TextBlock Text="{DynamicResource MeshPaintWindow_ResourceType}" x:Name="ResourceTypeLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+							<StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+								<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_ResourceType_VertexColors}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ResourceTypeRadio_VertexColors" GroupName="ResourceType" VerticalAlignment="Center" Margin="0,0,8,0"/>
+								<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_ResourceType_Texture}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ResourceTypeRadio_Texture" GroupName="ResourceType" VerticalAlignment="Center"/>
+							</StackPanel>
+						</DockPanel>
+						<Separator Margin="3"/>
+						<Grid x:Name="VertexPaintGrid" Visibility="{Binding Path=IsChecked, ElementName=ResourceTypeRadio_VertexColors, Converter={StaticResource BoolToVis}}">
+							<StackPanel>
+								<DockPanel Height="24">
+									<TextBlock Text="{DynamicResource MeshPaintWindow_PaintTarget}" x:Name="VertexPaintTargetLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+									<StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+										<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_PaintTarget_ComponentInstance}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="VertexPaintTargetRadio_ComponentInstance" GroupName="VertexPaintTarget" VerticalAlignment="Center" Margin="0,0,8,0"/>
+										<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_PaintTarget_Mesh}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="VertexPaintTargetRadio_Mesh" GroupName="VertexPaintTarget" VerticalAlignment="Center"/>
+									</StackPanel>
+								</DockPanel>
+								<DockPanel Height="24">
+									<TextBlock Text="{DynamicResource MeshPaintWindow_InstanceVertexColors}" x:Name="InstanceVertexColorsLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+									<StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+										<TextBlock Text="???" x:Name="InstanceVertexColorsText" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+									</StackPanel>
+								</DockPanel>
+								<DockPanel Height="24">
+									<StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+										<Button x:Name="CopyInstanceVertexColorsButton" Content="{DynamicResource MeshPaintWindow_CopyInstanceVertexColors}" Margin="6,0,0,0" Height="20" Style="{DynamicResource NewButtonStyle}"/>
+										<Button x:Name="PasteInstanceVertexColorsButton" Content="{DynamicResource MeshPaintWindow_PasteInstanceVertexColors}" ToolTip="{DynamicResource MeshPaintWindow_FixupInstanceVertexColors_ToolTip}" Margin="6,0,0,0" Height="20" Style="{DynamicResource NewButtonStyle}"/>
+										<Button x:Name="RemoveInstanceVertexColorsButton" Content="{DynamicResource MeshPaintWindow_RemoveInstanceVertexColors}" Margin="6,0,0,0" Height="20" Style="{DynamicResource NewButtonStyle}"/>
+										<Button x:Name="FixupInstanceVertexColorsButton" Content="{DynamicResource MeshPaintWindow_FixupInstanceVertexColors}" ToolTip="{DynamicResource MeshPaintWindow_FixupInstanceVertexColors_ToolTip}" Margin="6,0,0,0" Height="20" Style="{DynamicResource NewButtonStyle}"/>
+									</StackPanel>
+								</DockPanel>
+							</StackPanel>
+						</Grid>
+						<Grid x:Name="TexturePaintGrid" Visibility="{Binding Path=IsChecked, ElementName=ResourceTypeRadio_Texture, Converter={StaticResource BoolToVis}}">
+							<StackPanel>
+								<DockPanel Height="24">
+									<TextBlock Text="{DynamicResource MeshPaintWindow_CreateNewTexture}" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+									<StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+										<Button x:Name="CreateNewTextureButton" Content="{DynamicResource MeshPaintWindow_CreateNewTexture}" ToolTip="{DynamicResource MeshPaintWindow_CreateNewTexture_ToolTip}" Height="20" Style="{DynamicResource NewButtonStyle}"/>
+										<Button x:Name="DuplicateInstanceMaterialAndTextureButton" Content="{DynamicResource MeshPaintWindow_DuplicateInstanceMaterialAndTexture}" ToolTip="{DynamicResource MeshPaintWindow_DuplicateInstanceMaterialAndTexture_ToolTip}" Height="20" Style="{DynamicResource NewButtonStyle}"/>
+									</StackPanel>
+								</DockPanel>
+								<DockPanel Height="24">
+									<TextBlock Text="{DynamicResource MeshPaintWindow_UVChannel}" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,2,0" VerticalAlignment="Center" x:Name="UVChannelLabel"/>
+									<StackPanel>
+										<!-- This is a dummy combobox. It is shown in place of the actual UV combobox when the user DOES NOT have an object selected with a valid paintable texture. -->
+										<ComboBox  x:Name="UVChannelComboNoSelection" Visibility="Collapsed" IsEnabled="False" SelectedIndex="0" HorizontalAlignment="Right" Width="45" Height="20" ItemContainerStyle="{StaticResource UVContainerStyle}">
+								    			<ComboBoxItem Content="---"/>
+										</ComboBox>
+
+										<!-- This is the actual combobox that gets populated with valid UV entries.  It is shown whenever the user has an object selected with a paintable texture. -->
+										<ComboBox x:Name="UVChannelCombo" IsSynchronizedWithCurrentItem="True" HorizontalAlignment="Right" Width="45" Height="20" ItemContainerStyle="{StaticResource UVContainerStyle}" />
+									</StackPanel>
+								</DockPanel>
+							</StackPanel>
+						</Grid>
+						<Separator Margin="3"/>
+						<Grid x:Name="UndoBufferWarningGrid" Visibility="{Binding Path=IsChecked, ElementName=ResourceTypeRadio_Texture, Converter={StaticResource BoolToVis}}" ToolTip="{DynamicResource MeshPaintWindow_TransactionBufferSizeBreech_Info}">
+							<DockPanel Height ="16" Visibility="{Binding Path=IsChecked, ElementName=ResourceTypeRadio_Texture, Converter={StaticResource BoolToVis}}" VerticalAlignment="Center">
+								<Border BorderBrush="Red" BorderThickness="2,2,2,2">
+									<TextBlock Text="{DynamicResource MeshPaintWindow_TransactionBufferSizeBreech}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" FontWeight="Bold" Foreground="White"/>
+								</Border>
+							</DockPanel>
+						</Grid>
+						<Grid x:Name="PaintModeGrid"  Visibility="{Binding Path=IsChecked, ElementName=ResourceTypeRadio_VertexColors, Converter={StaticResource BoolToVis}}">
+							<DockPanel Height="24">
+								<TextBlock Text="{DynamicResource MeshPaintWindow_PaintMode}" x:Name="PaintModeLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+								<StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+									<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_PaintMode_Colors}" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,8,0" x:Name="PaintModeRadio_Colors" GroupName="PaintMode" VerticalAlignment="Center"/>
+									<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_PaintMode_Weights}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="PaintModeRadio_Weights" GroupName="PaintMode" VerticalAlignment="Center"/>
+								</StackPanel>
+							</DockPanel>
+						</Grid>
+						
+						<!-- Texture paint specific settings, visible in texture paint mode only  -->
+						<Grid x:Name="TexturePaintSettingsGrid" Visibility="{Binding Path=IsChecked, ElementName=ResourceTypeRadio_Texture, Converter={StaticResource BoolToVis}}">
+							<StackPanel>
+								<!-- The selection lock feature is currently not accessable from the UI. -->
+								<DockPanel Height="24" Margin="0,0,0,5" Visibility="Collapsed">
+									<TextBlock Text="{DynamicResource MeshPaintWindow_SelectionLock_Label}" x:Name="ActorSelectionLockLabel" ToolTip="{DynamicResource MeshPaintWindow_SelectionLock_ToolTip}" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center" />
+									<CheckBox x:Name="ActorSelectionLockCheckBox" IsChecked="{Binding Path=IsSelectionLocked}" ToolTip="{DynamicResource MeshPaintWindow_SelectionLock_ToolTip}" Foreground="{DynamicResource Slate_Control_Foreground}" HorizontalAlignment="Right" Style="{DynamicResource OnOffCheckbox}" Margin="0,0,-2,0"/>
+								</DockPanel>
+								<DockPanel>
+									<TextBlock Text="{DynamicResource MeshPaintWindow_PaintTextureTargetList_Label}" ToolTip="{DynamicResource MeshPaintWindow_PaintTextureTargetList_ToolTip}" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+									<Button Margin="3,1,0,3" x:Name="SaveTextureButton" ToolTip="{DynamicResource MeshPaintWindow_SaveTexture_ToolTip}" VerticalAlignment="Top" HorizontalAlignment="Right" DockPanel.Dock="Right" Width="18" Height="18">
+										<Image Source="{StaticResource SavePackageImage}" Width="12" Height="12"/>
+									</Button>
+									<Button Margin="3,1,0,3" x:Name="CommitTextureChangesButton" ToolTip="{DynamicResource MeshPaintWindow_CommitTextureChanges_ToolTip}" VerticalAlignment="Top" HorizontalAlignment="Right" DockPanel.Dock="Right" Width="18" Height="18">
+										<Image Source="{StaticResource CommitTextureChangesImage}" Width="12" Height="12"/>
+									</Button>
+									<Button Margin="3,1,0,3" x:Name="FindTextureInContentBrowserButton" ToolTip="{DynamicResource MeshPaintWindow_FindInContentBrowser_ToolTip}" VerticalAlignment="Top" HorizontalAlignment="Right" DockPanel.Dock="Right" Width="18" Height="18">
+										<Image Source="{StaticResource SyncContentBrowserImage}" Width="12" Height="12"/>
+									</Button>
+								</DockPanel>
+                                
+								<!--This is a dummy combo box that will be displayed when the user does not have an object with valid paint textures selected -->
+								<ComboBox  x:Name="PaintTextureTargetListNoSelection" SelectedIndex="0" Visibility="Collapsed" IsEnabled="False"  HorizontalAlignment="Right" Width="235"  Height="89">
+									<ComboBoxItem Content="{DynamicResource MeshPaintWindow_NoTextureSelection}">
+										<!-- Ideally we would make the message look a bit nicer by using this below. Unfortunatly, if we try it doesn't work when the wpf window is closed/opened.  It just stays blank. -->
+										<!--<TextBlock FontSize="16" Text="Select an object with 2D textures." TextWrapping="Wrap" Width="200" Margin="6,0,0,0" />-->
+									</ComboBoxItem>
+								</ComboBox>
+
+								<!-- This is the combobox that will be visible and populated with paint textures when the user selects an object -->
+								<ComboBox x:Name="PaintTextureTargetList" ItemsSource="{Binding Path=TexturePaintTargetProperty}" ItemTemplate="{StaticResource TextureInfoTemplate}" ItemContainerStyle="{StaticResource TextureListItem}" ToolTip="{DynamicResource MeshPaintWindow_PaintTextureTargetList_ToolTip}" />
+							</StackPanel>
+						</Grid>
+						<Separator Margin="3"/>
+						<DockPanel/>
+						
+						<Grid x:Name="PaintColorsGrid">
+							<StackPanel d:LayoutOverrides="Height">
+								<DockPanel x:Name="ColorToolPanel" LastChildFill="False" Height="24" Visibility="{Binding Path=IsChecked, ElementName=ResourceTypeRadio_VertexColors, Converter={StaticResource BoolToVis}}">
+									<Button x:Name="FillInstanceVertexColorsButton" ToolTip="{DynamicResource MeshPaintWindow_FillInstanceVertexColors_ToolTip}" Margin="0" Height="20" Style="{DynamicResource NewButtonStyle}" d:LayoutOverrides="Height">
+										<Image Source="{DynamicResource meshPaint_PaintBucket}" Width="18" Height="18" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+									</Button>
+									<Button x:Name="PushInstanceVertexColorsToMeshButton" ToolTip="{DynamicResource MeshPaintWindow_PushInstanceVertexColorsToMesh_ToolTip}" Margin="6,0,0,0" Height="20" Style="{DynamicResource NewButtonStyle}" d:LayoutOverrides="Height">
+										<Image Source="{DynamicResource meshPaint_PushToParent}" Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+									</Button>
+									<Button x:Name="ImportVertexColorsFromTGAButton" ToolTip="{DynamicResource MeshPaintWindow_ImportVertexColorsFromTGA_ToolTip}" Margin="6,0,0,0" Height="20" Style="{DynamicResource NewButtonStyle}" d:LayoutOverrides="Height">
+										<Image Source="{DynamicResource imgFolderOpen}" Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+									</Button>
+
+									<Button x:Name="SaveVertexPaintPackageButton" ToolTip="{DynamicResource MeshPaintWindow_SaveVertexPaintPackage_ToolTip}" Margin="6,0,0,0" Style="{DynamicResource NewButtonStyle}" HorizontalAlignment="Right" DockPanel.Dock="Right" Width="20" Height="20">
+										<Image Source="{StaticResource SavePackageImage}" Width="12" Height="12"/>
+									</Button>
+									<Button x:Name="FindVertexPaintMeshInContentBrowserButton" ToolTip="{DynamicResource MeshPaintWindow_FindVertexPaintMeshInCB_ToolTip}" Margin="6,0,0,0" Style="{DynamicResource NewButtonStyle}" HorizontalAlignment="Right" DockPanel.Dock="Right" Width="20" Height="20">
+										<Image Source="{StaticResource SyncContentBrowserImage}" Width="12" Height="12"/>
+									</Button>
+
+									</DockPanel>
+								<DockPanel x:Name="PaintColorsPanel" VerticalAlignment="Top" d:LayoutOverrides="Width, HorizontalMargin">
+									<DockPanel DockPanel.Dock="Top">
+										<RadioButton x:Name="PaintColorButton" GroupName="Color" IsChecked="True" Margin="0">
+											<DockPanel LastChildFill="False">
+												<TextBlock x:Name="PaintColorLabel" Text="{DynamicResource MeshPaintWindow_PaintColor}" Foreground="{DynamicResource Slate_Control_Foreground}" TextAlignment="Right" HorizontalAlignment="Left" Margin="2" VerticalAlignment="Center" d:LayoutOverrides="Height"/>
+												<Grid Width="20" Height="20" VerticalAlignment="Top" Margin="2">
+													<Grid.RowDefinitions>
+														<RowDefinition  Height="20"/>
+													</Grid.RowDefinitions>
+													<Grid.ColumnDefinitions>
+														<ColumnDefinition Width="10"/>
+														<ColumnDefinition Width="10"/>
+													</Grid.ColumnDefinitions>
+													<Rectangle x:Name="CheckerboardBackground_Paint" Grid.ColumnSpan="1" Fill="{DynamicResource CheckboardTileBrush}" Margin="0,0,0,0"/>
+													<Rectangle x:Name="CheckerboardBackgroundDupe_Paint" Grid.ColumnSpan="1" Grid.Column="1" Fill="{DynamicResource CheckboardTileBrush}" Margin="0,0,0,0"/>
+													<Rectangle x:Name="PaintColorRect" Grid.Row="1" Grid.Column="1"/>
+													<Rectangle x:Name="PaintColorRectNoAlpha" Grid.Row="1"/>
+												</Grid>
+											</DockPanel>
+										</RadioButton>
+										<RadioButton x:Name="EraseColorButton" DockPanel.Dock="Right" GroupName="Color">
+											<DockPanel LastChildFill="False">
+												<TextBlock x:Name="EraseColorLabel" Text="{DynamicResource MeshPaintWindow_EraseColor}" Foreground="{DynamicResource Slate_Control_Foreground}" TextAlignment="Right" HorizontalAlignment="Left" Margin="2" VerticalAlignment="Center" d:LayoutOverrides="Height"/>
+												<Grid Width="20" Height="20" VerticalAlignment="Top" Margin="2">
+													<Grid.RowDefinitions>
+														<RowDefinition  Height="20"/>
+													</Grid.RowDefinitions>
+													<Grid.ColumnDefinitions>
+														<ColumnDefinition Width="10"/>
+														<ColumnDefinition Width="10"/>
+													</Grid.ColumnDefinitions>
+													<Rectangle x:Name="CheckerboardBackground_Erase" Grid.ColumnSpan="1" Fill="{DynamicResource CheckboardTileBrush}" Margin="0,0,0,0"/>
+													<Rectangle x:Name="CheckerboardBackgroundDupe_Erase" Grid.ColumnSpan="1" Grid.Column="1" Fill="{DynamicResource CheckboardTileBrush}" Margin="0,0,0,0"/>
+													<Rectangle x:Name="EraseColorRect" Grid.Row="1" Grid.Column="1"/>
+													<Rectangle x:Name="EraseColorRectNoAlpha" Grid.Row="1"/>
+												</Grid>
+											</DockPanel>
+										</RadioButton>
+										<Button x:Name="SwapPaintAndEraseColorButton" Width="13" Height="20" Panel.ZIndex="5" Template="{DynamicResource SwappyButton}" Margin="0" RenderTransformOrigin="0.346,-0.325" HorizontalAlignment="Center">
+											<Button.RenderTransform>
+												<TransformGroup>
+													<ScaleTransform/>
+													<SkewTransform/>
+													<RotateTransform Angle="90"/>
+													<TranslateTransform X="18.502" Y="14.498"/>
+												</TransformGroup>
+											</Button.RenderTransform>
+											<DockPanel Width="1" Height="11" LastChildFill="False"/>
+										</Button>
+									</DockPanel>
+									<Grid DockPanel.Dock="Bottom" Margin="0">
+										<Border x:Name="PaintColorBorder" BorderThickness="1" d:LayoutOverrides="Height" DockPanel.Dock="Top" Margin="-5,0,-6,0"/>
+										<Border x:Name="EraseColorBorder" BorderThickness="1" d:LayoutOverrides="Height" DockPanel.Dock="Top" Margin="-5,0,-6,0"/>
+									</Grid>
+								</DockPanel>
+								<DockPanel Height="24">
+									<TextBlock Text="{DynamicResource MeshPaintWindow_ColorChannels}" x:Name="ColorChannelsLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+									<StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+										<TextBlock Text="{DynamicResource MeshPaintWindow_WriteRed}" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,2,0" VerticalAlignment="Center"/>
+										<CheckBox x:Name="WriteRedCheckBox"/>
+										<TextBlock Text="{DynamicResource MeshPaintWindow_WriteGreen}" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="6,0,2,0" VerticalAlignment="Center"/>
+										<CheckBox x:Name="WriteGreenCheckBox"/>
+										<TextBlock Text="{DynamicResource MeshPaintWindow_WriteBlue}" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="6,0,2,0" VerticalAlignment="Center"/>
+										<CheckBox x:Name="WriteBlueCheckBox"/>
+										<TextBlock Text="{DynamicResource MeshPaintWindow_WriteAlpha}" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="6,0,2,0" VerticalAlignment="Center"/>
+										<CheckBox x:Name="WriteAlphaCheckBox"/>
+									</StackPanel>
+								</DockPanel>
+							</StackPanel>
+						</Grid>
+						<Grid x:Name="PaintWeightsGrid">
+							<StackPanel d:LayoutOverrides="Height">
+								<DockPanel Height="24">
+									<TextBlock Text="{DynamicResource MeshPaintWindow_TotalWeightCount}" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,2,0" VerticalAlignment="Center" x:Name="TotalWeightCountLabel"/>
+									<ComboBox IsSynchronizedWithCurrentItem="True" x:Name="TotalWeightCountCombo" Width="130" HorizontalAlignment="Right" Height="20">
+										<ComboBoxItem Content="{DynamicResource MeshPaintWindow_TotalWeightCount_Two}"/>
+										<ComboBoxItem Content="{DynamicResource MeshPaintWindow_TotalWeightCount_Three}"/>
+										<ComboBoxItem Content="{DynamicResource MeshPaintWindow_TotalWeightCount_Four}"/>
+										<ComboBoxItem Content="{DynamicResource MeshPaintWindow_TotalWeightCount_Five}"/>
+									</ComboBox>
+								</DockPanel>
+								<DockPanel Height="24">
+									<TextBlock Text="{DynamicResource MeshPaintWindow_PaintTexture}" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,2,0" VerticalAlignment="Center" x:Name="PaintWeightLabel"/>
+									<StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+										<UnrealEd:BindableRadioButton Content="1" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,8,0" x:Name="PaintWeightIndexRadio_1" GroupName="PaintWeightIndex"/>
+										<UnrealEd:BindableRadioButton Content="2" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,8,0" x:Name="PaintWeightIndexRadio_2" GroupName="PaintWeightIndex"/>
+										<UnrealEd:BindableRadioButton Content="3" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,8,0" x:Name="PaintWeightIndexRadio_3" GroupName="PaintWeightIndex"/>
+										<UnrealEd:BindableRadioButton Content="4" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,8,0" x:Name="PaintWeightIndexRadio_4" GroupName="PaintWeightIndex"/>
+										<UnrealEd:BindableRadioButton Content="5" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,8,0" x:Name="PaintWeightIndexRadio_5" GroupName="PaintWeightIndex"/>
+									</StackPanel>
+								</DockPanel>
+								<DockPanel Height="24">
+									<TextBlock Text="{DynamicResource MeshPaintWindow_EraseTexture}" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,2,0" VerticalAlignment="Center" x:Name="EraseWeightLabel"/>
+									<StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+										<UnrealEd:BindableRadioButton Content="1" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,8,0" x:Name="EraseWeightIndexRadio_1" GroupName="EraseWeightIndex"/>
+										<UnrealEd:BindableRadioButton Content="2" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,8,0" x:Name="EraseWeightIndexRadio_2" GroupName="EraseWeightIndex"/>
+										<UnrealEd:BindableRadioButton Content="3" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,8,0" x:Name="EraseWeightIndexRadio_3" GroupName="EraseWeightIndex"/>
+										<UnrealEd:BindableRadioButton Content="4" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,8,0" x:Name="EraseWeightIndexRadio_4" GroupName="EraseWeightIndex"/>
+										<UnrealEd:BindableRadioButton Content="5" Foreground="{DynamicResource Slate_Control_Foreground}" Margin="0,0,8,0" x:Name="EraseWeightIndexRadio_5" GroupName="EraseWeightIndex"/>
+									</StackPanel>
+								</DockPanel>
+							</StackPanel>
+							<Button x:Name="SwapPaintAndEraseWeightIndexButton" VerticalAlignment="Top" Width="13" Height="20" Panel.ZIndex="5" HorizontalAlignment="Left" Margin="69,38,0,0" Template="{DynamicResource SwappyButton}"/>
+						</Grid>
+						<Separator Margin="3"/>
+						<DockPanel Height="24">
+							<TextBlock Text="{DynamicResource MeshPaintWindow_BrushRadius}" x:Name="BrushRadiusLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+							<CustomControls:DragSlider x:Name="BrushRadiusDragSlider" Maximum="2048" Minimum="1" SliderMax="128" SliderMin="1" Width="170" HorizontalAlignment="Right" Height="18" Foreground="{DynamicResource Slate_Control_Foreground}" ValuesPerMouseWheelScroll="0.5" ValuesPerDragPixel="0.1"/>
+						</DockPanel>
+						<DockPanel Height="24">
+							<TextBlock Text="{DynamicResource MeshPaintWindow_BrushStrength}" x:Name="BrushStrengthLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+							<CustomControls:DragSlider x:Name="BrushStrengthDragSlider" Maximum="1.0" Minimum="0.0" Width="170" HorizontalAlignment="Right" Height="18" ValuesPerDragPixel="0.01" ValuesPerMouseWheelScroll="0.05" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+						</DockPanel>
+						<DockPanel Height="24">
+							<TextBlock Text="{DynamicResource MeshPaintWindow_BrushFalloffAmount}" x:Name="BrushFalloffAmountLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+							<CustomControls:DragSlider x:Name="BrushFalloffAmountDragSlider" Maximum="1.0" Minimum="0.0" Width="170" HorizontalAlignment="Right" Height="18" ValuesPerDragPixel="0.01" ValuesPerMouseWheelScroll="0.05" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+						</DockPanel>
+						<DockPanel Height="24">
+							<TextBlock Text="{DynamicResource MeshPaintWindow_EnableFlow}" x:Name="EnableFlowLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+							<CheckBox x:Name="EnableFlowCheckBox" Foreground="{DynamicResource Slate_Control_Foreground}" HorizontalAlignment="Right" Style="{DynamicResource OnOffCheckbox}" Margin="0,0,-2,0"/>
+						</DockPanel>
+						<DockPanel Height="24">
+							<TextBlock Text="{DynamicResource MeshPaintWindow_FlowAmount}" x:Name="FlowAmountLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+							<CustomControls:DragSlider x:Name="FlowAmountDragSlider" Maximum="1.0" Minimum="0.0" Width="170" HorizontalAlignment="Right" Height="18" ValuesPerDragPixel="0.01" ValuesPerMouseWheelScroll="0.05" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+						</DockPanel>
+						<DockPanel Height="24" Visibility="{Binding Path=IsChecked, ElementName=ResourceTypeRadio_VertexColors, Converter={StaticResource BoolToVis}}">
+							<TextBlock Text="{DynamicResource MeshPaintWindow_IgnoreBackFacing}" x:Name="IgnoreBackFacingLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+							<CheckBox x:Name="IgnoreBackFacingCheckBox" Foreground="{DynamicResource Slate_Control_Foreground}" HorizontalAlignment="Right" Style="{DynamicResource OnOffCheckbox}" Margin="0,0,-2,0"/>
+						</DockPanel>
+						<DockPanel Height="24" Visibility="{Binding Path=IsChecked, ElementName=ResourceTypeRadio_Texture, Converter={StaticResource BoolToVis}}">
+							<TextBlock Text="{DynamicResource MeshPaintWindow_EnableSeamPainting}" x:Name="EnableSeamPaintingLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center"/>
+							<CheckBox x:Name="EnableSeamPaintingCheckBox" Foreground="{DynamicResource Slate_Control_Foreground}" HorizontalAlignment="Right" Style="{DynamicResource OnOffCheckbox}" Margin="0,0,-2,0"/>
+						</DockPanel>
+						<GroupBox Padding="6,6,6,6" Margin="0,6,0,0" Visibility="{Binding Path=IsChecked, ElementName=ResourceTypeRadio_VertexColors, Converter={StaticResource BoolToVis}}">
+							<GroupBox.Header>
+								<TextBlock Text="{DynamicResource MeshPaintWindow_ViewGroup}" Foreground="{DynamicResource Slate_Control_Foreground}" />
+							</GroupBox.Header>
+							<DockPanel VerticalAlignment="Center">
+								<StackPanel Orientation="Horizontal">
+									<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_ColorViewMode_Off}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ColorViewModeRadio_Normal" GroupName="ColorViewMode" d:LayoutOverrides="Height" Padding="2,0,10,0"/>
+									<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_ColorViewMode_RGB}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ColorViewModeRadio_RGB" GroupName="ColorViewMode"  d:LayoutOverrides="Height" Padding="2,0,10,0"/>
+									<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_ColorViewMode_Red}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ColorViewModeRadio_Red" GroupName="ColorViewMode"  d:LayoutOverrides="Height" Padding="2,0,10,0"/>
+									<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_ColorViewMode_Green}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ColorViewModeRadio_Green" GroupName="ColorViewMode" d:LayoutOverrides="Height" Padding="2,0,10,0"/>
+									<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_ColorViewMode_Blue}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ColorViewModeRadio_Blue" GroupName="ColorViewMode" d:LayoutOverrides="Height" Padding="2,0,10,0"/>
+									<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_ColorViewMode_Alpha}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ColorViewModeRadio_Alpha" GroupName="ColorViewMode" d:LayoutOverrides="Height"/>
+								</StackPanel>
+							</DockPanel>
+						</GroupBox>
+						<DockPanel Margin="0,21,0,2">
+							<TextBlock Text="{DynamicResource MeshPaintWindow_QuickHelpText}" x:Name="QuickHelpText" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="10"/>
+						</DockPanel>
+					</StackPanel>
+				</CustomControls:SlateBorder>
+			</Grid>
+		</StackPanel>
+		<Rectangle x:Name="HoverCueBorder" StrokeThickness="2" Opacity="0" Panel.ZIndex="10">
+			<Rectangle.Stroke>
+				<LinearGradientBrush EndPoint="1.202,0.893" StartPoint="-0.202,0.107" MappingMode="RelativeToBoundingBox">
+					<GradientStop Color="#FF2B2B2B" Offset="0.446"/>
+					<GradientStop Color="#FFFFFFFF" Offset="0.002"/>
+					<GradientStop Color="#FF4A4A4A" Offset="0.916"/>
+					<GradientStop Color="#FFA7A7A7" Offset="1"/>
+					<GradientStop Color="#FD626262" Offset="0.057"/>
+					<GradientStop Color="#FF252525" Offset="0.534"/>
+				</LinearGradientBrush>
+			</Rectangle.Stroke>
+		</Rectangle>
+	</Grid>
+</Border>

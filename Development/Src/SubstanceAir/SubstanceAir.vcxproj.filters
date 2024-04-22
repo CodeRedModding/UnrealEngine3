@@ -1,0 +1,308 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Src">
+      <UniqueIdentifier>{195a3aa8-f649-4ae1-9792-49f8e164c74f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Inc">
+      <UniqueIdentifier>{ef81ca23-971f-4550-90da-b3e5270aa81f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src\framework">
+      <UniqueIdentifier>{709c8a41-ef4a-4545-b25d-4ace56a9f1a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Inc\framework">
+      <UniqueIdentifier>{d71b65c1-1659-49a0-aac6-84f557d32078}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Inc\framework\details">
+      <UniqueIdentifier>{4b3a12fd-1583-4a6a-83d6-21a583015202}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src\framework\details">
+      <UniqueIdentifier>{c4bbda50-6b5f-4e00-852e-24abc04952a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Classes">
+      <UniqueIdentifier>{836ed95e-57cf-40ff-ad64-50c0d2d50a89}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Classes\SubstanceAirGraphInstance.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\SubstanceAirInstanceFactory.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\SubstanceAirTexture2D.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Inc\SubstanceAirGraph.inl">
+      <Filter>Inc</Filter>
+    </None>
+    <None Include="Inc\SubstanceAirInput.inl">
+      <Filter>Inc</Filter>
+    </None>
+    <None Include="Classes\SubstanceAirImageInput.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\SubstanceAirGraphActor.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\InterpTrackSubstanceInput.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\InterpTrackInstSubstanceInput.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\SeqAct_SubstanceSetInputFloat.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\SeqAct_SubstanceSetInputImg.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\SeqAct_SubstanceRender.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\SeqAct_SubstanceSetInputInt.uc">
+      <Filter>Classes</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\SubstanceAirGraph.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirGraphInstance.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirHelpers.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirImageInput.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirInstanceFactory.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirMain.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirPackage.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirResource.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirStructures.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirStructuresSerialization.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirTexture2D.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\renderer.cpp">
+      <Filter>Src\framework</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\renderresult.cpp">
+      <Filter>Src\framework</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailscomputation.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailsdeltastate.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailsduplicatejob.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailsengine.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailsgraphbinary.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailsgraphstate.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailsinputstate.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailslinkcontext.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailslinkdata.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailslinkgraphs.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailsoutputsfilter.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailsrendererimpl.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailsrenderjob.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailsrenderpushio.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailsrendertoken.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailsstates.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirCallbacks.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirInterpolation.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirActor.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\inputimage.cpp">
+      <Filter>Src\framework</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\framework\details\detailssync_win32.cpp">
+      <Filter>Src\framework\details</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirSequenceClasses.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\SubstanceAirGraph.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirHelpers.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirInput.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirInstanceFactoryClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirNames.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirOutput.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirPackage.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirResource.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirTextureClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirTypedefs.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\constants.h">
+      <Filter>Inc\framework</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\framework.h">
+      <Filter>Inc\framework</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\outputopt.h">
+      <Filter>Inc\framework</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\renderer.h">
+      <Filter>Inc\framework</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\renderresult.h">
+      <Filter>Inc\framework</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\stacking.h">
+      <Filter>Inc\framework</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\std_wrappers.h">
+      <Filter>Inc\framework</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\vector.h">
+      <Filter>Inc\framework</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\callbacks.h">
+      <Filter>Inc\framework</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailslinkdata.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailslinkgraphs.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailsoutputsfilter.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailsrendererimpl.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailsrenderjob.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailsrenderpushio.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailsrendertoken.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailsstates.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailssync.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailscomputation.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailsdeltastate.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailsduplicatejob.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailsengine.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailsgraphbinary.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailsgraphstate.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailsinputimagetoken.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailsinputstate.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\details\detailslinkcontext.h">
+      <Filter>Inc\framework\details</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirCallbacks.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirInterpolationClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirActorClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\framework\imageinput.h">
+      <Filter>Inc\framework</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirImageInputClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirUncopyable.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirSequenceClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,49 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.LatestStatusModel
+
+@{
+    ViewBag.Title = "Status";
+}
+
+
+<section>
+    <div class="grid6">
+        <span class="fr">
+            <a href="latestbuilds">Latest Builds</a>
+        </span>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="builds"></a><h2>Latest Builds</h2>
+
+        <table class="detail">
+            @if (Model.LatestBuilds.Count() > 0)
+            {
+                string branch = "";
+                
+                foreach (var b in Model.LatestBuilds)
+                {
+                    if (b.Branch != branch)
+                    {
+                        <tr>
+                            <th class="string">Branch: @b.Branch</th>
+                            <th class="string">Label</th>
+                            <th class="enum">Changelist</th>
+                        </tr>
+                
+                        branch = b.Branch;
+                    }
+                    
+                    @Html.Partial("_LatestBuild", b);
+                }
+            }
+            else
+            {
+                <tr class="p"><td colspan="5">There are no successful builds at this time.</td></tr>        
+            }
+        </table>
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>

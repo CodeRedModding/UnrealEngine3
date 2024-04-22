@@ -1,0 +1,10 @@
+/*=============================================================================
+	MemCopyShader.usf: Shader for copying memory using the GPU.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+#if XBOX
+	#include "Xbox360/MemCopyShader.usf"
+#endif

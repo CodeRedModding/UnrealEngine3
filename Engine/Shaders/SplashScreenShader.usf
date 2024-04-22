@@ -1,0 +1,46 @@
+/*=============================================================================
+	SplashScreenShader.usf: Shader for rendering splash screen.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+#include "Common.usf"
+
+/*=============================================================================
+ * Structures
+ =============================================================================*/
+struct VS_IN
+{
+	float2 Pos            : POSITION;
+	float2 Tex            : TEXCOORD0;
+};
+
+struct VS_OUT
+{
+	float4 Position       : POSITION;
+	float2 TexCoord0      : TEXCOORD0;
+};
+
+/*=============================================================================
+ * Vertex shader
+ =============================================================================*/
+VS_OUT MainVertexShader(VS_IN In)
+{
+	VS_OUT Out;
+	Out.Position.x  = In.Pos.x / 1.0f - 0.0f;
+	Out.Position.y  = In.Pos.y / 1.0f - 0.0f;
+	Out.Position.z  = 0.0f;
+	Out.Position.w  = 1.0f;
+	Out.TexCoord0.x = In.Tex.x;
+	Out.TexCoord0.y = In.Tex.y;
+	return Out;
+}
+
+/*=============================================================================
+ * Pixel shader
+ =============================================================================*/
+//sampler SplashTexture;
+sampler SplashTexture : register(s0);
+
+float4 MainPixelShader(VS_OUT In) : COLOR0
+{
+	return pow(tex2D(SplashTexture,In.TexCoord0),2.2f);
+}

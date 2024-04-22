@@ -1,0 +1,17 @@
+/*=============================================================================
+	LightShaftDownSampleShader.usf: Shaders for rendering light shafts
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+ATTRIBUTE(vec2, Position, POSITION);
+ATTRIBUTE(vec2, TexCoords0, TEXCOORD0);
+
+OUT_VARYING_DEFAULT(vec2, TexCoord, TEXCOORD0);
+
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+void main()
+{	
+	gl_Position = vec4(Position, 0.0, 1.0);
+	TexCoord = TexCoords0;
+}

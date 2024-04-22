@@ -1,34 +1,32 @@
-class WindPointSourceComponent extends ActorComponent
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+class WindPointSourceComponent extends WindDirectionalSourceComponent
 	native
 	collapsecategories
 	hidecategories(Object)
 	editinlinenew;
 
-var vector	Position;
+var const DrawSphereComponent PreviewRadiusComponent;
 
-var() float	Strength,
-			Phase,
-			Frequency,
-			Radius,
-			Duration;
+var() interp float Radius;
 
 cpptext
 {
+protected:
+	void UpdatePreviewRadius();
 	// UActorComponent interface.
-
-	virtual void SetParentToWorld(const FMatrix& ParentToWorld);
-	virtual void Created();
-	virtual void Destroyed();
-
-	// GetRenderData
-
-	FWindPointSource GetRenderData() const;
+	virtual void Attach();
+	virtual void UpdateTransform();
+public:
+	/**
+	 * Creates a proxy to represent the wind source to the scene manager in the rendering thread.
+	 * @return The proxy object.
+	 */
+	 virtual class FWindSourceSceneProxy* CreateSceneProxy() const;
 }
 
 defaultproperties
 {
-	Strength=1.0
-	Frequency=1.0
 	Radius=1024.0
-	Duration=0.0
 }

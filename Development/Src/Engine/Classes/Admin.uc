@@ -1,13 +1,10 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class Admin extends PlayerController
 	config(Game);
 
-replication
-{
-	reliable if( Role<ROLE_Authority )
-		RestartMap, Switch, Kick, KickBan, Admin;
-}
-
-event PostBeginPlay()
+simulated event PostBeginPlay()
 {
 	Super.PostBeginPlay();
 	AddCheats();
@@ -15,6 +12,11 @@ event PostBeginPlay()
 
 // Execute an administrative console command on the server.
 exec function Admin( string CommandLine )
+{
+	ServerAdmin(CommandLine);
+}
+
+reliable server function ServerAdmin( string CommandLine )
 {
 	local string Result;
 
@@ -25,51 +27,51 @@ exec function Admin( string CommandLine )
 
 exec function KickBan( string S )
 {
-	Level.Game.KickBan(S);
+	ServerKickBan(S);
 }
 
-// center print admin messages which start with #
-exec function Say( string Msg )
+reliable server function ServerKickBan( string S )
 {
-	local controller C;
-
-	if ( left(Msg,1) == "#" )
-	{
-		Msg = right(Msg,len(Msg)-1);
-		for( C=Level.ControllerList; C!=None; C=C.nextController )
-			if( C.IsA('PlayerController') )
-			{
-				PlayerController(C).ClearProgressMessages();
-				PlayerController(C).SetProgressTime(6);
-				PlayerController(C).SetProgressMessage(0, Msg, MakeColor(255,255,255,255));
-			}
-		return;
-	}
-	Super.Say(Msg);
+	WorldInfo.Game.KickBan(S);
 }
 
 exec function Kick( string S )
 {
-	Level.Game.Kick(S);
+	ServerKick(S);
+}
+
+reliable server function ServerKick( string S )
+{
+	WorldInfo.Game.Kick(S);
 }
 
 exec function PlayerList()
 {
 	local PlayerReplicationInfo PRI;
 
-	log("Player List:");
+	`log("Player List:");
 	ForEach DynamicActors(class'PlayerReplicationInfo', PRI)
-		log(PRI.PlayerName@"( ping"@PRI.Ping$")");
+		`log(PRI.PlayerName@"( ping"@PRI.Ping$")");
 }
 
 exec function RestartMap()
 {
-	ClientTravel( "?restart", TRAVEL_Relative, false );
+	ServerRestartMap();
+}
+
+reliable server function ServerRestartMap()
+{
+	ClientTravel( "?restart", TRAVEL_Relative );
 }
 
 exec function Switch( string URL )
 {
-	Level.ServerTravel( URL, false );
+	ServerSwitch(URL);
+}
+
+reliable server function ServerSwitch(string URL)
+{
+	WorldInfo.ServerTravel(URL);
 }
 
 defaultproperties

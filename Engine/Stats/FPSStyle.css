@@ -1,0 +1,32 @@
+/**
+ * This is the FPS chart style .css
+ *
+ * Copyright 1998-2007 Epic Games, Inc. All Rights Reserved.
+ */
+
+
+TR.dataRow
+{ 
+  background-color: #E9E9E9;
+}
+
+TD.rowHeaderSummary
+{ 
+  background-color: #D5FFD5;
+}
+
+TD.rowEntrySummary
+{ 
+  background-color: #D5FFD5;
+}
+
+TD.rowHeaderTimes
+{ 
+  background-color: #FFFFFF;
+}
+
+TD.rowEntryTimes
+{ 
+  background-color: #FFFFFF;
+}
+

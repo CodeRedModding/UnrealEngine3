@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="windows-1252"?>
+<resource version="2.3.0.1" xmlns="http://www.wxwidgets.org/wxxrc">
+    <object class="wxPanel" name="ID_RENDER_PAGE" subclass="MyDialog">
+        <style>wxNO_BORDER|wxCLIP_CHILDREN |wxTAB_TRAVERSAL</style>
+        <size>320,290</size>
+        <object class="wxBoxSizer">
+            <orient>wxVERTICAL</orient>
+            <object class="sizeritem">
+                <flag>wxALIGN_LEFT|wxALL</flag>
+                <border>5</border>
+                <object class="wxBitmapButton" name="ID_FILE_BUTTON">
+                    <style>wxBU_AUTODRAW|wxBU_EXACTFIT</style>
+                </object>
+            </object>
+            <object class="sizeritem">
+                <flag>wxGROW</flag>
+                <border>5</border>
+                <object class="wxStaticBoxSizer" name="ID_CONTROLS_SIZER">
+                    <orient>wxVERTICAL</orient>
+                    <label>View Settings</label>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_LEFT|wxALL</flag>
+                        <border>5</border>
+                        <object class="wxGridSizer">
+                            <cols>2</cols>
+                            <rows>2</rows>
+                            <vgap>0</vgap>
+                            <hgap>0</hgap>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL|wxADJUST_MINSIZE</flag>
+                                <border>5</border>
+                                <object class="wxStaticText" name="wxID_STATIC">
+                                    <label>Game Resolution</label>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxChoice" name="ID_GAME_RESOLUTION">
+                                    <tooltip>Sets the resolution of the game window.
+
+This may take a few seconds to complete.</tooltip>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL|wxADJUST_MINSIZE</flag>
+                                <border>5</border>
+                                <object class="wxStaticText" name="ID_MAX_TEXTURE_SIZE_DESCRIPTION">
+                                    <label>Maximum Texture Size</label>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxChoice" name="ID_MAX_TEXTURE_SIZE">
+                                    <tooltip>This changes the maximum size of a texture that will be uploaded to the video card.
+
+Changing this setting may take a few seconds to take effect.</tooltip>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL|wxADJUST_MINSIZE</flag>
+                                <border>5</border>
+                                <object class="wxStaticText" name="wxID_STATIC">
+                                    <label>Maximum Shadow Size</label>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxChoice" name="ID_MAX_SHADOW_SIZE">
+                                    <tooltip>This changes the maximum size of the shadow buffers. 
+
+It does not effect shadow map or stencil shadows.</tooltip>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL|wxADJUST_MINSIZE</flag>
+                                <border>5</border>
+                                <object class="wxStaticText" name="wxID_STATIC">
+                                    <label>Enable Post Process Effects</label>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxChoice" name="ID_POST_PROCESS_EFFECTS">
+                                    <tooltip>Turn post processing effects on or off</tooltip>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL|wxADJUST_MINSIZE</flag>
+                                <border>5</border>
+                                <object class="wxStaticText" name="wxID_STATIC">
+                                    <label>View Mode</label>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxChoice" name="ID_VIEWMODE">
+                                    <tooltip>Changes the viewmode.
+
+Unlit renders the diffuse channel only with ambient lighting.
+
+Lighting only renders only the lighting calculations but ignores user materials.
+
+Lighting complexity renders how many lights are affecting each object. Red is bad, green is good.</tooltip>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL|wxADJUST_MINSIZE</flag>
+                                <border>5</border>
+                                <object class="wxStaticText" name="wxID_STATIC">
+                                    <label>Slomo</label>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxTextCtrl" name="ID_SLOMO_TEXTCTRL">
+                                    <style>wxTE_PROCESS_ENTER</style>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL|wxADJUST_MINSIZE</flag>
+                                <border>5</border>
+                                <object class="wxStaticText" name="wxID_STATIC">
+                                    <label>FOV</label>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxTextCtrl" name="ID_FOV_TEXTCTRL">
+                                    <style>wxTE_PROCESS_ENTER</style>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL|wxADJUST_MINSIZE</flag>
+                                <border>5</border>
+                                <object class="wxStaticText" name="wxID_STATIC">
+                                    <label>Showflags</label>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxBitmapButton" name="ID_SHOW_FLAGS">
+                                    <style>wxBU_AUTODRAW|wxBU_EXACTFIT</style>
+                                </object>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxCheckBox" name="ID_DYNAMIC_SHADOWS">
+                                    <style>wxCHK_2STATE</style>
+                                    <label>Dynamic Shadows</label>
+                                    <checked>0</checked>
+                                </object>
+                            </object>
+                            <object class="spacer">
+                                <flag>wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <size>5,5</size>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxCheckBox" name="ID_SHOW_HUD">
+                                    <style>wxCHK_2STATE</style>
+                                    <label>Show HUD</label>
+                                    <checked>0</checked>
+                                </object>
+                            </object>
+                            <object class="spacer">
+                                <flag>wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <size>5,5</size>
+                            </object>
+                            <object class="sizeritem">
+                                <flag>wxALIGN_LEFT|wxALIGN_CENTER_VERTICAL|wxALL</flag>
+                                <border>5</border>
+                                <object class="wxCheckBox" name="ID_PLAYERS_ONLY">
+                                    <style>wxCHK_2STATE</style>
+                                    <label>Players Only</label>
+                                    <checked>0</checked>
+                                </object>
+                            </object>
+                        </object>
+                    </object>
+                </object>
+            </object>
+            <object class="sizeritem">
+                <flag>wxGROW</flag>
+                <border>5</border>
+                <object class="wxStaticBoxSizer" name="ID_STATS_SIZER">
+                    <orient>wxVERTICAL</orient>
+                    <label>Stats</label>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_LEFT|wxALL</flag>
+                        <border>5</border>
+                        <object class="wxCheckBox" name="ID_FRAMES_PER_SECOND">
+                            <style>wxCHK_2STATE</style>
+                            <label>Frames Per Second</label>
+                            <checked>0</checked>
+                        </object>
+                    </object>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_LEFT|wxALL</flag>
+                        <border>5</border>
+                        <object class="wxCheckBox" name="ID_D3DSCENE">
+                            <style>wxCHK_2STATE</style>
+                            <label>D3DScene</label>
+                            <checked>0</checked>
+                        </object>
+                    </object>
+                    <object class="sizeritem">
+                        <flag>wxALIGN_LEFT|wxALL</flag>
+                        <border>5</border>
+                        <object class="wxCheckBox" name="ID_MEMORY">
+                            <style>wxCHK_2STATE</style>
+                            <label>Memory</label>
+                            <checked>0</checked>
+                        </object>
+                    </object>
+                </object>
+            </object>
+        </object>
+    </object>
+</resource>

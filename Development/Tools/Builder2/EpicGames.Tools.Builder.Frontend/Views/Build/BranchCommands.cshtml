@@ -1,0 +1,162 @@
+﻿@model IEnumerable<EpicGames.Tools.Builder.Frontend.Database.SP_GetBranchCommandsResult>
+
+@{
+    Layout = null;
+}
+
+
+<div class="grid6">
+    <table class="detail">
+        <tr class="p"><td colspan="5"><a name="games"></a><h2>Game Build Commands</h2></td></tr>
+
+        @if (Model.Count(m => (m.Type == 0) && (m.Game != "")) > 0)
+        {
+            string game = "";
+
+            foreach (var m in Model)
+            {
+                if ((m.Type == 0) && (m.Game != ""))
+                {
+                    if (m.Game != game)
+                    {
+                        <tr>
+                            <th class="string">Game: @m.Game</th>
+                            <th class="string">Platform</th>
+                            <th class="enum">Last Attempted</th>
+                            <th class="enum">Last Good</th>
+                            <th class="numeric">Action</th>
+                        </tr>
+
+                        game = m.Game;
+                    }
+
+                    @Html.Partial("_BranchCommand", m);
+                }
+            }
+        }
+        else
+        {
+            <tr class="p"><td colspan="5">This branch does not have any game build commands at this time.</td></tr>        
+        }
+
+        <tr class="p"><td colspan="5"><a name="other"></a><h2>Other Build Commands</h2></td></tr>
+    
+        @if (Model.Count(m => (m.Type == 0) && (m.Game == "")) > 0)
+        {
+            <tr class="p">
+                <td colspan="5">
+                    <p>The following build commands are currently not associated with any specific game:</p>
+                </td>
+            </tr>
+            <tr>
+                <th class="string">Description</th>
+                <th class="string">Platform</th>
+                <th class="enum">Last Attempted</th>
+                <th class="enum">Last Good</th>
+                <th class="numeric">Action</th>
+            </tr>
+
+            foreach (var m in Model)
+            {
+                if ((m.Type == 0) && (m.Game == ""))
+                {
+                    @Html.Partial("_BranchCommand", m);
+                }
+            }
+        }
+        else
+        {
+            <tr class="p"><td colspan="5">This branch does not have any other build commands at this time.</td></tr>
+        }
+
+        <tr class="p"><td colspan="5"><a name="utilities"></a><h2>Utilities</h2></td></tr>
+
+        @if (Model.Count(m => m.Type == 5) > 0)
+        {
+            <tr>
+                <th class="string">Description</th>
+                <th></th>
+                <th class="enum">Last Attempted</th>
+                <th class="enum">Last Good</th>
+                <th class="numeric">Action</th>
+            </tr>
+            
+            foreach (var m in Model)
+            {
+                if (m.Type == 5)
+                {
+                    @Html.Partial("_BranchCommand", m);
+                }
+            }
+        }
+        else
+        {
+            <tr class="p"><td colspan="5">This branch does not have any utility commands at this time.</td></tr>
+        }
+
+        <tr class="p"><td colspan="5"><a name="maintenance"></a><h2>Maintenance</h2></td></tr>
+
+        @if (Model.Count(m => m.Type == 8) > 0)
+        {
+            <tr class="p">
+                <td colspan="5">
+                    <p>
+                        The following commands are intended to be used for builder maintenance.
+                        Visit the machine details pages to enable or disable maintenance mode.
+                    </p>
+                </td>
+            </tr>
+            <tr>
+                <th class="string">Description</th>
+                <th></th>
+                <th class="enum">Last Attempted</th>
+                <th class="enum">Last Good</th>
+                <th class="numeric">Action</th>
+            </tr>
+
+            foreach (var m in Model)
+            {
+                if (m.Type == 8)
+                {
+                    @Html.Partial("_BranchCommand", m);
+                }
+            }
+        }
+        else
+        {
+            <tr class="p"><td colspan="5">This branch does not have any maintenance commands at this time.</td></tr>
+        }
+
+        <tr class="p"><td colspan="5"><a name="testing"></a><h2>Testing</h2></td></tr>
+
+        @if (Model.Count(m => m.Type == 6) > 0)
+        {
+            <tr class="p">
+                <td colspan="5">
+                    <p>The following commands exist for testing and debugging purposes only:</p>
+                </td>
+            </tr>
+            <tr>
+                <th class="string">Description</th>
+                <th></th>
+                <th class="enum">Last Attempted</th>
+                <th class="enum">Last Good</th>
+                <th class="numeric">Action</th>
+            </tr>
+
+            foreach (var m in Model)
+            {
+                if (m.Type == 6)
+                {
+                    @Html.Partial("_BranchCommand", m);
+                }
+            }
+        }
+        else
+        {
+            <tr class="p"><td colspan="5">This branch does not have any test commands at this time.</td></tr>
+        }
+    </table>
+</div>
+
+<div class="grid6 r"><a class="linkUp" href="#top">Back to top</a></div>

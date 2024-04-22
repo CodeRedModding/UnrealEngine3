@@ -1,4 +1,8 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 #include "UnrealEd.h"
+#include "PhAT.h"
 #include "EnginePhysicsClasses.h"
 
 /*-----------------------------------------------------------------------------
@@ -10,61 +14,72 @@ BEGIN_EVENT_TABLE(WxDlgNewPhysicsAsset, wxDialog)
 END_EVENT_TABLE()
 
 WxDlgNewPhysicsAsset::WxDlgNewPhysicsAsset()
-	: wxDialog( )
 {
-	wxXmlResource::Get()->LoadDialog( this, GApp->EditorFrame, TEXT("ID_DLG_NEWPHYSICSASSET") );
+	const bool bSuccess = wxXmlResource::Get()->LoadDialog( this, GApp->EditorFrame, TEXT("ID_DLG_NEWPHYSICSASSET") );
+	check( bSuccess );
 
-	PackageEdit = (wxTextCtrl*)FindWindow( XRCID( "IDEC_PACKAGE" ) );
-	NameEdit = (wxTextCtrl*)FindWindow( XRCID( "IDEC_NAME" ) );
 	MinSizeEdit = (wxTextCtrl*)FindWindow( XRCID( "IDEC_MINBONESIZE" ) );
+	check( MinSizeEdit != NULL );
 	AlignBoneCheck = (wxCheckBox*)FindWindow( XRCID( "IDEC_ALONGBONE" ) );
+	check( AlignBoneCheck != NULL );
 	GeomTypeCombo = (wxComboBox*)FindWindow( XRCID( "IDEC_COLLISIONGEOM" ) );
+	check( GeomTypeCombo != NULL );
 	VertWeightCombo = (wxComboBox*)FindWindow( XRCID( "IDEC_VERTWEIGHT" ) );
+	check( VertWeightCombo != NULL );
 	MakeJointsCheck = (wxCheckBox*)FindWindow( XRCID( "IDEC_CREATEJOINTS" ) );
+	check( MakeJointsCheck != NULL );
 	WalkPastSmallCheck = (wxCheckBox*)FindWindow( XRCID( "IDEC_PASTSMALL" ) );
+	check( WalkPastSmallCheck != NULL );
+	BodyForAllCheck = (wxCheckBox*)FindWindow( XRCID( "IDEC_BODYFORALL" ) );
+	check( BodyForAllCheck != NULL );
 	OpenAssetNowCheck = (wxCheckBox*)FindWindow( XRCID( "IDEC_OPENNOW" ) );
+	check( OpenAssetNowCheck != NULL );
 
-	GeomTypeCombo->Append( TEXT("Sphyl/Sphere") );
-	GeomTypeCombo->Append( TEXT("Box") );
+	GeomTypeCombo->Append( *LocalizeUnrealEd("SphylSphere") );
+	GeomTypeCombo->Append( *LocalizeUnrealEd("Box") );
 
 	if(PHYSASSET_DEFAULT_GEOMTYPE == EFG_SphylSphere)
+	{
 		GeomTypeCombo->SetSelection(0);
+	}
 	else
+	{
 		GeomTypeCombo->SetSelection(1);
+	}
 
-	VertWeightCombo->Append( TEXT("Dominant Weight") );
-	VertWeightCombo->Append( TEXT("Any Weight") );
+	VertWeightCombo->Append( *LocalizeUnrealEd("DominantWeight") );
+	VertWeightCombo->Append( *LocalizeUnrealEd("AnyWeight") );
+
+	FLocalizeWindow( this );
 
 	if(PHYSASSET_DEFAULT_VERTWEIGHT == EVW_DominantWeight)
+	{
 		VertWeightCombo->SetSelection(0);
+	}
 	else
+	{
 		VertWeightCombo->SetSelection(1);
+	}
 }
 
 WxDlgNewPhysicsAsset::~WxDlgNewPhysicsAsset()
 {
 }
 
-int WxDlgNewPhysicsAsset::ShowModal( FString InPackage, FString InName, USkeletalMesh* InMesh, UBOOL bReset )
+int WxDlgNewPhysicsAsset::ShowModal( USkeletalMesh* InMesh, UBOOL bReset )
 {
-	Package = InPackage;
 	Mesh = InMesh;
-	Name = InName;
-
-	PackageEdit->SetValue( *Package );
-	NameEdit->SetValue( *Name );
 
 	MinSizeEdit->SetValue( *FString::Printf(TEXT("%2.2f"), PHYSASSET_DEFAULT_MINBONESIZE) );
 	AlignBoneCheck->SetValue( PHYSASSET_DEFAULT_ALIGNBONE );
 	MakeJointsCheck->SetValue( PHYSASSET_DEFAULT_MAKEJOINTS );
 	WalkPastSmallCheck->SetValue( PHYSASSET_DEFAULT_WALKPASTSMALL );
+	BodyForAllCheck->SetValue( false );
 
 	OpenAssetNowCheck->SetValue( true );
 
 	if(bReset)
 	{
-		PackageEdit->Disable();
-		NameEdit->Disable();
 		OpenAssetNowCheck->Disable();
 	}
 
@@ -73,12 +88,10 @@ int WxDlgNewPhysicsAsset::ShowModal( FString InPackage, FString InName, USkeleta
 
 void WxDlgNewPhysicsAsset::OnOK( wxCommandEvent& In )
 {
-	Package = PackageEdit->GetValue();
-	Name = NameEdit->GetValue();
-
 	Params.bAlignDownBone = AlignBoneCheck->GetValue();
 	Params.bCreateJoints = MakeJointsCheck->GetValue();
 	Params.bWalkPastSmall = WalkPastSmallCheck->GetValue();
+	Params.bBodyForAll = BodyForAllCheck->GetValue();
 
 	double SizeNum;
 	UBOOL bIsNumber = MinSizeEdit->GetValue().ToDouble(&SizeNum);
@@ -98,124 +111,67 @@ void WxDlgNewPhysicsAsset::OnOK( wxCommandEvent& In )
 
 	bOpenAssetNow = OpenAssetNowCheck->GetValue();
 
-	wxDialog::OnOK( In );
+	wxDialog::AcceptAndClose();
 }
-
 
 /*-----------------------------------------------------------------------------
-	WxDlgSetAssetPhysMaterial.
+	WxBodyContextMenu
 -----------------------------------------------------------------------------*/
-
-BEGIN_EVENT_TABLE(WxDlgSetAssetPhysMaterial, wxDialog)
-	EVT_BUTTON( wxID_OK, WxDlgSetAssetPhysMaterial::OnOK )
-END_EVENT_TABLE()
-
-WxDlgSetAssetPhysMaterial::WxDlgSetAssetPhysMaterial()
-	: wxDialog( )
+WxBodyContextMenu::WxBodyContextMenu(WxPhAT* AssetEditor)
 {
-	wxXmlResource::Get()->LoadDialog( this, GApp->EditorFrame, TEXT("ID_SETPHYSMATERIAL_DIALOG") );
+	check(AssetEditor);
+	check(AssetEditor->SelectedBodyIndex != INDEX_NONE);
+	check(AssetEditor->PhysicsAsset);
 
-	PhysMaterialCombo = (wxComboBox*)FindWindow( XRCID( "IDEC_PHYSMATERIAL" ) );
-
-	PhysMaterialClass = NULL;
-}
-
-WxDlgSetAssetPhysMaterial::~WxDlgSetAssetPhysMaterial()
-{
-}
-
-int WxDlgSetAssetPhysMaterial::ShowModal()
-{
-	for( TObjectIterator<UClass> It; It; ++It )
+	URB_BodySetup* BS = AssetEditor->PhysicsAsset->BodySetup(AssetEditor->SelectedBodyIndex);
+	URB_BodyInstance* BI = AssetEditor->PhysicsAsset->DefaultInstance->Bodies(AssetEditor->SelectedBodyIndex);
+		
+	if(BS->bFixed)
 	{
-		if( It->IsChildOf(UPhysicalMaterial::StaticClass()) )
-		{
-			UClass* MatClass = *It;
-			PhysMaterialCombo->Append( MatClass->GetName() );
-		}
+		Append( IDM_PHAT_TOGGLEFIXED, *LocalizeUnrealEd("UnfixBody"), TEXT("") );
+	}
+	else
+	{
+		Append( IDM_PHAT_TOGGLEFIXED, *LocalizeUnrealEd("FixBody"), TEXT("") );
 	}
 
-	PhysMaterialCombo->SetSelection(0);
+	Append( IDM_PHAT_FIXBELOW, *LocalizeUnrealEd("FixBodyBelow"), TEXT("") );
+	Append( IDM_PHAT_UNFIXBELOW, *LocalizeUnrealEd("UnfixBodyBelow"), TEXT("") );
 
-	return wxDialog::ShowModal();
+	Append( IDM_PHAT_DELETEBELOW, *LocalizeUnrealEd("DeleteBodyBelow"), TEXT("") );
 }
 
-void WxDlgSetAssetPhysMaterial::OnOK( wxCommandEvent& In )
+WxBodyContextMenu::~WxBodyContextMenu()
 {
-	FString ChosenClassName = PhysMaterialCombo->GetValue();
+}
 
-	for( TObjectIterator<UClass> It; It && !PhysMaterialClass; ++It )
+
+/*-----------------------------------------------------------------------------
+	WxConstraintContextMenu
+-----------------------------------------------------------------------------*/
+WxConstraintContextMenu::WxConstraintContextMenu(WxPhAT* AssetEditor)
+{
+	check(AssetEditor);
+	check(AssetEditor->SelectedConstraintIndex != INDEX_NONE);
+	check(AssetEditor->PhysicsAsset);
+
+	URB_ConstraintSetup* CS = AssetEditor->PhysicsAsset->ConstraintSetup(AssetEditor->SelectedConstraintIndex);
+	URB_ConstraintInstance* CI = AssetEditor->PhysicsAsset->DefaultInstance->Constraints(AssetEditor->SelectedConstraintIndex);
+
+	if(CI->bSwingPositionDrive && CI->bTwistPositionDrive)
 	{
-		if( It->IsChildOf(UPhysicalMaterial::StaticClass()) )
-		{
-			UClass* MatClass = *It;
-			if( ChosenClassName == FString(MatClass->GetName()) )
-				PhysMaterialClass = MatClass;
-		}
+		Append( IDM_PHAT_TOGGLEMOTORISE, *LocalizeUnrealEd("Unmotorise"), TEXT("") );
+	}
+	else
+	{
+		Append( IDM_PHAT_TOGGLEMOTORISE, *LocalizeUnrealEd("Motorise"), TEXT("") );
 	}
 
-	wxDialog::OnOK( In );
+	Append( IDM_PHAT_MOTORISEBELOW, *LocalizeUnrealEd("MotoriseBelow"), TEXT("") );
+	Append( IDM_PHAT_UNMOTORISEBELOW, *LocalizeUnrealEd("UnmotoriseBelow"), TEXT("") );
 }
 
-/*-----------------------------------------------------------------------------
-	WxDlgSetAssetDisableParams.
------------------------------------------------------------------------------*/
-
-BEGIN_EVENT_TABLE(WxDlgSetAssetDisableParams, wxDialog)
-	EVT_BUTTON( wxID_OK, WxDlgSetAssetDisableParams::OnOK )
-END_EVENT_TABLE()
-
-WxDlgSetAssetDisableParams::WxDlgSetAssetDisableParams()
-	: wxDialog( )
-{
-	wxXmlResource::Get()->LoadDialog( this, GApp->EditorFrame, TEXT("ID_SETASSETDISABLING") );
-
-	LinVelEdit = (wxTextCtrl*)FindWindow( XRCID( "IDEC_LINVEL" ) );
-	LinAccEdit = (wxTextCtrl*)FindWindow( XRCID( "IDEC_LINACC" ) );
-	AngVelEdit = (wxTextCtrl*)FindWindow( XRCID( "IDEC_ANGVEL" ) );
-	AngAccEdit = (wxTextCtrl*)FindWindow( XRCID( "IDEC_ANGACC" ) );
-}
-
-WxDlgSetAssetDisableParams::~WxDlgSetAssetDisableParams()
+WxConstraintContextMenu::~WxConstraintContextMenu()
 {
 }
 
-int WxDlgSetAssetDisableParams::ShowModal(FLOAT InLinVel, FLOAT InLinAcc, FLOAT InAngVel, FLOAT InAngAcc)
-{
-	LinVelEdit->SetValue( *FString::Printf(TEXT("%2.3f"), InLinVel) );
-	LinVel = InLinVel;
-
-	LinAccEdit->SetValue( *FString::Printf(TEXT("%2.3f"), InLinAcc) );
-	LinAcc = InLinAcc;
-
-	AngVelEdit->SetValue( *FString::Printf(TEXT("%2.3f"), InAngVel) );
-	AngVel = InAngVel;
-
-	AngAccEdit->SetValue( *FString::Printf(TEXT("%2.3f"), InAngAcc) );
-	AngAcc = InAngAcc;
-
-	return wxDialog::ShowModal();
-}
-
-void WxDlgSetAssetDisableParams::OnOK( wxCommandEvent& In )
-{
-	double Num;
-
-	if( LinVelEdit->GetValue().ToDouble(&Num) )
-		LinVel = Num;
-
-	if( LinAccEdit->GetValue().ToDouble(&Num) )
-		LinAcc = Num;
-
-	if( AngVelEdit->GetValue().ToDouble(&Num) )
-		AngVel = Num;
-
-	if( AngAccEdit->GetValue().ToDouble(&Num) )
-		AngAcc = Num;
-
-	wxDialog::OnOK( In );
-}
-
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/

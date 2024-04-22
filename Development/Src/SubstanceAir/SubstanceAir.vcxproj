@@ -1,0 +1,150 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="BuiltWithUnrealBuildTool|Win32">
+      <Configuration>BuiltWithUnrealBuildTool</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{6A5D79CF-0916-4D4D-BCB2-9DE3A0DDE4DD}</ProjectGuid>
+    <RootNamespace>SubstanceAir</RootNamespace>
+    <Keyword>MakeFileProj</Keyword>
+    <SccProjectName>
+    </SccProjectName>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\$(Configuration)\$(ProjectName)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\$(Configuration)\$(ProjectName)\</IntDir>
+    <NMakeBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeReBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeCleanCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeOutput Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="Classes\SeqAct_SubstanceRender.uc" />
+    <None Include="Classes\SeqAct_SubstanceSetInputFloat.uc" />
+    <None Include="Classes\SeqAct_SubstanceSetInputImg.uc" />
+    <None Include="Classes\SeqAct_SubstanceSetInputInt.uc" />
+    <None Include="Classes\SubstanceAirGraphActor.uc" />
+    <None Include="Classes\InterpTrackInstSubstanceInput.uc" />
+    <None Include="Classes\InterpTrackSubstanceInput.uc" />
+    <None Include="Classes\SubstanceAirGraphInstance.uc" />
+    <None Include="Classes\SubstanceAirImageInput.uc" />
+    <None Include="Classes\SubstanceAirInstanceFactory.uc" />
+    <None Include="Classes\SubstanceAirTexture2D.uc" />
+    <None Include="Inc\SubstanceAirGraph.inl" />
+    <None Include="Inc\SubstanceAirInput.inl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\framework\details\detailscomputation.cpp" />
+    <ClCompile Include="Src\framework\details\detailsdeltastate.cpp" />
+    <ClCompile Include="Src\framework\details\detailsduplicatejob.cpp" />
+    <ClCompile Include="Src\framework\details\detailsengine.cpp" />
+    <ClCompile Include="Src\framework\details\detailsgraphbinary.cpp" />
+    <ClCompile Include="Src\framework\details\detailsgraphstate.cpp" />
+    <ClCompile Include="Src\framework\details\detailsinputstate.cpp" />
+    <ClCompile Include="Src\framework\details\detailslinkcontext.cpp" />
+    <ClCompile Include="Src\framework\details\detailslinkdata.cpp" />
+    <ClCompile Include="Src\framework\details\detailslinkgraphs.cpp" />
+    <ClCompile Include="Src\framework\details\detailsoutputsfilter.cpp" />
+    <ClCompile Include="Src\framework\details\detailsrendererimpl.cpp" />
+    <ClCompile Include="Src\framework\details\detailsrenderjob.cpp" />
+    <ClCompile Include="Src\framework\details\detailsrenderpushio.cpp" />
+    <ClCompile Include="Src\framework\details\detailsrendertoken.cpp" />
+    <ClCompile Include="Src\framework\details\detailsstates.cpp" />
+    <ClCompile Include="Src\framework\details\detailssync_win32.cpp" />
+    <ClCompile Include="Src\framework\inputimage.cpp" />
+    <ClCompile Include="Src\framework\renderer.cpp" />
+    <ClCompile Include="Src\framework\renderresult.cpp" />
+    <ClCompile Include="Src\SubstanceAirActor.cpp" />
+    <ClCompile Include="Src\SubstanceAirCallbacks.cpp" />
+    <ClCompile Include="Src\SubstanceAirGraph.cpp" />
+    <ClCompile Include="Src\SubstanceAirGraphInstance.cpp" />
+    <ClCompile Include="Src\SubstanceAirHelpers.cpp" />
+    <ClCompile Include="Src\SubstanceAirImageInput.cpp" />
+    <ClCompile Include="Src\SubstanceAirInstanceFactory.cpp" />
+    <ClCompile Include="Src\SubstanceAirInterpolation.cpp" />
+    <ClCompile Include="Src\SubstanceAirMain.cpp" />
+    <ClCompile Include="Src\SubstanceAirPackage.cpp" />
+    <ClCompile Include="Src\SubstanceAirResource.cpp" />
+    <ClCompile Include="Src\SubstanceAirSequenceClasses.cpp" />
+    <ClCompile Include="Src\SubstanceAirStructures.cpp" />
+    <ClCompile Include="Src\SubstanceAirStructuresSerialization.cpp" />
+    <ClCompile Include="Src\SubstanceAirTexture2D.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\framework\callbacks.h" />
+    <ClInclude Include="Inc\framework\constants.h" />
+    <ClInclude Include="Inc\framework\details\detailscomputation.h" />
+    <ClInclude Include="Inc\framework\details\detailsdeltastate.h" />
+    <ClInclude Include="Inc\framework\details\detailsduplicatejob.h" />
+    <ClInclude Include="Inc\framework\details\detailsengine.h" />
+    <ClInclude Include="Inc\framework\details\detailsgraphbinary.h" />
+    <ClInclude Include="Inc\framework\details\detailsgraphstate.h" />
+    <ClInclude Include="Inc\framework\details\detailsinputimagetoken.h" />
+    <ClInclude Include="Inc\framework\details\detailsinputstate.h" />
+    <ClInclude Include="Inc\framework\details\detailslinkcontext.h" />
+    <ClInclude Include="Inc\framework\details\detailslinkdata.h" />
+    <ClInclude Include="Inc\framework\details\detailslinkgraphs.h" />
+    <ClInclude Include="Inc\framework\details\detailsoutputsfilter.h" />
+    <ClInclude Include="Inc\framework\details\detailsrendererimpl.h" />
+    <ClInclude Include="Inc\framework\details\detailsrenderjob.h" />
+    <ClInclude Include="Inc\framework\details\detailsrenderpushio.h" />
+    <ClInclude Include="Inc\framework\details\detailsrendertoken.h" />
+    <ClInclude Include="Inc\framework\details\detailsstates.h" />
+    <ClInclude Include="Inc\framework\details\detailssync.h" />
+    <ClInclude Include="Inc\framework\framework.h" />
+    <ClInclude Include="Inc\framework\imageinput.h" />
+    <ClInclude Include="Inc\framework\outputopt.h" />
+    <ClInclude Include="Inc\framework\renderer.h" />
+    <ClInclude Include="Inc\framework\renderresult.h" />
+    <ClInclude Include="Inc\framework\stacking.h" />
+    <ClInclude Include="Inc\framework\std_wrappers.h" />
+    <ClInclude Include="Inc\framework\vector.h" />
+    <ClInclude Include="Inc\SubstanceAirCallbacks.h" />
+    <ClInclude Include="Inc\SubstanceAirActorClasses.h" />
+    <ClInclude Include="Inc\SubstanceAirGraph.h" />
+    <ClInclude Include="Inc\SubstanceAirHelpers.h" />
+    <ClInclude Include="Inc\SubstanceAirImageInputClasses.h" />
+    <ClInclude Include="Inc\SubstanceAirInput.h" />
+    <ClInclude Include="Inc\SubstanceAirInstanceFactoryClasses.h" />
+    <ClInclude Include="Inc\SubstanceAirInterpolationClasses.h" />
+    <ClInclude Include="Inc\SubstanceAirNames.h" />
+    <ClInclude Include="Inc\SubstanceAirOutput.h" />
+    <ClInclude Include="Inc\SubstanceAirPackage.h" />
+    <ClInclude Include="Inc\SubstanceAirResource.h" />
+    <ClInclude Include="Inc\SubstanceAirSequenceClasses.h" />
+    <ClInclude Include="Inc\SubstanceAirTextureClasses.h" />
+    <ClInclude Include="Inc\SubstanceAirTypedefs.h" />
+    <ClInclude Include="Inc\SubstanceAirUncopyable.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

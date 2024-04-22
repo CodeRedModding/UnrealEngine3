@@ -1,0 +1,85 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.BuildInfrastructureModel
+
+@{
+    ViewBag.Title = "Build System";
+    ViewBag.Description = "Infrastructure";
+}
+
+
+<script type="text/javascript">
+    function GetMachinesList () {
+        return ($.ajax({
+            url: "@Url.RouteUrl(new { action = "InfrastructureList", controller = "Build" })",
+            async: false
+        }));
+    }
+
+    function UpdateInfrastructureStateChart () {
+        $('#stateChart').attr("src", $('#stateChart').attr("src").replace(/\?.*$/, '') + '?' + Math.random());
+
+        setTimeout(
+            function () {
+                UpdateInfrastructureStateChart();
+            },
+            5000
+        );
+    }
+
+    function UpdateMachinesList () {
+        var query = GetMachinesList().success(
+            function () {
+                setTimeout(
+                    function () {
+                        UpdateMachinesList();
+                    },
+                    5000
+                );
+            }
+        );
+
+        $('#infrastructureList').html(query.responseText);
+    }
+
+    $(document).ready(function () {
+        UpdateInfrastructureStateChart();
+        UpdateMachinesList();
+    });
+</script>
+
+
+<section>
+    <div class="grid6">
+        <span class="linkBack">
+            @Html.ActionLink("Dashboard", "Dashboard", "Home") |
+            @Html.ActionLink("Build Status", "Status", "Build")
+        </span>
+
+        <span class="fr">
+            <a href="#machines">Build Machines</a> |
+            <a href="#activity">Recent Activity</a> |
+            <a href="#active">Active Builders</a> |
+            <a href="#maintenance">In Maintenance</a> |
+            <a href="#inactive">Inactive Builders</a> |
+            <a href="#testing">Test Builders</a>
+        </span>
+    </div>
+</section>
+
+
+<section class="clearfix">
+    <div class="grid2">
+        <a name="machines"></a><h2>Build Machines</h2>
+
+        <img id="stateChart" class="chart" src="@Url.RouteUrl(new { action = "InfrastructureState", controller = "Chart" })" alt="Build" />
+    </div>
+
+    <div class="grid4">
+        <a name="activity"></a><h2>Recent Activity</h2>
+
+        <img class="chart" src="@Url.RouteUrl(new { action = "MachineLog", controller = "Chart", id = "" })" alt="Build" />
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>
+
+<div id="infrastructureList"></div>

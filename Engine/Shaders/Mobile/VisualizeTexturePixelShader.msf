@@ -1,0 +1,51 @@
+/*=============================================================================
+	VisualizeTexturePixelShader.usf: VisualizeTexture pixel shader source.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+UNIFORM_SAMPLER2D(VisualizeTexture, TEXUNIT0);
+
+// [0]: RGBAdd, AMul, Add, FracScale
+// [1]: BlinkState=0/1, Frac when 0, saturate when 1, unused, unused
+UNIFORM(vec4, VisualizeParam[2]);
+
+IN_VARYING_DEFAULT( vec2, UVBase, TEXCOORD0 );
+
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+
+// to visualize the content of a texture to the screen, useful for debugging
+// use "VisualizeTexture" in the console to activate
+PIXEL_MAIN
+{
+	float4 TexLookup = texture2D(VisualizeTexture, UVBase);
+
+	float Add = TexLookup.a * VisualizeParam[0].y + VisualizeParam[0].z;
+	float3 OutColor = TexLookup.rgb * VisualizeParam[0].x + Add;
+
+	float3 ScaledColor = OutColor * VisualizeParam[0].w;
+	float3 FracOutColor = lerp(frac(ScaledColor), saturate(ScaledColor), VisualizeParam[1].y);
+
+	float3 AlternateColor = FracOutColor;
+
+	// blink green if >1
+	if(OutColor.r > 1.0 || OutColor.g > 1.0 || OutColor.b > 1.0)
+	{
+		AlternateColor = float3(0.0, 1.0, 0.0);
+	}
+       
+	// blink red if <0
+	if(OutColor.r < 0.0 || OutColor.g < 0.0 || OutColor.b < 0.0)
+	{
+		AlternateColor = float3(1.0, 0.0, 0.0);
+	}
+       
+// 	// blink blue if not finite
+// 	if (isfinite(gl_FragColor	.rgb).x == false)
+// 	{
+// 		AlternateColor = float3(0,0,1);
+// 	}
+
+	gl_FragColor.rgb = lerp(FracOutColor, AlternateColor, VisualizeParam[1].x);
+	gl_FragColor.a = 0.0;
+}

@@ -1,5 +1,9 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class CodecMovie extends Object
 	abstract
+	transient
 	native;
 
 /** Cached script accessible playback duration of movie. */
@@ -8,6 +12,15 @@ var	const transient	float	PlaybackDuration;
 cpptext
 {
 	// Can't have pure virtual functions in classes declared in *Classes.h due to DECLARE_CLASS macro being used.
+
+	// CodecMovie interface
+
+	/**
+	* Not all codec implementations are available
+	*
+	* @return TRUE if the current codec is supported
+	*/
+	virtual UBOOL IsSupported() { return FALSE; }
 
 	/**
 	 * Returns the movie width.
@@ -26,7 +39,7 @@ cpptext
 	 *
 	 * @return format of movie.
 	 */
-	virtual EPixelFormat GetFormat() { return PF_Unknown; }
+	virtual EPixelFormat GetFormat();
 	/**
 	 * Returns the framerate the movie was encoded at.
 	 *
@@ -52,7 +65,7 @@ cpptext
 	 *
 	 * @return	TRUE if initialization was successful, FALSE otherwise.
 	 */
-	virtual UBOOL Open( void* Source, DWORD Size ) { return FALSE; }
+	virtual UBOOL Open( void* Source, DWORD Size ) { return FALSE; }	
 	/**
 	 * Tears down stream.
 	 */	
@@ -63,23 +76,38 @@ cpptext
 	 */
 	virtual void ResetStream() {}
 	/**
-	 * Blocks until the decoder has finished the pending decompression request.
-	 *
-	 * @return	Time into movie playback as seen from the decoder side.
-	 */
-	virtual FLOAT BlockUntilIdle() { return 0.f; }	
-	/**
 	 * Queues the request to retrieve the next frame.
 	 *
- 	 * @param	Destination		Memory block to uncompress data into.
-	 * @return	FALSE if the end of the frame has been reached and the frame couldn't be completed, TRUE otherwise
+ 	 * @param InTextureMovieResource - output from movie decoding is written to this resource
 	 */
-	virtual UBOOL GetFrame( void* Destination ) { return FALSE; }
-
+	virtual void GetFrame( class FTextureMovieResource* InTextureMovieResource ) {}
 	/**
 	 * Returns the playback time of the movie.
 	 *
 	 * @return playback duration of movie.
 	 */
 	virtual FLOAT GetDuration() { return PlaybackDuration; }
+	/** 
+	* Begin playback of the movie stream 
+	*
+	* @param bLooping - if TRUE then the movie loops back to the start when finished
+	* @param bOneFrameOnly - if TRUE then the decoding is paused after the first frame is processed 
+	* @param bResetOnLastFrame - if TRUE then the movie frame is set to 0 when playback finishes
+	*/
+	virtual void Play(UBOOL bLooping, UBOOL bOneFrameOnly, UBOOL bResetOnLastFrame) {}
+	/** 
+	* Pause or resume the movie playback.
+	*
+	* @param bPause - if TRUE then decoding will be paused otherwise it resumes
+	*/
+	virtual void Pause(UBOOL bPause) {}
+	/**
+	* Stop playback from the movie stream 
+	*/ 
+	virtual void Stop() {}
+	
+	/**
+	* Release any dynamic rendering resources created by this codec
+	*/
+	virtual void ReleaseDynamicResources() {}
 }

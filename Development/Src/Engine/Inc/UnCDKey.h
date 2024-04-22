@@ -1,9 +1,6 @@
 /*=============================================================================
 	UnCDKey.h: CD Key validation
-	Copyright 1997-2002 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Jack Porter
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 /*-----------------------------------------------------------------------------
@@ -12,8 +9,4 @@
 
 FString GetCDKeyHash();
 FString GetCDKeyResponse( const TCHAR* Challenge );
-
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
 

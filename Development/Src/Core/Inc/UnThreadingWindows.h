@@ -3,25 +3,151 @@
  * of interfaces and concrete classes for multithreading support in the Unreal
  * engine.
  *
- * Copyright 2004 Epic Games, Inc. All Rights Reserved.
- *
- * Revision history:
- *		Created by Joe Graf.
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
  */
 
 #ifndef _UNTHREADING_WINDOWS_H
 #define _UNTHREADING_WINDOWS_H
 
-// Notify people of the windows dependency
-#if !defined(_WINDOWS_) && !defined(_XTL_)
-#pragma message("UnThreadingWindows.h relies on Windows.h/Xtl.h being included ahead of it")
+// Notify people of the windows dependency.
+#if !defined(_WINBASE_) && !defined(_XTL_)
+#error UnThreadingWindows.h relies on Windows.h/Xtl.h being included ahead of it
 #endif
+
+// Make sure version is high enough for API to be defined.
+#if !defined(_XTL_) && (_WIN32_WINNT < 0x0403)
+#error SetCriticalSectionSpinCount requires _WIN32_WINNT >= 0x0403
+#endif
+
+/**
+ * Interlocked style functions for threadsafe atomic operations
+ */
+
+/**
+ * Atomically increments the value pointed to and returns that to the caller
+ */
+FORCEINLINE INT appInterlockedIncrement(volatile INT* Value)
+{
+	return (INT)InterlockedIncrement((LPLONG)Value);
+}
+/**
+ * Atomically decrements the value pointed to and returns that to the caller
+ */
+FORCEINLINE INT appInterlockedDecrement(volatile INT* Value)
+{
+	return (INT)InterlockedDecrement((LPLONG)Value);
+}
+/**
+ * Atomically adds the amount to the value pointed to and returns the old
+ * value to the caller
+ */
+FORCEINLINE INT appInterlockedAdd(volatile INT* Value,INT Amount)
+{
+	return (INT)InterlockedExchangeAdd((LPLONG)Value,(LONG)Amount);
+}
+/**
+ * Atomically swaps two values returning the original value to the caller
+ */
+FORCEINLINE INT appInterlockedExchange(volatile INT* Value,INT Exchange)
+{
+	return (INT)InterlockedExchange((LPLONG)Value,(LONG)Exchange);
+}
+/**
+ * Atomically compares the value to comperand and replaces with the exchange
+ * value if they are equal and returns the original value
+ */
+FORCEINLINE INT appInterlockedCompareExchange(INT* Dest,INT Exchange,INT Comperand)
+{
+	return (INT)InterlockedCompareExchange((LPLONG)Dest,(LONG)Exchange,(LONG)Comperand);
+}
+/**
+ * Atomically compares the pointer to comperand and replaces with the exchange
+ * pointer if they are equal and returns the original value
+ */
+FORCEINLINE void* appInterlockedCompareExchangePointer(void** Dest,void* Exchange,void* Comperand)
+{
+	return InterlockedCompareExchangePointer(Dest,Exchange,Comperand);
+}
+
+/**
+ * Returns a pseudo-handle to the currently executing thread.
+ */
+FORCEINLINE HANDLE appGetCurrentThread(void)
+{
+	return GetCurrentThread();
+}
+
+/**
+ * Returns the currently executing thread's id
+ */
+FORCEINLINE DWORD appGetCurrentThreadId(void)
+{
+	return GetCurrentThreadId();
+}
+
+/**
+ * Sets the preferred processor for a thread.
+ *
+ * @param	ThreadHandle		handle for the thread to set affinity for
+ * @param	PreferredProcessor	zero-based index of the processor that this thread prefers
+ *
+ * @return	the number of the processor previously preferred by the thread, MAXIMUM_PROCESSORS
+ *			if the thread didn't have a preferred processor, or (DWORD)-1 if the call failed.
+ */
+FORCEINLINE DWORD appSetThreadAffinity( HANDLE ThreadHandle, DWORD PreferredProcessor )
+{
+#ifndef XBOX
+	return SetThreadIdealProcessor(ThreadHandle,PreferredProcessor);
+#else
+	return XSetThreadProcessor(ThreadHandle,PreferredProcessor);
+#endif
+}
+
+/**
+ * Allocates a thread local store slot
+ */
+FORCEINLINE DWORD appAllocTlsSlot(void)
+{
+	return TlsAlloc();
+}
+
+/**
+ * Sets a value in the specified TLS slot
+ *
+ * @param SlotIndex the TLS index to store it in
+ * @param Value the value to store in the slot
+ */
+FORCEINLINE void appSetTlsValue(DWORD SlotIndex,void* Value)
+{
+	TlsSetValue(SlotIndex,Value);
+}
+
+/**
+ * Reads the value stored at the specified TLS slot
+ *
+ * @return the value stored in the slot
+ */
+FORCEINLINE void* appGetTlsValue(DWORD SlotIndex)
+{
+	return TlsGetValue(SlotIndex);
+}
+
+/**
+ * Frees a previously allocated TLS slot
+ *
+ * @param SlotIndex the TLS index to store it in
+ */
+FORCEINLINE void appFreeTlsSlot(DWORD SlotIndex)
+{
+	TlsFree(SlotIndex);
+}
 
 /**
  * This is the Windows version of a critical section. It uses an aggregate
  * CRITICAL_SECTION to implement its locking.
  */
-class FCriticalSectionWin : public FCriticalSection
+class FCriticalSection :
+	public FSynchronize
 {
 	/**
 	 * The windows specific critical section
@@ -32,22 +158,39 @@ public:
 	/**
 	 * Constructor that initializes the aggregated critical section
 	 */
-	FCriticalSectionWin(void);
+	FORCEINLINE FCriticalSection(void)
+	{
+		InitializeCriticalSection(&CriticalSection);
+		SetCriticalSectionSpinCount(&CriticalSection,4000);
+	}
 
 	/**
 	 * Destructor cleaning up the critical section
 	 */
-	virtual ~FCriticalSectionWin(void);
+	FORCEINLINE ~FCriticalSection(void)
+	{
+		DeleteCriticalSection(&CriticalSection);
+	}
 
 	/**
 	 * Locks the critical section
 	 */
-	virtual void Lock(void);
+	FORCEINLINE void Lock(void)
+	{
+		// Spin first before entering critical section, causing ring-0 transition and context switch.
+		if( TryEnterCriticalSection(&CriticalSection) == 0 )
+		{
+			EnterCriticalSection(&CriticalSection);
+		}
+	}
 
 	/**
 	 * Releases the lock on the critical seciton
 	 */
-	virtual void Unlock(void);
+	FORCEINLINE void Unlock(void)
+	{
+		LeaveCriticalSection(&CriticalSection);
+	}
 };
 
 /**
@@ -122,95 +265,6 @@ public:
 };
 
 /**
- * This is a Windows mutex. It should only be used as a sharable critical
- * section
- */
-class FMutexWin : public FMutex
-{
-public:
-	/**
-	 * The windows handle to the mutex
-	 */
-	HANDLE Mutex;
-
-public:
-	/**
-	 * Constructor that zeroes the handle
-	 */
-	FMutexWin(void);
-
-	/**
-	 * Cleans up the mutex handle if valid
-	 */
-	virtual ~FMutexWin(void);
-
-	/**
-	 * Locks the mutex
-	 */
-	virtual void Lock(void);
-
-	/**
-	 * Releases the lock on the mutex
-	 */
-	virtual void Unlock(void);
-
-	/**
-	 * Creates the mutex. If a name is supplied, that name is used to find
-	 * a shared mutex instance.
-	 *
-	 * @param InName Whether to use a commonly shared mutex or not. If so this
-	 * is the name of the mutex to share.
-	 *
-	 * @return Returns TRUE if the mutex was created, FALSE otherwise
-	 */
-	virtual UBOOL Create(const TCHAR* InName = NULL);
-};
-
-/**
- * This is a Windows semaphore object. It is meant for counted locking
- */
-class FSemaphoreWin : public FSemaphore
-{
-	/**
-	 * The windows handle to the semaphore
-	 */
-	HANDLE Semaphore;
-
-public:
-	/**
-	 * Constructor that zeroes the handle
-	 */
-	FSemaphoreWin(void);
-
-	/**
-	 * Cleans up the semaphore handle if valid
-	 */
-	virtual ~FSemaphoreWin(void);
-
-	/**
-	 * Acquires a lock on the semaphore
-	 */
-	virtual void Lock(void);
-
-	/**
-	 * Releases one acquired lock back to the semaphore
-	 */
-	virtual void Unlock(void);
-
-	/**
-	 * Creates the semaphore with the specified number of locks. Named
-	 * semaphores share instances the same way events and mutexes do.
-	 *
-	 * @param InNumLocks The number of locks this semaphore will support
-	 * @param InName Whether to use a commonly shared semaphore or not. If so
-	 * this is the name of the semaphore to share.
-	 *
-	 * @return Returns TRUE if the semaphore was created, FALSE otherwise
-	 */
-	virtual UBOOL Create(DWORD InNumLocks,const TCHAR* InName = NULL);
-};
-
-/**
  * This is the Windows factory for creating various synchronization objects.
  */
 class FSynchronizeFactoryWin : public FSynchronizeFactory
@@ -238,27 +292,6 @@ public:
 	 * @return Returns the new event object if successful, NULL otherwise
 	 */
 	virtual FEvent* CreateSynchEvent(UBOOL bIsManualReset = FALSE,const TCHAR* InName = NULL);
-
-	/**
-	 * Creates a new semaphore
-	 *
-	 * @param InNumLocks The number of locks this semaphore will support
-	 * @param InName Whether to use a commonly shared semaphore or not. If so
-	 * this is the name of the semaphore to share.
-	 *
-	 * @return The new semaphore object or NULL if creation fails
-	 */
-	virtual FSemaphore* CreateSemaphore(DWORD InNumLocks,const TCHAR* InName = NULL);
-
-	/**
-	 * Creates a new mutex
-	 *
-	 * @param InName Whether to use a commonly shared mutex or not. If so this
-	 * is the name of the mutex to share.
-	 *
-	 * @return The new mutex object or NULL if creation fails
-	 */
-	virtual FMutex* CreateMutex(const TCHAR* InName = NULL);
 
 	/**
 	 * Cleans up the specified synchronization object using the correct heap
@@ -291,17 +324,12 @@ class FQueuedThreadWin : public FQueuedThread
 	/**
 	 * If true, the thread should exit
 	 */
-	UBOOL TimeToDie;
+	volatile UBOOL TimeToDie;
 
 	/**
 	 * The work this thread is doing
 	 */
-	FQueuedWork* QueuedWork;
-
-	/**
-	 * The synchronization object for the work member
-	 */
-	FCriticalSection* QueuedWorkSynch;
+	 FQueuedWork* volatile QueuedWork;
 
 	/**
 	 * The pool this thread belongs to
@@ -313,6 +341,11 @@ class FQueuedThreadWin : public FQueuedThread
 	 * thread main function
 	 */
 	static DWORD STDCALL _ThreadProc(LPVOID pThis);
+
+	/**
+	 * Helper to manage stat updates
+	 */
+	STAT(FCheckForStatsUpdate StatsUpdate);
 
 	/**
 	 * The real thread entry point. It waits for work events to be queued. Once
@@ -336,13 +369,16 @@ public:
 	 * events to be able to communicate with it.
 	 *
 	 * @param InPool The thread pool interface used to place this thread
-	 * back into the pool of available threads when its work is done
+	 *		  back into the pool of available threads when its work is done
+	 * @param ProcessorMask The processor set to run the thread on
 	 * @param InStackSize The size of the stack to create. 0 means use the
-	 * current thread's stack size
+	 *		  current thread's stack size
+	 * @param ThreadPriority priority of new thread
 	 *
 	 * @return True if the thread and all of its initialization was successful, false otherwise
 	 */
-	virtual UBOOL Create(FQueuedThreadPool* InPool,DWORD InStackSize = 0);
+	virtual UBOOL Create(class FQueuedThreadPool* InPool,DWORD ProcessorMask,
+		DWORD InStackSize = 0,EThreadPriority ThreadPriority=TPri_Normal);
 	
 	/**
 	 * Tells the thread to exit. If the caller needs to know when the thread
@@ -351,13 +387,11 @@ public:
 	 * NOTE: having a thread forcibly destroyed can cause leaks in TLS, etc.
 	 *
 	 * @param bShouldWait If true, the call will wait for the thread to exit
-	 * @param MaxWaitTime The amount of time to wait before killing it. It
-	 * defaults to inifinite.
 	 * @param bShouldDeleteSelf Whether to delete ourselves upon completion
 	 *
-	 * @return True if the thread exited gracefull, false otherwise
+	 * @return True if the thread exited graceful, false otherwise
 	 */
-	virtual UBOOL Kill(UBOOL bShouldWait = FALSE,DWORD MaxWaitTime = INFINITE,UBOOL bShouldDeleteSelf = FALSE);
+	virtual UBOOL Kill(UBOOL bShouldWait = FALSE, UBOOL bShouldDeleteSelf = FALSE);
 
 	/**
 	 * Tells the thread there is work to be done. Upon completion, the thread
@@ -387,11 +421,14 @@ public:
 	 * Creates the thread pool with the specified number of threads
 	 *
 	 * @param InNumQueuedThreads Specifies the number of threads to use in the pool
+	 * @param ProcessorMask Specifies which processors should be used by the pool
 	 * @param StackSize The size of stack the threads in the pool need (32K default)
+	 * @param ThreadPriority priority of new pool thread
 	 *
 	 * @return Whether the pool creation was successful or not
 	 */
-	virtual UBOOL Create(DWORD InNumQueuedThreads,DWORD StackSize = (32 * 1024));
+	virtual UBOOL Create(DWORD InNumQueuedThreads,DWORD ProcessorMask = 0,
+		DWORD StackSize = (32 * 1024),EThreadPriority ThreadPriority=TPri_Normal);
 };
 
 /**
@@ -410,6 +447,11 @@ class FRunnableThreadWin : public FRunnableThread
 	 */
 	FRunnable* Runnable;
 
+	/** 
+	 * Sync event to make sure that Init() has been completed before allowing the main thread to continue
+	 */
+	FEvent* ThreadInitSyncEvent;
+
 	/**
 	 * Whether we should delete ourselves on thread exit
 	 */
@@ -424,6 +466,11 @@ class FRunnableThreadWin : public FRunnableThread
 	 * The priority to run the thread at
 	 */
 	EThreadPriority ThreadPriority;
+
+	/**
+	* ID set during thread creation
+	*/
+	DWORD ThreadID;
 
 	/**
 	 * The thread entry point. Simply forwards the call on to the right
@@ -452,6 +499,7 @@ public:
 	 * Creates the thread with the specified stack size and thread priority.
 	 *
 	 * @param InRunnable The runnable object to execute
+	 * @param ThreadName Name of the thread
 	 * @param bAutoDeleteSelf Whether to delete this object on exit
 	 * @param bAutoDeleteRunnable Whether to delete the runnable object on exit
 	 * @param InStackSize The size of the stack to create. 0 means use the
@@ -461,8 +509,8 @@ public:
 	 *
 	 * @return True if the thread and all of its initialization was successful, false otherwise
 	 */
-	UBOOL Create(FRunnable* InRunnable,UBOOL bAutoDeleteSelf = 0,
-		UBOOL bAutoDeleteRunnable = 0,DWORD InStackSize = 0,
+	UBOOL Create(FRunnable* InRunnable, const TCHAR* ThreadName,
+		UBOOL bAutoDeleteSelf = 0,UBOOL bAutoDeleteRunnable = 0,DWORD InStackSize = 0,
 		EThreadPriority InThreadPri = TPri_Normal);
 	
 	/**
@@ -488,7 +536,7 @@ public:
 	 *
 	 * @param bShouldPause Whether to pause the thread (true) or resume (false)
 	 */
-	virtual void Suspend(UBOOL bShouldPause = 1);
+	virtual void Suspend(UBOOL bShouldPause = TRUE);
 
 	/**
 	 * Tells the thread to exit. If the caller needs to know when the thread
@@ -497,17 +545,22 @@ public:
 	 * NOTE: having a thread forcibly destroyed can cause leaks in TLS, etc.
 	 *
 	 * @param bShouldWait If true, the call will wait for the thread to exit
-	 * @param MaxWaitTime The amount of time to wait before killing it.
-	 * Defaults to inifinite.
 	 *
-	 * @return True if the thread exited gracefull, false otherwise
+	 * @return True if the thread exited graceful, false otherwise
 	 */
-	virtual UBOOL Kill(UBOOL bShouldWait = 0,DWORD MaxWaitTime = 0);
+	virtual UBOOL Kill(UBOOL bShouldWait = FALSE);
 
 	/**
 	 * Halts the caller until this thread is has completed its work.
 	 */
 	virtual void WaitForCompletion(void);
+
+	/**
+	* Thread ID for this thread 
+	*
+	* @return ID that was set by CreateThread
+	*/
+	virtual DWORD GetThreadID(void);
 };
 
 /**
@@ -520,6 +573,7 @@ public:
 	 * Creates the thread with the specified stack size and thread priority.
 	 *
 	 * @param InRunnable The runnable object to execute
+	 * @param ThreadName Name of the thread
 	 * @param bAutoDeleteSelf Whether to delete this object on exit
 	 * @param bAutoDeleteRunnable Whether to delete the runnable object on exit
 	 * @param InStackSize The size of the stack to create. 0 means use the
@@ -529,7 +583,7 @@ public:
 	 *
 	 * @return The newly created thread or NULL if it failed
 	 */
-	virtual FRunnableThread* CreateThread(FRunnable* InRunnable,
+	virtual FRunnableThread* CreateThread(FRunnable* InRunnable, const TCHAR* ThreadName,
 		UBOOL bAutoDeleteSelf = 0,UBOOL bAutoDeleteRunnable = 0,
 		DWORD InStackSize = 0,EThreadPriority InThreadPri = TPri_Normal);
 

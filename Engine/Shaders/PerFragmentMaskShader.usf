@@ -1,0 +1,26 @@
+/*=============================================================================
+	PerFragmentMaskShader.usf: Pixel shader for masking out pixels that contain MSAA depth edges.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+void Main(in float4 ScreenPosition : TEXCOORD0,out float4 OutColor : COLOR0)
+{
+	// Find the minimum and maximum depth samples for the pixel.
+	float MinDepth = 1000000;
+	float MaxDepth = 0;
+	for(uint SampleIndex = 0;SampleIndex < NumMSAASamples;++SampleIndex)
+	{
+		float SampleDepth = PreviousDepthForShadowsMSAA(ScreenPosition,SampleIndex);
+		MinDepth = min(MinDepth,SampleDepth);
+		MaxDepth = max(MaxDepth,SampleDepth);
+	}
+	// If the range of the depth samples for the pixel is large enough, discard the pixel so it will be written by the per-sample shader.
+	if((MaxDepth - MinDepth) / (.5f * (MinDepth + MaxDepth)) > .04f)
+	{
+		discard;
+	}
+
+	OutColor = float4(1,1,1,1);
+}

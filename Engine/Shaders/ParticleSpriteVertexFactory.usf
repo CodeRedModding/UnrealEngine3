@@ -1,0 +1,554 @@
+/*=============================================================================
+	ParticleSpriteVertexFactory.hlsl: Particle vertex factory shader code.
+	Shared by standard sprite particles and SubUV sprite particles.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+float4		CameraWorldPosition;
+float4		CameraRight;
+float4		CameraUp;
+float4		ScreenAlignment;
+float		NormalsType;
+float4		NormalsSphereCenter;
+float4		NormalsCylinderUnitDirection;
+
+// The source index is which entry in the AxisRotationVectors array is the 'source'.
+float		AxisRotationVectorSourceIndex;
+// The code assumes:
+//   the right vector will be in slot 0.
+//   the up vector will be in slot 1.
+float4		AxisRotationVectors[NUM_AXIS_ROTATION_VECTORS];
+
+// The result scalars are used to determine which method is being used.
+// The values are as follows:
+//   x - multiplied by the standard camera right/up values
+//   y - multiplied by the velocity right/up values
+//   z - multiplied by the axis rotation right/up values
+// The multiplies are summed together to give the final right/up
+float3		ParticleUpRightResultScalars;
+
+#if PS3 || OPENGL
+// PS3 and OpenGL will only let us index into this w/ a non-constant value if it a uniform!
+float4		CornerUVs[4];
+#else
+static float2 CornerUVs[4] = { float2(0.0f, 0.0f), float2(0.0f, 1.0f), float2(1.0f, 1.0f), float2(1.0f, 0.0f) };
+#endif
+
+#if USE_PARTICLE_VERTEX_INDEX
+static float2 UVMapping[4][4] = 
+	{ 
+		float2(0.0f, 0.0f), float2(0.0f, 1.0f), float2(1.0f, 1.0f), float2(1.0f, 0.0f),		// Standard UV
+		float2(1.0f, 0.0f), float2(1.0f, 1.0f), float2(0.0f, 1.0f), float2(0.0f, 0.0f),		// -X size
+		float2(0.0f, 1.0f), float2(0.0f, 0.0f), float2(1.0f, 0.0f), float2(1.0f, 1.0f),		// -Y size
+		float2(1.0f, 1.0f), float2(1.0f, 0.0f), float2(0.0f, 0.0f), float2(0.0f, 1.0f),		// -X,-Y size
+	};
+
+struct FVertexFactoryInput
+{
+	int	VertexIndex		: INDEX;
+};
+
+struct FParticleVertex
+{
+	float4	Position		;//: POSITION;
+	float4	OldPosition		;//: NORMAL;
+	float3	Size			;//: TANGENT;
+	float2	Rotation_Sizer  ;//: BLENDWEIGHT0;
+#if SUBUV_PARTICLES
+	float4	TexCoord		;//: TEXCOORD0;
+#else	//SUBUV_PARTICLES
+	float2	TexCoord		;//: TEXCOORD0;
+#endif	//SUBUV_PARTICLES
+	float4	Color			;//: TEXCOORD1;
+#if SUBUV_PARTICLES
+	float4	Interp_Sizer	;//: TEXCOORD2;
+#endif	//SUBUV_PARTICLES
+
+#if USE_DYNAMIC_PARAMETERS
+	float4 DynamicParameter0;//: TEXCOORD3;
+#endif	//USE_DYNAMIC_PARAMETERS
+};
+
+#else	//#if USE_PARTICLE_VERTEX_INDEX
+
+struct FVertexFactoryInput
+{
+	float4	Position		: POSITION;
+	float4	OldPosition		: NORMAL;
+	float3	Size			: TANGENT;
+	float2	Rotation_Sizer	: BLENDWEIGHT0;
+#if SUBUV_PARTICLES
+	float4	TexCoord		: TEXCOORD0;
+#else	//SUBUV_PARTICLES
+	float2	TexCoord		: TEXCOORD0;
+#endif	//SUBUV_PARTICLES
+	float4	Color			: TEXCOORD1;
+#if SUBUV_PARTICLES
+	float4	Interp_Sizer	: TEXCOORD2;
+#endif	//SUBUV_PARTICLES
+
+#if USE_DYNAMIC_PARAMETERS
+	float4 DynamicParameter0: TEXCOORD3;
+#endif	//USE_DYNAMIC_PARAMETERS
+};
+
+#endif	//#if USE_PARTICLE_VERTEX_INDEX
+
+struct FVertexFactoryInterpolantsVSToPS
+{
+#if WORLD_COORDS
+	// First row of the tangent to world matrix, Interp_Sizer used by SUBUV_PARTICLES in w
+	float4	TangentToWorld0AndInterp_Sizer : TANGENTTOWORLD0;
+	// Last row of the tangent to world matrix in xyz
+	float4	TangentToWorld2	: TANGENTTOWORLD2;
+#elif SUBUV_PARTICLES
+	float	Interp_Sizer	: TANGENTTOWORLD0;
+#endif
+
+#if SUBUV_PARTICLES
+	float4	TexCoord			: TEXCOORD0;
+#else	//SUBUV_PARTICLES
+	float2	TexCoord			: TEXCOORD0;
+#endif	//SUBUV_PARTICLES
+	float4	Color				: TEXCOORD1;
+#if USE_DYNAMIC_PARAMETERS
+	float4 DynamicParameter0	: TEXCOORD2;
+#endif	//USE_DYNAMIC_PARAMETERS
+};
+
+struct FVertexFactoryIntermediates
+{
+#if USE_PARTICLE_VERTEX_INDEX
+	FParticleVertex ParticleVertex;
+#else
+	float Dummy;
+#endif
+};
+
+#if USE_PARTICLE_VERTEX_INDEX
+	#define VERTEX_ACCESS		Intermediates.ParticleVertex
+#else
+	#define VERTEX_ACCESS		Input
+#endif	//#if USE_PARTICLE_VERTEX_INDEX
+
+#if USE_PARTICLE_VERTEX_INDEX
+FParticleVertex GetParticleVertex(FVertexFactoryInput Input)
+{
+	int PointIndex = (Input.VertexIndex + 0.5) / 4;
+	int CornerIndex = (Input.VertexIndex + 0.5) % 4;
+	
+	FParticleVertex OutVertex;
+
+	float4	Position;
+	float4	OldPosition;
+	float4	Size;
+	float4	Rotation;
+#if SUBUV_PARTICLES
+	float4 OffsetValues;
+#endif	//SUBUV_PARTICLES
+	float4	Color;
+#if SUBUV_PARTICLES
+	float4	Interp_Sizer;
+#endif	//SUBUV_PARTICLES
+#if USE_DYNAMIC_PARAMETERS
+	float4 DynamicParameter0;
+#endif
+
+	// fetch the values from the vertex stream	
+	asm
+	{
+		vfetch Position,			PointIndex, position;
+		vfetch OldPosition,			PointIndex, normal0;
+		vfetch Size,				PointIndex, tangent0;
+		vfetch Rotation,			PointIndex, blendweight0;
+#if SUBUV_PARTICLES
+		vfetch OffsetValues,		PointIndex, texcoord0;
+#endif
+		vfetch Color,				PointIndex, texcoord1;
+#if SUBUV_PARTICLES
+		vfetch Interp_Sizer,		PointIndex, texcoord2;
+#endif
+#if USE_DYNAMIC_PARAMETERS
+		vfetch DynamicParameter0,	PointIndex, texcoord3;
+#endif	//USE_DYNAMIC_PARAMETERS
+	};
+
+	OutVertex.Position.xyz = Position;
+	OutVertex.Position.w = 1.0f;
+	OutVertex.OldPosition.xyz = OldPosition;
+	OutVertex.OldPosition.w = 1.0f;
+	OutVertex.Size.xyz = Size;
+	OutVertex.Rotation_Sizer.x = Rotation.x;
+	OutVertex.Rotation_Sizer.y = CornerIndex;
+	OutVertex.Color = Color;	
+
+	// Look up which UV set to use (to allow for image flipping)
+	float2 UVValues = UVMapping[Rotation.y][CornerIndex];
+
+#if SUBUV_PARTICLES
+	// Interp_Size.zw holds the scale for the subUV
+	float2 UVs = UVValues * Interp_Sizer.zw;
+	// OffsetValues.xy contains the offset for the 1st subimage
+	// OffsetValues.zw contains the offset for the 2nd subimage
+	OutVertex.TexCoord.xy = UVs + OffsetValues.xy * Interp_Sizer.zw;
+	OutVertex.TexCoord.zw = UVs + OffsetValues.zw * Interp_Sizer.zw;
+	// Reset the sizer to the 0..1 range for vertex positioning...
+	OutVertex.Interp_Sizer = Interp_Sizer;
+	OutVertex.Interp_Sizer.zw = CornerUVs[CornerIndex];
+#else	//SUBUV_PARTICLES
+	OutVertex.TexCoord.xy = UVValues;
+#endif	//SUBUV_PARTICLES
+#if USE_DYNAMIC_PARAMETERS
+	OutVertex.DynamicParameter0 = DynamicParameter0;
+#endif
+
+	return OutVertex;
+}
+#endif	//#if USE_PARTICLE_VERTEX_INDEX
+
+/** Converts from vertex factory specific interpolants to a FMaterialPixelParameters, which is used by material inputs. */
+FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	FMaterialPixelParameters	Result;
+
+#if WORLD_COORDS
+	half4 TangentToWorld0AndInterp_Sizer;
+	half4 TangentToWorld2 = UnpackColor4( Interpolants.TangentToWorld2 );
+	TangentToWorld0AndInterp_Sizer.xyz = UnpackColor3( Interpolants.TangentToWorld0AndInterp_Sizer.xyz );
+	TangentToWorld0AndInterp_Sizer.w = Interpolants.TangentToWorld0AndInterp_Sizer.w;
+#endif
+
+#if NUM_MATERIAL_TEXCOORDS
+#if SUBUV_PARTICLES
+	#if NUM_MATERIAL_TEXCOORDS >= 1
+		Result.TexCoords[0] = Interpolants.TexCoord.xy;
+		{UNROLL
+		for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+		{
+			Result.SampleTexCoords[SampleIndex][0] = EvaluateAttributeAtSample(Interpolants.TexCoord.xy,SampleIndex);
+		}}
+	#if NUM_MATERIAL_TEXCOORDS >= 2
+		Result.TexCoords[1] = Interpolants.TexCoord.zw;
+		{UNROLL
+		for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+		{
+			Result.SampleTexCoords[SampleIndex][1] = EvaluateAttributeAtSample(Interpolants.TexCoord.zw,SampleIndex);
+		}}
+	#if NUM_MATERIAL_TEXCOORDS >= 3
+		// If WORLD_COORDS is true, Interp_Sizer was packed into the w, otherwise it gets its own interpolator.
+		#if WORLD_COORDS
+			Result.TexCoords[2] = TangentToWorld0AndInterp_Sizer.ww;
+			{UNROLL
+			for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+			{
+				Result.SampleTexCoords[SampleIndex][2] = TangentToWorld0AndInterp_Sizer.ww;
+			}}
+		#else
+			Result.TexCoords[2] = Interpolants.Interp_Sizer.xx;
+			UNROLL
+			{for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+			{
+				Result.SampleTexCoords[SampleIndex][2] = EvaluateAttributeAtSample(Interpolants.Interp_Sizer.xx,SampleIndex);
+			}}
+		#endif
+	#endif	// >= 3
+	#endif	// >= 2
+	#endif	// >= 1
+
+	#if NUM_MATERIAL_TEXCOORDS > 3
+		UNROLL
+		for(int CoordinateIndex = 3;CoordinateIndex < NUM_MATERIAL_TEXCOORDS;CoordinateIndex++)
+		{
+			Result.TexCoords[CoordinateIndex] = Interpolants.TexCoord.xy;
+			UNROLL
+			for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+			{
+				Result.SampleTexCoords[SampleIndex][CoordinateIndex] = EvaluateAttributeAtSample(Interpolants.TexCoord.xy,SampleIndex);
+			}
+		}
+	#endif	// > 3
+#else	//SUBUV_PARTICLES
+	UNROLL
+	for(int CoordinateIndex = 0;CoordinateIndex < NUM_MATERIAL_TEXCOORDS;CoordinateIndex++)
+	{
+		Result.TexCoords[CoordinateIndex] = Interpolants.TexCoord.xy;
+		UNROLL
+		for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+		{
+			Result.SampleTexCoords[SampleIndex][CoordinateIndex] = EvaluateAttributeAtSample(Interpolants.TexCoord.xy,SampleIndex);
+		}
+	}
+#endif	//SUBUV_PARTICLES
+#endif	//NUM_MATERIAL_TEXCOORDS
+	Result.VertexColor = Interpolants.Color;
+	Result.TangentNormal = 0;
+	Result.TangentCameraVector = 0;
+	Result.TangentReflectionVector = 0;
+	Result.TangentLightVector = 0;
+	Result.ScreenPosition = 0;
+#if WORLD_COORDS
+	Result.TangentToWorld = CalcTangentToWorld(TangentToWorld0AndInterp_Sizer.xyz, TangentToWorld2);
+	Result.UnMirrored = 1;
+#endif
+#if MATERIAL_DECAL
+	Result.DecalAttenuation = 1;
+	Result.DecalPlaneDistance = 0;
+#endif
+
+#if USE_DYNAMIC_PARAMETERS
+	Result.DynamicParameter0 = Interpolants.DynamicParameter0;
+#endif	//USE_DYNAMIC_PARAMETERS
+
+#if LIGHTMAP_UV_ACCESS
+	Result.LightmapUVs = Interpolants.TexCoord.xy;
+#endif
+
+	Result.TwoSidedSign = 1;
+	return Result;
+}
+
+float4 VertexFactoryGetVertexColor(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return VERTEX_ACCESS.Color;
+}
+
+/** Converts from vertex factory specific input to a FMaterialVertexParameters, which is used by vertex shader material inputs. */
+FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentBasis)
+{
+	FMaterialVertexParameters Result;
+	Result.WorldPosition = WorldPosition - PreViewTranslation.xyz;
+	Result.VertexColor = VertexFactoryGetVertexColor(Input, Intermediates);
+
+	float3x3 TangentToLocal = transpose(TangentBasis);
+
+	#if ROW_MAJOR
+		// does not handle instancing!
+		float3x3 TangentToWorld = mul((float3x3)LocalToWorld, TangentToLocal); 
+	#else
+		float3x3 TangentToWorld = mul(transpose((float3x3)LocalToWorld), TangentToLocal); 
+	#endif
+
+	Result.TangentToWorld = TangentToWorld;
+	return Result;
+}
+
+#if !VERTEX_LIGHTMAP // AJS: If this is an emissive+vertex light-map shader, we can save an interpolator by skipping the light-map coordinate.
+float2 GetLightMapCoordinate(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	return Interpolants.TexCoord.xy;
+}
+
+#endif	//!VERTEX_LIGHTMAP
+
+float3 SafeNormalize(float3 V)
+{
+	return V / sqrt(max(dot(V,V),0.01));
+}
+
+void GetTangents(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, out float4 Right,out float4 Up)
+{
+	float SinRotation;
+	float CosRotation;
+	sincos(VERTEX_ACCESS.Rotation_Sizer.x, SinRotation, CosRotation);
+	
+	float4	Position			= MulMatrix(LocalToWorld, VERTEX_ACCESS.Position),
+			OldPosition			= MulMatrix(LocalToWorld, VERTEX_ACCESS.OldPosition);
+
+	// The index stored in the x component of AxisRotationVectorIndices indicates the 'source'.
+	// Calculate the new axis by crossing this with the CameraDirection
+	float4 AxisRotationResultVectors[2];
+	int ARVIndex = AxisRotationVectorSourceIndex;
+	float4 AxisSource = AxisRotationVectors[ARVIndex];
+
+	float3	CameraDirection		= SafeNormalize(CameraWorldPosition.xyz - Position.xyz),
+			ParticleDirection	= SafeNormalize(Position.xyz - OldPosition.xyz);
+
+	float4	Right_Square		= CameraRight,
+			Up_Square			= CameraUp;
+			
+	float4	Right_Rotated		= (-1.0 * CosRotation * Up_Square) + (SinRotation * Right_Square),
+			Up_Rotated			= (       SinRotation * Up_Square) + (CosRotation * Right_Square);
+
+	float4	Right_Velocity		= float4(SafeNormalize(cross(CameraDirection, ParticleDirection	)), 0.0),
+			Up_Velocity			= float4(-ParticleDirection, 0.0);
+
+	float4 Axis_Calculation = float4(SafeNormalize(cross(CameraDirection, AxisSource.xyz)), 0.0) * AxisSource.w;
+	// The w component of the rotation vector should 'clear' any negation that was performed.
+	AxisRotationResultVectors[0] = (ARVIndex != 0) ? Axis_Calculation : AxisSource;
+	AxisRotationResultVectors[1] = (ARVIndex == 0) ? Axis_Calculation : AxisSource;
+	// Clear the w component of the result
+	AxisRotationResultVectors[0].w = 0.0f;
+	AxisRotationResultVectors[1].w = 0.0f;
+
+	Right	= (Right_Rotated * ParticleUpRightResultScalars.x) +
+			  (Right_Velocity * ParticleUpRightResultScalars.y) +
+			  (AxisRotationResultVectors[0] * ParticleUpRightResultScalars.z);
+	Up		= (Up_Rotated * ParticleUpRightResultScalars.x) +
+			  (Up_Velocity * ParticleUpRightResultScalars.y) +
+			  (AxisRotationResultVectors[1] * ParticleUpRightResultScalars.z);
+/***
+	//	enum EParticleScreenAlignment
+	//	{
+	//		PSA_Square,
+	//		PSA_Rectangle,
+	//		PSA_Velocity
+	//	};
+	Right				= ScreenAlignment.x > 1.5f ? Right_Velocity : Right_Rotated;
+	Up					= ScreenAlignment.x > 1.5f ? Up_Velocity	: Up_Rotated;
+***/
+}
+
+float4 CalcWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	float4	WorldPosition = MulMatrix(LocalToWorld,VERTEX_ACCESS.Position);
+
+	float4	Right,
+			Up;
+	GetTangents(Input,Intermediates,Right,Up);
+
+#if PS3 || OPENGL
+	WorldPosition += VERTEX_ACCESS.Size.x * (CornerUVs[int(VERTEX_ACCESS.Rotation_Sizer.y + 0.1)].x - 0.5) * Right;
+	WorldPosition += VERTEX_ACCESS.Size.y * (CornerUVs[int(VERTEX_ACCESS.Rotation_Sizer.y + 0.1)].y - 0.5) * Up;
+#else
+	WorldPosition += VERTEX_ACCESS.Size.x * (CornerUVs[VERTEX_ACCESS.Rotation_Sizer.y].x - 0.5) * Right;
+	WorldPosition += VERTEX_ACCESS.Size.y * (CornerUVs[VERTEX_ACCESS.Rotation_Sizer.y].y - 0.5) * Up;
+#endif
+
+	return WorldPosition;
+}
+
+/** derive basis vectors */
+float3x3 CalcTangentBasis(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	float4 Right, Up;
+	GetTangents(Input, Intermediates, Right, Up);
+
+	// Using camera facing TangentX and TangentY.  The resulting tangent basis is not orthonormal with anything other than ENM_CameraFacing, 
+	// So there are artifacts with tangent space calculations like the TransformVector node,
+	// But this allows lighting based on a world space shape via the normal while still having normal maps camera aligned.
+	float3x3 Result;
+	Result[0] = Right.xyz;
+	Result[1] = Up.xyz;
+
+	float3 WorldPosition = MulMatrix(LocalToWorld, VERTEX_ACCESS.Position).xyz;
+
+	// ENM_CameraFacing
+	//@todo - use static branching
+	if (NormalsType < .5f)
+	{
+		Result[2] = normalize(cross(Right.xyz,Up.xyz));
+	} 
+	// ENM_Spherical
+	else if (NormalsType < 1.5f)
+	{
+		float3 TangentZ = normalize(WorldPosition.xyz - NormalsSphereCenter.xyz);
+		Result[2] = TangentZ;	
+	}
+	// ENM_Cylindrical
+	else
+	{
+		float3 ClosestPointOnCylinder = NormalsSphereCenter.xyz + dot(NormalsCylinderUnitDirection.xyz, WorldPosition.xyz - NormalsSphereCenter.xyz) * NormalsCylinderUnitDirection.xyz;
+		float3 TangentZ = normalize(WorldPosition.xyz - ClosestPointOnCylinder);
+		Result[2] = TangentZ;	
+	}
+
+	return Result;
+}
+
+FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
+{
+	FVertexFactoryIntermediates Intermediates;
+#if USE_PARTICLE_VERTEX_INDEX
+	Intermediates.ParticleVertex = GetParticleVertex(Input);
+#else
+	Intermediates.Dummy = 0;
+#endif
+	return Intermediates;
+}
+
+float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return CalcWorldPosition(Input, Intermediates);
+}
+
+FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	FVertexFactoryInterpolantsVSToPS Interpolants;
+	Interpolants.TexCoord		= VERTEX_ACCESS.TexCoord;
+	Interpolants.Color			= VertexFactoryGetVertexColor(Input, Intermediates);
+#if SUBUV_PARTICLES
+	#if WORLD_COORDS
+		Interpolants.TangentToWorld0AndInterp_Sizer.w = VERTEX_ACCESS.Interp_Sizer.x;
+	#else
+		Interpolants.Interp_Sizer = VERTEX_ACCESS.Interp_Sizer.x;
+	#endif
+#endif	//SUBUV_PARTICLES
+
+#if USE_DYNAMIC_PARAMETERS
+	Interpolants.DynamicParameter0 = VERTEX_ACCESS.DynamicParameter0;
+#endif	//USE_DYNAMIC_PARAMETERS
+
+#if WORLD_COORDS
+	#if !SUBUV_PARTICLES
+		// Fully initialize interpolants to avoid a compile error even though it is not read from in the !SUBUV_PARTICLES case
+		Interpolants.TangentToWorld0AndInterp_Sizer.w = 0;
+	#endif
+
+	float3x3 LocalToTangent = CalcTangentBasis(Input, Intermediates);
+	float3x3 TangentToLocal = transpose(LocalToTangent);
+
+	// Calculate the transform from tangent to world space
+	#if ROW_MAJOR
+		float3x3 TangentToWorld = mul((float3x3)LocalToWorld, TangentToLocal); 
+	#else
+		float3x3 TangentToWorld = mul(transpose((float3x3)LocalToWorld), TangentToLocal); 
+	#endif
+
+	Interpolants.TangentToWorld0AndInterp_Sizer.xyz = TangentToWorld[0];
+	Interpolants.TangentToWorld2 = float4(TangentToWorld[2], sign(determinant(LocalToTangent)));
+
+	Interpolants.TangentToWorld0AndInterp_Sizer.xyz = PackColor3( Interpolants.TangentToWorld0AndInterp_Sizer.xyz );
+	Interpolants.TangentToWorld2 = PackColor4( Interpolants.TangentToWorld2 );
+#endif
+
+	return Interpolants;
+}
+
+float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return VertexFactoryGetWorldPosition(Input, Intermediates);
+}
+
+/**
+* Get the 3x3 tangent basis vectors for this vertex factory
+*
+* @param Input - vertex input stream structure
+* @return 3x3 matrix
+*/
+float3x3 VertexFactoryGetTangentBasis(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return CalcTangentBasis(Input, Intermediates);
+}
+
+/**
+* Transform a vector from world space to tangent space
+*
+* @param Input - vertex input stream structure
+* @param TangentBasis - 3x3 matrix to transform to tangent space
+* @param WorldVector - vector in world space to transform 
+* @return vector in tangent space
+*/
+float3 VertexFactoryWorldToTangentSpace(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3x3 TangentBasis, float3 WorldVector)
+{
+	// we use a straight mul here because we are generating the matrix, so we don't worry about column major vs row major (which is what MulMatrix manages per-platform)
+	return mul(
+		TangentBasis,
+		WorldVector
+		);
+}
+
+half3 VertexFactoryGetWorldNormal(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	float3x3 TangentBasis = VertexFactoryGetTangentBasis(Input, Intermediates);
+	return TangentBasis[2];
+}

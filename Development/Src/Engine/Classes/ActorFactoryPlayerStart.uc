@@ -1,11 +1,15 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class ActorFactoryPlayerStart extends ActorFactory
 	config(Editor)
 	collapsecategories
-	hidecategories(Object);
+	hidecategories(Object)
+	native;
 
 defaultproperties
 {
 	MenuName="Add PlayerStart"
-	MenuPriority=1
 	NewActorClass=class'Engine.PlayerStart'
+	bShowInEditorQuickMenu=true
 }

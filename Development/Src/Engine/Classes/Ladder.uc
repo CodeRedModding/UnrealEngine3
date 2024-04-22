@@ -1,7 +1,8 @@
 /*=============================================================================
-// Ladders are associated with the LadderVolume that encompasses them, and provide AI navigation 
+// Ladders are associated with the LadderVolume that encompasses them, and provide AI navigation
 // support for ladder volumes.  Direction should be the direction that climbing pawns
 // should face
+// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 ============================================================================= */
 
 class Ladder extends NavigationPoint
@@ -10,16 +11,19 @@ class Ladder extends NavigationPoint
 
 cpptext
 {
-	INT ProscribedPathTo(ANavigationPoint *Dest);
+#if WITH_EDITOR
+	virtual UBOOL CanConnectTo(ANavigationPoint* Dest, UBOOL bCheckDistance);
 	void addReachSpecs(AScout *Scout, UBOOL bOnlyChanged=0);
+#endif
 	void InitForPathFinding();
 	void ClearPaths();
+	virtual UBOOL ReachedBy(APawn* P, const FVector& TestPosition, const FVector& Dest);
 }
 
 var LadderVolume MyLadder;
 var Ladder LadderList;
 
-/* 
+/*
 Check if ladder is already occupied
 */
 event bool SuggestMovePreparation(Pawn Other)
@@ -46,13 +50,8 @@ defaultproperties
 	End Object
 
 	Begin Object NAME=Sprite
-		Sprite=Texture2D'EngineResources.S_Ladder'
+		Sprite=Texture2D'EditorResources.S_Ladder'
 	End Object
-
-	Begin Object Class=ArrowComponent Name=Arrow
-		ArrowColor=(R=150,G=200,B=255)
-	End Object
-	Components.Add(Arrow)
 
 	bSpecialMove=true
 	bNotBased=true

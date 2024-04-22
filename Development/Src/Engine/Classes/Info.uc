@@ -1,6 +1,8 @@
 /**
- * Info, the root of all information holding klasses.
+ * Info, the root of all information holding classes.
  * Doesn't have any movement / collision related code.
+ *
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
  */
 
 class Info extends Actor
@@ -11,13 +13,13 @@ class Info extends Actor
 //------------------------------------------------------------------------------
 // Structs for reporting server state data
 
-struct native export KeyValuePair
+struct transient native export KeyValuePair
 {
 	var() string Key;
 	var() string Value;
 };
 
-struct native export PlayerResponseLine
+struct transient native export PlayerResponseLine
 {
 	var() int PlayerNum;
 	var() int PlayerID;
@@ -29,7 +31,7 @@ struct native export PlayerResponseLine
 
 };
 
-struct native export ServerResponseLine
+struct transient native export ServerResponseLine
 {
 	var() int ServerID;
 	var() string IP;
@@ -41,7 +43,7 @@ struct native export ServerResponseLine
 	var() int CurrentPlayers;
 	var() int MaxPlayers;
 	var() int Ping;
-	
+
 	var() array<KeyValuePair> ServerInfo;
 	var() array<PlayerResponseLine> PlayerInfo;
 };
@@ -49,11 +51,18 @@ struct native export ServerResponseLine
 
 defaultproperties
 {
-	CollisionComponent=None
-	Components.Remove(CollisionCylinder)
+	Begin Object Class=SpriteComponent Name=Sprite
+		Sprite=Texture2D'EditorResources.S_Actor'
+		HiddenGame=TRUE
+		AlwaysLoadOnClient=FALSE
+		AlwaysLoadOnServer=FALSE
+		SpriteCategoryName="Info"
+	End Object
+	Components.Add(Sprite)
+
 	RemoteRole=ROLE_None
 	NetUpdateFrequency=10
-	bHidden=true
-	bOnlyDirtyReplication=true
-	bSkipActorPropertyReplication=true
+	bHidden=TRUE
+	bOnlyDirtyReplication=TRUE
+	bSkipActorPropertyReplication=TRUE
 }

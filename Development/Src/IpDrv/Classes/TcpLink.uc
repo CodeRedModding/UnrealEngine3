@@ -1,5 +1,6 @@
 //=============================================================================
 // TcpLink: An Internet TCP/IP connection.
+//  Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 //=============================================================================
 class TcpLink extends InternetLink
 	native
@@ -17,6 +18,7 @@ cpptext
 	UBOOL FlushSendBuffer();
 	void ShutdownConnection();
 	virtual UBOOL ShouldTickInEntry() { return true; }
+	virtual INT NativeReadBinary(INT Count, BYTE*& B);
 }
 
 //-----------------------------------------------------------------------------
@@ -44,11 +46,12 @@ var IpAddr	  RemoteAddr;	// Contains address of peer connected to from a Listen(
 // events to track your children.
 var class<TcpLink> AcceptClass;
 var const Array<byte> SendFIFO; // send fifo
+var const string RecvBuf; // Recveive buffer (only used with MODE_Line)
 //-----------------------------------------------------------------------------
 // natives.
 
 // BindPort: Binds a free port or optional port specified in argument one.
-native function int BindPort( optional int Port, optional bool bUseNextAvailable );
+native function int BindPort( optional int PortNum, optional bool bUseNextAvailable );
 
 // Listen: Listen for connections.  Can handle up to 5 simultaneous connections.
 // Returns false if failed to place socket in listen mode.
@@ -93,6 +96,7 @@ event Closed();
 event ReceivedText( string Text );
 
 // ReceivedLine: Called when data is received and connection mode is MODE_Line.
+// \r\n is stripped from the line
 event ReceivedLine( string Line );
 
 // ReceivedBinary: Called when data is received and connection mode is MODE_Binary.

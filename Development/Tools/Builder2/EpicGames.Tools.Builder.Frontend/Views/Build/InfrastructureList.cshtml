@@ -1,0 +1,129 @@
+﻿@model IEnumerable<EpicGames.Tools.Builder.Frontend.Database.SP_GetMachineStatusResult>
+
+@{
+    Layout = null;
+
+    DateTime LatestBuilderVersion = Model.Where(m => m.Deployed).Max(m => m.Version);
+}
+
+<section>
+    <div class="grid6">
+        <a name="active"></a>
+
+        <h2>Active Builders</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th class="enum">Last Updated</th>
+                    <th class="enum">State</th>
+                    <th>Current Operation</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var m in Model)
+                {
+                    if (m.Deployed && !string.Equals(m.MachineName, m.MachineLock, StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        if (!m.CurrentTime.HasValue || (DateTime.UtcNow.Subtract(m.CurrentTime.Value).TotalDays <= 30.0))
+                        {
+                            if (!m.CurrentTime.HasValue || (DateTime.UtcNow.Subtract(m.CurrentTime.Value).TotalHours > 4.0))
+                            {
+                                m.State = "Offline";
+                            }
+                        
+                            <tr class="@((m.Version == LatestBuilderVersion) ? "current" : "")">
+                                <td>@Html.ActionLink(@m.MachineName, "Machine", "Build", new { id = @m.MachineName }, null)</td>
+                                <td class="enum">@m.Version.ToString()</td>
+                                <td class="enum @("state" + m.State)">@m.State</td>
+                                <td>@m.CurrentStatus</td>
+                            </tr>
+                        }
+                    }
+                }
+            </tbody>
+        </table>
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="maintenance"></a><h2>In Maintenance</h2>
+
+        @if (Model.Count(m => m.Deployed && string.Equals(m.MachineName, m.MachineLock, StringComparison.CurrentCultureIgnoreCase)) > 0)
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th class="enum">Last Updated</th>
+                        <th class="enum">State</th>
+                        <th class="numeric">Current Operation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in Model)
+                    {
+                        if (m.Deployed && string.Equals(m.MachineName, m.MachineLock, StringComparison.CurrentCultureIgnoreCase))
+                        {
+                            if (m.CurrentTime.HasValue && (DateTime.UtcNow.Subtract(m.CurrentTime.Value).TotalDays <= 30))
+                            {
+                                <tr class="@((m.Version == LatestBuilderVersion) ? "current" : "")">
+                                    <td>@Html.ActionLink(@m.MachineName, "Machine", "Build", new { id = @m.MachineName }, null)</td>
+                                    <td class="enum">@m.Version.ToString()</td>
+                                    <td class="enum @("state" + m.State)">@m.State</td>
+                                    <td></td>
+                                </tr>
+                            }
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>None of the builders are in maintenance mode right now.</p>
+        }
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+
+    <div class="grid6">
+        <a name="inactive"></a><h2>Inactive Builders</h2>
+
+        <p>The following build machines haven't been used for more than 30 days:</p>
+
+        <p class="machineList">
+            @foreach (var m in Model)
+            {
+                if (m.Deployed && m.CurrentTime.HasValue && (DateTime.UtcNow.Subtract(m.CurrentTime.Value).TotalDays > 30))
+                {
+                    <span>@Html.ActionLink(@m.MachineName, "Machine", "Build", new { id = @m.MachineName }, null)</span>
+                }
+            }
+        </p>
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+
+    <div class="grid6">
+        <a name="testing"></a><h2>Test Builders</h2>
+
+        <p>The following builders were previously used for testing:</p>
+
+        <p class="machineList">
+            @foreach (var m in Model)
+            {
+                if (!m.Deployed)
+                {
+                    <span>@Html.ActionLink(@m.MachineName, "Machine", "Build", new { id = @m.MachineName }, null)</span>
+                }
+            }
+        </p>
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>

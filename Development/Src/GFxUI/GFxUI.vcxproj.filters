@@ -1,0 +1,188 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Classes">
+      <UniqueIdentifier>{dfddf024-4ba0-4646-b5c5-0fb26fd2b2b0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Inc">
+      <UniqueIdentifier>{36ae5bc3-e91e-4d52-984c-ca8d884d65a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src">
+      <UniqueIdentifier>{c03c3a03-c73f-45bc-9387-9e5deea363f6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src\Render">
+      <UniqueIdentifier>{b9443fa2-a738-4b46-a56d-d8edad4f56a2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Classes\FlashMovie.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxAction_CloseMovie.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxAction_GetVariable.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxAction_Invoke.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxAction_OpenMovie.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxAction_SetCaptureKeys.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxAction_SetVariable.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxClikWidget.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxEngine.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxEvent_FsCommand.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxFSCmdHandler.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxFSCmdHandler_Kismet.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxInteraction.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxMoviePlayer.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxObject.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GFxRawData.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\SwfMovie.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Src\Render\RHI_Shaders.inl">
+      <Filter>Src\Render</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\GFxUI.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\ScaleformAllocator.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\ScaleformEngine.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\ScaleformFile.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\ScaleformFont.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\ScaleformFullscreenMovie.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\ScaleformStats.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Render\RHI_ConsoleMeshCache.h">
+      <Filter>Src\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Render\RHI_HAL.h">
+      <Filter>Src\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Render\RHI_MeshCache.h">
+      <Filter>Src\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Render\RHI_Shader.h">
+      <Filter>Src\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Render\RHI_Texture.h">
+      <Filter>Src\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Render\RHI_XeBufferMemory.h">
+      <Filter>Src\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Render\RHI_Shaders.h">
+      <Filter>Src\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\GFxUIClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\GFxUINames.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\GFxUIUIPrivateClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\GFxUIUISequenceClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\GFxUI.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ScaleformDataStore.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ScaleformEngine.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ScaleformFile.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ScaleformFont.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ScaleformFullscreenMovie.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ScaleformInteraction.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ScaleformLocalization.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ScaleformMovie.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ScaleformSound.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ScaleformStats.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Render\RHI_ConsoleMeshCache.cpp">
+      <Filter>Src\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Render\RHI_HAL.cpp">
+      <Filter>Src\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Render\RHI_HALSetup.cpp">
+      <Filter>Src\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Render\RHI_MeshCache.cpp">
+      <Filter>Src\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Render\RHI_Shader.cpp">
+      <Filter>Src\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Render\RHI_Texture.cpp">
+      <Filter>Src\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Render\RHI_XeBufferMemory.cpp">
+      <Filter>Src\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Render\RHI_XeRenderTarget.cpp">
+      <Filter>Src\Render</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

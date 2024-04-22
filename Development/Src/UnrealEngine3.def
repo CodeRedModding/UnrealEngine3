@@ -1,0 +1,7 @@
+EXPORTS 
+	GDebugger
+	GetStackOwnerClass
+	GetOutermost
+	nFringePFO
+	PIBGetInterface
+	

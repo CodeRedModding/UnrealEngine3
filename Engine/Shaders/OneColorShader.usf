@@ -1,0 +1,33 @@
+/*=============================================================================
+	OneColorShader.usf: 2D shader for drawing a single constant color.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+
+
+/*=============================================================================
+ * Vertex shader
+ =============================================================================*/
+
+void MainVertexShader(
+	in float4 InPosition : POSITION,
+	out float4 OutPosition : POSITION
+	)
+{
+	OutPosition = InPosition;
+}
+
+
+
+/*=============================================================================
+ * Pixel shader
+ =============================================================================*/
+
+float4 DrawColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+void MainPixelShader( out float4 OutColor : COLOR0 )
+{
+	OutColor = DrawColor;	
+}

@@ -1,0 +1,41 @@
+#define RETURN_COLOR(Color) Color
+#if USE_GFX_GAMMA_CORRECTION
+UNIFORM( float, InverseGamma );
+#endif
+UNIFORM( vec4, OverlayColor );
+UNIFORM( vec4, ColorScale );
+UNIFORM_SAMPLER2D( TextureDetail3, TEXUNIT0 );
+UNIFORM_SAMPLER2D( TextureDetail, TEXUNIT1 );
+UNIFORM_SAMPLER2D( TextureDetail2, TEXUNIT2 );
+UNIFORM_SAMPLER2D( TextureBase, TEXUNIT3 );
+IN_VARYING_DEFAULT( vec4, factor, COLOR1 );
+IN_VARYING_DEFAULT( vec2, tc, TEXCOORD0 );
+OUT_BUILTIN( vec4, gl_FragColor, COLOR )
+PIXEL_MAIN 
+{
+// E YUV
+  lowp float c0 = float((texture2D(TextureBase, tc).r - 16./255.) * 1.164);
+  lowp float U0 = float(texture2D(TextureDetail, tc).r - 128./255.);
+  lowp float V0 = float(texture2D(TextureDetail2, tc).r - 128./255.);
+  lowp vec4 c = vec4(c0,c0,c0,c0);
+  lowp vec4 U = vec4(U0,U0,U0,U0);
+  lowp vec4 V = vec4(V0,V0,V0,V0);
+  c += V * vec4(1.596, -0.813, 0.0, 0.0);
+  c += U * vec4(0.0, -0.392, 2.017, 0.0);
+  c.a = 1.0;
+  gl_FragColor = c;
+// E YUVA
+  gl_FragColor.a = texture2D(TextureDetail3, tc).r;
+// E Cxform
+  gl_FragColor = gl_FragColor * ColorScale + OverlayColor;
+// E EAlpha
+  gl_FragColor.a *= factor.a;
+// E gamma
+#if USE_GFX_GAMMA_CORRECTION
+  gl_FragColor = RETURN_COLOR (vec4(pow(clamp(gl_FragColor.rgb,0.0,1.0), vec3(InverseGamma)),gl_FragColor.a));
+#else
+  gl_FragColor = RETURN_COLOR (gl_FragColor);
+#endif
+
+}
+

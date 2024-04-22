@@ -1,13 +1,9 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class InterpTrackInstEvent extends InterpTrackInst
 	native(Interpolation);
 
-/** 
- * InterpTrackInstEvent
- *
- * Created by:	James Golding
- * Copyright:	(c) 2004
- * Company:		Epic Games, Inc.
- */
 
 cpptext
 {

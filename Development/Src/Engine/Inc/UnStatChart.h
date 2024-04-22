@@ -1,9 +1,10 @@
 /*=============================================================================
 	UnStatChart.h: Stats Graphing Utility
-	Copyright 2004 Epic MegaGames, Inc.
-	Revision history:
-		* Created by James Golding
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
+
+#ifndef _INC_STATCHART
+#define _INC_STATCHART
 
 class FStatChartLine
 {
@@ -60,5 +61,7 @@ public:
 
 	void Reset(); 
 	UBOOL Exec(const TCHAR* Cmd, FOutputDevice& Ar);
-	void Render(FChildViewport* Viewport, FRenderInterface* RI);
+	void Render(FViewport* Viewport, FCanvas* Canvas);
 };
+
+#endif

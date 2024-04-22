@@ -1,12 +1,13 @@
 /*=============================================================================
     UnPhys.cpp: Simple physics and occlusion testing for editor
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "EnginePrivate.h"
+
+DECLARE_CYCLE_STAT(TEXT("BSP Line Check"),STAT_BSPZeroExtentTime,STATGROUP_Collision);
+DECLARE_CYCLE_STAT(TEXT("BSP Extent Check"),STAT_BSPExtentTime,STATGROUP_Collision);
+DECLARE_CYCLE_STAT(TEXT("BSP Point Check"),STAT_BSPPointTime,STATGROUP_Collision);
 
 /*---------------------------------------------------------------------------------------
    Primitive BoxCheck support.
@@ -53,13 +54,14 @@ struct FBoxCheckInfo
 		FCheckResult&	InHit,
 		UModel&			InModel,
 		AActor*			InOwner,
+		const FMatrix*	InOwnerLocalToWorld,
 		FVector			InExtent,
 		DWORD			InExtraFlags
 	)
 	:	Hit				(InHit)
 	,	Model			(InModel)
 	,	Owner			(InOwner)
-	,	Matrix			(InOwner ? InOwner->LocalToWorld() : FMatrix::Identity)
+	,	Matrix			((InOwnerLocalToWorld && InOwner) ? *InOwnerLocalToWorld : (InOwner ? InOwner->LocalToWorld() : FMatrix::Identity))
 	,	Extent			(InExtent)
 	,	ExtraFlags		(InExtraFlags)
 	,	Box				(0)
@@ -92,15 +94,6 @@ struct FBoxCheckInfo
 		Box.Min.X = Temp[0]; Box.Min.Y = Temp[1]; Box.Min.Z = Temp[2];
 		Box.Max.X = Temp[3]; Box.Max.Y = Temp[4]; Box.Max.Z = Temp[5];
 	}
-	/*void NewSetupHulls( const FBspNode& Node )
-	{
-		FVert* Verts = &Model->Verts->Element( Node.iVertPool );
-		for( INT i=0; i<Node.NumVertices; i++ )
-		{
-			FVector& Point = Model->Points( Verts[i].iVertex );
-			Box += Point;
-		}
-	}*/
 };
 
 // Hull edge convolution macro.
@@ -115,7 +108,7 @@ struct FBoxCheckInfo
 			FVector I,D;\
 			FIntersectPlanes2( I, D, Hulls[i], Hulls[j] ); \
 			FVector A = (FVector(a,b,c) ^ D).UnsafeNormal(); \
-			if( (Hulls[i] | A) < 0.f ) \
+			if( (FVector(Hulls[i]) | A) < 0.f ) \
 				A *= -1.f; \
 			if( !ClipTo( FPlane(I,A), INDEX_NONE ) ) \
 				goto NoBlock; \
@@ -191,13 +184,14 @@ struct FBoxPointCheckInfo : public FBoxCheckInfo
 		FCheckResult		&InHit,
 		UModel				&InModel,
 		AActor*				InOwner,
+		const FMatrix*		InOwnerLocalToWorld,
 		FVector				InPoint,
 		FVector				InExtent,
 		DWORD				InExtraFlags
 	)
-	:	FBoxCheckInfo	    (InHit, InModel, InOwner, InExtent, InExtraFlags)
-	,	BestDist			(100000)
+	:	FBoxCheckInfo	    (InHit, InModel, InOwner, InOwnerLocalToWorld, InExtent, InExtraFlags)
 	,	Point				(InPoint)
+	,	BestDist			(100000)
 	{}
 
 	// Functions.
@@ -269,6 +263,7 @@ UBOOL UModel::PointCheck
 (
 	FCheckResult&	Hit,
 	AActor*			Owner,
+	const FMatrix*	OwnerLocalToWorld,
 	FVector			Location,
 	FVector			Extent
 )
@@ -284,7 +279,7 @@ UBOOL UModel::PointCheck
 		if( Extent != FVector(0,0,0) )
 		{
 			// Perform expensive box convolution check.
-			FBoxPointCheckInfo Check( Hit, *this, Owner, Location, Extent, 0 );
+			FBoxPointCheckInfo Check( Hit, *this, Owner, OwnerLocalToWorld, Location, Extent, 0 );
 			Outside = Check.BoxPointCheck( 0, 0, Outside );
 			check(Hit.Actor==Owner);
 		}
@@ -293,7 +288,13 @@ UBOOL UModel::PointCheck
 			// Perform simple point check.
 			INT iPrevNode = INDEX_NONE, iNode=0;
 			UBOOL IsFront=0;
-			FMatrix Matrix = Owner ? Owner->LocalToWorld() : FMatrix::Identity;
+
+			// Check for a Owner + offset matrix
+			FMatrix Matrix = OwnerLocalToWorld && Owner ? *OwnerLocalToWorld :
+				// Check for just an Owner matrix
+				Owner ? Owner->LocalToWorld() :
+				// BSP is in world space
+				FMatrix::Identity;
 			FMatrix MatrixTA = Matrix.TransposeAdjoint();
 			FLOAT DetM = Matrix.Determinant();
 
@@ -310,6 +311,27 @@ UBOOL UModel::PointCheck
 	}
 
 	return Outside;
+}
+
+void UModel::GetSurfacePlanes(
+	const AActor*	Owner,
+	TArray<FPlane>& OutPlanes)
+{
+	if( Nodes.Num() )
+	{
+		const FMatrix Matrix = 
+			// Check for just an Owner matrix
+			Owner ? Owner->LocalToWorld() :
+			// BSP is in world space
+			FMatrix::Identity;
+		const FMatrix MatrixTA = Matrix.TransposeAdjoint();
+		const FLOAT DetM = Matrix.Determinant();
+
+		for (INT SurfaceIndex = 0; SurfaceIndex < Surfs.Num(); SurfaceIndex++)
+		{
+			OutPlanes.AddItem(Surfs(SurfaceIndex).Plane.TransformByUsingAdjointT(Matrix, DetM, MatrixTA));
+		}
+	}
 }
 
 /*---------------------------------------------------------------------------------------
@@ -346,10 +368,10 @@ static BYTE LineCheckInner( INT iNode, FVector End, FVector Start, BYTE Outside 
 }
 BYTE UModel::FastLineCheck( FVector End, FVector Start )
 {
-	BEGINCYCLECOUNTER(GCollisionStats.BSPZeroExtentTime);
+	SCOPE_CYCLE_COUNTER(STAT_BSPZeroExtentTime);
+
 	GLineCheckNodes = &Nodes(0);
 	return Nodes.Num() ? LineCheckInner(0,End,Start,RootOutside) : RootOutside;
-	ENDCYCLECOUNTER;
 }
 
 /*---------------------------------------------------------------------------------------
@@ -395,7 +417,7 @@ UBOOL LineCheck
 		else if( Dist1<0.001f && Dist2<0.001f )
 		{
 			// Both points are in back.
-			Outside &= !Node->IsCsg(InNodeFlags & ~NF_BrightCorners);
+			Outside = Outside && !Node->IsCsg(InNodeFlags & ~NF_BrightCorners);
 			iNode    = Node->iBack;
 		}
 		else
@@ -452,12 +474,13 @@ struct FBoxLineCheckInfo : public FBoxCheckInfo
 		FCheckResult&	Hit,
 		UModel&			InModel,
 		AActor*			InOwner,
+		const FMatrix*	InOwnerLocalToWorld,
 		FVector			InEnd,
 		FVector			InStart,
 		FVector			InExtent,
 		DWORD			InExtraFlags
 	)
-	:	FBoxCheckInfo	(Hit, InModel, InOwner, InExtent, InExtraFlags)
+	:	FBoxCheckInfo	(Hit, InModel, InOwner, InOwnerLocalToWorld, InExtent, InExtraFlags)
 	,	End				(InEnd)
 	,	Start			(InStart)
 	,	Vector			(InEnd-InStart)
@@ -549,30 +572,34 @@ INT ClipNode( UModel& Model, INT iNode, FVector HitLocation )
 	{	
 		FBspNode& Node = Model.Nodes(iNode);
 		INT NumVertices = Node.NumVertices;
-		INT iVertPool = Node.iVertPool;
 
-		FVector PrevPt = Model.Points(Model.Verts(iVertPool+NumVertices-1).pVertex);
-		FVector Normal = Model.Surfs(Node.iSurf).Plane;
-		FLOAT PrevDot = 0.f;
-
-		for( INT i=0;i<NumVertices;i++ )
+		// Only consider this node if it has some vertices.
+		if(NumVertices > 0)
 		{
-			FVector Pt = Model.Points(Model.Verts(iVertPool+i).pVertex);
-			FLOAT Dot = FPlane( Pt, Normal^(Pt-PrevPt) ).PlaneDot(HitLocation);
-			// Check for sign change
-			if( (Dot < 0.f && PrevDot > 0.f) ||	(Dot > 0.f && PrevDot < 0.f) )
-				goto TryNextNode;
-			PrevPt = Pt;
-			PrevDot = Dot;
-		}
+			INT iVertPool = Node.iVertPool;
 
-		return iNode;
+			FVector PrevPt = Model.Points(Model.Verts(iVertPool+NumVertices-1).pVertex);
+			FVector Normal = Model.Surfs(Node.iSurf).Plane;
+			FLOAT PrevDot = 0.f;
+
+			for( INT i=0;i<NumVertices;i++ )
+			{
+				FVector Pt = Model.Points(Model.Verts(iVertPool+i).pVertex);
+				FLOAT Dot = FPlane( Pt, Normal^(Pt-PrevPt) ).PlaneDot(HitLocation);
+				// Check for sign change
+				if( (Dot < 0.f && PrevDot > 0.f) ||	(Dot > 0.f && PrevDot < 0.f) )
+					goto TryNextNode;
+				PrevPt = Pt;
+				PrevDot = Dot;
+			}
+
+			return iNode;
+		}
 
 TryNextNode:;
 		iNode = Node.iPlane;
 	}
 	return INDEX_NONE;
-
 }
 
 
@@ -588,13 +615,17 @@ UBOOL UModel::LineCheck
 (
 	FCheckResult&	Hit,
 	AActor*			Owner,
+	const FMatrix*	OwnerLocalToWorld,
 	FVector			End,
 	FVector			Start,
 	FVector			Extent,
 	DWORD			TraceFlags
 )
 {
-	BEGINCYCLECOUNTER(Extent == FVector(0,0,0) ? GCollisionStats.BSPZeroExtentTime : GCollisionStats.BSPExtentTime);
+#if STATS
+	DWORD Counter = Extent == FVector(0,0,0) ? STAT_BSPZeroExtentTime : STAT_BSPExtentTime;
+	SCOPE_CYCLE_COUNTER(Counter);
+#endif
 
 	DWORD ExtraNodeFlags = 0;
 	if(TraceFlags & TRACE_Visible)
@@ -611,10 +642,14 @@ UBOOL UModel::LineCheck
             FMatrix M; 
 			if( Owner )
 			{
-				M = Owner->LocalToWorld();
+				// Check for a Owner + offset matrix, otherwise use the owner's matrix
+				M = OwnerLocalToWorld ? *OwnerLocalToWorld : Owner->LocalToWorld();
 				Outside = ::LineCheck( Hit, *this, &M, 0, 0, End, Start, RootOutside, ExtraNodeFlags );
 			}
-			else Outside = ::LineCheck( Hit, *this, NULL, 0, 0, End, Start, RootOutside, ExtraNodeFlags );
+			else
+			{
+				Outside = ::LineCheck( Hit, *this, NULL, 0, 0, End, Start, RootOutside, ExtraNodeFlags );
+			}
 			if( !Outside )
 			{
 				FVector V       = End-Start;
@@ -653,13 +688,20 @@ UBOOL UModel::LineCheck
 		{
 			// Perform expensive box convolution trace.
 			Hit.Time = 2.f;
-			FBoxLineCheckInfo Trace( Hit, *this, Owner, End, Start, Extent, ExtraNodeFlags );
+			FBoxLineCheckInfo Trace( Hit, *this, Owner, OwnerLocalToWorld, End, Start, Extent, ExtraNodeFlags );
 			Trace.BoxLineCheck( 0, 0, 0, RootOutside );
 
-			// Truncate by 10% clamped between 0.1 and 1 world units.
 			if( Trace.DidHit )
 			{
-				Hit.Time      = Clamp( Hit.Time - Clamp(0.1f,0.1f/Trace.Dist, 1.f/Trace.Dist),0.f, 1.f );
+				if (TraceFlags & TRACE_Accurate)
+				{
+					Hit.Time = Clamp(Hit.Time,0.0f,1.0f);
+				}
+				else
+				{
+					// Truncate by 10% clamped between 0.1 and 1 world units.
+					Hit.Time = Clamp( Hit.Time - Clamp(0.1f,0.1f/Trace.Dist, 1.f/Trace.Dist),0.f, 1.f );
+				}
 				Hit.Location  = Start + (End-Start) * Hit.Time;
 				return Hit.Time==1.f;
 			}
@@ -669,39 +711,6 @@ UBOOL UModel::LineCheck
 	}
 	else 
 		return RootOutside;
-	ENDCYCLECOUNTER;
-}
-
-/*---------------------------------------------------------------------------------------
-   Region determination.
----------------------------------------------------------------------------------------*/
-
-//
-// Figure out which zone a point is in, and return it.  A value of
-// zero indicates that the point doesn't fall into any zone.
-//
-FPointRegion UModel::PointRegion( AZoneInfo* Zone, FVector Location ) const
-{
-	check(Zone!=NULL);
-
-	FPointRegion Result( Zone, INDEX_NONE, 0 );
-	if( Nodes.Num() ) 
-	{
-		UBOOL Outside=RootOutside, IsFront=0;
-		INT iNode=0, iParent=0;
-		while( iNode != INDEX_NONE )
-		{
-			const FBspNode& Node = Nodes(iNode);
-			IsFront = Node.Plane.PlaneDot(Location) >= 0.f;
-			Outside = Node.ChildOutside(IsFront,Outside);
-			iParent = iNode;
-			iNode   = Node.iChild[IsFront];
-		}
-		Result.iLeaf      = Nodes(iParent).iLeaf[IsFront];
-		Result.ZoneNumber = NumZones ? Nodes(iParent).iZone[IsFront] : 0;
-		Result.Zone       = Zones[Result.ZoneNumber].ZoneActor ? Zones[Result.ZoneNumber].ZoneActor : Zone;
-	}
-	return Result;
 }
 
 /*---------------------------------------------------------------------------------------
@@ -726,12 +735,12 @@ static FLOAT FindNearestVertex
 	while( iNode != INDEX_NONE )
 	{
 		const FBspNode	*Node	= &Model.Nodes(iNode);
-		INT			    iBack   = Node->iBack;
-		FLOAT PlaneDist = Node->Plane.PlaneDot( SourcePoint );
+		const INT	    iBack   = Node->iBack;
+		const FLOAT PlaneDist = Node->Plane.PlaneDot( SourcePoint );
 		if( PlaneDist>=-MinRadius && Node->iFront!=INDEX_NONE )
 		{
 			// Check front.
-			FLOAT TempRadius = FindNearestVertex (Model,SourcePoint,DestPoint,MinRadius,Node->iFront,pVertex);
+			const FLOAT TempRadius = FindNearestVertex (Model,SourcePoint,DestPoint,MinRadius,Node->iFront,pVertex);
 			if (TempRadius >= 0.f) {ResultRadius = TempRadius; MinRadius = TempRadius;};
 		}
 		if( PlaneDist>-MinRadius && PlaneDist<=MinRadius )
@@ -743,7 +752,7 @@ static FLOAT FindNearestVertex
 				Node                    = &Model.Nodes	(iNode);
 				const FBspSurf* Surf    = &Model.Surfs	(Node->iSurf);
 				const FVector *Base	    = &Model.Points	(Surf->pBase);
-				FLOAT TempRadiusSquared	= FDistSquared( SourcePoint, *Base );
+				const FLOAT TempRadiusSquared	= FDistSquared( SourcePoint, *Base );
 
 				if( TempRadiusSquared < Square(MinRadius) )
 				{
@@ -756,11 +765,11 @@ static FLOAT FindNearestVertex
 				for (BYTE B=0; B<Node->NumVertices; B++)
 				{
 					const FVector *Vertex   = &Model.Points(VertPool->pVertex);
-					FLOAT TempRadiusSquared = FDistSquared( SourcePoint, *Vertex );
-					if( TempRadiusSquared < Square(MinRadius) )
+					const FLOAT TempRadiusSquared2 = FDistSquared( SourcePoint, *Vertex );
+					if( TempRadiusSquared2 < Square(MinRadius) )
 					{
 						pVertex      = VertPool->pVertex;
-						ResultRadius = MinRadius = appSqrt(TempRadiusSquared);
+						ResultRadius = MinRadius = appSqrt(TempRadiusSquared2);
 						DestPoint    = *Vertex;
 					}
 					VertPool++;
@@ -837,81 +846,116 @@ void UModel::PrecomputeSphereFilter( const FPlane& Sphere )
 
 }
 
-
-/*---------------------------------------------------------------------------------------
-   Convex volume intersection check.
----------------------------------------------------------------------------------------*/
-
-static void BoxPointMultiCheckWorker( UModel* Model, INT iNode, FVector Point, FVector Extent, FVector Normal, TArray<INT>& Result )
+/**
+ * Update passed in array with list of nodes intersecting box.
+ *
+ * @warning: this is an approximation and may result in false positives
+ *
+ * @param			Box						Box to filter down the BSP
+ * @param	[out]	OutNodeIndices			Node indices that fall into box
+ * @param	[out]	OutComponentIndices		Component indices associated with nodes
+ */
+void UModel::GetBoxIntersectingNodesAndComponents( const FBox& Box, TArray<INT>& OutNodeIndices, TArray<INT>& OutComponentIndices  ) const
 {
-	if( iNode == INDEX_NONE )
+	if ( Nodes.Num() == 0 )
+	{
 		return;
-	const FBspNode& Node = Model->Nodes(iNode);
-
-	FLOAT  PushOut        = FBoxPushOut( Node.Plane, Extent );
-	FLOAT  Dist           = Node.Plane.PlaneDot( Point );
-
-	if( Dist > PushOut )
-	{
-		// it doesn't intersect with this node, but it's in front.  continue looking for a node which intersects
-		BoxPointMultiCheckWorker( Model, Node.iFront, Point, Extent, Normal, Result );
 	}
-	else
-	if( Dist <- PushOut )
+
+	INT*	iNodes	= new INT[Nodes.Num()]; //@todo: this could be a static buffer, e.g. TArray
+	INT		Index	= 0;
+	iNodes[0]		= 0;
+
+	const FVector Origin = Box.GetCenter();
+	const FVector Extent = Box.GetExtent();
+
+	// Avoid recursion by operating on a stack, iterating while there is work left to do.
+	while( Index >= 0 )
 	{
-		// it doesn't intersect with this node, but it's behind.  continue looking for a node which intersects
-		BoxPointMultiCheckWorker( Model, Node.iBack, Point, Extent, Normal, Result );
-	}
-	else
-	{
-			// it intersects with this node. record it and all coplanars.	
-			while( iNode != INDEX_NONE )
+		// Pick node from stack.
+		INT iNode		= iNodes[Index--];
+
+		// Check distance...
+		const FBspNode& Node= Nodes(iNode);
+		FLOAT PushOut		= FBoxPushOut(Node.Plane,Extent);
+		FLOAT Distance		= Node.Plane.PlaneDot(Origin);
+		// ... and keep track whether it's in front or behind.
+		UBOOL bIsFront		= FALSE;
+		UBOOL bIsBack		= FALSE;
+
+		// Check whether node is behind.
+		if( Distance < +PushOut )
+		{
+			if( Node.iBack != INDEX_NONE )
 			{
-			if( (FVector(Model->Nodes(iNode).Plane)|Normal) < -KINDA_SMALL_NUMBER )
-				Result.AddItem(iNode);
-				iNode = Model->Nodes(iNode).iPlane;
+				iNodes[++Index] = Node.iBack;
+			}
+			bIsBack = TRUE;
+		}
+
+		// Check whether node is in front.
+		if( Distance > -PushOut )
+		{
+			if( Node.iFront != INDEX_NONE )
+			{
+				iNodes[++Index] = Node.iFront;
+			}
+			bIsFront = TRUE;
+		}
+
+		// If it's both in front and behind it means it's intersecting.
+		if( bIsFront && bIsBack )
+		{
+			// Handle coplanar nodes.
+			if( Node.iPlane != INDEX_NONE )
+			{
+				iNodes[++Index] = Node.iPlane;
 			}
 
-		// continue checking those in front and behind for other hits.
-		BoxPointMultiCheckWorker( Model, Node.iFront, Point, Extent, Normal, Result );
-		BoxPointMultiCheckWorker( Model, Node.iBack, Point, Extent, Normal, Result );
-	}
-}
-
-INT UModel::ConvexVolumeMultiCheck( FBox& Box, FPlane* Planes, INT NumPlanes, FVector Normal, TArray<INT>& Result )
-{
-	Result.Empty();
-
-	if( Nodes.Num() )
-	{
-		BoxPointMultiCheckWorker( this, 0, Box.GetCenter(), Box.GetExtent() * 1.1f, Normal, Result );
-
-		// Check which nodes actually intersect the convex volume
-		for(INT n=0;n<Result.Num();n++)
-		{
-			FBspNode& Node = Nodes(Result(n));
-			if( !(Surfs(Node.iSurf).PolyFlags&PF_Invisible) )
+			// Check poly against box, if intersect or contains, add node.
+			if( IsNodeBBIntersectingBox( Node, Box ) )
 			{
-				for( INT p=0;p<NumPlanes;p++ )
-				{
-					UBOOL InsidePlane = 0;
-					for( INT v=0;v<Node.NumVertices;v++ )
-					{
-						if( Planes[p].PlaneDot( Points(Verts(Node.iVertPool+v).pVertex) ) > 0 )
-						{
-							InsidePlane = 1;
-							break;
-						}
-					}
-					if( !InsidePlane )
-					{
-						Result.Remove(n--);
-						break;
-					}
-				}
+				OutNodeIndices.AddItem( iNode );
+				OutComponentIndices.AddUniqueItem( Node.ComponentIndex );
 			}
 		}
 	}
 
-	return Result.Num();
+	delete [] iNodes;
 }
+
+/**
+ * Returns whether bounding box of polygon associated with passed in node intersects passed in box.
+ *
+ * @param	Node	Node to check
+ * @param	Box		Box to check node against
+ * @return	TRUE if node polygon intersects box or is entirely contained, FALSE otherwise
+ */
+UBOOL UModel::IsNodeBBIntersectingBox( const FBspNode& Node, const FBox& Box ) const
+{
+	// Create node bounding box.
+	FBox NodeBB;
+	GetNodeBoundingBox( Node, NodeBB );
+
+	// Return whether node BB intersects vertex BB.
+	return Box.Intersect( NodeBB );
+}
+
+/**
+ * Creates a bounding box for the passed in node
+ *
+ * @param	Node	Node to create a bounding box for
+ * @param	OutBox	The created box
+ */
+void UModel::GetNodeBoundingBox( const FBspNode& Node, FBox& OutBox ) const
+{
+	OutBox.Init();
+	const INT FirstVertexIndex = Node.iVertPool;
+	for( INT VertexIndex=0; VertexIndex<Node.NumVertices; VertexIndex++ )
+	{
+		const FVert&	ModelVert	= Verts( FirstVertexIndex + VertexIndex );
+		const FVector	Vertex		= Points( ModelVert.pVertex );
+		OutBox += Vertex;
+	}
+}
+

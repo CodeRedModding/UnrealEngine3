@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnrealDatabaseProxy", "UnrealDatabaseProxy\UnrealDatabaseProxy.csproj", "{79FEAACD-9E91-44C7-8119-34622EF209CA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestApp", "TestApp\TestApp.csproj", "{40F5464A-DF30-422E-8197-B3FFA8797E13}"
+EndProject
+Global
+	GlobalSection(SourceCodeControl) = preSolution
+		SccNumberOfProjects = 3
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = UnrealDatabaseProxy\\UnrealDatabaseProxy.csproj
+		SccLocalPath1 = .
+		SccProjectFilePathRelativizedFromConnection1 = UnrealDatabaseProxy\\
+		SccProjectUniqueName2 = TestApp\\TestApp.csproj
+		SccLocalPath2 = .
+		SccProjectFilePathRelativizedFromConnection2 = TestApp\\
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{79FEAACD-9E91-44C7-8119-34622EF209CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79FEAACD-9E91-44C7-8119-34622EF209CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79FEAACD-9E91-44C7-8119-34622EF209CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79FEAACD-9E91-44C7-8119-34622EF209CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{40F5464A-DF30-422E-8197-B3FFA8797E13}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40F5464A-DF30-422E-8197-B3FFA8797E13}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40F5464A-DF30-422E-8197-B3FFA8797E13}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40F5464A-DF30-422E-8197-B3FFA8797E13}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

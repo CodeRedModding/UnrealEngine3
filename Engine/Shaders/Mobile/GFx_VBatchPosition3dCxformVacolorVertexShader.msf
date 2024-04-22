@@ -1,0 +1,24 @@
+UNIFORM( mat4, BatchMatrix[15] );
+UNIFORM( vec4, BatchFloat[30] );
+ATTRIBUTE( vec4, Position, POSITION );
+ATTRIBUTE( vec4, Color, COLOR0 );
+ATTRIBUTE( float, vbatch, BLENDINDICES0 );
+OUT_VARYING_LOW( vec4, color, COLOR0 );
+OUT_VARYING_DEFAULT( vec4, fucxadd, TEXCOORD3 );
+OUT_VARYING_DEFAULT( vec4, fucxmul, TEXCOORD4 );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// E Position3d
+
+  gl_Position = MulMatrix(Position, BatchMatrix[int(0.1+1.0*vbatch)]);
+// E Cxform
+  ;
+// E Vacolor
+  color = Color;
+// E 
+  fucxadd = BatchFloat[int(0.1+2.0*vbatch)];
+// E 
+  fucxmul = BatchFloat[int(0.1+2.0*vbatch+1.0)];
+
+}
+

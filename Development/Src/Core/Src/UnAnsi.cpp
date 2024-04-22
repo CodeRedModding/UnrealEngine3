@@ -1,14 +1,10 @@
 /*=============================================================================
 	UnFile.cpp: ANSI C core.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "CorePrivate.h"
 
-#undef clock
 #include <time.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -17,48 +13,89 @@
 	Time.
 -----------------------------------------------------------------------------*/
 
-//
-// String timestamp.
-// !! Note to self: Move to UnVcWin32.cpp
-// !! Make Linux version.
-//
 #if _MSC_VER
+/**
+* Get the system date
+* 
+* @param Dest - destination buffer to copy to
+* @param DestSize - size of destination buffer in characters
+* @return date string
+*/
+inline TCHAR* appStrDate( TCHAR* Dest, SIZE_T DestSize )
+{
+#if USE_SECURE_CRT
+	return (TCHAR*)_tstrdate_s(Dest,DestSize);
+#else
+	return (TCHAR*)_tstrdate(Dest);
+#endif
+}
+
+/**
+* Get the system time
+* 
+* @param Dest - destination buffer to copy to
+* @param DestSize - size of destination buffer in characters
+* @return time string
+*/
+inline TCHAR* appStrTime( TCHAR* Dest, SIZE_T DestSize )
+{
+#if USE_SECURE_CRT
+	return (TCHAR*)_tstrtime_s(Dest,DestSize);
+#else
+	return (TCHAR*)_tstrtime(Dest);
+#endif
+}
+#endif
+
+/**
+* Returns a string of system time.
+*/
+FString appSystemTimeString( void )
+{
+	// Create string with system time to create a unique filename.
+	INT Year=0, Month=0, DayOfWeek=0, Day=0, Hour=0, Min=0, Sec=0, MSec=0;
+
+	appSystemTime( Year, Month, DayOfWeek, Day, Hour, Min, Sec, MSec );
+	FString	CurrentTime = FString::Printf( TEXT( "%i.%02i.%02i-%02i.%02i.%02i" ), Year, Month, Day, Hour, Min, Sec );
+
+	return( CurrentTime );
+}
+
+/**
+* Returns a string of UTC time.
+*/
+FString appUtcTimeString( void )
+{
+	// Create string with UTC time to create a unique filename.
+	INT Year=0, Month=0, DayOfWeek=0, Day=0, Hour=0, Min=0, Sec=0, MSec=0;
+
+	appUtcTime( Year, Month, DayOfWeek, Day, Hour, Min, Sec, MSec );
+	FString	CurrentTime = FString::Printf( TEXT( "%i.%02i.%02i-%02i.%02i.%02i" ), Year, Month, Day, Hour, Min, Sec );
+
+	return( CurrentTime );
+}
+
+/** 
+* Returns string timestamp.  NOTE: Only one return value is valid at a time! 
+*/
 const TCHAR* appTimestamp()
 {
 	static TCHAR Result[1024];
 	*Result = 0;
-#if UNICODE
-	if( GUnicodeOS )
-	{
-		_wstrdate( Result );
-		appStrcat( Result, TEXT(" ") );
-		_wstrtime( Result + appStrlen(Result) );
-	}
-	else
+#if _MSC_VER
+	//@todo gcc: implement appTimestamp (and move it into platform specific .cpp
+	appStrDate( Result, ARRAY_COUNT(Result) );
+	appStrcat( Result, TEXT(" ") );
+	appStrTime( Result + appStrlen(Result), ARRAY_COUNT(Result) - appStrlen(Result) );
 #endif
-	{
-		ANSICHAR Temp[1024]="";
-		_strdate( Temp );
-		appStrcpy( Result, ANSI_TO_TCHAR(Temp) );
-		appStrcat( Result, TEXT(" ") );
-		_strtime( Temp );
-		appStrcat( Result, ANSI_TO_TCHAR(Temp) );
-	}
 	return Result;
 }
-#endif
-
 
 /*-----------------------------------------------------------------------------
 	Memory functions.
 -----------------------------------------------------------------------------*/
 
-INT appMemcmp( const void* Buf1, const void* Buf2, INT Count )
-{
-	return memcmp( Buf1, Buf2, Count );
-}
-
-UBOOL appMemIsZero( const void* V, int Count )
+UBOOL appMemIsZero( const void* V, INT Count )
 {
 	BYTE* B = (BYTE*)V;
 	while( Count-- > 0 )
@@ -67,52 +104,112 @@ UBOOL appMemIsZero( const void* V, int Count )
 	return 1;
 }
 
-void* appMemmove( void* Dest, const void* Src, INT Count )
+
+/** Helper function called on first allocation to create and initialize GMalloc */
+extern void GCreateMalloc();
+
+/** 
+ * appMallocQuantizeSize returns the actual size of allocation request likely to be returned
+ * so for the template containers that use slack, they can more wisely pick
+ * appropriate sizes to grow and shrink to.
+ *
+ * @param Size			The size of a hypothetical allocation request
+ * @param Alignment		The alignment of a hypothetical allocation request
+ * @return				Returns the usable size that the allocation request would return. In other words you can ask for this greater amount without using any more actual memory.
+ */
+DWORD appMallocQuantizeSize( DWORD Size, DWORD Alignment )
 {
-	return memmove( Dest, Src, Count );
+	if( !GMalloc )
+	{
+		GCreateMalloc();
+	}
+	return GMalloc->QuantizeSize( Size, Alignment );
+
 }
 
-void appMemset( void* Dest, INT C, INT Count )
-{
-	memset( Dest, C, Count );
+void* appMalloc( DWORD Count, DWORD Alignment ) 
+{ 
+	if( !GMalloc )
+	{
+		GCreateMalloc();
+	}
+	return GMalloc->Malloc( Count, Alignment );
 }
 
-#ifndef DEFINED_appMemzero
-void appMemzero( void* Dest, INT Count )
-{
-	memset( Dest, 0, Count );
-}
-#endif
+void* appRealloc( void* Original, DWORD Count, DWORD Alignment ) 
+{ 
+	if( !GMalloc )
+	{
+		GCreateMalloc();	
+	}
+	return GMalloc->Realloc( Original, Count, Alignment );
+}	
 
-#ifndef DEFINED_appMemcpy
-void appMemcpy( void* Dest, const void* Src, INT Count )
+void appFree( void* Original )
 {
-	memcpy( Dest, Src, Count );
+	if( !GMalloc )
+	{
+		GCreateMalloc();
+	}
+	return GMalloc->Free( Original );
 }
-#endif
+
+void* appPhysicalAlloc( DWORD Count, ECacheBehaviour CacheBehaviour ) 
+{ 
+	if( !GMalloc )
+	{
+		GCreateMalloc();
+	}
+	return GMalloc->PhysicalAlloc( Count, CacheBehaviour );
+}
+
+void appPhysicalFree( void* Original )
+{
+	if( !GMalloc )
+	{
+		GCreateMalloc();	
+	}
+	return GMalloc->PhysicalFree( Original );
+}
 
 /*-----------------------------------------------------------------------------
 	String functions.
 -----------------------------------------------------------------------------*/
 
-//
-// Copy a string with length checking.
-//warning: Behavior differs from strncpy; last character is zeroed.
-//
+/** 
+* Copy a string with length checking. Behavior differs from strncpy in that last character is zeroed. 
+*
+* @param Dest - destination buffer to copy to
+* @param Src - source buffer to copy from
+* @param MaxLen - max characters in the buffer (including null-terminator)
+* @return pointer to resulting string buffer
+*/
 TCHAR* appStrncpy( TCHAR* Dest, const TCHAR* Src, INT MaxLen )
 {
-#if UNICODE
-	wcsncpy( Dest, Src, MaxLen );
+	// We use (MaxLen-1) because we know we will never need that last character
+	// We could copy MaxLen and then overwrite the last character, however,
+	// that last character might cause a page fault _on read_ and since we don't
+	// actually use that in the output, it is best to avoid it.
+	// It is arguably not a bug with MaxLen, but it isn't worth arguing since we
+	// can just fix it.
+	check(MaxLen>0);
+#if USE_SECURE_CRT
+	_tcsncpy_s(Dest,MaxLen,Src,MaxLen-1);	
 #else
-	strncpy( Dest, Src, MaxLen );
-#endif
+	_tcsncpy(Dest,Src,MaxLen-1);
 	Dest[MaxLen-1]=0;
+#endif
 	return Dest;
 }
 
-//
-// Concatenate a string with length checking
-//
+/** 
+* Concatenate a string with length checking.
+*
+* @param Dest - destination buffer to append to
+* @param Src - source buffer to copy from
+* @param MaxLen - max length of the buffer (including null-terminator)
+* @return pointer to resulting string buffer
+*/
 TCHAR* appStrncat( TCHAR* Dest, const TCHAR* Src, INT MaxLen )
 {
 	INT Len = appStrlen(Dest);
@@ -120,54 +217,60 @@ TCHAR* appStrncat( TCHAR* Dest, const TCHAR* Src, INT MaxLen )
 	if( (MaxLen-=Len) > 0 )
 	{
 		appStrncpy( NewDest, Src, MaxLen );
-		NewDest[MaxLen-1] = 0;
 	}
 	return Dest;
 }
 
-//
-// Standard string functions.
-//
+/** 
+* Copy a string with length checking. Behavior differs from strncpy in that last character is zeroed. 
+* (ANSICHAR version) 
+*
+* @param Dest - destination char buffer to copy to
+* @param Src - source char buffer to copy from
+* @param MaxLen - max length of the buffer (including null-terminator)
+* @return pointer to resulting string buffer
+*/
+ANSICHAR* appStrncpyANSI( ANSICHAR* Dest, const ANSICHAR* Src, INT MaxLen )
+{
+#if USE_SECURE_CRT	
+	// length of string must be strictly < total buffer length so use (MaxLen-1)
+	strncpy_s(Dest,MaxLen,Src,MaxLen-1);
+#else
+	strncpy(Dest,Src,MaxLen);
+	// length of string includes null terminating character so use (MaxLen)
+	Dest[MaxLen-1]=0;
+#endif
+	return Dest;
+}
+
+/** 
+* Standard string formatted print. 
+* @warning: make sure code using appSprintf allocates enough (>= MAX_SPRINTF) memory for the destination buffer
+*/
 VARARG_BODY( INT, appSprintf, const TCHAR*, VARARG_EXTRA(TCHAR* Dest) )
 {
 	INT	Result = -1;
-	va_list ap;
-	va_start(ap, Fmt);
-	//@warning: make sure code using appSprintf allocates enough memory if the below 1024 is ever changed.
-	GET_VARARGS_RESULT(Dest,1024/*!!*/,Fmt,Fmt,Result);
+	GET_VARARGS_RESULT( Dest, MAX_SPRINTF, MAX_SPRINTF-1, Fmt, Fmt, Result );
 	return Result;
 }
-
-#if _MSC_VER
-INT appGetVarArgs( TCHAR* Dest, INT Count, const TCHAR*& Fmt, va_list ArgPtr )
+/**
+* Standard string formatted print (ANSI version).
+* @warning: make sure code using appSprintf allocates enough (>= MAX_SPRINTF) memory for the destination buffer
+*/
+VARARG_BODY( INT, appSprintfANSI, const ANSICHAR*, VARARG_EXTRA(ANSICHAR* Dest) )
 {
-#if UNICODE
-	INT Result = _vsnwprintf( Dest, Count, Fmt, ArgPtr );
-#else
-	INT Result = _vsnprintf( Dest, Count, Fmt, ArgPtr );
-#endif
-	va_end( ArgPtr );
+	INT	Result = -1;
+	GET_VARARGS_RESULT_ANSI( Dest, MAX_SPRINTF, MAX_SPRINTF-1, Fmt, Fmt, Result );
 	return Result;
 }
-
-INT appGetVarArgsAnsi( ANSICHAR* Dest, INT Count, const ANSICHAR*& Fmt, va_list ArgPtr)
-{
-	INT Result = _vsnprintf( Dest, Count, Fmt, ArgPtr );
-	va_end( ArgPtr );
-	return Result;
-}
-#endif
 
 /*-----------------------------------------------------------------------------
 	Sorting.
 -----------------------------------------------------------------------------*/
 
-void appQsort( void* Base, INT Num, INT Width, int(CDECL *Compare)(const void* A, const void* B ) )
+void appQsort( void* Base, INT Num, INT Width, INT(CDECL *Compare)(const void* A, const void* B ) )
 {
 	qsort( Base, Num, Width, Compare );
 }
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
 

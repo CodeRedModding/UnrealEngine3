@@ -1,0 +1,30 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+<UserControl
+	x:Class="CustomControls.Autocomplete"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <!-- A view of the dictionary; facilitates filtering -->
+        <CollectionViewSource x:Key="dictionaryViewSource" x:Name="dictionaryViewSource" Source="{Binding Path=Dictionary}" />
+    </UserControl.Resources>
+    <StackPanel>
+        <!-- Contains autocomplete suggestions -->
+        <Popup Name="m_AutocompletePopup" IsOpen="False" StaysOpen="False" Placement="Custom" FocusManager.IsFocusScope="True" PopupAnimation="Fade" AllowsTransparency="True">
+			<Border Background="{StaticResource Slate_Autocomplete_Background}" Padding="2" CornerRadius="4">
+                <!-- Actual autocomplete suggestion list -->
+                <ListView x:Name="m_SuggestionListBox"
+                          VirtualizingStackPanel.IsVirtualizing="True"
+                          ItemsSource="{Binding Source={StaticResource dictionaryViewSource}}"
+                          MinHeight="25"
+                          IsSynchronizedWithCurrentItem="True"
+                          MinWidth="200"
+                          MaxHeight="200"
+                          SelectionMode="Single"
+                          PreviewKeyDown="Autocomplete_KeyDown"
+                          MouseUp="SuggestionBox_MouseUp"
+                          ItemContainerStyle="{StaticResource AutocompleteListItem}">
+				</ListView>
+			</Border>
+		</Popup>
+	</StackPanel>
+</UserControl>

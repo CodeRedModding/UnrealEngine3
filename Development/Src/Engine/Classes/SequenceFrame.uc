@@ -1,3 +1,9 @@
+/**
+ * This class is used for rendering a box around a group of kismet objects in the kismet editor, for organization
+ * and clarity.  Corresponds to a "comment box" in the kismet editor.
+ *
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class SequenceFrame extends SequenceObject
 	native(Sequence);
 
@@ -5,7 +11,13 @@ class SequenceFrame extends SequenceObject
 
 cpptext
 {
-	virtual void DrawSeqObj(FRenderInterface* RI, UBOOL bSelected, UBOOL bMouseOver, INT MouseOverConnType, INT MouseOverConnIndex, FLOAT MouseOverTime);
+#if WITH_EDITOR
+	/** Draws the box part of the comment (including handle) */
+	void DrawFrameBox(FCanvas* Canvas, UBOOL bSelected);
+
+	// SequenceObject interface
+	virtual void DrawSeqObj(FCanvas* Canvas, UBOOL bSelected, UBOOL bMouseOver, INT MouseOverConnType, INT MouseOverConnIndex, FLOAT MouseOverTime);
+#endif
 }
 
 /** Horizontal size of comment box in pixels. */
@@ -32,17 +44,18 @@ var()	color		BorderColor;
 /** If bDrawBox and bFilled are true, what colour should the background be. */
 var()	color		FillColor;
 
-/** 
- *	If bDrawBox and bFilled, you can optionally specify a texture to fill the box with. 
- *	If both FillTexture and FillMaterial are specified, the FillMaterial will be used. 
+/**
+ *	If bDrawBox and bFilled, you can optionally specify a texture to fill the box with.
+ *	If both FillTexture and FillMaterial are specified, the FillMaterial will be used.
  */
-var()	texture2D	FillTexture;
+var()	editoronly	Texture2D	FillTexture;
 
-/** 
- *	If bDrawBox and bFilled, you can optionally specify a material to fill the box with. 
- *	If both FillTexture and FillMaterial are specified, the FillMaterial will be used. 
+/**
+ *	If bDrawBox and bFilled, you can optionally specify a material to fill the box with.
+ *	If both FillTexture and FillMaterial are specified, the FillMaterial will be used.
  */
-var()	material	FillMaterial;
+var()	editoronly	Material	FillMaterial;
+
 
 defaultproperties
 {

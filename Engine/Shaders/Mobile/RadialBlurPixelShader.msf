@@ -1,0 +1,70 @@
+/*=============================================================================
+	RadialBlurPixelShader.msf: Screen space radial blur
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+
+UNIFORM(float, RadialBlurScale);
+UNIFORM(float, RadialBlurFalloffExp);
+UNIFORM(float, RadialBlurOpacity);
+
+UNIFORM(float4, RadialBlurScreenPositionCenter);
+UNIFORM(float4, ScreenPositionScaleBias);
+
+UNIFORM_SAMPLER2D(SceneColorTexture, TEXUNIT0);
+
+IN_VARYING_DEFAULT(vec4, ScreenPosition, TEXCOORD0);
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+/**
+ * Calculates the screen space 2d offset vector for radial blur
+ * based on the current pixel screen positon and the object origin screen position.
+ */
+float2 CalcScreenOffsetVec(float2 ProjScreenPosition, float4 ScreenPositionCenter)
+{
+	float2 ScreenPositionN = ProjScreenPosition;
+	float2 ScreenPositionCenterN = ScreenPositionCenter.xy;
+	
+	float2 RadialVector = ScreenPositionCenterN - ScreenPositionN;
+	float RadialVectorLen = length(RadialVector);
+	float2 RadialVectorN = RadialVector / RadialVectorLen;	
+	return RadialVectorN * pow(RadialVectorLen,RadialBlurFalloffExp) * RadialBlurScale;
+}
+
+/** 
+ * return the scene lighting texture 
+ */
+vec4 CalcSceneColor(vec2 ScreenUV)
+{
+	return USE_SCENECOLOR( texture2D(SceneColorTexture, ScreenUV) );
+}
+
+/**
+ * Pixel shader for rendering radial blur screen quad. 
+ * Samples scene color multiple times for the blur.
+ */
+PIXEL_MAIN
+{
+	float2 ProjScreenPosition = ScreenPosition.xy/ScreenPosition.w;
+	float2 OffsetUV = CalcScreenOffsetVec(ProjScreenPosition, RadialBlurScreenPositionCenter);
+	
+
+	// 5 iterations, matches non-mobile version.  Might consider increasing this for high end.
+	const int MAX_ITERATIONS=5;
+	const float ONE_OVER_MAX_ITERATIONS = 0.2;
+	float2 CurrentUVs = ProjScreenPosition * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+	float2 UVIncrement = OffsetUV * ONE_OVER_MAX_ITERATIONS * ScreenPositionScaleBias.xy;
+	
+	float4 SceneColor = CalcSceneColor(CurrentUVs);
+	float4 OutColor = SceneColor;
+
+	for(int i=1; i<MAX_ITERATIONS; i++)
+	{		
+		CurrentUVs += UVIncrement;	
+		//OutColor.rgb += CalcSceneColor( ((Input.ScreenPosition.xy / Input.ScreenPosition.w) + OffsetUV*i/(FLOAT)MAX_ITERATIONS) * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz );
+		OutColor.rgb += CalcSceneColor( CurrentUVs ).rgb;		
+	}
+
+	OutColor.rgb *= ONE_OVER_MAX_ITERATIONS;
+	gl_FragColor = lerp(SceneColor, OutColor, RadialBlurOpacity);
+}

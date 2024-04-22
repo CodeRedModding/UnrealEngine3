@@ -1,25 +1,65 @@
 /*
 	CameraActor
-*/
+ *
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 
 class CameraActor extends Actor
-	native
+	native(Camera)
+	ClassGroup(Common)
 	placeable;
 
 var()			bool			bConstrainAspectRatio;
 
-var()			float			AspectRatio;
+var()	interp	float			AspectRatio;
 
 var()	interp	float			FOVAngle;
+
+var deprecated	bool					bCamOverridePostProcess;
+/** Blend value for CamOverridePostProcess.  0.f means it's ignored, 1.f means use it exclusively.  */
+var()	interp	float					CamOverridePostProcessAlpha<ClampMin=0.0 | ClampMax=1.0>;
+var()	interp	PostProcessSettings		CamOverridePostProcess;
 
 var		DrawFrustumComponent	DrawFrustum;
 var		StaticMeshComponent		MeshComp;
 
-function GetCameraView(float fDeltaTime, out vector POVLoc, out rotator POVRot, out float newFOVAngle )
+cpptext
 {
-	GetActorEyesViewPoint( POVLoc, POVRot );
-	newFOVAngle = FOVAngle;
+	// UObject interface
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent);
+	virtual void PostLoad();
+
+	// AActor interface
+	virtual void Spawned();
+protected:
+	virtual void UpdateComponentsInternal(UBOOL bCollisionUpdate = FALSE);
+public:
+
+	// ACameraActor interface
+	void UpdateDrawFrustum();
+
+#if WITH_EDITOR
+	virtual void CheckForErrors();
+#endif
 }
+
+replication
+{
+	if (Role == ROLE_Authority)
+		FOVAngle, AspectRatio;
+}
+
+
+/**
+ * Returns camera's Point of View.
+ * Called by Camera.uc class. Subclass and postprocess to add any effects.
+ */
+simulated function GetCameraView(float DeltaTime, out TPOV OutPOV)
+{
+	GetActorEyesViewPoint(OutPOV.Location, OutPOV.Rotation);
+	OutPOV.FOV = FOVAngle;
+}
+
 
 /** 
  * list important CameraActor variables on canvas.  HUD will call DisplayDebug() on the current ViewTarget when
@@ -44,40 +84,36 @@ simulated function DisplayDebug(HUD HUD, out float out_YL, out float out_YPos)
 	Canvas.DrawText("FOV:" $ FOVAngle, false);
 }
 
-cpptext
-{
-	// UObject interface
-	virtual void PostEditChange(UProperty* PropertyThatChanged);
-
-	// AActor interface
-	virtual void Spawned();
-
-	// ACameraActor interface
-	void UpdateDrawFrustum();
-}
-
-
-
 defaultproperties
 {
 	Physics=PHYS_Interpolating
 
-	FOVAngle=90.0
-	bConstrainAspectRatio=true
-	AspectRatio=1.7777777777777
+	FOVAngle=95.0
+	bConstrainAspectRatio=TRUE
+	AspectRatio=AspectRatio16x9
 
 	Begin Object Class=StaticMeshComponent Name=CamMesh0
-		HiddenGame=true
-		CollideActors=false
-		CastShadow=false
+		HiddenGame=TRUE
+		CollideActors=FALSE
+		BlockRigidBody=FALSE
+		CastShadow=FALSE
+		AlwaysLoadOnClient=FALSE
+		AlwaysLoadOnServer=FALSE
 	End Object
 	MeshComp=CamMesh0
+	Components.Add(CamMesh0)
 
 	Begin Object Class=DrawFrustumComponent Name=DrawFrust0
+		AlwaysLoadOnClient=FALSE
+		AlwaysLoadOnServer=FALSE
 	End Object
 	DrawFrustum=DrawFrust0
-
-	Components.Remove(Sprite)
-	Components.Add(CamMesh0)
 	Components.Add(DrawFrust0)
+
+	
+	RemoteRole=ROLE_None
+	NetUpdateFrequency=1.f
+	bNoDelete=TRUE
+
+	bEdShouldSnap=TRUE
 }

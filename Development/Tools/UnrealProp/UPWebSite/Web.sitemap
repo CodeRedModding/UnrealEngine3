@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<siteMap xmlns="http://schemas.microsoft.com/AspNet/SiteMap-File-1.0" >
+  <siteMapNode title="Home/News" url="Default.aspx" imageUrl="application_home.png">
+    <siteMapNode title="User Actions" url="Web\User\UserActions.aspx" imageUrl="cog.png">
+      <siteMapNode title="Task Scheduler" url="Web\User\TaskScheduler.aspx" imageUrl="clock_add.png" roles="UnrealProp Users" />
+      <siteMapNode title="My Tasks" url="Web\User\ManageTasks.aspx" imageUrl="chart_curve.png" roles="UnrealProp Users" />
+      <siteMapNode title="My Targets" url="Web\User\ManageClientMachines.aspx" imageUrl="controller.png" roles="UnrealProp Users" />
+      <siteMapNode title="My Builds" url="Web\User\ManageBuilds.aspx" imageUrl="package_green.png" roles="UnrealProp Users" />
+    </siteMapNode>
+    <siteMapNode title="Admin Actions" url="Web\Admin\Admin.aspx" imageUrl="wrench.png" roles="UnrealProp Admins">
+      <!--
+      <siteMapNode title="Manage Users" url="Web\Admin\CreateAccount.aspx" imageUrl="group.png"/>
+      -->
+      <siteMapNode title="Manage Tasks" url="Web\Admin\ManageTasks.aspx" imageUrl="chart_curve.png" roles="UnrealProp Admins" />
+      <siteMapNode title="Manage Targets" url="Web\Admin\ManageClientMachines.aspx" imageUrl="controller.png" roles="UnrealProp Admins" />
+      <siteMapNode title="Manage Builds" url="Web\Admin\ManageBuilds.aspx" imageUrl="package_green.png" roles="UnrealProp Admins" />
+      <siteMapNode title="Add News" url="Web\Admin\AddNews.aspx" imageUrl="newspaper_add.png" roles="UnrealProp Admins" />
+      <!--
+      <siteMapNode title="Display Report" url="Web\Admin\DisplayReports.aspx" imageUrl="chart_curve.png"/>
+      -->
+    </siteMapNode>
+    <siteMapNode title="Help" url="Web\Help.aspx" imageUrl="help.png"/>
+  </siteMapNode>
+</siteMap>

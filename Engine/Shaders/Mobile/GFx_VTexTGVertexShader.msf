@@ -1,0 +1,19 @@
+UNIFORM( vec4, Transform2D[2] );
+UNIFORM( vec4, TextureTransform2D[4] );
+ATTRIBUTE( vec4, Position, POSITION );
+OUT_VARYING_DEFAULT( vec2, TexCoords0, TEXCOORD0 );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// S TexTG
+
+  TexCoords0.x = dot(Position, TextureTransform2D[int(0.1+0.0)]);
+  TexCoords0.y = dot(Position, TextureTransform2D[int(0.1+1.0)]);
+// E position
+
+
+  gl_Position = Position;
+  gl_Position.x = dot(Position, Transform2D[int(0.1+0.0)]);
+  gl_Position.y = dot(Position, Transform2D[int(0.1+1.0)]);  
+
+}
+

@@ -1,0 +1,61 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Database.SP_GetVerificationBranchCommandsResult
+
+@{
+    Layout = null;
+}
+
+
+@{
+    string img;
+    string title;
+                    
+    if (Model.BuildStarted.HasValue)
+    {
+        img = "spinner.gif";
+        title = "New Build in Progress since " + @Model.BuildStarted.Value.ToLocalTime().ToString() + " on " + @Model.Machine + " triggered by " + @Model.Operator;
+    }
+    else if (Model.LastAttemptedChangelist == Model.LastGoodChangelist)
+    {
+        img = "tick.png";
+        title = "Last Build Succeeded";
+    }
+    else
+    {
+        img = "cross.png";
+        title = "Last Build Failed";
+    }
+                    
+    <tr class="@((Model.LastAttemptedChangelist == Model.LastGoodChangelist) ? "good" : "bad")" title="@title">
+        <td class="string">
+            <img class="icon" src="~/Content/Themes/Base/Images/@img" alt="State" />
+            @Html.ActionLink(Model.Description, "Command", "Build", new { id = Model.ID }, null)
+        </td>
+        <td class="enum">
+            @if (string.IsNullOrEmpty(Model.Platform))
+            {
+                <text>-</text>
+            }
+            else
+            {
+                @Model.Platform
+            }
+        </td>
+        <td class="enum">
+            @if (Model.LastAttemptedChangelist != Model.LastGoodChangelist)
+            {
+                @Html.ActionLink("CL " + Model.LastAttemptedChangelist.ToString(), "Changelist", "Build", new { id = Model.LastAttemptedChangelist.ToString() }, null)
+            }
+        </td>
+        <td class="enum highlight">@Html.ActionLink("CL " + Model.LastGoodChangelist.ToString(), "Changelist", "Build", new { id = Model.LastGoodChangelist.ToString() }, null)</td>
+        <td class="enum">
+            @if (Model.BuildStarted.HasValue)
+            {
+                <a href="javascript: stopCommand(@Model.ID)" title="Stop Build"><img class="icon" src="~/Content/Themes/Base/Images/stop.png" alt="Stop" /></a>
+            }
+            else
+            {
+                <a href="javascript: triggerCommand(@Model.ID)" title="Trigger New Build"><img class="icon" src="~/Content/Themes/Base/Images/trigger.png" alt="Trigger" /></a>
+            }
+        </td>
+    </tr>
+}

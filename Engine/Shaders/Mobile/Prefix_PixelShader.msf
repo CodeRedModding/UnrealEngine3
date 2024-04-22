@@ -1,0 +1,106 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+// Shared alpha code
+// On Android, ALPHAKILL is dynamically defined depending on device type
+#if PREPROCESS_ALPHAKILL
+#if USE_ALPHAKILL
+	// kill the pixel if the alpha fails the test
+	#define ALPHAKILL(Alpha) if (Alpha <= AlphaTestRef) { discard; }
+
+	// parameter to get alpha test value
+	UNIFORM_LOW(float, AlphaTestRef);
+#else
+	// noop when no alpha kill is used
+	#define ALPHAKILL(Alpha) ;
+#endif
+#endif
+
+#if PREPROCESS_DERIVATIVES
+#if USE_DERIVATIVES
+	#define DUDX(Value, Scale, Fallback) (Scale * dFdx(Value))
+#else
+	#define DUDX(Value, Scale, Fallback) Fallback
+#endif
+#endif
+
+// Shared color grading code
+#if USE_MOBILE_COLOR_GRADING
+	UNIFORM(float, MobileColorGradingBlend);
+	UNIFORM(float, MobileColorGradingDesaturation);
+	UNIFORM(vec4, MobileColorGradingHighlightsMinusShadows);
+	UNIFORM(vec4, MobileColorGradingMidTones);
+	UNIFORM(vec4, MobileColorGradingShadows);
+
+	vec3 MobileColorGrade (vec3 Color)
+	{
+		vec3 DesaturationConstant = vec3(0.33);
+		vec3 Desaturation = mix(Color, vec3(dot(Color, DesaturationConstant)), MobileColorGradingDesaturation);
+		vec3 ColorGrading = MobileColorGradingShadows.rgb + Desaturation * MobileColorGradingHighlightsMinusShadows.rgb + MobileColorGradingMidTones.rgb * (vec3(1.0) - abs(2.0 * (Desaturation - 0.5)));
+
+		return mix(Color, ColorGrading, MobileColorGradingBlend);
+	}
+
+	#define MOBILECOLORGRADE(Color) Color.rgb = MobileColorGrade(Color.rgb);
+#else
+	#define MOBILECOLORGRADE(Color) ;
+#endif
+
+
+#if NGP
+
+// Alpha-blend always on, controlled by alpha channel.
+// Shader:
+//    SrcColor.RGB = Color.RGB * (Color.A * X + Y)
+//    SrcColor.A = Color.A * Z + W
+// Hardware blend: SrcColor + DstColor*SrcColor.A
+// Opaque:  X=0, Y=1, Z=0, W=0
+// Blend:	X=1, Y=0, Z=-1, W=1
+half4 AlphaBlendParams;
+
+half4 AlphaBlend( half4 Color )
+{
+	half2 BlendFactors = AlphaBlendParams.xy * Color.a + AlphaBlendParams.zw;
+	return half4( BlendFactors.x * Color.rgb, BlendFactors.y );
+}
+
+#define USE_SCENECOLOR(Color) Color
+
+// this builtin macro needs to be different in vertex and pixel shaders - Cg doesn't like the out global, we need to return from main
+#define OUT_BUILTIN(Type,Name,Semantics)
+#define PIXEL_MAIN void main( out float4 gl_FragColor : COLOR0 )
+
+
+#else
+
+#define USE_SCENECOLOR(Color) Color
+
+#define AlphaBlend(Color) Color
+
+#define PIXEL_MAIN void main()
+
+#endif
+
+// Macro for SRGB reads
+#if USE_SRGB_READS
+	#if USE_SRGB_APPROXIMATION
+		#define HANDLE_SRGB_READ(Color) ( Color * Color )
+	#else
+		#define HANDLE_SRGB_READ(Color) pow( Color, vec3( 2.2 ) )
+	#endif
+#else
+	#define HANDLE_SRGB_READ(Color) Color
+#endif
+
+
+// Macro for SRGB writes
+#if USE_SRGB_WRITES
+	#if USE_SRGB_APPROXIMATION
+		#define HANDLE_SRGB_WRITE(Color) sqrt( Color )
+	#else
+		#define HANDLE_SRGB_WRITE(Color) pow( Color, vec3( 1.0 / 2.2 ) )
+	#endif
+#else
+	#define HANDLE_SRGB_WRITE(Color) Color
+#endif

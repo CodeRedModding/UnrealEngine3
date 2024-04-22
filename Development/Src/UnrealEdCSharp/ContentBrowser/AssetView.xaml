@@ -1,0 +1,463 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+<UserControl
+	x:Class="ContentBrowser.AssetView"
+	x:Name="This"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:AssetViewValueConverters="clr-namespace:ContentBrowser.AssetViewValueConverters"
+	xmlns:cb="clr-namespace:ContentBrowser"
+	xmlns:cc="clr-namespace:CustomControls"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d"
+	d:DesignHeight="400"
+	d:DesignWidth="600">
+    <UserControl.Resources>
+
+		<!-- Allows us to draw loaded assets in bold by converting an asset's "Loaded Status" to a font weight. -->
+		<AssetViewValueConverters:AssetLoadedStatusToFontWeight x:Key="AssetLoadedStatusToFontWeight"/>
+		
+		<!-- The context menu summoned when right clicking in the asset view or asset canvas.
+			 It's empty but we'll generate items on the fly when ContextMenuOpening is fired. -->
+		<ContextMenu x:Name="EmptyContextMenu" x:Key="EmptyContextMenu"/>
+
+		<!-- A glyph indicating "zoom out" -->
+		<Canvas x:Key="Loupe" x:Shared="False" Width="16" Height="16" SnapsToDevicePixels="True">
+			<Ellipse Fill="#FF3F3F3F" Stroke="White" StrokeThickness="1" Width="12" Height="12" SnapsToDevicePixels="True"/>
+			<Path Fill="#FF3F3F3F" Stretch="Fill" Stroke="White" StrokeThickness="3" Data="M0,0L1,1" Canvas.Top="10.048" Canvas.Left="9.993" Width="5" Height="5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" SnapsToDevicePixels="True"/>
+		</Canvas>
+
+
+		<!--                                                            -->
+		<!-- Cell Sizer that does not animate and has a splitter Thumb	-->
+		<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  -->
+		<Style x:Key="NonAnimatingCellSizer" TargetType="{x:Type cc:CellSizer}">
+			<Style.Resources>
+				<!-- Style the resize thumbs as splitters -->
+				<Style TargetType="{x:Type Thumb}" >
+					<Setter Property="Template">
+						<Setter.Value>
+							<ControlTemplate TargetType="{x:Type Thumb}">
+								<cc:SlateBorder BorderStyle="Splitter" />
+							</ControlTemplate>
+						</Setter.Value>
+					</Setter>
+				</Style>
+			</Style.Resources>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="{x:Type cc:CellSizer}">
+						<Grid Background="{TemplateBinding Background}">
+							<!-- Lay out a 3x3 grid.-->
+							<Grid.RowDefinitions>
+								<RowDefinition Height="Auto"/>
+								<RowDefinition Height="*"/>
+								<RowDefinition Height="Auto"/>
+							</Grid.RowDefinitions>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="Auto"/>
+								<ColumnDefinition Width="*"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
+
+							<!-- North resizer -->
+							<Thumb x:Name="PART_N" Height="{TemplateBinding GripSize}" Cursor="SizeNS" Grid.Column="1" Grid.Row="0" />
+
+							<!-- West resizer -->
+							<Thumb x:Name="PART_W" Width="{TemplateBinding GripSize}" Cursor="SizeWE" Grid.Column="0" Grid.Row="1" />
+
+							<!-- Contents. Note: this cell stretches Width="*" Height="*" -->
+							<ContentPresenter Grid.Column="1" Grid.Row="1" />
+
+							<!-- East Resizer -->
+							<Thumb x:Name="PART_E" Width="{TemplateBinding GripSize}" Cursor="SizeWE" Grid.Column="2" Grid.Row="1" />
+
+							<!-- South Resizer -->
+							<Thumb x:Name="PART_S" Height="{TemplateBinding GripSize}" Cursor="SizeNS" Grid.Column="1" Grid.Row="2" />
+						</Grid>
+						<ControlTemplate.Triggers>
+							<Trigger Property="IsCollapsed" Value="True">
+								<Setter Property="Visibility" Value="Collapsed" />
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+
+
+
+		<!-- Images for Layout Switching Radio Buttons -->
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/CB_ListViewOnly.png" x:Key="imgListViewOnly"/>
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/CB_ListViewOnly_Active.png" x:Key="imgListViewOnly_Active"/>
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/CB_SplitHorizontal.png" x:Key="imgSplitHorizontal"/>
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/CB_SplitHorizontal_Active.png" x:Key="imgSplitHorizontal_Active"/>
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/CB_SplitVertical.png" x:Key="imgSplitVertical"/>
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/CB_SplitVertical_Active.png" x:Key="imgSplitVertical_Active"/>
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/CB_ThumbsOnly.png" x:Key="imgThumbsOnly"/>
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/CB_ThumbsOnly_Active.png" x:Key="imgThumbsOnly_Active"/>
+
+	</UserControl.Resources>
+
+	<DockPanel LastChildFill="True" >
+
+		<cc:YesNoPrompt x:Name="mProceedWithRemoveAssetsFromCollection" AffirmativeIsDefault="False"
+						Placement="Center"
+						PlacementTarget="{Binding ElementName=This}"
+						WarningText="{DynamicResource ContentBrowser_RemoveFromCollectionPrompt_Warning}"
+						AffirmativeText="{DynamicResource ContentBrowser_RemoveFromCollectionPrompt_RemoveAssets}"
+						NegativeText="{DynamicResource ContentBrowser_RemoveFromCollectionPrompt_Cancel}" />
+		
+		<Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{StaticResource Slate_Panel_Highlight}" >
+			<Border.Background>
+				<LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+					<GradientStop Color="#333" Offset="0.0" />
+					<GradientStop Color="#444" Offset="1.0" />
+				</LinearGradientBrush>
+			</Border.Background>
+			<Border DockPanel.Dock="Bottom" BorderThickness="1,0,1,1" BorderBrush="{StaticResource Slate_Panel_Shadow}" >
+				<Grid>
+					<StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Stretch" Width="204" >
+						<cc:ImageRadioButton x:Name="mListOnlyRadioButton"
+							Width="41" Height="31" Margin="5,5,0,5"
+							GroupName="LayoutModes"
+							UncheckedImage="{StaticResource imgListViewOnly}"
+							CheckedImage="{StaticResource imgListViewOnly_Active}"
+							ToolTip="{StaticResource ContentBrowser_AssetView_SwitchToListView[ToolTip]}"/>
+
+						<cc:ImageRadioButton x:Name="mHorizontalSplitRadioButton"
+							Width="41" Height="31" Margin="-2,5,0,5"
+							GroupName="LayoutModes"
+							UncheckedImage="{StaticResource imgSplitHorizontal}"
+							CheckedImage="{StaticResource imgSplitHorizontal_Active}"
+							ToolTip="{StaticResource ContentBrowser_AssetView_SwitchToHorizontalSplit[ToolTip]}"/>
+
+						<cc:ImageRadioButton x:Name="mVerticalSplitRadioButton"
+							Width="41" Height="31" Margin="-2,5,0,5"
+							GroupName="LayoutModes"
+							UncheckedImage="{StaticResource imgSplitVertical}"
+							CheckedImage="{StaticResource imgSplitVertical_Active}"
+							ToolTip="{StaticResource ContentBrowser_AssetView_SwitchToVerticalSplit[ToolTip]}"/>
+
+						<cc:ImageRadioButton x:Name="mThumbsOnlyRadioButton"
+							Width="41" Height="31" Margin="-2,5,0,5"
+							GroupName="LayoutModes"
+							UncheckedImage="{StaticResource imgThumbsOnly}"
+							CheckedImage="{StaticResource imgThumbsOnly_Active}"
+							ToolTip="{StaticResource ContentBrowser_AssetView_SwitchToThumbnailView[ToolTip]}"/>
+					</StackPanel>
+					<StackPanel Orientation="Horizontal" HorizontalAlignment="Right" >
+						<cc:SlateBorder x:Name="mZoomBorder" BorderStyle="Raised" CornerRadius="4" VerticalAlignment="Center" SnapsToDevicePixels="True" InnerBorderPadding="0,0,1,1" >
+							<StackPanel Orientation="Horizontal" >
+								<Border Opacity="0.75" Padding="2" ><StaticResource ResourceKey="Loupe" /></Border>
+								<!-- Zoom widget                            -->
+								<!-- @todo cb  [reviewed; discuss]: make this a separate widget -->
+								<cc:DragSlider Width="100" Height="20" x:Name="m_ZoomDragSlider"/>
+								<Button Style="{StaticResource ResetZoom}" Content="{DynamicResource ContentBrowser_AssetView_ResetZoomAmountButton}"  ToolTip="{DynamicResource ContentBrowser_AssetView_ResetZoomAmountButton[ToolTip]}"  x:Name="m_ZoomWidgetResetButton" Margin="2,0,0,0" FontSize="10" />
+							</StackPanel>
+						</cc:SlateBorder>
+						<ComboBox x:Name="m_ThumbnailSizeCombo" Padding="5" FontSize="11" Width="60" FontWeight="Bold" VerticalAlignment="Center" Margin="10,0,4,0" SelectedIndex="1" ToolTip="{StaticResource ContentBrowser_AssetView_SelectThumbnailSize[ToolTip]}" >
+							<ComboBoxItem Content="64"/>
+							<ComboBoxItem Content="128"/>
+							<ComboBoxItem Content="256"/>
+							<ComboBoxItem Content="512"/>
+							<ComboBoxItem Content="1024"/>
+							<ComboBoxItem Content="2048"/>
+						</ComboBox>
+						<!-- Select sorting options -->
+						<StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,4,0">
+							<Line Stroke="{StaticResource Slate_Control_Foreground}" StrokeThickness="1" StrokeDashArray="1" VerticalAlignment="Center" MaxHeight="25" Stretch="Fill" X1="0" X2="0" Y1="0" Y2="1" SnapsToDevicePixels="True" />
+							<Label Content="{DynamicResource ContentBrowser_AssetView_SortBy}" VerticalAlignment="Center" />							   
+							<Button x:Name="mShowSortOptionsButton" Style="{StaticResource FauxComboBox}" />
+							<Popup x:Name="mSortOptionsPopup" PlacementTarget="{Binding ElementName=mShowSortOptionsButton}"
+								   Placement="Bottom" StaysOpen="False" PopupAnimation="Slide" AllowsTransparency="True">
+								<Border Background="{StaticResource Slate_FilterListHeaderBackground}">
+									<cc:SlateBorder Background="{StaticResource Slate_Control_Background}"
+													InnerBorderThickness="1,1,0,0"
+													InnerBorderBrush="{DynamicResource Slate_Control_Highlight}"
+													OuterBorderThickness="1"
+													OuterBorderBrush="{DynamicResource Slate_Control_Shadow}">
+										<StackPanel Orientation="Vertical" MinWidth="60" Margin="5">
+											<RadioButton x:Name="mSort_Ascending" GroupName="SortDirection" Content="{DynamicResource ContentBrowser_SortDirection_Ascending}" IsChecked="True" />
+											<RadioButton x:Name="mSort_Descending" GroupName="SortDirection" Content="{DynamicResource ContentBrowser_SortDirection_Descending}" />
+											<Separator />
+											<RadioButton x:Name="mSort_ByName" GroupName="SortField" Content="{DynamicResource ContentBrowser_AssetItemNameColumn}" IsChecked="True" />
+											<RadioButton x:Name="mSort_ByType" GroupName="SortField" Content="{DynamicResource ContentBrowser_AssetItemTypeColumn}" />
+											<RadioButton x:Name="mSort_ByTags" GroupName="SortField" Content="{DynamicResource ContentBrowser_AssetItemTagsColumn}" />
+											<RadioButton x:Name="mSort_ByPath" GroupName="SortField" Content="{DynamicResource ContentBrowser_AssetItemPathColumn}" />
+											<RadioButton x:Name="mSort_ByDateAdded" GroupName="SortField" Content="{DynamicResource ContentBrowser_AssetItemDateAddedColumn}" />
+                                            <RadioButton x:Name="mSort_ByMemoryUsage" GroupName="SortField" Content="{DynamicResource ContentBrowser_AssetItemMemoryUsageColumn}" />
+										</StackPanel>
+									</cc:SlateBorder>
+								</Border>
+							</Popup>
+						</StackPanel>
+
+					</StackPanel>
+				</Grid>
+			</Border>
+		</Border>
+
+		<Border x:Name="mAssetViewBorder" DockPanel.Dock="Top" BorderThickness="1" BorderBrush="Transparent">
+			<DockPanel x:Name="mAssetViewDockPanel">
+
+				<!-- ASSET LIST VIEW -->
+
+				<!-- Note that the list view's data context is effectively set to the asset view's "this pointer".  The data context is basically the "base path" where any bound data will be searched for.  By default, WPF will search up the heirarchy of controls until it finds a valid DataContext and use that.  In our case, the DataContext is set (in code) to the control's "this pointer", so any bindings should be relative to the class root. -->
+
+				<!-- The "ItemsSource" attribute here sets the content of the list to be dynamically populated from the source.  In our case, this is a collection view source. -->
+
+				<!-- @todo CB: Ideally we could enable recycling here to get better list view perf.
+							   VirtualizingStackPanel.VirtualizationMode="Recycling"
+						  WPF has several bugs with recycling that prevent us from doing so.  Try again in .NET 4.x -->
+				<cc:CellSizer x:Name="mAssetListViewSizer" Style="{StaticResource NonAnimatingCellSizer}" DockPanel.Dock="Top" MinWidth="50" MinHeight="50" >
+					<Border>
+						<cb:UnrealListView x:Name="m_AssetListView"
+								  Background="{StaticResource Slate_AssetView_List_Background}"
+								  ItemsSource="{Binding ElementName=This, Path=Model}"
+								  SelectionMode="Extended"
+								  Foreground="{StaticResource Slate_AssetView_List_Foreground}"
+								  Style="{StaticResource Slate_ListViewWithGridView}">
+							<!-- Because the list items may be generated dynamically through bindings, we'll use a style that will configure any and all items in this list view -->
+							<ListView.ItemContainerStyle>
+								<Style TargetType="{x:Type ListViewItem}" BasedOn="{StaticResource Slate_GridViewListItem}" >
+									<!-- Items should occupy all available space horizontally; needed for Drag Drop support -->
+									<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+									
+									<!-- Assign context menu event handler to every list item in the control. -->
+									<EventSetter Event="FrameworkElement.ContextMenuOpening" Handler="OnAssetCMOpening"/>
+									<EventSetter Event="FrameworkElement.ContextMenuClosing" Handler="OnAssetCMClosing"/>
+									<Setter Property="ContextMenu" Value="{StaticResource EmptyContextMenu}"/>
+
+									<EventSetter Event="PreviewMouseLeftButtonDown" Handler="ListItem_MouseLeftButtonDown" />
+									<EventSetter Event="PreviewMouseLeftButtonUp" Handler="ListItem_MouseLeftButtonUp" />
+									<EventSetter Event="PreviewMouseMove" Handler="ListItem_MouseMove" />
+									
+									<!-- Assign handlers to support showing a tooltip  -->
+									<EventSetter Event="MouseEnter" Handler="AssetListItem_MouseEnter" />
+									<EventSetter Event="MouseLeave" Handler="AssetListItem_MouseLeave" />
+									
+									
+								</Style>
+							</ListView.ItemContainerStyle>
+
+							<ListView.View>
+
+								<!-- Setup our list view columns and bind to the asset item data members.  The bindings here are always within the scope of the data that's associated with the list (in this case, the asset view source. -->
+								<GridView x:Name="mGridView">
+
+									<!-- The "Name" column is handled specially because we need to indicate asset status -->
+									<GridViewColumn x:Name="mNameColumn" Width="10" >
+										<!-- Name Header -->
+										<GridViewColumnHeader x:Name="mNameColumnHeader" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mNameColumnHeaderContents" Text="{DynamicResource ContentBrowser_AssetItemNameColumn}"/>
+										</GridViewColumnHeader>
+
+										<!-- We use a CellTemplate for the "Name" column so that we can draw the text in BOLD when the asset is currently loaded -->
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=FormattedName}" FontWeight="{Binding Path=LoadedStatus, Converter={StaticResource AssetLoadedStatusToFontWeight}}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+
+									<!-- Use the default rendering method for AssetType(no BOLD support) -->
+									<GridViewColumn x:Name="mAssetTypeColumn" Width="10" >
+										<!-- Type Header -->
+										<GridViewColumnHeader x:Name="mTypeColumnHeader" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mTypeColumnHeaderContents" Text="{DynamicResource ContentBrowser_AssetItemTypeColumn}"/>
+										</GridViewColumnHeader>
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=AssetType}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+
+									<!-- Tags should always be styled, so we need a custom CellTample for Tags-->
+									<GridViewColumn x:Name="mTagsColumn" Width="10" >
+										<!-- Tags Header -->
+										<GridViewColumnHeader x:Name="mTagsColumnHeader" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mTagsColumnHeaderContents" Text="{DynamicResource ContentBrowser_AssetItemTagsColumn}"/>
+										</GridViewColumnHeader>
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=TagsAsString}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+
+									<!-- Use the default rendering method for Path (no BOLD support) -->
+									<GridViewColumn x:Name="mPathColumn" Width="10" >
+										<!-- Path Header -->
+										<GridViewColumnHeader x:Name="mPathColumnHeader" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mPathColumnHeaderContents" Text="{DynamicResource ContentBrowser_AssetItemPathColumn}"/>
+										</GridViewColumnHeader>
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=PathOnly}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+
+									<!-- Date Added Text -->
+									<GridViewColumn x:Name="mDateAddedColumn" Width="10" >
+										<GridViewColumnHeader x:Name="mDateAddedColumnHeader" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mDateAddedColumnHeaderContents" Text="{DynamicResource ContentBrowser_AssetItemDateAddedColumn}"/>
+										</GridViewColumnHeader>
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=DateAddedText}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+									<!-- Memory Usage -->
+									<GridViewColumn x:Name="mMemoryUsageColumn" Width="10" >
+										<GridViewColumnHeader x:Name="mMemoryUsageColumnHeader" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mMemoryUsageColumnHeaderContents" Text="{DynamicResource ContentBrowser_AssetItemMemoryUsageColumn}"/>
+										</GridViewColumnHeader>
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=MemoryUsageText}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+									<!-- Custom data column 0 -->
+									<GridViewColumn x:Name="mCustomDataColumn0" Width="10" >
+										<GridViewColumnHeader x:Name="mCustomDataColumn0Header" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mCustomDataColumn0HeaderContents" Text="{DynamicResource ContentBrowser_AssetItemCustomDataColumn0}"/>
+										</GridViewColumnHeader>
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=CustomDataColumns[0]}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+
+									<!-- Custom data column 1 -->
+									<GridViewColumn x:Name="mCustomDataColumn1" Width="10" >
+										<GridViewColumnHeader x:Name="mCustomDataColumn1Header" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mCustomDataColumn1HeaderContents" Text="{DynamicResource ContentBrowser_AssetItemCustomDataColumn1}"/>
+										</GridViewColumnHeader>
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=CustomDataColumns[1]}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+
+									<!-- Custom data column 2 -->
+									<GridViewColumn x:Name="mCustomDataColumn2" Width="10" >
+										<GridViewColumnHeader x:Name="mCustomDataColumn2Header" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mCustomDataColumn2HeaderContents" Text="{DynamicResource ContentBrowser_AssetItemCustomDataColumn2}"/>
+										</GridViewColumnHeader>
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=CustomDataColumns[2]}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+
+									<!-- Custom data column 3 -->
+									<GridViewColumn x:Name="mCustomDataColumn3" Width="10" >
+										<GridViewColumnHeader x:Name="mCustomDataColumn3Header" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mCustomDataColumn3HeaderContents" Text="{DynamicResource ContentBrowser_AssetItemCustomDataColumn3}"/>
+										</GridViewColumnHeader>
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=CustomDataColumns[3]}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+
+									<!-- Custom data column 4 -->
+									<GridViewColumn x:Name="mCustomDataColumn4" Width="10" >
+										<GridViewColumnHeader x:Name="mCustomDataColumn4Header" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mCustomDataColumn4HeaderContents" Text="{DynamicResource ContentBrowser_AssetItemCustomDataColumn4}"/>
+										</GridViewColumnHeader>
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=CustomDataColumns[4]}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+
+									<!-- Custom data column 5 -->
+									<GridViewColumn x:Name="mCustomDataColumn5" Width="10" >
+										<GridViewColumnHeader x:Name="mCustomDataColumn5Header" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mCustomDataColumn5HeaderContents" Text="{DynamicResource ContentBrowser_AssetItemCustomDataColumn5}"/>
+										</GridViewColumnHeader>
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=CustomDataColumns[5]}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+
+									<!-- Custom data column 6 -->
+									<GridViewColumn x:Name="mCustomDataColumn6" Width="10" >
+										<GridViewColumnHeader x:Name="mCustomDataColumn6Header" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mCustomDataColumn6HeaderContents" Text="{DynamicResource ContentBrowser_AssetItemCustomDataColumn6}"/>
+										</GridViewColumnHeader>
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=CustomDataColumns[6]}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+
+									<!-- Custom data column 7 -->
+									<GridViewColumn x:Name="mCustomDataColumn7" Width="10" >
+										<GridViewColumnHeader x:Name="mCustomDataColumn7Header" HorizontalContentAlignment="Left">
+											<cc:SortableColumnHeader x:Name="mCustomDataColumn7HeaderContents" Text="{DynamicResource ContentBrowser_AssetItemCustomDataColumn7}"/>
+										</GridViewColumnHeader>
+										<GridViewColumn.CellTemplate>
+											<DataTemplate>
+												<TextBlock Text="{Binding Path=CustomDataColumns[7]}" />
+											</DataTemplate>
+										</GridViewColumn.CellTemplate>
+									</GridViewColumn>
+
+                                    <!-- Custom data column 8 -->
+                                    <GridViewColumn x:Name="mCustomDataColumn8" Width="10" >
+                                        <GridViewColumnHeader x:Name="mCustomDataColumn8Header" HorizontalContentAlignment="Left">
+                                            <cc:SortableColumnHeader x:Name="mCustomDataColumn8HeaderContents" Text="{DynamicResource ContentBrowser_AssetItemCustomDataColumn8}"/>
+                                        </GridViewColumnHeader>
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Path=CustomDataColumns[8]}" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+
+                                    <!-- Custom data column 9 -->
+                                    <GridViewColumn x:Name="mCustomDataColumn9" Width="10" >
+                                        <GridViewColumnHeader x:Name="mCustomDataColumn9Header" HorizontalContentAlignment="Left">
+                                            <cc:SortableColumnHeader x:Name="mCustomDataColumn9HeaderContents" Text="{DynamicResource ContentBrowser_AssetItemCustomDataColumn9}"/>
+                                        </GridViewColumnHeader>
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Path=CustomDataColumns[9]}" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>                                    
+                                    
+                                </GridView>
+							</ListView.View>
+						</cb:UnrealListView>
+					</Border>
+				</cc:CellSizer>
+
+				<cb:AssetCanvas
+					x:Name="m_AssetCanvas"
+					DockPanel.Dock="Top"
+					ContextMenu="{StaticResource EmptyContextMenu}"
+					ContextMenuOpening="OnAssetCMOpening"
+					ContextMenuClosing="OnAssetCMClosing">
+				</cb:AssetCanvas>
+
+			</DockPanel>
+		</Border>
+	</DockPanel>
+
+</UserControl>

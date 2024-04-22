@@ -1,0 +1,381 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{3C8EC146-A192-435C-8EA2-ADC768A00A17}</ProjectGuid>
+    <RootNamespace>UnrealLightmass</RootNamespace>
+    <SccProjectName>SAK</SccProjectName>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccProvider>SAK</SccProvider>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\..\Binaries\Win32\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\Intermediate\Shared\Tools\$(PlatformName)\$(Configuration)\$(ProjectName)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</GenerateManifest>
+    <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</EmbedManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\Binaries\Win64\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\Intermediate\Shared\Tools\Win64\$(Configuration)\$(ProjectName)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</GenerateManifest>
+    <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EmbedManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\..\Binaries\Win32\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\Intermediate\Shared\Tools\$(PlatformName)\$(Configuration)\$(ProjectName)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</GenerateManifest>
+    <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</EmbedManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\Binaries\Win64\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\Intermediate\Shared\Tools\Win64\$(Configuration)\$(ProjectName)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</GenerateManifest>
+    <EmbedManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</EmbedManifest>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>Public;Inc;LightmassCore/Inc;Lighting/Inc;$(DXSDK_DIR)/include;..;../../Src/UnrealSwarm/Inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_UNICODE;UNICODE;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Link>
+      <AdditionalDependencies>d3d9.lib;d3dx9d.lib;dbghelp.lib;Psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
+      <AdditionalLibraryDirectories>..\UnrealSwarm\Binaries\Debug;$(DXSDK_DIR)/lib/x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>d3d9.dll;d3dx9d_43.dll;dbghelp.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <LargeAddressAware>true</LargeAddressAware>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+    <Manifest>
+      <OutputManifestFile>$(IntDir)$(TargetFileName).embed.manifest</OutputManifestFile>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>Public;Inc;LightmassCore/Inc;Lighting/Inc;$(DXSDK_DIR)/include;..;../../Src/UnrealSwarm/Inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_UNICODE;UNICODE;_WIN64;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Link>
+      <AdditionalDependencies>d3d9.lib;d3dx9d.lib;dbghelp.lib;Psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
+      <AdditionalLibraryDirectories>..\UnrealSwarm\Binaries\Debug;$(DXSDK_DIR)/lib/x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>d3d9.dll;d3dx9d_43.dll;dbghelp.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <TargetMachine>MachineX64</TargetMachine>
+    </Link>
+    <Manifest>
+      <OutputManifestFile>$(IntDir)$(TargetFileName).embed.manifest</OutputManifestFile>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <Optimization>Full</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <AdditionalIncludeDirectories>Public;Inc;LightmassCore/Inc;Lighting/Inc;$(DXSDK_DIR)/include;../../Src/UnrealSwarm/Inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/LARGEADDRESSAWARE %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>d3d9.lib;d3dx9.lib;dbghelp.lib;Psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
+      <AdditionalLibraryDirectories>..\UnrealSwarm\Binaries\Release;$(DXSDK_DIR)/lib/x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>d3d9.dll;d3dx9_43.dll;dbghelp.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <LargeAddressAware>true</LargeAddressAware>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+    <Manifest>
+      <OutputManifestFile>$(IntDir)$(TargetFileName).embed.manifest</OutputManifestFile>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>Full</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <AdditionalIncludeDirectories>Public;Inc;LightmassCore/Inc;Lighting/Inc;$(DXSDK_DIR)/include;..;../../Src/UnrealSwarm/Inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_UNICODE;UNICODE;_WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Link>
+      <AdditionalDependencies>d3d9.lib;d3dx9.lib;dbghelp.lib;Psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
+      <AdditionalLibraryDirectories>..\UnrealSwarm\Binaries\Release;$(DXSDK_DIR)/lib/x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <DelayLoadDLLs>d3d9.dll;d3dx9_43.dll;dbghelp.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <TargetMachine>MachineX64</TargetMachine>
+    </Link>
+    <Manifest>
+      <OutputManifestFile>$(IntDir)$(TargetFileName).embed.manifest</OutputManifestFile>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Src\UnitTest.cpp" />
+    <ClCompile Include="Src\UnrealLightmass.cpp" />
+    <ClCompile Include="Src\CPUSolver.cpp" />
+    <ClCompile Include="Src\3DVisualizer.cpp" />
+    <ClCompile Include="Src\Exporter.cpp" />
+    <ClCompile Include="Src\Importer.cpp" />
+    <ClCompile Include="Src\LightmassSwarm.cpp" />
+    <ClCompile Include="Src\Material.cpp" />
+    <ClCompile Include="Src\Mesh.cpp" />
+    <ClCompile Include="Src\Scene.cpp" />
+    <ClCompile Include="Src\Terrain.cpp" />
+    <ClCompile Include="LightmassCore\Src\LMCore.cpp" />
+    <ClCompile Include="LightmassCore\Src\LMDebug.cpp" />
+    <ClCompile Include="LightmassCore\Src\LMMallocProfiler.cpp" />
+    <ClCompile Include="LightmassCore\Src\LMMath.cpp" />
+    <ClCompile Include="LightmassCore\Src\LMMemory.cpp" />
+    <ClCompile Include="LightmassCore\Src\LMSHMath.cpp" />
+    <ClCompile Include="LightmassCore\Src\LMTemplates.cpp" />
+    <ClCompile Include="LightmassCore\Src\LMThreading.cpp" />
+    <ClCompile Include="LightmassCore\Src\SFMT.cpp" />
+    <ClCompile Include="Lighting\Src\BSP.cpp" />
+    <ClCompile Include="Lighting\Src\Cache.cpp" />
+    <ClCompile Include="Lighting\Src\Collision.cpp" />
+    <ClCompile Include="Lighting\Src\FluidSurface.cpp" />
+    <ClCompile Include="Lighting\Src\Landscape.cpp" />
+    <ClCompile Include="Lighting\Src\LightingMesh.cpp" />
+    <ClCompile Include="Lighting\Src\LightingSystem.cpp" />
+    <ClCompile Include="Lighting\Src\LightmapData.cpp" />
+    <ClCompile Include="Lighting\Src\Mappings.cpp" />
+    <ClCompile Include="Lighting\Src\MonteCarlo.cpp" />
+    <ClCompile Include="Lighting\Src\PhotonMapping.cpp" />
+    <ClCompile Include="Lighting\Src\PrecomputedVisibility.cpp" />
+    <ClCompile Include="Lighting\Src\SampleVolume.cpp" />
+    <ClCompile Include="Lighting\Src\SpeedTree.cpp" />
+    <ClCompile Include="Lighting\Src\StaticMesh.cpp" />
+    <ClCompile Include="Lighting\Src\TerrainLighting.cpp" />
+    <ClCompile Include="Lighting\Src\TextureMapping.cpp" />
+    <ClCompile Include="Lighting\Src\VertexMapping.cpp" />
+    <ClCompile Include="Lighting\Src\VolumeDistanceField.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\stdafx.h" />
+    <ClInclude Include="Inc\UnitTest.h" />
+    <ClInclude Include="Inc\CPUSolver.h" />
+    <ClInclude Include="Inc\3DVisualizer.h" />
+    <ClInclude Include="Inc\Exporter.h" />
+    <ClInclude Include="Inc\Importer.h" />
+    <ClInclude Include="Inc\LightmassSwarm.h" />
+    <ClInclude Include="Inc\Material.h" />
+    <ClInclude Include="Inc\Mesh.h" />
+    <ClInclude Include="Inc\Scene.h" />
+    <ClInclude Include="Inc\Terrain.h" />
+    <ClInclude Include="LightmassCore\Inc\LMCore.h" />
+    <ClInclude Include="LightmassCore\Inc\LMColor.h" />
+    <ClInclude Include="LightmassCore\Inc\LMGuid.h" />
+    <ClInclude Include="LightmassCore\Inc\LMTypes.h" />
+    <ClInclude Include="LightmassCore\Inc\LMCollision.h" />
+    <ClInclude Include="LightmassCore\Inc\LMkDOP.h" />
+    <ClInclude Include="LightmassCore\Inc\LMMath.h" />
+    <ClInclude Include="LightmassCore\Inc\LMMathSSE.h" />
+    <ClInclude Include="LightmassCore\Inc\LMMatrix.h" />
+    <ClInclude Include="LightmassCore\Inc\LMOctree.h" />
+    <ClInclude Include="LightmassCore\Inc\LMArray.h" />
+    <ClInclude Include="LightmassCore\Inc\LMMap.h" />
+    <ClInclude Include="LightmassCore\Inc\LMQueue.h" />
+    <ClInclude Include="LightmassCore\Inc\LMSet.h" />
+    <ClInclude Include="LightmassCore\Inc\LMSorting.h" />
+    <ClInclude Include="LightmassCore\Inc\LMString.h" />
+    <ClInclude Include="LightmassCore\Inc\LMTemplates.h" />
+    <ClInclude Include="LightmassCore\Inc\LMBuild.h" />
+    <ClInclude Include="LightmassCore\Inc\LMDebug.h" />
+    <ClInclude Include="LightmassCore\Inc\LMHelpers.h" />
+    <ClInclude Include="LightmassCore\Inc\LMMallocProfiler.h" />
+    <ClInclude Include="LightmassCore\Inc\LMMemory.h" />
+    <ClInclude Include="LightmassCore\Inc\LMStats.h" />
+    <ClInclude Include="LightmassCore\Inc\LMStringConv.h" />
+    <ClInclude Include="LightmassCore\Inc\LMThreading.h" />
+    <ClInclude Include="LightmassCore\Inc\LMWindows.h" />
+    <ClInclude Include="Lighting\Inc\BSP.h" />
+    <ClInclude Include="Lighting\Inc\BuildOptions.h" />
+    <ClInclude Include="Lighting\Inc\Cache.h" />
+    <ClInclude Include="Lighting\Inc\Collision.h" />
+    <ClInclude Include="Lighting\Inc\FluidSurface.h" />
+    <ClInclude Include="Lighting\Inc\Landscape.h" />
+    <ClInclude Include="Lighting\Inc\Lighting.h" />
+    <ClInclude Include="Lighting\Inc\LightingMesh.h" />
+    <ClInclude Include="Lighting\Inc\LightingSystem.h" />
+    <ClInclude Include="Lighting\Inc\LightmapData.h" />
+    <ClInclude Include="Lighting\Inc\Mappings.h" />
+    <ClInclude Include="Lighting\Inc\MonteCarlo.h" />
+    <ClInclude Include="Lighting\Inc\Raster.h" />
+    <ClInclude Include="Lighting\Inc\SpeedTree.h" />
+    <ClInclude Include="Lighting\Inc\StaticMesh.h" />
+    <ClInclude Include="Lighting\Inc\TerrainLighting.h" />
+    <ClInclude Include="Lighting\Inc\Texture.h" />
+    <ClInclude Include="Public\FluidExport.h" />
+    <ClInclude Include="Public\FoliageExport.h" />
+    <ClInclude Include="Public\ImportExport.h" />
+    <ClInclude Include="Public\LightmassPublic.h" />
+    <ClInclude Include="Public\MaterialExport.h" />
+    <ClInclude Include="Public\MeshExport.h" />
+    <ClInclude Include="Public\PublicStructs.h" />
+    <ClInclude Include="Public\PublicTypes.h" />
+    <ClInclude Include="Public\SceneExport.h" />
+    <ClInclude Include="Public\TerrainExport.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="Debug-Win32.manifest" />
+    <Manifest Include="Debug-Win64.manifest" />
+    <Manifest Include="Win32.manifest" />
+    <Manifest Include="Win64.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Src\UnrealSwarm\SwarmInterface.vcxproj">
+      <Project>{54f53aaa-13bc-41e2-bd80-12c218c8ca9f}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

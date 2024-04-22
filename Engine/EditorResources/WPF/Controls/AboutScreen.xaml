@@ -1,0 +1,76 @@
+﻿<Border
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:UnrealEd="clr-namespace:UnrealEd;assembly=UnrealEdCSharp"
+    xmlns:CustomControls="clr-namespace:CustomControls;assembly=UnrealEdCSharp"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d"
+	xmlns:Microsoft_Windows_Themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero"
+	x:Name="MainBorder"
+	BorderBrush="{DynamicResource Slate_Panel_Background}"
+	BorderThickness="2,2,2,2" Background="#FF444444">
+	<Border.Resources>
+		<BitmapImage x:Key="AboutScreen_Facebook_Image" UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/FacebookIcon.png"/>
+
+		<Style x:Key="AboutScreenButtonStyle" TargetType="{x:Type Button}">
+			<Setter Property="Foreground" Value="#FFE0D6D6"/>
+			<Setter Property="Padding" Value="2"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="BorderBrush" Value="Transparent"/>
+			<Setter Property="HorizontalContentAlignment" Value="Center"/>
+			<Setter Property="VerticalContentAlignment" Value="Center"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="{x:Type Button}">
+						<Border x:Name="Bd" SnapsToDevicePixels="True" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+							<ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" Content="{TemplateBinding Content}" ContentStringFormat="{TemplateBinding ContentStringFormat}" ContentTemplate="{TemplateBinding ContentTemplate}"/>
+						</Border>
+						<ControlTemplate.Triggers>
+							<Trigger Property="IsEnabled" Value="False">
+								<Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+			<Style.Triggers>
+				<Trigger Property="IsMouseOver" Value="True">
+					<Setter Property="Foreground" Value="#FFFFFFFF" />
+				</Trigger>
+			</Style.Triggers>
+		</Style>
+	</Border.Resources>
+	<Grid Height="585" Width="500" Margin="0,16,0,0">
+        <StackPanel Orientation="Vertical" VerticalAlignment="Top"  Margin="0,0,0,15">
+			<DockPanel DockPanel.Dock="Top">
+				<Image x:Name="AboutScreenSplash" Height="281.25" Width="487.5" />
+			</DockPanel>
+			<DockPanel>
+				<TextBlock x:Name="AboutScreenTitle" Foreground="#FFE0D6D6" FontFamily="Tahoma" FontSize="12" Margin="10,15,15,15" TextAlignment="Left" TextWrapping="Wrap" HorizontalAlignment="Left" DockPanel.Dock="Left" />
+                    <Button x:Name="FacebookButton" HorizontalAlignment="Right" DockPanel.Dock="Right" Style="{DynamicResource AboutScreenButtonStyle}" Cursor="Hand">
+                        <StackPanel Orientation="Vertical" VerticalAlignment="Top">
+                            <Image Source="{StaticResource AboutScreen_Facebook_Image}" Margin="0,0,5,0" Width="48" Height="48"/>
+                        </StackPanel>
+                    </Button>
+			</DockPanel>
+            <Grid Height="190">
+                <FlowDocumentScrollViewer Foreground="#FFE0D6D6" 
+                                          BorderBrush="Black" 
+                                          BorderThickness="0,1,0,1"
+                                          xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' 
+                                          xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
+                                          IsSelectionEnabled="False"
+                                          Document="{StaticResource AboutScreen_BodyFlowDoc}" />
+            </Grid>
+        </StackPanel>
+		<StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+            <DockPanel DockPanel.Dock="Bottom" Height="50">
+                <TextBlock x:Name="AboutScreenVersion" Foreground="#FFE0D6D6" FontFamily="Tahoma" FontSize="12" Margin="10,20,15,15" TextAlignment="Left" TextWrapping="Wrap" HorizontalAlignment="Left" DockPanel.Dock="Left" />
+                <Button x:Name="CloseWindowButton" HorizontalAlignment="Right" Margin="0,16,4,4" Height="24" Width="75"
+			    Content="{StaticResource AboutScreen_CloseButtonLabel}"
+			    ToolTip="{StaticResource AboutScreen_CloseButtonLabel_ToolTip}"/>
+            </DockPanel>
+        </StackPanel>
+	</Grid>
+</Border>

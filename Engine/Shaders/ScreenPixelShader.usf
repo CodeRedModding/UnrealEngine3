@@ -1,0 +1,16 @@
+/*=============================================================================
+	ScreenPixelShader.usf: Filter pixel shader source.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+sampler2D InTexture;
+
+void Main(
+	float2 InUV : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+    OutColor = tex2D(InTexture, InUV);
+}

@@ -1,0 +1,9 @@
+<settings>
+<metadata group="Memory" units="bytes" scale="MB"/>
+<metadata group="Memory" name="TrimMemory cycles" units="cycles" scale="cycles"/>
+<metadata group="ShaderCompression" name="Compressed Shader Memory" units="bytes" scale="MB"/>
+<metadata group="ShaderCompression" name="Uncompressed Shader Memory" units="bytes" scale="MB"/>
+<metadata group="Streaming" units="bytes" scale="MB"/>
+<metadata group="Streaming" name="Game Thread Update Time" units="cycles"/>
+<metadata group="Streaming" name="Streaming Fudge Factor" units="count"/>
+</settings>

@@ -1,0 +1,78 @@
+/*=============================================================================
+	ShaderComplexityApplyPixelShader.usf: Maps accumulated shader complexity into color.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+/** xy: max texture coord value for clamping (view->xy/SourceImageExtent.xy), zw: ((view->xy + view->wh)/SourceImageExtent.xy) */
+//float4 SceneTextureRect;
+/** xy: Conversion factor to go from screen space to pixel space for sampling pixel around the current, zw (scale factor to check bounds of texture coordinate reads)*/
+float4 InverseSceneTextureSize;
+
+/**background color to blend towards as this pixel becomes unwanted*/
+float4 BackgroundColor;
+
+/**Constants for depth compares, x = start distance (away from current pixel), y = 1.0f/total distance, z = depth bias factor to help further away pixels remain accepted*/
+float4 HaloDepthConstants;
+
+void Main(
+	in float2 ScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	half4 SceneColorAndDepth = CalcSceneColorAndDepth(ScreenPosition);
+	
+	//The further out the objects are the easier it should be to accept the pixels (depth between adjacent pixels will be greater)
+	float AdjustedDepthForBias = max(SceneColorAndDepth.a, 1);
+	float DepthAcceptanceFactor = HaloDepthConstants.z/(AdjustedDepthForBias);
+	
+	//default to getting the full color out of the buffer
+	float Opacity = 1.0f;
+	
+	// Radius can be tweaked to get bigger bokeh (slower) 1->3x3, 2-> 5x5, 3->7x7, 4->9x9
+	const int PixelRadius = 1;
+
+	//loop over all neighboring pixels, if they neighbor pixels are closer to the camera:
+	// - leave the pixel alone if the depths are close
+	// - fade out over a margin
+	// - completely turn off this pixel if the depths differ by too much
+	LOOP for(int y = -PixelRadius; y <= PixelRadius; ++y)
+	{
+		for(int x = -PixelRadius; x <= PixelRadius; ++x)
+		{
+			//get relative pixel offset
+			const float2 PixelRel = float2(x,y); 
+
+			//Get neighboring pixel color & depth
+			half4 NeighborSceneColorAndDepth = CalcSceneColorAndDepth(ScreenPosition + InverseSceneTextureSize.xy * PixelRel);
+
+			//if the neighboring pixel is closer to the camera than the current pixel
+			if (SceneColorAndDepth.a > NeighborSceneColorAndDepth.a)
+			{
+				//get the difference between the current pixel and the neighbor
+				float DepthDistanceDelta = SceneColorAndDepth.a - NeighborSceneColorAndDepth.a;
+				
+				//find percent along the domain of "StartFadeDistance - CompleteFadeDistance", (x - start)/distance
+				float RawTransparency = (DepthDistanceDelta - HaloDepthConstants.x) * HaloDepthConstants.y * DepthAcceptanceFactor;
+				
+				//clamp that value to 0.0 - 1.0f and invert
+				float TempOpacity = 1.0f - saturate(RawTransparency);
+				
+				//take the minimum so far
+				Opacity = min(Opacity, TempOpacity);
+			}
+		}
+	}
+	
+	
+	//lerp from background color to the actual scene color based on the calculated opacity
+	half3 FadedSceneColor = lerp(BackgroundColor.xyz, SceneColorAndDepth.rgb, Opacity);
+
+	//combine with solid alpha
+	half4 FinalHaloColor = half4(FadedSceneColor, 1);
+	
+	//FinalHaloColor = half4(float2(ScreenPosition.xy*InverseSceneTextureSize.zw), 0.0f, 1.0f);
+
+	OutColor = RETURN_COLOR(FinalHaloColor);
+}

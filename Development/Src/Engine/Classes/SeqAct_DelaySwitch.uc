@@ -1,11 +1,14 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class SeqAct_DelaySwitch extends SeqAct_Latent
+	deprecated
 	native(Sequence);
 
 cpptext
 {
-	virtual void PostEditChange(UProperty* PropertyThatChanged)
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 	{
-		Super::PostEditChange(PropertyThatChanged);
 		// force at least one output link
 		if (LinkCount <= 0)
 		{
@@ -29,6 +32,7 @@ cpptext
 				OutputLinks.Remove(OutputLinks.Num()-1);
 			}
 		}
+		Super::PostEditChangeProperty(PropertyChangedEvent);
 	}
 
 	void Activated()
@@ -50,7 +54,8 @@ cpptext
 	{
 		if (NextLinkTime <= 0.f)
 		{
-			if (CurrentIdx < OutputLinks.Num())
+			if( CurrentIdx < OutputLinks.Num() && !OutputLinks(CurrentIdx).bDisabled &&
+				!(OutputLinks(CurrentIdx).bDisabledPIE && GIsEditor))
 			{
 				// activate the new link
 				OutputLinks(CurrentIdx).bHasImpulse = 1;
@@ -87,9 +92,12 @@ var transient float					NextLinkTime;
 
 defaultproperties
 {
-	ObjName="Switch - Delayed"
+	ObjName="Delayed"
+	ObjCategory="Switch"
 	LinkCount=1
 	OutputLinks(0)=(LinkDesc="Link 1")
+
+	VariableLinks.Empty
 	VariableLinks(0)=(ExpectedType=class'SeqVar_Float',LinkDesc="Delay")
 	VariableLinks(1)=(ExpectedType=class'SeqVar_Int',LinkDesc="Active Link",MinVars=0)
 }

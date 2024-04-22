@@ -1,0 +1,19 @@
+UNIFORM( mat4, BatchMatrix[15] );
+UNIFORM( vec4, BatchFloat[30] );
+ATTRIBUTE( vec4, Position, POSITION );
+ATTRIBUTE( float, vbatch, BLENDINDICES0 );
+OUT_VARYING_DEFAULT( vec2, tc, TEXCOORD0 );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// E YUV
+
+  tc.x = dot(Position, BatchFloat[int(0.1+2.0*vbatch+(0.0))]);
+  tc.y = dot(Position, BatchFloat[int(0.1+2.0*vbatch+(1.0))]);
+// E Position3d
+
+  gl_Position = MulMatrix(Position, BatchMatrix[int(0.1+1.0*vbatch)]);
+// E YUVA
+  ;
+
+}
+

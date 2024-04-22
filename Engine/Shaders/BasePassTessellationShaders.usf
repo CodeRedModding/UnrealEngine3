@@ -1,0 +1,85 @@
+/*=============================================================================
+	BasePassTessellationShaders.usf: Base pass domain and hull shaders
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "BasePassVertexCommon.usf"
+
+FBasePassVSToDS PassInterpolate(FBasePassVSToDS a, float aInterp, FBasePassVSToDS b, float bInterp)
+{
+	FBasePassVSToDS O;
+	
+	O.FactoryInterpolants = VertexFactoryInterpolate(a.FactoryInterpolants, aInterp, b.FactoryInterpolants, bInterp);
+
+	#if VERTEX_LIGHTMAP
+		TESSELLATION_INTERPOLATE_MEMBER(BasePassInterpolants.LightMapA);
+		TESSELLATION_INTERPOLATE_MEMBER(BasePassInterpolants.LightMapB);
+	#else
+		#if SIMPLE_VERTEX_LIGHTMAP
+			TESSELLATION_INTERPOLATE_MEMBER(BasePassInterpolants.LightMapA);
+		#endif
+	#endif
+
+	#if NEEDS_BASEPASS_FOGGING
+		TESSELLATION_INTERPOLATE_MEMBER(BasePassInterpolants.VertexFog);
+	#endif
+
+	#if ENABLE_DIRECTIONAL_LIGHT
+		TESSELLATION_INTERPOLATE_MEMBER(BasePassInterpolants.TangentLightVector);
+	#endif
+
+	#if ENABLE_MULTITYPE_BASEPASS_LIGHT
+		TESSELLATION_INTERPOLATE_MEMBER(BasePassInterpolants.WorldLightVector);
+	#endif
+
+	TESSELLATION_INTERPOLATE_MEMBER(BasePassInterpolants.CameraVectorOrVertexColor);
+
+	#if !MATERIAL_LIGHTINGMODEL_UNLIT
+		TESSELLATION_INTERPOLATE_MEMBER(BasePassInterpolants.SkyVector);
+	#else
+		#if ENABLE_TRANSLUCENCY_DOF
+			TESSELLATION_INTERPOLATE_MEMBER(BasePassInterpolants.TranslucencyDoFBlur);
+		#endif		
+	#endif
+
+	return O;
+}
+
+FBasePassVSToPS PassFinalizeTessellationOutput(FBasePassVSToDS Interpolants, float4 WorldPosition, FMaterialTessellationParameters MaterialParameters)
+{
+	FBasePassVSToPS O;
+	
+	O.FactoryInterpolants = VertexFactoryAssignInterpolants(Interpolants.FactoryInterpolants);
+
+	// Copy everything in the shared base class over to the pixel shader input
+	(FSharedBasePassInterpolants)O.BasePassInterpolants = (FSharedBasePassInterpolants)Interpolants.BasePassInterpolants;
+
+	// Transform position to clip-space
+	ISOLATE
+	{
+		O.Position = MulMatrix(ViewProjectionMatrixDS,WorldPosition);
+		O.Position = ApplyTemporalAAJitter(O.Position);
+	}
+	
+	// Calc position-dependent interps
+	#if WORLD_POS
+		O.BasePassInterpolants.PixelPosition = WorldPosition;
+	#else
+		O.BasePassInterpolants.PixelPosition = O.Position;
+	#endif
+
+	// When per-pixel camera vector is enabled, we store vertex color in the interpolator that
+	// is usually used for camera vector so that we can use vertex color and environment maps
+	// simultaneously in the base pass.  This is needed due to a low number of available interpolators.
+	#if PER_PIXEL_CAMERA_VECTOR
+		O.BasePassInterpolants.CameraVectorOrVertexColor = MaterialParameters.VertexColor;
+	#else
+		O.BasePassInterpolants.CameraVectorOrVertexColor.xyz = TransformWorldVectorToTangent(MaterialParameters.TangentToWorld,CameraPositionDS.xyz - WorldPosition.xyz * CameraPositionDS.w);
+		O.BasePassInterpolants.CameraVectorOrVertexColor.w = 1.0f;
+	#endif
+
+	return O;
+}
+
+// This gets us the MainHull and MainDomain shader definitions
+#include "Tessellation.usf"

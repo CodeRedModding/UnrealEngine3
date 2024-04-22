@@ -1,0 +1,18 @@
+UNIFORM( mat4, Transform );
+UNIFORM( vec4, TextureTransform2D[4] );
+ATTRIBUTE( vec4, Position, POSITION );
+OUT_VARYING_DEFAULT( vec2, tc, TEXCOORD0 );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// E YUV
+
+  tc.x = dot(Position, TextureTransform2D[int(0.1+0.0)]);
+  tc.y = dot(Position, TextureTransform2D[int(0.1+1.0)]);
+// E Position3d
+
+  gl_Position = MulMatrix(Position, Transform);
+// E Cxform
+  ;
+
+}
+

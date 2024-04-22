@@ -1,0 +1,16 @@
+/**
+ * This is the Memory chart style .css
+ *
+ * Copyright 1998-2007 Epic Games, Inc. All Rights Reserved.
+ */
+
+
+TD.rowHeaderDuration
+{ 
+  background-color: #C0C0C0;
+}
+
+TD.rowEntryDuration
+{ 
+  background-color:  	#E9E9E9;
+}

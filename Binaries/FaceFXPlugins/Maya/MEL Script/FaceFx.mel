@@ -1,0 +1,563 @@
+//------------------------------------------------------------------------------
+// FaceFX for Maya.
+//
+// Owner: Jamie Redmond
+//
+// Copyright (c) 2002-2010 OC3 Entertainment, Inc.  All Rights Reserved.
+//------------------------------------------------------------------------------
+//
+// Commercial use prohibited without a valid FaceFX license from
+// OC3 Entertainment.
+//
+// When building the mod developer version of the tools with 
+// MOD_DEVELOPER_VERSION defined in the source code.
+//
+//@todo progress bar at the bottom of the application when loading FxArchives, 
+//      logo bitmap somewhere (esp. on about menu), perhaps clean up the layouts 
+//      so that they resize with the panel (use formLayout)?  Protect accesses 
+//      to GUI controls by making sure the scripted panel exists before 
+//      allowing the code to execute.
+
+// Called when the new menu item is selected.
+global proc FaceFxNew()
+{
+	string $result = `promptDialog 
+						-title "Create New Actor" 
+						-message "Enter Name:" 
+						-button "OK" -button "Cancel"
+						-defaultButton "OK" -cancelButton "Cancel"
+						-dismissString "Cancel"`;
+	if( $result == "OK" )
+	{
+		string $name = `promptDialog -query -text`;
+		fxcreateactor -name $name;
+	}
+}
+
+// Called when the open menu item is selected.
+global proc FaceFxOpen()
+{
+	string $actorFile = `fileDialog -dm "*.fxa"`;
+	if( $actorFile != "" )
+	{
+		fxloadactor -file $actorFile;
+	}
+}
+
+// Called when the user saves the actor from the save as dialog.
+global proc FaceFxOnSaveAs( string $actorFile, string $type )
+{
+	// See if the file extension was provided and if not append
+	// it.
+	string $ext = `match "\.fxa" $actorFile`;
+	if( $ext == "" )
+	{
+		$actorFile += ".fxa";
+	}
+	fxsaveactor -file $actorFile;
+}
+
+// Called when the save menu item is selected.
+global proc FaceFxSave()
+{
+    // Maya 2011 has a new interface still
+    if( getApplicationVersionAsFloat() > 2010.9 )
+    {
+        string $result[] = `fileDialog2 -fm 0
+		    -fileFilter "*.fxa"
+		    -caption "Save"
+		    -okCaption "Save"
+		    -dialogStyle 2`;
+
+        if(size( $result[0] ) > 0 )
+        {
+            FaceFxOnSaveAs($result[0], "");
+        }
+    }
+    // Maya 2010 appears to have broken the filtering feature.
+    else if( getApplicationVersionAsFloat() > 2009.9 )
+    {
+        fileBrowserDialog -mode 2
+		    -fileCommand "FaceFxOnSaveAs"
+		    -actionName "Save"
+		    -operationMode "SaveAs";
+    }
+    else
+    {
+	    fileBrowserDialog -mode 2
+		    -fileCommand "FaceFxOnSaveAs"
+		    -actionName "Save"
+		    -operationMode "SaveAs"
+		    -dialogStyle 1
+		    -filterList "FaceFX,*.fxa;"
+		    -fileType "FaceFX";
+
+    }
+}
+
+// Quit the FaceFx script.  Called when the script first starts.
+global proc FaceFxQuit()
+{
+	// If the main FaceFx window is up, delete it first.
+	if( `window -exists __FaceFxMainWindow` )
+	{
+		deleteUI -window __FaceFxMainWindow;
+	}
+}
+
+// Called when the about menu item is selected.
+global proc FaceFxAbout()
+{
+	// Destroy any previous about window.
+	if(`window -exists __FaceFxAboutWindow`)
+	{
+		deleteUI -window __FaceFxAboutWindow;
+	}
+
+	// Display the about window.
+	window -titleBarMenu false -sizeable false -title "About FaceFX" -resizeToFitChildren true __FaceFxAboutWindow;
+	columnLayout;
+		string $pluginPath = `pluginInfo -query -path FaceFx`;
+		string $pluginName = "FaceFx.mll";
+        string $logoImage  = "FaceFX_Logo_Small.bmp";
+		string $logoPath = `substitute $pluginName $pluginPath $logoImage`;
+		image -width 142 -height 50 -image $logoPath;
+		text -label "FaceFX for Maya";
+		string $fxPluginVersion = `pluginInfo -query -version FaceFx`;
+		string $versionString = "(plug-in version ";
+		$versionString += $fxPluginVersion;
+		$versionString += ")";
+		text -label $versionString;
+		text -label "Copyright (c) 2002-2010";
+		text -label "OC3 Entertainment, Inc.";
+		button -w 50 -h 20 -label "OK" -command ("deleteUI -window __FaceFxAboutWindow") -annotation "Dismiss this window.";
+	setParent ..;
+
+	showWindow __FaceFxAboutWindow;
+}
+
+// Called when the import reference pose button is pressed.
+global proc FaceFxOnImportRefPose()
+{
+	int $frame = `currentTime -q`;
+	fximportrefpose -frame $frame;
+}
+
+// Called when the user clicks "Export Reference Pose" from the export reference pose outliner window.
+global proc FaceFxExportRefPose()
+{
+	// Delete outliner.
+	if (`window -exists __FaceFxRefBoneSelectionWindow`)
+	{
+		deleteUI -window __FaceFxRefBoneSelectionWindow;
+	}
+
+	// The Current selection should be all of the bones.
+	string $currentSelection[] = `ls -sl`;
+	
+	// Take the string array and concatenate a space-deliminated string.
+	string $refBoneList = "";
+	int $i = 0;
+	for( $i=0; $i < size($currentSelection); $i++ )
+	{
+		if( $i == size($currentSelection)-1 )
+		{
+			$refBoneList += $currentSelection[$i];
+		}
+		else
+		{
+			$refBoneList += $currentSelection[$i] + " ";
+		}
+	}
+	int $frame = `currentTime -q`;
+	fxexportrefpose -frame $frame -bones $refBoneList;
+}
+
+// Called when the export reference pose button is pressed.
+global proc FaceFxOnExportRefPose()
+{
+	// Delete outliner.
+	if (`window -exists __FaceFxRefBoneSelectionWindow`)
+	{
+		deleteUI -window __FaceFxRefBoneSelectionWindow;
+	}
+
+	// Maya 2011 has a new interface still
+	if( getApplicationVersionAsFloat() > 2010.9 )
+	{
+
+		window -title "Select all of the bones that FaceFX should control." -widthHeight 425 550 -menuBar true __FaceFxRefBoneSelectionWindow;
+		frameLayout  -label "Select all of the bones that FaceFX should control.";
+		string $facefxoutlinerpanel = `outlinerPanel`;
+		string $facefxoutliner = `outlinerPanel -query -outlinerEditor $facefxoutlinerpanel`;
+		outlinerEditor -edit
+				-mainListConnection "worldList"
+				-selectionConnection "modelList"
+				-showShapes false
+				-showAttributes false
+				-showConnected false
+				-showAnimCurvesOnly false
+				-autoExpand false
+				-showDagOnly true
+				-ignoreDagHierarchy false
+				-expandConnections false
+				-showCompounds true
+				-showNumericAttrsOnly false
+				-highlightActive true
+				-autoSelectNewObjects false
+				-doNotSelectNewObjects false
+				-transmitFilters false
+				-showSetMembers true
+				-setFilter defaultSetFilter
+		    $facefxoutliner;
+		button -label "Export Reference Pose" -command "FaceFxExportRefPose()" -annotation "Exports the reference pose.";
+		showWindow;
+	}
+	else
+	{
+		// Create outliner window for choosing the bones.
+		window -title "Select all of the bones that FaceFX should control." -widthHeight 425 550 -menuBar true __FaceFxRefBoneSelectionWindow;
+		paneLayout -cn "horizontal2" -ps 1 100 90;
+			frameLayout -label "Select all of the bones that FaceFX should control.";
+			outlinerEditor 
+				-mainListConnection "worldList"
+				-selectionConnection "modelList"
+				-showShapes false
+				-showAttributes false
+				-showConnected false
+				-showAnimCurvesOnly false
+				-autoExpand false
+				-showDagOnly true
+				-ignoreDagHierarchy false
+				-expandConnections false
+				-showCompounds true
+				-showNumericAttrsOnly false
+				-highlightActive true
+				-autoSelectNewObjects false
+				-doNotSelectNewObjects false
+				-transmitFilters false
+				-showSetMembers true
+				-setFilter defaultSetFilter
+				__FaceFxOutlinerWindow;
+			setParent ..;
+		setParent ..;
+		button -label "Export Reference Pose" -command "FaceFxExportRefPose()" -annotation "Exports the reference pose.";
+		showWindow;
+	}
+}
+
+// Called when the import bone pose button is pressed.
+global proc FaceFxOnImportBonePose()
+{
+	int $frame = `currentTime -q`;
+	string $name[] = `textScrollList -query -selectItem __FaceFxBonePosesListBox`;
+	// The bone pose list box only supports single selection.
+	fximportbonepose -frame $frame -name $name[0];
+}
+
+// Called when the export bone pose button is pressed.
+global proc FaceFxOnExportBonePose()
+{
+	int $frame = `currentTime -q`;
+	string $selectedName[] = `textScrollList -query -selectItem __FaceFxBonePosesListBox`;
+	if( size($selectedName) == 0 ) $selectedName[0] = "NewBonePose";
+	// The bone pose list box only supports single selection.
+	string $result = `promptDialog 
+						-title "Export Bone Pose" 
+						-message "Enter Name:" 
+						-text $selectedName[0]
+						-button "OK" -button "Cancel"
+						-defaultButton "OK" -cancelButton "Cancel"
+						-dismissString "Cancel"`;
+	if( $result == "OK" )
+	{
+		string $name = `promptDialog -query -text`;
+		fxexportbonepose -frame $frame -name $name;
+		// Select the newly exported pose.
+		textScrollList -edit -selectItem $name __FaceFxBonePosesListBox;
+	}
+}
+
+// Called when the batch import bone poses button is pressed.
+global proc FaceFxOnBatchImportBonePoses()
+{
+	string $batchFile = `fileDialog -dm "*.txt"`;
+	if( $batchFile != "" )
+	{
+		fxbatchimportboneposes -file $batchFile;
+	}
+}
+
+// Called when the batch export bone poses button is pressed.
+global proc FaceFxOnBatchExportBonePoses()
+{
+	string $batchFile = `fileDialog -dm "*.txt"`;
+	if( $batchFile != "" )
+	{
+		fxbatchexportboneposes -file $batchFile;
+	}
+}
+
+// Called when the animation group selection changes.
+global proc FaceFxOnAnimGroupSelChanged()
+{
+	string $group = `optionMenu -query -value __FaceFxAnimationGroupsDropdown`;
+	string $anims[] = `fxgetanims -group $group`;
+	textScrollList -e -removeAll __FaceFxAnimationsListBox;
+	int $i;
+	for( $i = 0; $i < size($anims); $i++ )
+	{
+		textScrollList -e -append $anims[$i] __FaceFxAnimationsListBox;
+	}
+}
+
+// Called when the user presses the Import button on the animations pane.
+global proc FaceFxOnImportAnimation()
+{
+	string $group = `optionMenu -query -value __FaceFxAnimationGroupsDropdown`;
+	string $anim[] = `textScrollList -query -selectItem __FaceFxAnimationsListBox`;
+	float $framerate = 60.0;
+	string $timeUnit = `currentUnit -q -time`;
+	switch ($timeUnit)
+	{
+		case "game":
+			$framerate = 15.0;
+			break;
+		case "film":
+			$framerate = 24.0;
+			break;
+		case "pal":
+			$framerate = 25.0;
+			break;
+		case "ntsc":
+			$framerate = 30.0;
+			break;
+		case "show":
+			$framerate = 48.0;
+			break;
+		case "palf":
+			$framerate = 50.0;
+			break;
+		case "ntscf":
+			$framerate = 60.0;
+			break;
+		default:
+			warning "You're using a non-standard frame rate.  Defaulting to 60 fps.";
+	}
+	// The animation list box only supports single selection.
+	fximportanim -group $group -anim $anim[0] -framerate $framerate;
+}
+
+// Initialize the main FaceFx window.
+global proc FaceFxPanelAdd( string $panelLayout )
+{
+	// Set up the menu bar.
+	menu -label "File";
+		menuItem -label "New" -command "FaceFxNew()";
+		menuItem -label "Open..." - command "FaceFxOpen()";
+		if(`fxisnosave`)
+		{
+			menuItem  -en false -label "Save..." - command "FaceFxSave()"; 
+		}
+		else
+		{
+			menuItem -label "Save..." - command "FaceFxSave()"; 
+		}
+		menuItem -divider true;
+		menuItem -label "About..." - command "FaceFxAbout()";
+	
+	// The main layout.
+	tabLayout __FaceFxMainTabLayout;
+	scrollLayout -hst 0 __FaceFxMainScrollLayout;
+	// The tab gets the actor name.
+	string $actorName = `fxgetactorname`;
+	tabLayout -edit -tabLabel __FaceFxMainScrollLayout $actorName __FaceFxMainTabLayout;
+	columnLayout __FaceFxMainColumnLayout;
+
+	// Set up the reference pose controls.
+	frameLayout -borderStyle "etchedIn" -labelVisible true -label "Reference Pose" -cll true -marginWidth 10 -marginHeight 5 __FaceFxRefPoseLayout;
+		columnLayout __FaceFxRefPoseColumnLayout;
+		text -label "Reference Bones";
+		textScrollList -numberOfRows 12 -allowMultiSelection false -w 300 __FaceFxRefBonesListBox;
+		rowLayout -numberOfColumns 2 -adjustableColumn 2 -cw2 78 78 __FaceFxRefPoseRowLayout;
+			button -w 78 -h 20 -annotation "Imports the reference pose." -label "Import" -command "FaceFxOnImportRefPose()" -align "center" __FaceFxImportRefPoseButton;
+			button -w 78 -h 20 -annotation "Exports the reference pose." -label "Export..." -command "FaceFxOnExportRefPose()" -align "center" __FaceFxExportRefPoseButton;
+			setParent ..;
+		setParent ..;
+	setParent ..;
+		
+	// Set up the bone pose controls.
+	frameLayout -borderStyle "etchedIn" -labelVisible true -label "Bone Poses" -cll true -marginWidth 10 -marginHeight 5 __FaceFxBonePosesLayout;
+		columnLayout __FaceFxBonePosesColumnLayout;
+		text -label "Bone Poses";
+		textScrollList -numberOfRows 16 -allowMultiSelection false -w 300 __FaceFxBonePosesListBox;
+		rowLayout -numberOfColumns 4 -adjustableColumn 4 -cw4 72 72 78 78 __FaceFxBonePosesRowLayout;
+			button -w 72 -h 20 -annotation "Imports a bone pose." -label "Import" -command "FaceFxOnImportBonePose()" -align "center" __FaceFxImportBonePoseButton;
+			button -w 72 -h 20 -annotation "Exports a bone pose." -label "Export..." -command "FaceFxOnExportBonePose()" -align "center" __FaceFxExportBonePoseButton;
+			button -w 78 -h 20 -annotation "Batch imports bone poses." -label "Batch Import..." -command "FaceFxOnBatchImportBonePoses()" -align "center" __FaceFxBatchImportBonePosesButton;
+			button -w 78 -h 20 -annotation "Batch exports bone poses." -label "Batch Export..." -command "FaceFxOnBatchExportBonePoses()" -align "center" __FaceFxBatchExportBonePosesButton;
+			setParent ..;
+		setParent ..;
+	setParent..;
+
+
+	// Set up the animation controls.
+	frameLayout -borderStyle "etchedIn" -labelVisible true -label "Animations" -cll true -marginWidth 10 -marginHeight 5 __FaceFxAnimationsLayout;
+		columnLayout __FaceFxAnimationsColumnLayout;
+		optionMenu -w 250 -h 20 -label "Animation Group" -changeCommand "FaceFxOnAnimGroupSelChanged()" __FaceFxAnimationGroupsDropdown;
+		textScrollList -numberOfRows 12 -allowMultiSelection false -w 300 __FaceFxAnimationsListBox;
+		rowLayout -numberOfColumns 3 -adjustableColumn 3 -cw3 78 55 38 __FaceFxAnimationsRowLayout;
+			button -w 78 -h 20 -annotation "Imports an animation." -label "Import" -command "FaceFxOnImportAnimation()" -align "center" __FaceFxImportAnimationButton;
+			setParent ..;
+		setParent ..;
+	setParent ..;
+	if(`fxismoddeveloper`)
+	{
+		disable __FaceFxImportAnimationButton;
+	}
+	// If there was already a FaceFx actor loaded, make sure the UI reflects the actor's data.
+	__FaceFxOnActorChanged();
+}
+
+// Called from the plug-in when the actor has changed.
+global proc __FaceFxOnActorChanged()
+{
+	// Update the actor name.
+	string $actorName = `fxgetactorname`;
+	tabLayout -edit -tabLabel __FaceFxMainScrollLayout $actorName __FaceFxMainTabLayout;
+	// Update the reference bones display.
+	__FaceFxOnRefBonesChanged();
+	// Update the bone poses display.
+	__FaceFxOnBonePosesChanged();
+	// Update the animations display.  This requires a recreation of the entire animations panel
+	// because MEL's optionMenu does not allow removing items, only appending them.
+	deleteUI __FaceFxAnimationGroupsDropdown;
+	deleteUI __FaceFxAnimationsListBox;
+	deleteUI __FaceFxAnimationsRowLayout;
+	optionMenu -w 250 -h 20 -label "Animation Group" -changeCommand "FaceFxOnAnimGroupSelChanged()" -parent __FaceFxAnimationsColumnLayout __FaceFxAnimationGroupsDropdown;
+	textScrollList -numberOfRows 12 -allowMultiSelection false -w 300 -parent __FaceFxAnimationsColumnLayout __FaceFxAnimationsListBox;
+	rowLayout -numberOfColumns 3 -adjustableColumn 3 -cw3 78 55 38 -parent __FaceFxAnimationsColumnLayout __FaceFxAnimationsRowLayout;
+		button -w 78 -h 20 -annotation "Imports an animation." -label "Import" -command "FaceFxOnImportAnimation()" -align "center" __FaceFxImportAnimationButton;
+
+	if(`fxismoddeveloper`)
+	{
+		disable __FaceFxImportAnimationButton;
+	}
+	
+	// Add the animation groups to the group dropdown.
+	string $groups[] = `fxgetanimgroups`;
+	int $i;
+	for( $i = 0; $i < size($groups); $i++ )
+	{
+		menuItem -label $groups[$i] -parent __FaceFxAnimationGroupsDropdown;
+	}
+	FaceFxOnAnimGroupSelChanged();
+}
+
+// Called from the plug-in when the reference bones have changed.
+global proc __FaceFxOnRefBonesChanged()
+{
+	textScrollList -e -removeAll __FaceFxRefBonesListBox;
+	string $refBones[] = `fxgetrefbones`;
+	int $i;
+	for( $i = 0; $i < size($refBones); $i++ )
+	{
+		textScrollList -e -append $refBones[$i] __FaceFxRefBonesListBox;
+	}
+}
+
+// Called from the plug-in when the bone poses have changed.
+global proc __FaceFxOnBonePosesChanged()
+{
+	textScrollList -e -removeAll __FaceFxBonePosesListBox;
+	string $bonePoses[] = `fxgetnodes -type "FxBonePoseNode"`;
+	int $i;
+	for( $i = 0; $i < size($bonePoses); $i++ )
+	{
+		textScrollList -e -append $bonePoses[$i] __FaceFxBonePosesListBox;
+	}
+}
+
+global proc string FaceFxPanelSave( string $panel)
+{
+  return "";
+}
+
+global proc FaceFxPanelCreate( string $panel )
+{
+}
+
+global proc FaceFxPanelRemove( string $panel )
+{
+}
+
+global proc FaceFxPanelDelete( string $panel )
+{
+}
+
+
+// Main script procedure.
+global proc FaceFxMain()
+{
+	// Quit any previous FaceFx window.
+	FaceFxQuit();
+	
+	// Only register the FaceFx scripted panel type once.
+	if( !`scriptedPanelType -q -exists FaceFxScriptedPanel` )
+	{
+	  scriptedPanelType
+		// Callbacks Maya will use for scriptedPanels of this type.
+		-acb FaceFxPanelAdd
+		-ccb FaceFxPanelCreate
+		-rcb FaceFxPanelRemove
+		-dcb FaceFxPanelDelete
+		-scb FaceFxPanelSave
+		-unique true
+		FaceFxScriptedPanel;
+	}
+	
+	// Find any existing FaceFX panels.
+	string $facefxPanels[] = `getPanel -scriptType FaceFxScriptedPanel`;
+
+	if ( size( $facefxPanels ) )
+	{
+		// Unparent the scriptedPanel from where it is currently docked
+		scriptedPanel -e -unParent $facefxPanels[0];
+		// Fill the 'hole' left in the UI from removing the scriptedPanel.
+		fillEmptyPanes;
+	}
+	else
+	{
+	  // Create an unparented scriptedPanel.
+	  scriptedPanel -unParent -type FaceFxScriptedPanel
+		-menuBarVisible true
+		-label "FaceFX"
+		__FaceFxScriptedPanel;
+		
+		// Refresh the $facefxPanels variable
+		$facefxPanels = `getPanel -scriptType FaceFxScriptedPanel`;
+	}
+
+	// Create the window and its layout
+	window -title "FaceFX" -iconName "FaceFx" -menuBar true -menuBarVisible true -resizeToFitChildren true __FaceFxMainWindow;
+	
+	// Just create the layout for now and leave it empty.
+	string $layout = `paneLayout -configuration "single"`;
+	setParent ..;
+	
+	// Now dock the scriptedPanel into the layout.
+	scriptedPanel -e -parent $layout $facefxPanels[0];
+	
+	showWindow __FaceFxMainWindow;
+	__FaceFxOnActorChanged();
+}
+
+// scriptJobs for File -> New and File -> Open.
+// int $fileNewJob = `scriptJob -event "NewSceneOpened" FaceFxMain`;
+// int $fileOpenJob = `scriptJob -event "SceneOpened" FaceFxMain`;
+
+// Load the plugin
+loadPlugin -quiet "FaceFx.mll";
+
+// Call the main procedure.
+FaceFxMain();

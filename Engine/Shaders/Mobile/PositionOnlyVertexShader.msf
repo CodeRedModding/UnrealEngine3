@@ -1,0 +1,14 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+UNIFORM(mat4, ViewProjection);
+
+ATTRIBUTE(vec4, Position, POSITION);
+
+void main()
+{
+	gl_Position = MulMatrix( ViewProjection, Position );
+}

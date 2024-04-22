@@ -1,0 +1,3 @@
+﻿<dialog id="Publish" title="Publish in GFX Player">
+	<flash id="localConnect" width="250" height="120" src="Publish.swf"></flash>
+</dialog>

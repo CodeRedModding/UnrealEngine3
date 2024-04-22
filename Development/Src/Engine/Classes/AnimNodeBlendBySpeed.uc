@@ -3,15 +3,13 @@
  *
  * Blends between child nodes based on the owners speed and the defined constraints.
  *
- * Created by:	Daniel Vogel
- * Copyright:	(c) 2004
- * Company:		Epic Games, Inc.
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
  */
 class AnimNodeBlendBySpeed extends AnimNodeBlendList
 		native(Anim);
 
-/** How fast were they moving last frame							*/
-var float			LastSpeed;			
+/** How fast they are moving this frame.							*/
+var float			Speed;
 /** Last Channel being used											*/
 var int				LastChannel;		
 /** How fast to blend when going up									*/
@@ -22,20 +20,40 @@ var() float			BlendDownTime;
 var() float			BlendDownPerc;
 /** Weights/ constraints used for transition between child nodes	*/
 var() array<float>	Constraints;
+/** Use acceleration instead of Velocity to determine speed */
+var() bool	bUseAcceleration;
+/** Optional delay before blending to the next channel */
+var() float			BlendUpDelay, BlendDownDelay;
+var transient float	BlendDelayRemaining;
 
 cpptext
 {
+	// AnimNode interface
+	
 	/**
 	 * Blend animations based on an Owner's velocity.
 	 *
 	 * @param DeltaSeconds	Time since last tick in seconds.
 	 */
-	virtual	void TickAnim( FLOAT DeltaSeconds, FLOAT TotalWeight );
+	virtual	void TickAnim(FLOAT DeltaSeconds);
 
 	/**
 	 * Resets the last channel on becoming active.	
 	 */
-	virtual void OnBecomeActive();
+	virtual void OnBecomeRelevant();
+
+	virtual INT GetNumSliders() const { return 1; }
+	virtual FLOAT GetSliderPosition(INT SliderIndex, INT ValueIndex);
+	virtual void HandleSliderMove(INT SliderIndex, INT ValueIndex, FLOAT NewSliderValue);
+	virtual FString GetSliderDrawValue(INT SliderIndex);
+	
+	// AnimNodeBlendBySpeed interface
+
+	/** 
+	 *	Function called to calculate the speed that should be used for this node. 
+	 *	Allows subclasses to easily modify the speed used.
+	 */
+	 virtual FLOAT CalcSpeed();
 }
 
 defaultproperties

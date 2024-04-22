@@ -1,0 +1,16 @@
+/*=============================================================================
+	LUTBlenderVertexShader.usf: Filter pixel shader source.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+ATTRIBUTE(vec2, Position, POSITION);
+ATTRIBUTE(vec2, TexCoords0, TEXCOORD0);
+
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+OUT_VARYING_DEFAULT(vec2, PolyUV, TEXCOORD0);
+
+void main()
+{
+	gl_Position = vec4( Position, 0, 1 );
+    PolyUV = TexCoords0;
+}

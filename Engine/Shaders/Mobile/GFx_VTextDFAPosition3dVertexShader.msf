@@ -1,0 +1,20 @@
+UNIFORM( vec4, OverlayColor );
+UNIFORM( vec4, ColorScale );
+UNIFORM( mat4, Transform );
+ATTRIBUTE( vec4, Position, POSITION );
+ATTRIBUTE( vec4, Color, COLOR0 );
+ATTRIBUTE( vec2, TexCoords0, TEXCOORD0 );
+OUT_VARYING_DEFAULT( vec2, tc, TEXCOORD0 );
+OUT_VARYING_LOW( vec4, vcolor, COLOR0 );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// E TextDFA
+
+   vcolor = Color * ColorScale + OverlayColor;
+  tc = TexCoords0;
+// E Position3d
+
+  gl_Position = MulMatrix(Position, Transform);
+
+}
+

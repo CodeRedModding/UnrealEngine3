@@ -1,20 +1,20 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 //=============================================================================
 // GenericBrowserType_All: All resource types
 //=============================================================================
 
 class GenericBrowserType_All
-	extends GenericBrowserType
+	extends GenericBrowserType_Custom
 	native;
 
 cpptext
 {
 	virtual void Init();
-	virtual UBOOL ShowObjectEditor();
-	virtual void InvokeCustomCommand( INT InCommand );
-	virtual void DoubleClick();
 }
-	
+
 defaultproperties
 {
-	Description="-All-"
+	Description="_All_"
 }

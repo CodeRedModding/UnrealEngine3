@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ordesignerObjectsDiagram dslVersion="1.0.0.0" absoluteBounds="0, 0, 11, 8.5" name="CISTask">
+  <DataContextMoniker Name="/CISTaskDataContext" />
+  <nestedChildShapes>
+    <classShape Id="81737fce-c63a-4788-a130-fd5fbc0fca1c" absoluteBounds="3.25, 0.5, 2, 1.5891951497395831">
+      <DataClassMoniker Name="/CISTaskDataContext/CISJobState" />
+      <nestedChildShapes>
+        <elementListCompartment Id="32f28333-a4d0-4488-b206-a551cfa659b9" absoluteBounds="3.265, 0.96, 1.9700000000000002, 1.0291951497395833" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="e61671b4-a0ed-4e8c-9723-eed7b6e96cf1" absoluteBounds="0.5, 0.5, 2, 3.0683211263020831">
+      <DataClassMoniker Name="/CISTaskDataContext/CISTask" />
+      <nestedChildShapes>
+        <elementListCompartment Id="74b43661-67d8-4b48-a537-5a11dcea95f8" absoluteBounds="0.515, 0.96, 1.9700000000000002, 2.508321126302083" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(2.5 : 1.29459757486979); (3.25 : 1.29459757486979)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/CISTaskDataContext/CISTask/CISTask_CISJobState" />
+      <nodes>
+        <classShapeMoniker Id="e61671b4-a0ed-4e8c-9723-eed7b6e96cf1" />
+        <classShapeMoniker Id="81737fce-c63a-4788-a130-fd5fbc0fca1c" />
+      </nodes>
+    </associationConnector>
+  </nestedChildShapes>
+</ordesignerObjectsDiagram>

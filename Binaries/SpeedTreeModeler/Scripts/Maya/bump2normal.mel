@@ -1,0 +1,14 @@
+// bump2normal
+//
+//	this goes through all bump map objects and sets them to use "Tangent Space Normals"
+// (instead of the default "Bump").
+
+global proc bump2normal()
+{
+	$bumpObjects = `ls -sl -type bump2d`;
+	for ($obj in $bumpObjects)
+	{
+		setAttr ($obj + ".bumpInterp") 1; 
+	};
+}
+

@@ -1,0 +1,12 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="CrashReport.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="AutoReportFile_URL" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">/files/</Value>
+    </Setting>
+    <Setting Name="AutoReportVideo_URL" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">/files/videos/</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

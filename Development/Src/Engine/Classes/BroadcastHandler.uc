@@ -1,13 +1,13 @@
 //=============================================================================
 // BroadcastHandler
 //
-// Message broadcasting is delegated to BroadCastHandler by the GameInfo.  
-// The BroadCastHandler handles both text messages (typed by a player) and 
-// localized messages (which are identified by a LocalMessage class and id).  
-// GameInfos produce localized messages using their DeathMessageClass and 
+// Message broadcasting is delegated to BroadCastHandler by the GameInfo.
+// The BroadCastHandler handles both text messages (typed by a player) and
+// localized messages (which are identified by a LocalMessage class and id).
+// GameInfos produce localized messages using their DeathMessageClass and
 // GameMessageClass classes.
 //
-// This is a built-in Unreal class and it shouldn't be modified.
+// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 //=============================================================================
 class BroadcastHandler extends Info
 	config(Game);
@@ -22,14 +22,14 @@ function UpdateSentText()
 
 /* Whether actor is allowed to broadcast messages now.
 */
-function bool AllowsBroadcast( actor broadcaster, int Len )
+function bool AllowsBroadcast( actor broadcaster, int InLen )
 {
 	if ( bMuteSpectators && (PlayerController(Broadcaster) != None)
 		&& PlayerController(Broadcaster).PlayerReplicationInfo.bOnlySpectator )
 		return false;
 
-	SentText += Len;
-	return ( (Level.Pauser != None) || (SentText < 260) );
+	SentText += InLen;
+	return ( (WorldInfo.Pauser != None) || (SentText < 260) );
 }
 
 
@@ -45,7 +45,6 @@ function BroadcastLocalized( Actor Sender, PlayerController Receiver, class<Loca
 
 function Broadcast( Actor Sender, coerce string Msg, optional name Type )
 {
-	local Controller C;
 	local PlayerController P;
 	local PlayerReplicationInfo PRI;
 
@@ -58,28 +57,26 @@ function Broadcast( Actor Sender, coerce string Msg, optional name Type )
 	else if ( Controller(Sender) != None )
 		PRI = Controller(Sender).PlayerReplicationInfo;
 
-	For ( C=Level.ControllerList; C!=None; C=C.NextController )
+	foreach WorldInfo.AllControllers(class'PlayerController', P)
 	{
-		P = PlayerController(C);
-		if ( P != None )
 		BroadcastText(PRI, P, Msg, Type);
 	}
 }
 
 function BroadcastTeam( Controller Sender, coerce string Msg, optional name Type )
 {
-	local Controller C;
 	local PlayerController P;
 
 	// see if allowed (limit to prevent spamming)
 	if ( !AllowsBroadcast(Sender, Len(Msg)) )
 		return;
 
-	For ( C=Level.ControllerList; C!=None; C=C.NextController )
+	foreach WorldInfo.AllControllers(class'PlayerController', P)
 	{
-		P = PlayerController(C);
-		if ( (P != None) && (P.PlayerReplicationInfo.Team == Sender.PlayerReplicationInfo.Team) )
+		if (P.PlayerReplicationInfo.Team == Sender.PlayerReplicationInfo.Team)
+		{
 			BroadcastText(Sender.PlayerReplicationInfo, P, Msg, Type);
+		}
 	}
 }
 
@@ -90,13 +87,33 @@ function BroadcastTeam( Controller Sender, coerce string Msg, optional name Type
 */
 event AllowBroadcastLocalized( actor Sender, class<LocalMessage> Message, optional int Switch, optional PlayerReplicationInfo RelatedPRI_1, optional PlayerReplicationInfo RelatedPRI_2, optional Object OptionalObject )
 {
-	local Controller C;
 	local PlayerController P;
 
-	For ( C=Level.ControllerList; C!=None; C=C.NextController )
+	foreach WorldInfo.AllControllers(class'PlayerController', P)
 	{
-		P = PlayerController(C);
-		if ( P != None )
 		BroadcastLocalized(Sender, P, Message, Switch, RelatedPRI_1, RelatedPRI_2, OptionalObject);
 	}
+}
+
+/*
+ Broadcast a localized message to all players on a team.
+ Most messages deal with 0 to 2 related PRIs.
+ The LocalMessage class defines how the PRI's and optional actor are used.
+*/
+event AllowBroadcastLocalizedTeam( int TeamIndex, actor Sender, class<LocalMessage> Message, optional int Switch, optional PlayerReplicationInfo RelatedPRI_1, optional PlayerReplicationInfo RelatedPRI_2, optional Object OptionalObject )
+{
+	local PlayerController P;
+
+	foreach WorldInfo.AllControllers(class'PlayerController', P)
+	{
+		if ( (P.PlayerReplicationInfo != None) && (P.PlayerReplicationInfo.Team != None) && (P.PlayerReplicationInfo.Team.TeamIndex == TeamIndex) )
+		{
+			BroadcastLocalized(Sender, P, Message, Switch, RelatedPRI_1, RelatedPRI_2, OptionalObject);
+		}
+	}
+}
+
+defaultproperties
+{
+	TickGroup=TG_DuringAsyncWork
 }

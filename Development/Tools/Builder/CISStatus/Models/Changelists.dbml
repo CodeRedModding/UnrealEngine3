@@ -1,0 +1,81 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="Builder" Class="ChangelistsDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="WebSettings" ConnectionString="Data Source=db-09;Initial Catalog=Builder;Integrated Security=True" SettingsObjectName="System.Configuration.ConfigurationManager.ConnectionStrings" SettingsPropertyName="BuilderConnectionString1" Provider="System.Data.SqlClient" />
+  <Table Name="dbo.CISJobStates" Member="CISJobStates">
+    <Type Name="CISJobState">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="ChangelistID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="CISTaskID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="JobState" Type="System.Byte" DbType="TinyInt NOT NULL" CanBeNull="false" />
+      <Column Name="Error" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Association Name="Changelists2_CISJobState" Member="Changelists2" ThisKey="ChangelistID" OtherKey="ID" Type="Changelists2" IsForeignKey="true" />
+      <Association Name="CISTask_CISJobState" Member="CISTask" ThisKey="CISTaskID" OtherKey="ID" Type="CISTask" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Changelists2" Member="Changelists2s">
+    <Type Name="Changelists2">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="BranchConfigID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Changelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="BuildStatus" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Submitter" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="TimeStamp" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Association Name="Changelists2_CISJobState" Member="CISJobStates" ThisKey="ID" OtherKey="ChangelistID" Type="CISJobState" />
+      <Association Name="BranchConfigAlt_Changelists2" Member="BranchConfigAlt" ThisKey="BranchConfigID" OtherKey="ID" Type="BranchConfigAlt" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.BranchConfig" Member="BranchConfigAlts">
+    <Type Name="BranchConfigAlt">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Version" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="DisplayOrder" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Server" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="P4User" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="P4Password" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="P4SyncUser" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="P4SyncPassword" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="P4ClientSpec" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="BranchAdmin" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="DirectXVersion" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="AndroidSDKVersion" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="iPhoneSDKVersion" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="MacSDKVersion" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="NGPSDKVersion" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="PS3SDKVersion" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="WiiUSDKVersion" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Xbox360SDKVersion" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="FlashSDKVersion" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="PFXSubjectName" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="IPhone_DeveloperSigningIdentity" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="IPhone_DistributionSigningIdentity" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="HeadChangelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastFullyKnown" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastGoodOverall" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastFailOverall" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttemptedOverall" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Association Name="BranchConfigAlt_Changelists2" Member="Changelists2s" ThisKey="ID" OtherKey="BranchConfigID" Type="Changelists2" />
+      <Association Name="BranchConfigAlt_BranchConfigAlt" Member="BranchConfigAlt1" ThisKey="ID" OtherKey="ID" Type="BranchConfigAlt" Cardinality="One" />
+      <Association Name="BranchConfigAlt_BranchConfigAlt" Member="BranchConfig1" ThisKey="ID" OtherKey="ID" Type="BranchConfigAlt" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.CISTasks" Member="CISTasks">
+    <Type Name="CISTask">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Name" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="BranchConfigID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Mask" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttempted" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastGood" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastFail" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="GameSpecific" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="PlatformSpecific" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Remote" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="CompileAllowed" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Folders" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="DependentPlatforms" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="AlternateFolders" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Association Name="CISTask_CISJobState" Member="CISJobStates" ThisKey="ID" OtherKey="CISTaskID" Type="CISJobState" />
+    </Type>
+  </Table>
+</Database>

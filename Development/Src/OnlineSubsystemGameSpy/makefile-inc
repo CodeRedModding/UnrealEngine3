@@ -1,0 +1,134 @@
+# This makefile piece is included by UnrealMakefileRules.mak, so that we only try to compile gamespy if we have the code
+
+BASE_GAME_MODULES := $(BASE_GAME_MODULES) OnlineSubsystemGameSpy
+
+GAME_DEFINES := GSI_UNICODE=1 SB_ICMP_SUPPORT=1 _PS3=1 UNIQUEID=1
+
+GAMESPY_PATH :=	$(ROOT_PATH)/Development/External/GameSpy
+GAMESPY_C_STUBS := $(ROOT_PATH)/Development/Src/OnlineSubsystemGameSpy/GameSpy_C_Stubs
+SPEEX_PATH := $(GAMESPY_PATH)/voice2/speex-1.0.5
+
+GAMESPY_SOURCES :=	$(GAMESPY_C_STUBS)/_stub_gsAssert.c \
+					$(GAMESPY_C_STUBS)/_stub_gsAvailable.c \
+					$(GAMESPY_C_STUBS)/_stub_gsCore.c \
+					$(GAMESPY_C_STUBS)/_stub_gsCrypt.c \
+					$(GAMESPY_C_STUBS)/_stub_gsDebug.c \
+					$(GAMESPY_C_STUBS)/_stub_gsLargeInt.c \
+					$(GAMESPY_C_STUBS)/_stub_gsMemory.c \
+					$(GAMESPY_C_STUBS)/_stub_gsPlatform.c \
+					$(GAMESPY_C_STUBS)/_stub_gsPlatformSocket.c \
+					$(GAMESPY_C_STUBS)/_stub_gsPlatformThread.c \
+					$(GAMESPY_C_STUBS)/_stub_gsPlatformUtil.c \
+					$(GAMESPY_C_STUBS)/_stub_gsRC4.c \
+					$(GAMESPY_C_STUBS)/_stub_gsSHA1.c \
+					$(GAMESPY_C_STUBS)/_stub_gsSoap.c \
+					$(GAMESPY_C_STUBS)/_stub_gsSSL.c \
+					$(GAMESPY_C_STUBS)/_stub_gsStringUtil.c \
+					$(GAMESPY_C_STUBS)/_stub_gsUdpEngine.c \
+					$(GAMESPY_C_STUBS)/_stub_gsXML.c \
+					$(GAMESPY_C_STUBS)/_stub_hashtable.c \
+					$(GAMESPY_C_STUBS)/_stub_darray.c \
+					$(GAMESPY_C_STUBS)/_stub_md5c.c \
+					$(GAMESPY_C_STUBS)/_stub_qr2regkeys.c \
+					$(GAMESPY_C_STUBS)/_stub_qr2.c \
+					$(GAMESPY_C_STUBS)/_stub_sb_crypt.c \
+					$(GAMESPY_C_STUBS)/_stub_sb_queryengine.c \
+					$(GAMESPY_C_STUBS)/_stub_sb_server.c \
+					$(GAMESPY_C_STUBS)/_stub_sb_serverbrowsing.c \
+					$(GAMESPY_C_STUBS)/_stub_sb_serverlist.c \
+					$(GAMESPY_C_STUBS)/_stub_gp.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiKeys.c \
+					$(GAMESPY_C_STUBS)/_stub_gpi.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiBuddy.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiBuffer.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiCallback.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiConnect.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiInfo.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiOperation.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiPeer.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiProfile.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiSearch.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiTransfer.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiUnique.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiUtility.c \
+					$(GAMESPY_C_STUBS)/_stub_sakeMain.c \
+					$(GAMESPY_C_STUBS)/_stub_sakeRequest.c \
+					$(GAMESPY_C_STUBS)/_stub_sakeRequestMisc.c \
+					$(GAMESPY_C_STUBS)/_stub_sakeRequestModify.c \
+					$(GAMESPY_C_STUBS)/_stub_sakeRequestRead.c \
+					$(GAMESPY_C_STUBS)/_stub_ghttpBuffer.c \
+					$(GAMESPY_C_STUBS)/_stub_ghttpCallbacks.c \
+					$(GAMESPY_C_STUBS)/_stub_ghttpCommon.c \
+					$(GAMESPY_C_STUBS)/_stub_ghttpConnection.c \
+					$(GAMESPY_C_STUBS)/_stub_ghttpEncryption.c \
+					$(GAMESPY_C_STUBS)/_stub_ghttpMain.c \
+					$(GAMESPY_C_STUBS)/_stub_ghttpPost.c \
+					$(GAMESPY_C_STUBS)/_stub_ghttpProcess.c \
+					$(GAMESPY_C_STUBS)/_stub_gvCodec.c \
+					$(GAMESPY_C_STUBS)/_stub_gvCustomDevice.c \
+					$(GAMESPY_C_STUBS)/_stub_gvDevice.c \
+					$(GAMESPY_C_STUBS)/_stub_gvFrame.c \
+					$(GAMESPY_C_STUBS)/_stub_gvMain.c \
+					$(GAMESPY_C_STUBS)/_stub_gvPS3Audio.c \
+					$(GAMESPY_C_STUBS)/_stub_gvPS3Headset.c \
+					$(GAMESPY_C_STUBS)/_stub_gvSpeex.c \
+					$(GAMESPY_C_STUBS)/_stub_gvSource.c \
+					$(GAMESPY_C_STUBS)/_stub_gvUtil.c \
+					$(GAMESPY_C_STUBS)/_stub_sciMain.c \
+					$(GAMESPY_C_STUBS)/_stub_sciReport.c \
+					$(GAMESPY_C_STUBS)/_stub_sciSerialize.c \
+					$(GAMESPY_C_STUBS)/_stub_sciInterface.c \
+					$(GAMESPY_C_STUBS)/_stub_sciWebServices.c \
+					$(GAMESPY_C_STUBS)/_stub_AuthService.c \
+					$(GAMESPY_C_STUBS)/_stub_bits.c \
+					$(GAMESPY_C_STUBS)/_stub_cb_search.c \
+					$(GAMESPY_C_STUBS)/_stub_exc_10_16_table.c \
+					$(GAMESPY_C_STUBS)/_stub_exc_10_32_table.c \
+					$(GAMESPY_C_STUBS)/_stub_exc_20_32_table.c \
+					$(GAMESPY_C_STUBS)/_stub_exc_5_256_table.c \
+					$(GAMESPY_C_STUBS)/_stub_exc_5_64_table.c \
+					$(GAMESPY_C_STUBS)/_stub_exc_8_128_table.c \
+					$(GAMESPY_C_STUBS)/_stub_filters.c \
+					$(GAMESPY_C_STUBS)/_stub_gain_table.c \
+					$(GAMESPY_C_STUBS)/_stub_gain_table_lbr.c \
+					$(GAMESPY_C_STUBS)/_stub_hexc_10_32_table.c \
+					$(GAMESPY_C_STUBS)/_stub_hexc_table.c \
+					$(GAMESPY_C_STUBS)/_stub_high_lsp_tables.c \
+					$(GAMESPY_C_STUBS)/_stub_lpc.c \
+					$(GAMESPY_C_STUBS)/_stub_lsp.c \
+					$(GAMESPY_C_STUBS)/_stub_lsp_tables_nb.c \
+					$(GAMESPY_C_STUBS)/_stub_ltp.c \
+					$(GAMESPY_C_STUBS)/_stub_math_approx.c \
+					$(GAMESPY_C_STUBS)/_stub_misc.c \
+					$(GAMESPY_C_STUBS)/_stub_modes.c \
+					$(GAMESPY_C_STUBS)/_stub_natneg.c \
+					$(GAMESPY_C_STUBS)/_stub_NATify.c \
+					$(GAMESPY_C_STUBS)/_stub_nb_celp.c \
+					$(GAMESPY_C_STUBS)/_stub_quant_lsp.c \
+					$(GAMESPY_C_STUBS)/_stub_sb_celp.c \
+					$(GAMESPY_C_STUBS)/_stub_speex_callbacks.c \
+					$(GAMESPY_C_STUBS)/_stub_speex_header.c \
+					$(GAMESPY_C_STUBS)/_stub_stereo.c \
+					$(GAMESPY_C_STUBS)/_stub_vbr.c \
+					$(GAMESPY_C_STUBS)/_stub_vq.c \
+					$(GAMESPY_C_STUBS)/_stub_gt2Auth.c \
+					$(GAMESPY_C_STUBS)/_stub_gt2Buffer.c \
+					$(GAMESPY_C_STUBS)/_stub_gt2Callback.c \
+					$(GAMESPY_C_STUBS)/_stub_gt2Connection.c \
+					$(GAMESPY_C_STUBS)/_stub_gt2Encode.c \
+					$(GAMESPY_C_STUBS)/_stub_gt2Filter.c \
+					$(GAMESPY_C_STUBS)/_stub_gt2Main.c \
+					$(GAMESPY_C_STUBS)/_stub_gt2Message.c \
+					$(GAMESPY_C_STUBS)/_stub_gt2Socket.c \
+					$(GAMESPY_C_STUBS)/_stub_gt2Utility.c \
+					$(GAMESPY_C_STUBS)/_stub_gpiPS3.c \
+					$(GAMESPY_C_STUBS)/_stub_ptMain.c
+
+					
+GAMESPY_SOURCESSTRIPPED := $(notdir $(GAMESPY_SOURCES))
+
+GAMESPY_SOURCE_PATH := $(GAMESPY_C_STUBS)
+
+#GAMESPY_SOURCE_PATH := $(GAMESPY_PATH) $(GAMESPY_PATH)/common $(GAMESPY_PATH)/qr2 $(GAMESPY_PATH)/serverbrowsing $(GAMESPY_PATH)/gp $(GAMESPY_PATH)/sake $(GAMESPY_PATH)/ghttp $(GAMESPY_PATH)/gt2 $(GAMESPY_PATH)/voice2 $(SPEEX_PATH)/libspeex $(GAMESPY_PATH)/sc $(GAMESPY_PATH)/webservices $(GAMESPY_PATH)/pt
+
+PLATFORM_INCLUDES := $(PLATFORM_INCLUDES) ../../External/GameSpy/voice2/speex-1.0.5/include

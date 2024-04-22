@@ -1,0 +1,46 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.PromoteCommandLabelsModel
+
+@{
+    Layout = null;
+
+    if (Model.PromotedLabel != null)
+    {
+        ViewBag.PromotedLabel = Model.PromotedLabel.Value;
+    }
+
+    ViewBag.PromotionCommand = Model.CommandID;
+}
+
+
+<div class="grid6">
+    <a name="promotable"></a><h2>Promotable Labels</h2>
+
+    <p>
+        <img class="icon" src="~/Content/Themes/Base/Images/warning.png" alt="Warning" />
+        You are about to promote a build label. This will affect all users who sync to this build.
+    </p>
+
+    @if (Model.Labels.Count() > 0)
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th class="string">Label</th>
+                    <th class="enum">Changelist</th>
+                    <th class="enum">Created</th>
+                    <th class="numeric">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var l in Model.Labels)
+                {
+                    Html.RenderPartial("_PromoteLabel", l);
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <div>There are no promotable changelists at this time.</div>
+    }
+</div>

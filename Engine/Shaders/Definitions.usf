@@ -1,0 +1,270 @@
+/*=============================================================================
+	Definitions.usf: Defines undefined defines to 0 as Cg can't handle them.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#define GEMINI_TODO										0
+
+#ifndef MATERIAL_TWOSIDED
+#define	MATERIAL_TWOSIDED								0
+#endif
+
+#ifndef MATERIAL_TWOSIDED_SEPARATE_PASS
+#define	MATERIAL_TWOSIDED_SEPARATE_PASS					0
+#endif
+
+#ifndef MATERIAL_LIT_TRANSLUCENCY_PREPASS
+#define MATERIAL_LIT_TRANSLUCENCY_PREPASS				0
+#endif
+
+#ifndef MATERIAL_LIT_TRANSLUCENCY_DEPTH_POSTPASS
+#define MATERIAL_LIT_TRANSLUCENCY_DEPTH_POSTPASS		0
+#endif
+
+#ifndef MATERIAL_CAST_LIT_TRANSLUCENCY_SHADOW_AS_MASKED
+#define MATERIAL_CAST_LIT_TRANSLUCENCY_SHADOW_AS_MASKED	0
+#endif
+
+#ifndef MATERIALBLENDING_MASKED
+#define MATERIALBLENDING_MASKED							0
+#endif
+
+#ifndef MATERIALBLENDING_TRANSLUCENT
+#define MATERIALBLENDING_TRANSLUCENT					0
+#endif
+
+#ifndef MATERIALBLENDING_ADDITIVE
+#define MATERIALBLENDING_ADDITIVE						0
+#endif
+
+#ifndef MATERIALBLENDING_MODULATE
+#define MATERIALBLENDING_MODULATE						0
+#endif
+
+#ifndef MATERIALBLENDING_MODULATEANDADD
+#define MATERIALBLENDING_MODULATEANDADD					0
+#endif
+
+#ifndef MATERIALBLENDING_SOFTMASKED
+#define MATERIALBLENDING_SOFTMASKED						0
+#endif
+
+#ifndef MATERIALBLENDING_DITHEREDTRANSLUCENT
+#define MATERIALBLENDING_DITHEREDTRANSLUCENT			0
+#endif
+
+#ifndef MATERIAL_LIGHTINGMODEL_CUSTOM
+#define	MATERIAL_LIGHTINGMODEL_CUSTOM					0
+#endif
+
+#ifndef MATERIAL_LIGHTINGMODEL_NONDIRECTIONAL
+#define MATERIAL_LIGHTINGMODEL_NONDIRECTIONAL			0
+#endif
+
+#ifndef MATERIAL_LIGHTINGMODEL_PHONG
+#define MATERIAL_LIGHTINGMODEL_PHONG					0
+#endif
+
+#ifndef MATERIAL_LIGHTINGMODEL_CUSTOM
+#define	MATERIAL_LIGHTINGMODEL_CUSTOM					0
+#endif
+
+#ifndef MATERIAL_LIGHTINGMODEL_UNLIT
+#define	MATERIAL_LIGHTINGMODEL_UNLIT					0
+#endif
+
+#ifndef MATERIAL_LIGHTINGMODEL_ANISOTROPIC
+#define MATERIAL_LIGHTINGMODEL_ANISOTROPIC				0
+#endif
+
+
+#ifndef MATERIAL_DECAL
+#define MATERIAL_DECAL									0
+#endif
+
+#ifndef MATERIAL_ONELAYERDISTORTION
+#define MATERIAL_ONELAYERDISTORTION						0
+#endif
+
+#ifndef WORLD_COORDS
+#define WORLD_COORDS									0
+#endif
+
+#ifndef WORLD_POS
+#define WORLD_POS										0
+#endif
+
+#ifndef STATICLIGHTING_TEXTUREMASK
+#define STATICLIGHTING_TEXTUREMASK						0
+#endif
+
+#ifndef OUTPUT_DEPTH_TO_ALPHA
+#define OUTPUT_DEPTH_TO_ALPHA							0
+#endif
+
+#ifndef STATICLIGHTING_VERTEXMASK
+#define STATICLIGHTING_VERTEXMASK						0
+#endif
+
+#ifndef VERTEX_LIGHTMAP
+#define VERTEX_LIGHTMAP									0
+#endif
+
+#ifndef TEXTURE_LIGHTMAP
+#define TEXTURE_LIGHTMAP								0
+#endif
+
+#ifndef COMPILER_CG
+#define COMPILER_CG										0
+#endif
+
+#ifndef COMPILER_HLSL
+#define COMPILER_HLSL									0
+#endif
+
+#ifndef COMPILER_SUPPORTS_ATTRIBUTES
+#define COMPILER_SUPPORTS_ATTRIBUTES					0
+#endif
+
+#ifndef SM3_PROFILE
+#define SM3_PROFILE										0
+#endif
+
+#ifndef SM5_PROFILE
+#define SM5_PROFILE										0
+#endif
+
+#ifndef USING_SM5_TESSELLATION
+#define USING_SM5_TESSELLATION							0
+#endif
+
+#define PC_D3D											(SM3_PROFILE || SM5_PROFILE)
+
+
+#ifndef PS3
+#define PS3												0
+#endif
+
+#ifndef WIIU
+#define WIIU											0
+#endif
+
+#ifndef XBOX
+#define XBOX											0
+#endif
+
+#ifndef NEEDS_LIGHTMAP_COORDINATE
+#define NEEDS_LIGHTMAP_COORDINATE						0
+#endif
+
+#ifndef NEEDS_SHADOWMAP_COORDINATE
+#define NEEDS_SHADOWMAP_COORDINATE						0
+#endif
+
+#ifndef SUPPORTS_DEPTH_TEXTURES
+#define SUPPORTS_DEPTH_TEXTURES							0
+#endif
+
+#ifndef USE_LENSFLARE
+#define USE_LENSFLARE									0
+#endif	
+
+#ifndef MATERIAL_USE_GAMMA_CORRECTION
+#define MATERIAL_USE_GAMMA_CORRECTION					0
+#endif
+
+#ifndef MATERIAL_DEFINED_NORMALMAP
+#define MATERIAL_DEFINED_NORMALMAP						0
+#endif
+
+#ifndef USE_INSTANCING
+#define USE_INSTANCING									0
+#endif
+
+#if USE_INSTANCING && XBOX
+	#define XBOXINSTANCING								1
+#else
+	#define XBOXINSTANCING								0
+#endif
+
+#ifndef MATERIAL_USE_SCREEN_DOOR_FADE
+#define MATERIAL_USE_SCREEN_DOOR_FADE					0
+#endif
+
+#ifndef TESSELLATION_TYPE_FLAT
+#define TESSELLATION_TYPE_FLAT							0
+#endif
+
+#ifndef TESSELLATION_TYPE_PNTRIANGLES
+#define TESSELLATION_TYPE_PNTRIANGLES					0
+#endif
+
+#ifndef PER_PIXEL_TANGENT_BASIS
+#define PER_PIXEL_TANGENT_BASIS							0
+#endif
+
+/** 
+ * Right now (6/2008) only the Xbox compiler supports empty structs, but only as out parameters. 
+ * We need to be able to use them as return values as well.
+ */
+#define COMPILER_SUPPORTS_EMPTY_STRUCTS					0
+
+#if XBOX || SM5_PROFILE || COMPILER_SUPPORTS_ATTRIBUTES
+/** Avoids flow control constructs. */
+#define UNROLL											[unroll]
+/** Gives preference to flow control constructs. */
+#define LOOP											[loop]
+/** Performs branching by using control flow instructions like jmp and label. */
+#define BRANCH											[branch]
+/** Performs branching by using the cnd instructions. */
+#define FLATTEN											[flatten]
+/** Executes the conditional part of an if statement when the condition is true for all threads on which the current shader is running. */
+#define IFALL											[ifAll]
+/** Executes the conditional part of an if statement when the condition is true for any thread on which the current shader is running. */
+#define IFANY											[ifAny]
+#elif PS3
+#define UNROLL
+#define LOOP
+#define BRANCH											[branch]
+#define FLATTEN											[flatten]
+#define IFALL
+#define IFANY
+#else
+#define UNROLL
+#define LOOP
+#define BRANCH
+#define FLATTEN
+#define IFALL
+#define IFANY
+#endif
+
+#if SM5_PROFILE
+#define EARLYDEPTHSTENCIL [earlydepthstencil]
+#else
+#define EARLYDEPTHSTENCIL
+#endif
+
+/** Performs branching by using control flow instructions like jmp and label, only for Xbox. */
+#if XBOX
+#define BRANCH_XBOX	[branch]
+#else
+#define BRANCH_XBOX
+#endif
+
+/** Performs branching by using control flow instructions like jmp and label, only for PS3. */
+#if PS3
+#define BRANCH_PS3	[branch]
+#else
+#define BRANCH_PS3
+#endif
+
+
+#if XBOX
+/** Optimizes the specified HLSL code independently of the surrounding code. */
+#define ISOLATE											[isolate]
+#define NOEXPRESSIONOPTIMIZATIONS						[noExpressionOptimizations]
+#else
+/** Not supported on other platforms */
+#define ISOLATE
+#define NOEXPRESSIONOPTIMIZATIONS						
+#endif

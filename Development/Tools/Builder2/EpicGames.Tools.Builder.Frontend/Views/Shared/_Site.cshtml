@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=9" >
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+
+    <title>@ViewBag.Title</title>
+
+    <link rel="Shortcut Icon" type="image/ico" href="@Url.Content("~/Content/favicon.ico")" />
+    <link href="@System.Web.Optimization.BundleTable.Bundles.ResolveBundleUrl("~/Content/css")" rel="stylesheet" type="text/css" />
+    <link href="@System.Web.Optimization.BundleTable.Bundles.ResolveBundleUrl("~/Content/themes/base/css")" rel="stylesheet" type="text/css" />
+    
+    <script src="@System.Web.Optimization.BundleTable.Bundles.ResolveBundleUrl("~/Scripts/js")"></script>
+</head>
+
+<script type="text/javascript">
+    $.ajaxSetup({
+        cache: false
+    });
+</script>
+
+<body class="@ViewContext.RouteData.Values["Controller"]">
+    <header class="clearfix">
+        <div class="siteWrap">
+            <section>
+                <a name="top"></a>
+
+                <div id="siteLogo" class="grid2">
+                    <img src="~/Content/Themes/Base/Images/logoEpic.png" alt="Epic Games Logo" />
+                    Automated<br />
+                    Build<br />
+                    System
+                </div>
+
+                <div id="siteMenu" class="grid4">
+                    <div>Hello, @User.Identity.Name</div>
+                    <nav>
+                        @Html.Partial("_MainMenu")
+                    </nav>
+                </div>
+            </section>
+        </div>
+    </header>
+
+    <nav class="clearfix">
+        <div class="siteWrap">
+            <hgroup>
+                <h1>@ViewBag.Title</h1>
+                <h2>@ViewBag.Description</h2>
+            </hgroup>
+
+            @Html.Partial("_SystemMenu")
+        </div>
+    </nav>
+
+    <article class="clearfix">
+        <div class="siteWrap">
+            @RenderBody()
+        </div>
+    </article>
+
+    <footer class="clearfix">
+        <div class="siteWrap">
+            <section class="clearfix">
+                <div>
+                    @Html.Partial("_MainMenu")
+                </div>
+
+                <div>
+                    @Html.Partial("_SystemMenu")
+                </div>
+            </section>
+
+            <section id="siteCopyright">
+                Copyright &copy; @DateTime.Now.Year Epic Games, Inc. All rights reserved.
+            </section>
+        </div>
+    </footer>
+
+    <div id="popupBg"></div>
+
+    <div id="popupWindow">
+        <iframe id="popupContent"></iframe>
+        <a class="button" href="javascript: return false;" id="popupClose">Close</a>
+    </div>
+</body>
+
+</html>

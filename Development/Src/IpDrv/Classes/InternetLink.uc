@@ -1,18 +1,23 @@
-//=============================================================================
+/*=============================================================================
 // InternetLink: Parent class for Internet connection classes
-//=============================================================================
-class InternetLink extends InternetInfo
+Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+class InternetLink extends Info
 	native
 	transient;
 
 cpptext
 {
 	AInternetLink();
-	void Destroy();
+	void BeginDestroy();
 	UBOOL Tick( FLOAT DeltaTime, enum ELevelTick TickType );	
-	SOCKET& GetSocket() 
+	FSocket* GetSocket() 
 	{ 
-		return *(SOCKET*)&Socket;
+		return Socket;
+	}
+	FSocket* GetRemoteSocket() 
+	{ 
+		return RemoteSocket;
 	}
 	FResolveInfo*& GetResolveInfo()
 	{
@@ -39,11 +44,20 @@ var enum ELinkMode
 	MODE_Binary
 } LinkMode;
 
+// MODE_Line behavior, how to receive/send lines
+var enum ELineMode
+{
+	LMODE_auto,
+	LMODE_DOS,	// CRLF
+	LMODE_UNIX, // LF
+	LMODE_MAC,	// LFCR
+} InLineMode, OutLineMode; // OutLineMode: LMODE_auto == LMODE_DOS
+
 // Internal
-var	const int Socket;
+var	const pointer Socket{FSocket};  // (sockets are 64-bit on AMD64, so use "pointer").
 var const int Port;
-var	const int RemoteSocket;
-var private native const int PrivateResolveInfo;
+var	const pointer RemoteSocket{FSocket};
+var private native const pointer PrivateResolveInfo;
 var const int DataPending;
 
 // Receive mode.
@@ -69,7 +83,7 @@ native function bool ParseURL
 (
 	coerce string URL, 
 	out string Addr, 
-	out int Port, 
+	out int PortNum, 
 	out string LevelName,
 	out string EntryName
 );

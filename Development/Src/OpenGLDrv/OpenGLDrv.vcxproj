@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="BuiltWithUnrealBuildTool|Win32">
+      <Configuration>BuiltWithUnrealBuildTool</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{56F9B2AA-8C10-4F34-A7FF-D86D8F071888}</ProjectGuid>
+    <RootNamespace>Drv</RootNamespace>
+    <SccProjectName>
+    </SccProjectName>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+    <Keyword>MakeFileProj</Keyword>
+    <SccAuxPath>
+    </SccAuxPath>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</IntDir>
+    <NMakeBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeReBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeCleanCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeOutput Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\OpenGLConstantBuffer.h" />
+    <ClInclude Include="Inc\OpenGLDrv.h" />
+    <ClInclude Include="Inc\OpenGLRenderTarget.h" />
+    <ClInclude Include="Inc\OpenGLResources.h" />
+    <ClInclude Include="Inc\OpenGLState.h" />
+    <ClInclude Include="Inc\OpenGLUtil.h" />
+    <ClInclude Include="Inc\OpenGLViewport.h" />
+    <ClInclude Include="Inc\OpenGLWindowsLoader.h" />
+    <ClInclude Include="Src\OpenGLDrvPrivate.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\OpenGLCommands.cpp" />
+    <ClCompile Include="Src\OpenGLConstantBuffer.cpp" />
+    <ClCompile Include="Src\OpenGLD3DBytecodeConverter.cpp" />
+    <ClCompile Include="Src\OpenGLDevice.cpp" />
+    <ClCompile Include="Src\OpenGLDrv.cpp" />
+    <ClCompile Include="Src\OpenGLIndexBuffer.cpp" />
+    <ClCompile Include="Src\OpenGLQuery.cpp" />
+    <ClCompile Include="Src\OpenGLRenderTarget.cpp" />
+    <ClCompile Include="Src\OpenGLShaderCompiler.cpp" />
+    <ClCompile Include="Src\OpenGLShaders.cpp" />
+    <ClCompile Include="Src\OpenGLState.cpp" />
+    <ClCompile Include="Src\OpenGLTexture.cpp" />
+    <ClCompile Include="Src\OpenGLUtil.cpp" />
+    <ClCompile Include="Src\OpenGLVertexBuffer.cpp" />
+    <ClCompile Include="Src\OpenGLVertexDeclaration.cpp" />
+    <ClCompile Include="Src\OpenGLViewport.cpp" />
+    <ClCompile Include="Src\OpenGLViewportMac.cpp" />
+    <ClCompile Include="Src\OpenGLViewportWindows.cpp" />
+    <ClCompile Include="Src\OpenGLWindowsLoader.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

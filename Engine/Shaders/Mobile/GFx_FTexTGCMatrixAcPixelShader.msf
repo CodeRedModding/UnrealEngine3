@@ -1,0 +1,17 @@
+#define RETURN_COLOR(Color) Color
+UNIFORM( vec4, OverlayColor );
+UNIFORM( mat4, ColorMatrix );
+UNIFORM_SAMPLER2D( TextureBase, TEXUNIT0 );
+IN_VARYING_DEFAULT( vec2, TexCoords0, TEXCOORD0 );
+OUT_BUILTIN( vec4, gl_FragColor, COLOR )
+PIXEL_MAIN 
+{
+  lowp vec4 fcolor0;
+// S TexTG
+  fcolor0 = texture2D(TextureBase,TexCoords0);
+gl_FragColor = fcolor0;
+// E CMatrixAc
+  gl_FragColor = MulMatrix(gl_FragColor,ColorMatrix) + OverlayColor * (gl_FragColor.a + OverlayColor.a);
+
+}
+

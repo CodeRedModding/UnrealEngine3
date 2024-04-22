@@ -2,11 +2,9 @@
  * %class%
  * %cursor%
  *
- * Created By:
+ * Created By:	
  * Copyright:	(c) 2004
  * Company:		Epic Games
 */
 
-class MyGame extends UTGame;
-
-var
+%classdef%

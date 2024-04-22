@@ -1,0 +1,76 @@
+/*=============================================================================
+	FogVolumeApplyPixelShader.usf: looks up the integral accumulation and applies the fog to scene color
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+/* Texture containing the accumulated integral for frontfaces */
+sampler2D AccumulatedFrontfacesLineIntegralTexture;
+
+/* Texture containing the accumulated integral for backfaces */
+sampler2D AccumulatedBackfacesLineIntegralTexture;
+
+/* Maximum integral allowed for the density function */
+float	MaxIntegral;
+
+/*
+* Decodes the floating point integral from a fixed point buffer.
+* This is not called for platforms that use floating point blending to accumulate the integral.
+*/
+float DecodeIntegral(float4 EncodedIntegral)
+{
+/*
+	//extract the integral from G16R16
+	float2 Shift = float2(1.0f / 65536.0f, 1.0f);
+	return dot(EncodedIntegral.xy, Shift) * MaxIntegral;
+*/
+	//24bits, from the lowest 6 bits of RGBA8.  2 are left over for overflow in each channel, for a max of 4 additive blends
+	//shift down 18, 12, 6, 0 bits
+	float4 Shift = float4(1.0f / 262144.0f, 1.0f / 4096.0f, 1.0f / 64.0f, 1.0f);
+	//shift all channels up 2 bits first, since they were shifted down to make room for overflow
+	//then shift each channel by its offset, combine and denormalize
+	return dot(EncodedIntegral.xyzw * 4.0f, Shift) * MaxIntegral;
+}
+
+/*
+* Applies fog calculated for a fog volume to scene color.  
+* The material's emssive is used as the fog color, and the opacity is used to modulate the fog factor.
+*/
+void Main(
+	FVertexFactoryInterpolantsVSToPS Interpolants,
+	float4	PixelPosition	: TEXCOORD5,
+	in float4 CameraVectorOrVertexColor : TEXCOORD6,
+	OPTIONAL_FacingSign
+	out float4 OutColor		: COLOR0
+	)
+{
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(Interpolants);
+	CalcMaterialParameters(MaterialParameters,FacingSign,CameraVectorOrVertexColor,PixelPosition);
+	
+	//use the material's emissive input as fog color
+	half3 FogColor = GetMaterialEmissive(MaterialParameters);
+
+	//these coordinates are valid even if the integral buffers are downsampled,
+	//since texture coordinates do not factor in texture size.
+	float2 PerspectiveCorrectScreenPosition = MaterialParameters.ScreenPosition.xy / MaterialParameters.ScreenPosition.w * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+
+#if XBOX
+	float FrontfacesIntegral = DecodeIntegral(tex2D(AccumulatedFrontfacesLineIntegralTexture,PerspectiveCorrectScreenPosition));
+	float BackfacesIntegral = DecodeIntegral(tex2D(AccumulatedBackfacesLineIntegralTexture,PerspectiveCorrectScreenPosition));
+	float AccumulatedLineIntegral = BackfacesIntegral - FrontfacesIntegral;
+#else
+	float AccumulatedLineIntegral = tex2D(AccumulatedBackfacesLineIntegralTexture,PerspectiveCorrectScreenPosition).r;
+#endif
+
+	//evaluate the transmittance function, f = exp(-LineIntegral)
+	//use material opacity to scale the fog integral
+	float FogFactor = saturate(exp2(-AccumulatedLineIntegral * GetMaterialOpacity(MaterialParameters)));
+
+	//combine with scene color, (1-f) * FogColor + DestColor * f
+	OutColor = RETURN_COLOR(half4(FogColor, FogFactor));
+}
+
+

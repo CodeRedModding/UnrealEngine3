@@ -1,9 +1,6 @@
 /*=============================================================================
 	GeomFitUtils.h: Utilities for fitting collision models to static meshes.
-	Copyright 1997-2002 Epic Games, Inc. All Rights Reserved.
-
-    Revision history:
-		* Created by James Golding
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 // k-DOP (k-Discrete Oriented Polytopes) Direction Vectors

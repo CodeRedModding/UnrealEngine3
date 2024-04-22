@@ -1,8 +1,11 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class MeshComponentFactory extends PrimitiveComponentFactory
 	native
 	abstract;
 
-var(Rendering) array<MaterialInstance>	Materials;
+var(Rendering) array<MaterialInterface>	Materials;
 
 cpptext
 {

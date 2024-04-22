@@ -1,0 +1,87 @@
+/*=============================================================================
+	DeferredLightingCommon.usf: Common definitions for deferred lighting.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#if SM5_PROFILE
+
+/** 
+ * Whether the mesh supports deferred lighting in x, image reflection normal dampening factor in y,
+ * Lighting channel index in z.
+ */
+float4 DeferredRenderingParameters;
+
+/** Populates WorldNormal and SpecularColorAndPower. */
+void GetGBufferOutputs(
+	float3 TangentNormal,
+	float3x3 TangentToWorld,
+	float3 SpecularColor,
+	float SpecularPower,
+	out float4 EncodedWorldNormal,
+	out float4 ReflectionWorldNormal,
+	out float4 SpecularColorAndPower,
+	out float LightChannel
+	)
+{
+	float3 WorldNormal = normalize(TransformTangentVectorToWorld(TangentToWorld, TangentNormal));
+
+	// Transform the per pixel normal into world space
+	// Normalize the result so that we can use the length of the normal to detect geometry edges in deferred passes with MSAA enabled
+	EncodedWorldNormal = float4(WorldNormal * .5f + .5f, DeferredRenderingParameters.x);
+
+	SpecularColorAndPower = float4(
+		SpecularColor,
+		saturate(sqrt(SpecularPower / 500.0))
+		);
+
+	SpecularColorAndPower.w *= 127.0 / 255.0;
+
+	LightChannel = saturate(DeferredRenderingParameters.z / 64.0f);
+
+#if IMAGE_BASED_REFLECTIONS
+
+	// Dampen the normal used for reflections by scaling down the tangent Z component and renormalizing.
+	// This makes it more like the smoothed vertex normal, and is used for approximating multi layer or wet materials, 
+	// Where the outer layer is the most reflective and has a smooth normal, while the inner is made of micro facets.
+	float3 DampenedNormal = TangentNormal * float3(1, 1, DeferredRenderingParameters.y);
+	ReflectionWorldNormal = float4(normalize(TransformTangentVectorToWorld(TangentToWorld, DampenedNormal)) * .5f + .5f, 0);
+
+	float3 WorldVertexNormal = TransformTangentVectorToWorld(TangentToWorld, float3(0, 0, 1));
+	float2 DerivativeLengths = float2(length(ddx(WorldVertexNormal)), length(ddy(WorldVertexNormal)));
+	// Heuristic that measures how quickly the surface normal is changing in screen space
+	float SurfaceNormalDeviation = saturate(max(DerivativeLengths.x, DerivativeLengths.y) * 10.0f);
+
+	ReflectionWorldNormal.w = SurfaceNormalDeviation;
+
+#else
+
+	ReflectionWorldNormal = 0;
+
+	// Use the MSB of the specular power to indicate whether image reflections are allowed or not
+	SpecularColorAndPower.w += 128.0 / 255.0;
+
+#endif
+}
+
+bool IsPixelAffectedByIBR(float4 SpecularColorAndPower)
+{
+	return SpecularColorAndPower.a < 128.0 / 255.0;
+}
+
+float3 DecodeSpecularColor(float4 SpecularColorAndPower)
+{
+	return SpecularColorAndPower.rgb;
+}
+
+float DecodeSpecularPower(float4 SpecularColorAndPower,bool IsIBRPixel)
+{
+	float Bias = IsIBRPixel ? 0 : (128.0 / 255.0);
+	return (Square(SpecularColorAndPower.a) * 500.0 - Bias) * 255.0 / 127.0;
+}
+
+float DecodeSpecularPower(float4 SpecularColorAndPower)
+{
+	return DecodeSpecularPower(SpecularColorAndPower,IsPixelAffectedByIBR(SpecularColorAndPower));
+}
+
+#endif

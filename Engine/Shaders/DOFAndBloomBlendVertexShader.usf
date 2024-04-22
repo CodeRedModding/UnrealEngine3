@@ -1,0 +1,19 @@
+/*=============================================================================
+	DOFAndBloomBlendVertexShader.usf: Pixel shader for blending the blurred depth of field and bloom colors with the scene color.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+half4 SceneCoordinateScaleBias;
+
+void Main(
+	in float4 InPosition : POSITION,
+	in float2 InTexCoord : TEXCOORD0,
+	out float2 OutTexCoord : TEXCOORD0,
+	out float2 OutSceneUV : TEXCOORD1,
+	out float4 OutPosition : POSITION
+	)
+{
+	OutPosition = InPosition;
+	OutTexCoord = InTexCoord;
+	OutSceneUV = InPosition.xy / InPosition.w * SceneCoordinateScaleBias.xy + SceneCoordinateScaleBias.wz;
+}

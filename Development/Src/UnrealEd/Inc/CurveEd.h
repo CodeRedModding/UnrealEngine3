@@ -1,12 +1,17 @@
 /*=============================================================================
 	CurveEd.h: FInterpCurve editor
-	Copyright 2004 Epic Games, Inc. All Rights Reserved.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 
-	Revision history:
-		* Created by James Golding
 =============================================================================*/
 
+#ifndef __CURVEED_H__
+#define __CURVEED_H__
+
 #include "UnrealEd.h"
+
+// Forward declarations.
+class WxCurveEdPresetDlg;
+class WxCurveEditor;
 
 struct HCurveEdLabelProxy : public HHitProxy
 {
@@ -15,6 +20,7 @@ struct HCurveEdLabelProxy : public HHitProxy
 	INT CurveIndex;
 
 	HCurveEdLabelProxy(INT InCurveIndex) :
+		HHitProxy(HPP_UI),
 		CurveIndex(InCurveIndex)
 	{}
 };
@@ -26,6 +32,7 @@ struct HCurveEdHideCurveProxy : public HHitProxy
 	INT CurveIndex;
 
 	HCurveEdHideCurveProxy(INT InCurveIndex) :
+		HHitProxy(HPP_UI),
 		CurveIndex(InCurveIndex)
 	{}
 };
@@ -39,6 +46,7 @@ struct HCurveEdKeyProxy : public HHitProxy
 	INT KeyIndex;
 
 	HCurveEdKeyProxy(INT InCurveIndex, INT InSubIndex, INT InKeyIndex) :
+		HHitProxy(HPP_UI),
 		CurveIndex(InCurveIndex),
 		SubIndex(InSubIndex),
 		KeyIndex(InKeyIndex)
@@ -55,6 +63,7 @@ struct HCurveEdKeyHandleProxy : public HHitProxy
 	UBOOL bArriving;
 
 	HCurveEdKeyHandleProxy(INT InCurveIndex, INT InSubIndex, INT InKeyIndex, UBOOL bInArriving) :
+		HHitProxy(HPP_UI),
 		CurveIndex(InCurveIndex),
 		SubIndex(InSubIndex),
 		KeyIndex(InKeyIndex),
@@ -70,6 +79,7 @@ struct HCurveEdLineProxy : public HHitProxy
 	INT SubIndex;
 
 	HCurveEdLineProxy(INT InCurveIndex, INT InSubIndex) :
+		HHitProxy(HPP_UI),
 		CurveIndex(InCurveIndex),
 		SubIndex(InSubIndex)
 	{}
@@ -78,8 +88,43 @@ struct HCurveEdLineProxy : public HHitProxy
 struct HCurveEdLabelBkgProxy : public HHitProxy
 {
 	DECLARE_HIT_PROXY(HCurveEdLabelBkgProxy,HHitProxy);
-	HCurveEdLabelBkgProxy() {}
+	HCurveEdLabelBkgProxy(): HHitProxy(HPP_UI) {}
 };
+
+struct HCurveEdHideSubCurveProxy : public HHitProxy
+{
+	DECLARE_HIT_PROXY(HCurveEdHideSubCurveProxy,HHitProxy);
+	
+	INT CurveIndex;
+	INT SubCurveIndex;
+
+	HCurveEdHideSubCurveProxy(INT InCurveIndex, INT InSubCurveIndex) :
+		HHitProxy(HPP_UI),
+		CurveIndex(InCurveIndex),
+		SubCurveIndex(InSubCurveIndex)
+	{}
+};
+
+
+
+/**
+ * Curve editor key movement axis locking
+ */
+namespace ECurveEdMovementAxisLock
+{
+	enum Type
+	{
+		/// No axis locking
+		None,
+
+		/// Horizontal axis
+		Horizontal,
+
+		/// Vertical axis
+		Vertical
+	};
+}
+
 
 /*-----------------------------------------------------------------------------
 	FCurveEdViewportClient
@@ -89,33 +134,36 @@ class FCurveEdViewportClient : public FEditorLevelViewportClient
 {
 public:
 
-	class WxCurveEditor* CurveEd;
+	WxCurveEditor* CurveEd;
 
-	INT OldMouseX, OldMouseY;
-	UBOOL bPanning;
-	UBOOL bZooming;
-	UBOOL bMouseDown;
-	UBOOL bDraggingHandle;
-	UBOOL bBegunMoving;
-	UBOOL bBoxSelecting;
-	UBOOL bKeyAdded;
-	INT DistanceDragged;
+	INT			DragStartMouseX, DragStartMouseY;
+	INT			OldMouseX, OldMouseY;
+	UBOOL		bPanning;
+	UBOOL		bZooming;
+	UBOOL		bMouseDown;
+	UBOOL		bDraggingHandle;
+	UBOOL		bBegunMoving;
+	ECurveEdMovementAxisLock::Type MovementAxisLock;
+	UBOOL		bBoxSelecting;
+	UBOOL		bKeyAdded;
+	INT			DistanceDragged;
 
-	INT BoxStartX, BoxStartY;
-	INT BoxEndX, BoxEndY;
+	INT			BoxStartX, BoxStartY;
+	INT			BoxEndX, BoxEndY;
 
 	FCurveEdViewportClient(WxCurveEditor* InCurveEd);
 	~FCurveEdViewportClient();
 
-	virtual void Draw(FChildViewport* Viewport,FRenderInterface* RI);
+	virtual void Draw(FViewport* Viewport,FCanvas* Canvas);
 
-	virtual ULevel* GetLevel() { return NULL; }
-
-	virtual void InputKey(FChildViewport* Viewport,FName Key,EInputEvent Event,FLOAT AmountDepressed = 1.f);
-	virtual void MouseMove(FChildViewport* Viewport, INT X, INT Y);
-	virtual void InputAxis(FChildViewport* Viewport, FName Key, FLOAT Delta, FLOAT DeltaTime);
+	virtual UBOOL InputKey(FViewport* Viewport,INT ControllerId,FName Key,EInputEvent Event,FLOAT AmountDepressed = 1.f,UBOOL bGamepad=FALSE);
+	virtual void MouseMove(FViewport* Viewport, INT X, INT Y);
+	virtual UBOOL InputAxis(FViewport* Viewport, INT ControllerId, FName Key, FLOAT Delta, FLOAT DeltaTime, UBOOL bGamepad=FALSE);
 
 	virtual void Serialize(FArchive& Ar) { Ar << Input; }
+
+	/** Exec handler */
+	virtual void Exec(const TCHAR* Cmd);
 };
 
 /*-----------------------------------------------------------------------------
@@ -135,6 +183,8 @@ struct FCurveEdSelKey
 		CurveIndex = InCurveIndex;
 		SubIndex = InSubIndex;
 		KeyIndex = InKeyIndex;
+		UnsnappedIn = 0.0f;
+		UnsnappedOut = 0.0f;
 	}
 
 	UBOOL operator==(const FCurveEdSelKey& Other) const
@@ -168,7 +218,16 @@ public:
 
 	virtual void DesireUndo() {}
 	virtual void DesireRedo() {}
+
+	/**
+	 * Called by the Curve Editor when a Curve Label is clicked on
+	 *
+	 * @param	CurveObject	The curve object whose label was clicked on
+	 */
+	virtual void OnCurveLabelClicked( UObject* CurveObject ) {}
 };
+
+class WxCurveEdPresetDlg;
 
 class WxCurveEditor : public wxWindow
 {
@@ -177,9 +236,19 @@ public:
 
 	UInterpCurveEdSetup*		EdSetup;
 
+	UCurveEdOptions*			EditorOptions;
+
 	FLOAT StartIn, EndIn, StartOut, EndOut;
 	FLOAT CurveViewX, CurveViewY;
 	FLOAT PixelsPerIn, PixelsPerOut;
+	FLOAT MaxViewRange, MinViewRange;
+	FLinearColor BackgroundColor;
+	FLinearColor LabelColor;
+	FLinearColor SelectedLabelColor;
+	FLinearColor GridColor;
+	FLinearColor GridTextColor;
+	FLinearColor LabelBlockBkgColor;
+	FLinearColor SelectedKeyColor;
 
 	INT MouseOverCurveIndex;
 	INT MouseOverSubIndex;
@@ -211,8 +280,40 @@ public:
 
 	UBOOL bSnapEnabled;
 	FLOAT InSnapAmount;
+	UBOOL bSnapToFrames;
 
-	FCurveEdNotifyInterface* NotifyObject;
+	/** True if all curve tangents should be shown, otherwise only the selected key's tangents will be visible. */
+	UBOOL bShowAllCurveTangents;
+
+	FCurveEdNotifyInterface*	NotifyObject;
+
+	FIntPoint					LabelOrigin2D;
+	wxScrollBar*				ScrollBar_Vert;
+	INT							ThumbPos_Vert;
+
+	TArray<UClass*>						CurveEdPresets;
+
+	UDistributionFloatConstantCurve*	FloatCC;
+	UDistributionFloatUniformCurve*		FloatUC;
+	UDistributionVectorConstantCurve*	VectorCC;
+	UDistributionVectorUniformCurve*	VectorUC;
+	UBOOL								bMinMaxValid;
+	UBOOL								bFloatDist;
+	FCurveEdInterface*					Distribution;
+	UDistributionFloat*					FloatDist;
+	UDistributionVector*				VectorDist;
+
+	enum
+	{
+		CURVEED_MAX_CURVES	= 6
+	};
+
+	TArray<FPresetGeneratedPoint>		GeneratedPoints[CURVEED_MAX_CURVES];
+	TArray<FLOAT>						RequiredKeyInTimes[CURVEED_MAX_CURVES];
+	TArray<FLOAT>						CompleteKeyInTimes;
+	TArray<FPresetGeneratedPoint>		CopiedCurves[CURVEED_MAX_CURVES];
+
+	WxCurveEdPresetDlg*					PresetDialog;
 
 public:
 	WxCurveEditor( wxWindow* InParent, wxWindowID InID, class UInterpCurveEdSetup* InEdSetup );
@@ -225,20 +326,108 @@ public:
 	void SetEndMarker(UBOOL bEnabled, FLOAT InEndPosition);
 	void SetRegionMarker(UBOOL bEnabled, FLOAT InRegionStart, FLOAT InRegionEnd, const FColor& InRegionFillColor);
 
-	void SetInSnap(UBOOL bEnabled, FLOAT SnapAmount);
+	void SetInSnap(UBOOL bEnabled, FLOAT SnapAmount, UBOOL bInSnapToFrames);
 
 	void SetNotifyObject(FCurveEdNotifyInterface* NewNotifyObject);
+
+	void SetCurveSelected(UObject* InCurve, UBOOL bSelected);
+	void ClearAllSelectedCurves();
+	void ScrollToFirstSelected();
+
+	UBOOL	PresetDialog_OnOK();
+
+	void ChangeInterpMode(EInterpCurveMode NewInterpMode=CIM_Unknown);
 
 private:
 
 	void OnSize( wxSizeEvent& In );
 	void OnFitHorz( wxCommandEvent& In );
 	void OnFitVert( wxCommandEvent& In );
+
+	/** Fits the view (horizontally and vertically) to the all curve data */
+	void OnFitViewToAll( wxCommandEvent& In );
+
+	/** Fits the view (horizontally and vertically) to the currently selected keys */
+	void OnFitViewToSelected( wxCommandEvent& In );
+
 	void OnContextCurveRemove( wxCommandEvent& In );
+	void OnContextCurveRemoveAll(wxCommandEvent& In);
 	void OnChangeMode( wxCommandEvent& In );
 	void OnSetKey( wxCommandEvent& In );
 	void OnSetKeyColor( wxCommandEvent& In );
 	void OnChangeInterpMode( wxCommandEvent& In );
+
+	/** Called to delete the currently selected keys */
+	void OnDeleteSelectedKeys( wxCommandEvent& In );
+
+	/** Helper function to handle undo/redo */
+	UBOOL NotifyPendingCurveChange(UBOOL bSelectedOnly);
+
+	/** Helper function to get a user-set scalar value */
+	UBOOL GetScalarValue(FString& InPrompt, FLOAT InDefault, FLOAT& OutScalar);
+	/** Called to scale the times by a user-select value */
+	void OnScaleTimes( wxCommandEvent& In );
+	/** Called to scale the values by a user-select value */
+	void OnScaleValues( wxCommandEvent& In );
+
+	/** Sets the tangents for the selected key(s) to be flat along the horizontal axis. */
+	void OnFlattenTangentsToAxis( wxCommandEvent& In );
+
+	/** Straightens the tangents for the selected key(s) by averaging their direction */
+	void OnStraightenTangents( wxCommandEvent& In );
+
+	/** Toggles showing all curve tangents */
+	void OnShowAllCurveTangents( wxCommandEvent& In );
+
+	/** Updates UI state for the 'show all curve tangents' button */
+	void UpdateShowAllCurveTangentsUI( wxUpdateUIEvent& In );
+
+	void OnTabCreate(wxCommandEvent& In);
+	void OnChangeTab(wxCommandEvent& In);
+	void OnTabDelete(wxCommandEvent& In);
+	void OnPresetCurves(wxCommandEvent& In);
+	void OnSavePresetCurves(wxCommandEvent& In);
+
+	/** Called when 'Upgrade Curve Tangents' is clicked in the curve label context menu */
+	void OnCurveLabelContext_UpgradeInterpMethod( wxCommandEvent& In );
+
+	void OnScroll(wxScrollEvent& In);
+	void OnMouseWheel(wxMouseEvent& In);
+
+	void UpdateScrollBar(INT Vert);
+
+	/** Fits the curve editor view horizontally to the curve data */
+	void FitViewHorizontally();
+
+	/** Fits the curve editor view vertically to the curve data */
+	void FitViewVertically();
+
+	/** Fits the view (horizontally and vertically) to the currently selected keys */
+	void FitViewToSelected();
+
+	/** Fits the view (horizontally and vertically) to the all curve data */
+	void FitViewToAll();
+
+
+	/**
+	 * Updates the scroll bar for the current state of the window's size and content layout.  This should be called
+	 *  when either the window size changes or the vertical size of the content contained in the window changes.
+	 */
+	void AdjustScrollBar();
+
+	/** Set the position of the scroll bar... */
+	void SetScrollBarPosition();
+
+	void FillTabCombo();
+
+	// --
+	INT		DetermineValidPresetFlags(FCurveEdEntry* Entry);
+	UBOOL	GeneratePresetClassList(UBOOL bIsSaving = FALSE);
+	UBOOL	SetupDistributionVariables(FCurveEdEntry* Entry);
+	UBOOL	GetSetupDataAndRequiredKeyInPoints(WxCurveEdPresetDlg* PresetDlg);
+	UBOOL	GenerateCompleteKeyInList();
+	UBOOL	GeneratePresetSamples(WxCurveEdPresetDlg* PresetDlg);
+	INT		DetermineSubCurveIndex(INT CurveIndex);
 
 	// --
 
@@ -260,16 +449,23 @@ private:
 	void DoubleClickedKey(INT InCurveIndex, INT InSubIndex, INT InKeyIndex);
 
 	void ToggleCurveHidden(INT InCurveIndex);
+	void ToggleSubCurveHidden(INT InCurveIndex, INT InSubCurveIndex);
+	
 	void UpdateInterpModeButtons();
 
 	void DeleteSelectedKeys();
 
+	/** 
+   * Returns the vertical size of the entire curve editor curve label entry list in pixels
+	 */
+	UINT ComputeCurveLabelEntryListContentHeight() const;
+
 	FIntPoint CalcScreenPos(const FVector2D& Val);
 	FVector2D CalcValuePoint(const FIntPoint& Pos);
 
-	void DrawCurveEditor(FChildViewport* Viewport, FRenderInterface* RI);
-	void DrawEntry(FChildViewport* Viewport, FRenderInterface* RI, const FCurveEdEntry& Entry, INT CurveIndex);
-	void DrawGrid(FChildViewport* Viewport, FRenderInterface* RI);
+	void DrawCurveEditor(FViewport* Viewport, FCanvas* Canvas);
+	void DrawEntry(FViewport* Viewport, FCanvas* Canvas, const FCurveEdEntry& Entry, INT CurveIndex);
+	void DrawGrid(FViewport* Viewport, FCanvas* Canvas);
 
 	friend class FCurveEdViewportClient;
 	friend class WxMBCurveKeyMenu;
@@ -281,7 +477,7 @@ private:
 	WxCurveEdToolBar
 -----------------------------------------------------------------------------*/
 
-class WxCurveEdToolBar : public wxToolBar
+class WxCurveEdToolBar : public WxToolBar
 {
 public:
 	WxCurveEdToolBar( wxWindow* InParent, wxWindowID InID );
@@ -291,7 +487,9 @@ public:
 	void SetButtonsEnabled(UBOOL bEnabled);
 	void SetEditMode(ECurveEdMode NewMode);
 
-	WxMaskedBitmap FitHorzB, FitVertB, PanB, ZoomB, ModeAutoB, ModeUserB, ModeBreakB, ModeLinearB, ModeConstantB;
+	WxMaskedBitmap FitHorzB, FitVertB, FitViewToAllB, FitViewToSelectedB, PanB, ZoomB, ModeAutoB, ModeAutoClampedB, ModeUserB, ModeBreakB, ModeLinearB, ModeConstantB;
+	WxMaskedBitmap FlattenTangentsToAxisB, StraightenTangentsB, TabCreateB, TabDeleteB, ShowAllCurveTangentsB;
+	wxComboBox* TabCombo;
 
 	DECLARE_EVENT_TABLE()
 };
@@ -318,3 +516,16 @@ public:
 	WxMBCurveKeyMenu(WxCurveEditor* CurveEd);
 	~WxMBCurveKeyMenu();
 };
+
+/*-----------------------------------------------------------------------------
+	WxMBCurveMenu
+-----------------------------------------------------------------------------*/
+
+class WxMBCurveMenu : public wxMenu
+{
+public:
+	WxMBCurveMenu(WxCurveEditor* CurveEd);
+	~WxMBCurveMenu();
+};
+
+#endif // __CURVEED_H__

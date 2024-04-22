@@ -1,0 +1,36 @@
+#define RETURN_COLOR(Color) Color
+#if USE_GFX_GAMMA_CORRECTION
+UNIFORM( float, InverseGamma );
+#endif
+UNIFORM_SAMPLER2D( tex, TEXUNIT0 );
+IN_VARYING_DEFAULT( vec4, fuDFShadowColor, TEXCOORD4 );
+IN_VARYING_DEFAULT( float, fuDFShadowEnable, TEXCOORD2 );
+IN_VARYING_DEFAULT( vec4, fuDFShadowOffset, TEXCOORD5 );
+IN_VARYING_DEFAULT( vec4, fuDFSize, TEXCOORD3 );
+IN_VARYING_DEFAULT( vec2, tc, TEXCOORD0 );
+IN_VARYING_LOW( vec4, vcolor, COLOR0 );
+OUT_BUILTIN( vec4, gl_FragColor, COLOR )
+PIXEL_MAIN 
+{
+// E TextDFA
+
+	float BaseDist = texture2D(tex,tc).r;
+	float DFWidth = DUDX(tc.x, fuDFSize.w, 0.1);
+	float DFShadowWidth = fuDFSize.x * 0.5;
+	gl_FragColor = vec4(vcolor.rgb, smoothstep(0.5 - DFWidth, 0.5 + DFWidth, BaseDist));
+
+	if (fuDFShadowEnable >= 1.0)
+	{
+		float ShadowDist = texture2D(tex,tc + fuDFShadowOffset.xy).r;
+		vec4 Shadow = vec4(fuDFShadowColor.rgb, fuDFShadowColor.a * smoothstep(0.5 - DFShadowWidth, 0.5 + DFShadowWidth, ShadowDist));
+		gl_FragColor = mix(Shadow, gl_FragColor, gl_FragColor.a);
+	}
+
+// E Mul
+  //gl_FragColor = mix(vec4(1.0), gl_FragColor, vec4(gl_FragColor.a));
+// E gamma
+  ////gl_FragColor = RETURN_COLOR (vec4(pow(clamp(gl_FragColor.rgb,0.0,1.0), vec3(InverseGamma)),gl_FragColor.a));
+gl_FragColor = RETURN_COLOR (gl_FragColor);
+
+}
+

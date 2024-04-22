@@ -1,0 +1,1484 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+<ResourceDictionary
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:CustomControls="clr-namespace:CustomControls"
+	xmlns:ContentBrowser="clr-namespace:ContentBrowser" 
+	xmlns:AssetVisualValueConverters="clr-namespace:ContentBrowser.AssetVisualValueConverters"
+	xmlns:AssetItemToolTipValueConverters="clr-namespace:ContentBrowser.AssetItemToolTipValueConverters"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
+	>
+
+
+	<!--                                                                       -->
+	<!--   NOTES:                                                              -->
+	<!--     * Must use DynamicResource to find resources defines in           -->
+	<!--       ContentBrowserStyles.xaml.                                      -->
+	<!--                                                                       -->
+ 
+
+
+
+	<BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
+	<CustomControls:NegatedBooleanToVisibilityConverter x:Key="NegatedBoolToVisConverter" />
+
+	<!-- Converts an empty string to 'collapsed' visibility -->
+	<AssetItemToolTipValueConverters:EmptyStringToCollapsedVisibility x:Key="EmptyStringToCollapsedVisibility"/>
+	
+	<!-- Collapsing/Expanding animations -->
+	<!-- NOTE: These expect that your target has its LayoutTransform set to a TransformGroup with a Scale -->
+	<Storyboard x:Key="HorizCollapse">
+		<ObjectAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.Visibility)">
+			<DiscreteObjectKeyFrame KeyTime="00:00:00.100" Value="{x:Static Visibility.Collapsed}"/>
+		</ObjectAnimationUsingKeyFrames>
+		<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(FrameworkElement.LayoutTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+			<SplineDoubleKeyFrame KeyTime="00:00:00.100" Value="0"/>
+		</DoubleAnimationUsingKeyFrames>
+	</Storyboard>
+	<Storyboard x:Key="HorizExpand">
+		<ObjectAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.Visibility)">
+			<DiscreteObjectKeyFrame KeyTime="00:00:00" Value="{x:Static Visibility.Visible}"/>
+		</ObjectAnimationUsingKeyFrames>
+		<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(FrameworkElement.LayoutTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+			<SplineDoubleKeyFrame KeyTime="00:00:00.100" Value="1"/>
+		</DoubleAnimationUsingKeyFrames>
+	</Storyboard>
+	<Storyboard x:Key="VertCollapse">
+		<ObjectAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.Visibility)">
+			<DiscreteObjectKeyFrame KeyTime="00:00:00.100" Value="{x:Static Visibility.Collapsed}"/>
+		</ObjectAnimationUsingKeyFrames>
+		<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(FrameworkElement.LayoutTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+			<SplineDoubleKeyFrame KeyTime="00:00:00.100" Value="0"/>
+		</DoubleAnimationUsingKeyFrames>
+	</Storyboard>
+	<Storyboard x:Key="VertExpand">
+		<ObjectAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.Visibility)">
+			<DiscreteObjectKeyFrame KeyTime="00:00:00" Value="{x:Static Visibility.Visible}"/>
+		</ObjectAnimationUsingKeyFrames>
+		<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(FrameworkElement.LayoutTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+			<SplineDoubleKeyFrame KeyTime="00:00:00.100" Value="1"/>
+		</DoubleAnimationUsingKeyFrames>
+	</Storyboard>
+
+
+	<!--                                                                     -->
+	<!-- CellSizer Control                                                   -->
+	<!--                                                                     -->
+	
+	<!-- The CellSizer depends on 4 thumbnails -->
+	<Style TargetType="{x:Type CustomControls:CellSizer}">
+		<!-- This property needs to be set in order to support animated collapsing -->
+		<Setter Property="LayoutTransform">
+			<Setter.Value>
+				<TransformGroup>
+					<ScaleTransform ScaleX="1" ScaleY="1"/>
+				</TransformGroup>
+			</Setter.Value>
+		</Setter>
+		
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type CustomControls:CellSizer}">
+					<Grid Background="{TemplateBinding Background}">
+						<!-- Lay out a 3x3 grid.-->
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto"/>
+							<RowDefinition Height="*"/>
+							<RowDefinition Height="Auto"/>
+						</Grid.RowDefinitions>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto"/>
+							<ColumnDefinition Width="*"/>
+							<ColumnDefinition Width="Auto"/>
+						</Grid.ColumnDefinitions>
+
+						<!-- North resizer -->
+						<Thumb x:Name="PART_N" Height="{TemplateBinding GripSize}" Cursor="SizeNS" Grid.Column="1" Grid.Row="0" />
+
+						<!-- West resizer -->
+						<Thumb x:Name="PART_W" Width="{TemplateBinding GripSize}" Cursor="SizeWE" Grid.Column="0" Grid.Row="1" />
+
+						<!-- Contents. Note: this cell stretches Width="*" Height="*" -->
+						<ContentPresenter Grid.Column="1" Grid.Row="1" />
+
+						<!-- East Resizer -->
+						<Thumb x:Name="PART_E" Width="{TemplateBinding GripSize}" Cursor="SizeWE" Grid.Column="2" Grid.Row="1" />
+
+						<!-- South Resizer -->
+						<Thumb x:Name="PART_S" Height="{TemplateBinding GripSize}" Cursor="SizeNS" Grid.Column="1" Grid.Row="2" />
+					</Grid>
+					<!-- Control templates play an animation to expand/collapse the control when the IsCollapsed property is changed. -->
+					<!-- The animation is chosen by the ResizeDirection. -->
+					<ControlTemplate.Triggers>
+						<MultiTrigger>
+							<MultiTrigger.ExitActions>
+								<BeginStoryboard Storyboard="{StaticResource VertExpand}" x:Name="VertExpand_BeginStoryboard"/>
+							</MultiTrigger.ExitActions>
+							<MultiTrigger.EnterActions>
+								<BeginStoryboard Storyboard="{StaticResource VertCollapse}" x:Name="VertCollapse_BeginStoryboard"/>
+							</MultiTrigger.EnterActions>
+							<MultiTrigger.Conditions>
+								<Condition Property="IsCollapsed" Value="True"/>
+								<Condition Property="ResizeDirection" Value="North"/>
+							</MultiTrigger.Conditions>
+						</MultiTrigger>
+						<MultiTrigger>
+							<MultiTrigger.ExitActions>
+								<BeginStoryboard Storyboard="{StaticResource VertExpand}" x:Name="HorizCollapse_BeginStoryboard"/>
+							</MultiTrigger.ExitActions>
+							<MultiTrigger.EnterActions>
+								<BeginStoryboard Storyboard="{StaticResource VertCollapse}" x:Name="VertCollapse_BeginStoryboard1"/>
+							</MultiTrigger.EnterActions>
+							<MultiTrigger.Conditions>
+								<Condition Property="IsCollapsed" Value="True"/>
+								<Condition Property="ResizeDirection" Value="South"/>
+							</MultiTrigger.Conditions>
+						</MultiTrigger>
+						<MultiTrigger>
+							<MultiTrigger.ExitActions>
+								<BeginStoryboard Storyboard="{StaticResource HorizExpand}" x:Name="HorizExpand_BeginStoryboard"/>
+							</MultiTrigger.ExitActions>
+							<MultiTrigger.EnterActions>
+								<BeginStoryboard Storyboard="{StaticResource HorizCollapse}"/>
+							</MultiTrigger.EnterActions>
+							<MultiTrigger.Conditions>
+								<Condition Property="IsCollapsed" Value="True"/>
+								<Condition Property="ResizeDirection" Value="East"/>
+							</MultiTrigger.Conditions>
+						</MultiTrigger>
+						<MultiTrigger>
+							<MultiTrigger.ExitActions>
+								<BeginStoryboard Storyboard="{StaticResource HorizExpand}" x:Name="HorizExpand_BeginStoryboard1"/>
+							</MultiTrigger.ExitActions>
+							<MultiTrigger.EnterActions>
+								<BeginStoryboard Storyboard="{StaticResource HorizCollapse}"/>
+							</MultiTrigger.EnterActions>
+							<MultiTrigger.Conditions>
+								<Condition Property="IsCollapsed" Value="True"/>
+								<Condition Property="ResizeDirection" Value="West"/>
+							</MultiTrigger.Conditions>
+						</MultiTrigger>
+						<Trigger Property="IsCollapsed" Value="True">
+							<Setter Property="Visibility" Value="Collapsed" />
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+	<!--                                                                    -->
+	<!-- ExpandoSubpanel Control                                            -->
+	<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  -->
+	<!-- ExpandoSubpanel can only be resized north/south                    -->
+	<Style TargetType="{x:Type CustomControls:ExpandoSubpanel}">
+		<Style.Resources>
+			<!-- Resize grip        						                -->
+			<Style TargetType="{x:Type Thumb}">
+				<Setter Property="Foreground" Value="{DynamicResource Slate_Panel_Highlight}"/>
+				<Setter Property="Opacity" Value="0.0" />
+				<Setter Property="Background" Value="Transparent" />
+				<Setter Property="Padding" Value="5,1,5,1" />
+				<Setter Property="Template">
+					<Setter.Value>
+						<ControlTemplate TargetType="{x:Type Thumb}">
+							<Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}">
+								<Path Data="M0,0 L1,0" StrokeDashArray="4"  Stroke="{TemplateBinding Foreground}" StrokeThickness="2" Stretch="Fill"  Margin="{TemplateBinding Padding}" SnapsToDevicePixels="True" />
+							</Border>
+						</ControlTemplate>
+					</Setter.Value>
+				</Setter>
+				<Style.Triggers>
+					<Trigger Property="IsMouseOver" Value="true">
+						<Setter Property="Foreground" Value="{DynamicResource Slate_Control_Foreground}" />
+						<Setter Property="Opacity" Value="1.0" />
+					</Trigger>
+					<Trigger Property="IsEnabled" Value="false">
+						<Setter Property="Visibility" Value="Hidden" />
+					</Trigger>
+				</Style.Triggers>
+			</Style>
+
+		</Style.Resources>
+		<!-- This property needs to be set in order to support animated collapsing -->
+		<Setter Property="LayoutTransform">
+			<Setter.Value>
+				<TransformGroup>
+					<ScaleTransform ScaleX="1" ScaleY="1"/>
+				</TransformGroup>
+			</Setter.Value>
+		</Setter>
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type CustomControls:ExpandoSubpanel}">
+					<Grid>
+						<!-- Lay out a 3x3 grid.-->
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto"/>
+							<RowDefinition Height="*"/>
+							<RowDefinition Height="Auto"/>
+						</Grid.RowDefinitions>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto"/>
+							<ColumnDefinition Width="*"/>
+							<ColumnDefinition Width="Auto"/>
+						</Grid.ColumnDefinitions>
+
+						<!-- North resizer -->
+						<DockPanel LastChildFill="True" Grid.Column="1" Grid.Row="0" >
+							<Thumb DockPanel.Dock="Top" x:Name="PART_N" Height="{TemplateBinding GripSize}" Cursor="SizeNS" />
+							<Button Style="{DynamicResource TransparentButton}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Top" DockPanel.Dock="Top" Command="{x:Static CustomControls:ExpandoSubpanel.ToggleExpansionCommand}">
+								<ContentPresenter x:Name="PART_Header" ContentSource="Header" />
+							</Button>
+						</DockPanel>
+
+						<!-- Contents. Note: this cell stretches Width="*" Height="*" -->
+						<CustomControls:SlateBorder Background="{TemplateBinding Background}"  Grid.Column="1" Grid.Row="1">
+							<ContentPresenter x:Name="ContentArea" />
+						</CustomControls:SlateBorder>
+
+						<!-- South Resizer -->
+						<Thumb x:Name="PART_S" Height="{TemplateBinding GripSize}" Cursor="SizeNS" Grid.Column="1" Grid.Row="2" />
+					</Grid>
+					<ControlTemplate.Triggers>
+						<Trigger Property="IsCollapsed" Value="True">
+							<Setter Property="Visibility" TargetName="ContentArea" Value="Collapsed" />
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+	<!--															-->
+	<!-- Unreal text box: adds gray hint text and a clear button	-->
+	<!--															-->
+	<Style TargetType="{x:Type CustomControls:UnrealTextBox}">
+		<Style.Resources>
+			<!-- Remove the default border from the textbox -->
+			<Style TargetType="{x:Type TextBox}">
+				<Setter Property="BorderThickness" Value="0" />
+			</Style>
+		</Style.Resources>
+
+		<Setter Property="SnapsToDevicePixels" Value="True" />
+		<Setter Property="BorderBrush" Value="{DynamicResource Slate_Panel_Shadow}" />
+		<Setter Property="BorderThickness" Value="1" />
+		<Setter Property="Foreground" Value="{DynamicResource Slate_Control_Foreground}"/>
+		<Setter Property="Background" Value="{DynamicResource Slate_TextArea_Background}"/>
+		<Setter Property="Padding" Value="1"/>
+		<Setter Property="KeyboardNavigation.TabNavigation" Value="None"/>
+		<Setter Property="HorizontalContentAlignment" Value="Left"/>
+		<Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+		<Setter Property="AllowDrop" Value="true"/>
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type CustomControls:UnrealTextBox}">
+					<Border x:Name="Bd"
+							BorderBrush="{TemplateBinding BorderBrush}"
+							BorderThickness="{TemplateBinding BorderThickness}"
+							Background="{TemplateBinding Background}"
+							SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}">
+						<Grid Margin="{TemplateBinding Padding}">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="Auto" />
+							</Grid.ColumnDefinitions>
+
+							<!-- Show the decorated textbox -->
+							<ScrollViewer x:Name="PART_ContentHost" Grid.Column="0" />
+
+							<!-- Hint text that appears when there is no text in the decorated Textbox -->
+							<TextBlock Grid.Column="0"
+									   Foreground="{DynamicResource Slate_Control_Foreground}"
+									   Opacity="0.25"
+									   Text="{TemplateBinding HintText}"
+									   IsHitTestVisible="False"
+									   Focusable="False"
+									   Visibility="{TemplateBinding CustomControls:UnrealTextBox.HintTextVisibility}"
+									   HorizontalAlignment="{TemplateBinding HintTextAlignment}"
+									   VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+
+
+							<Button Grid.Column="1"
+									VerticalAlignment="Center" 
+									Focusable="False"
+									Margin="1"
+									IsEnabled="{TemplateBinding CanClearText}"
+									Visibility="{TemplateBinding ShowClearButton, Converter={StaticResource BoolToVisConverter}}"
+									Command="{x:Static CustomControls:UnrealTextBox.ClearTextCommand}"
+									Style="{DynamicResource XButton}"/>
+						</Grid>
+					</Border>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+
+	<!-- Switcher control default theme -->
+	<Style TargetType="{x:Type CustomControls:Switcher}">
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type CustomControls:Switcher}">
+					<Border Background="{TemplateBinding Background}"
+							BorderBrush="{TemplateBinding BorderBrush}"
+							BorderThickness="{TemplateBinding BorderThickness}"
+							Width="{TemplateBinding Width}"
+							Height="{TemplateBinding Height}">
+
+						<ContentPresenter x:Name="ContentSite" Content="{TemplateBinding SelectedItem}" />
+
+					</Border>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+	
+	
+	<!-- Default appearance for a TagVisual -->
+	<Style TargetType="{x:Type CustomControls:TagVisual}">
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type CustomControls:TagVisual}">
+					<Border SnapsToDevicePixels="True" x:Name="TagBorder" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Slate_ListItem_Separator}" HorizontalAlignment="Stretch">
+						<DockPanel>
+							<Image x:Name="TagIcon" Source="{DynamicResource imgTagFullypresent}" Width="16" Height="16" Margin="0,0,3,0" DockPanel.Dock="Left" HorizontalAlignment="Left" SnapsToDevicePixels="true"/>
+							<Button Command="{x:Static CustomControls:TagVisual.ClickCommand}"
+									Content="Button"
+									Style="{DynamicResource RemoveTagButton}"
+									Width="16"
+									Height="16"
+									x:Name="button"
+									Margin="0,0,5,0"
+									DockPanel.Dock="Right" />
+			  <TextBlock Margin="2,0,0,0" Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=AssetTag.FormattedFullName}" x:Name="TagText" />
+						</DockPanel>
+					</Border>
+					<ControlTemplate.Triggers>
+						<Trigger Property="IsSemiPresent" Value="True">
+							<Setter Property="Source" TargetName="TagIcon" Value="{DynamicResource imgTagSemipresent}" />
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+	
+	
+	<!-- AssetVisual control default theme -->
+	<Style TargetType="{x:Type ContentBrowser:AssetVisual}">
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type ContentBrowser:AssetVisual}">
+					<ControlTemplate.Resources>
+						
+						<Geometry x:Key="QuarantinedSymbol">M 9.2481715,0.07350165 C 7.2526176,1.4218277 5.9164742,3.8908697 5.9164742,6.7140437 5.9164742,8.0619649 6.221354,9.3261317 6.7570126,10.429271 5.0599811,10.469771 3.3742649,11.221856 2.0792363,12.688766 0.3168492,14.685092 -0.2808721,17.501948 0.2885253,20.053691 0.0747471,18.150191 0.6047878,16.166501 1.8873744,14.713685 4.1001788,12.207221 7.707214,12.229982 9.9425295,14.762285 10.227327,15.084908 10.475902,15.43418 10.688662,15.800624 L 11.340384,15.06239 C 11.241302,14.807726 11.185062,14.527304 11.185062,14.231087 11.185062,13.23746 11.803523,12.407615 12.628595,12.20957 L 12.628595,11.543831 C 9.5334985,11.4587 7.0463268,8.6219987 7.0463268,5.1309797 7.0463268,3.0764147 7.9087366,1.2485687 9.2481715,0.07382565 L 9.2481715,0.07350165 z M 16.517607,0.28045665 C 17.727309,1.4573057 18.494086,3.1938647 18.494086,5.1306557 18.494086,8.4748217 16.214072,11.219507 13.301638,11.519369 L 13.301638,12.191993 C 14.169959,12.350672 14.833483,13.202387 14.833483,14.230763 14.833483,14.52698 14.777245,14.807402 14.678173,15.062066 L 15.278118,15.741656 C 15.302435,15.691436 15.325593,15.640163 15.351205,15.589862 16.931814,12.488858 20.409964,11.409695 23.120092,13.182056 24.690929,14.209379 25.65689,15.96878 25.88534,17.870093 25.852284,15.238403 24.632934,12.692897 22.474463,11.28131 21.316985,10.524365 20.045264,10.197854 18.801679,10.253339 19.285633,9.1923197 19.559984,7.9906849 19.559984,6.7140437 19.559984,4.0305137 18.350848,1.6657187 16.517607,0.28045665 z M 13.112824,7.1693447 C 11.556555,7.1693447 10.137335,7.8293329 9.0563085,8.9114117 9.3452135,9.2654627 9.6751035,9.5783657 10.036939,9.8393477 10.86902,9.0762467 11.928127,8.6181917 13.082369,8.6181917 14.088109,8.6181917 15.021627,8.9658437 15.795837,9.5599787 16.145785,9.2560667 16.458376,8.9007197 16.724697,8.5043867 15.711502,7.6657939 14.46393,7.1693447 13.112824,7.1693447 z M 19.203675,13.32008 C 18.757182,13.432913 18.324244,13.615892 17.918506,13.865048 17.921422,13.942808 17.924581,14.021135 17.924581,14.099624 17.924581,16.230086 16.851158,18.075995 15.284191,18.984329 15.293546,19.504835 15.367332,20.022263 15.500421,20.515958 15.500508,20.515958 15.503337,20.515958 15.503337,20.515958 17.70233,19.460204 19.243119,16.988894 19.243119,14.113475 19.243119,13.845284 19.229665,13.580333 19.203534,13.32008 L 19.203675,13.32008 z M 6.9884644,13.854761 C 6.9857104,13.940378 6.9823084,14.027048 6.9823084,14.113475 6.9823084,17.003069 8.5392735,19.482803 10.755596,20.529728 10.850155,20.015135 10.878856,19.48742 10.843909,18.963593 9.3718375,18.092519 8.3426165,16.390628 8.246161,14.406695 7.8449698,14.156324 7.422716,13.970915 6.9883996,13.854761 L 6.9884644,13.854761 z M 14.294447,15.700265 C 13.96483,16.070192 13.509946,16.297073 13.009277,16.297073 12.510149,16.297073 12.056513,16.071569 11.727148,15.703748 L 11.035841,16.486775 C 12.090163,18.900818 11.741609,21.889799 9.9821195,23.882804 8.7730825,25.252271 7.1471329,25.865117 5.5571138,25.728308 7.7181643,26.217143 10.048929,25.51463 11.724108,23.617124 12.269117,22.999823 12.702484,22.303385 13.0245,21.561182 13.603726,22.814738 14.490924,23.906051 15.652707,24.665831 17.704371,26.007596 20.118054,26.002655 22.093782,24.896924 20.589204,25.495271 18.878491,25.378955 17.397733,24.4106 14.93889,22.802507 13.954228,19.405286 14.973573,16.473005 L 14.294447,15.700265 z</Geometry>
+						
+						<Storyboard  x:Key="AddHoverCue" >
+							<ObjectAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverCueBorder" Storyboard.TargetProperty="(UIElement.Visibility)" Duration="00:00:00.0010000">
+								<DiscreteObjectKeyFrame KeyTime="00:00:00" Value="{x:Static Visibility.Visible}"/>
+							</ObjectAnimationUsingKeyFrames>
+							<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverCueBorder" Storyboard.TargetProperty="(Shape.Stroke).(SolidColorBrush.Color)">
+								<SplineColorKeyFrame KeyTime="00:00:00.1000000" Value="#99D9820C"/>
+							</ColorAnimationUsingKeyFrames>
+						</Storyboard>
+						<Storyboard x:Key="RemoveHoverCue">
+							<ObjectAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverCueBorder" Storyboard.TargetProperty="(UIElement.Visibility)">
+								<DiscreteObjectKeyFrame KeyTime="00:00:00.4000000" Value="{x:Static Visibility.Hidden}"/>
+							</ObjectAnimationUsingKeyFrames>
+							<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverCueBorder" Storyboard.TargetProperty="(Shape.Stroke).(SolidColorBrush.Color)">
+								<SplineColorKeyFrame KeyTime="00:00:00.4000000" Value="#00D9820C"/>
+							</ColorAnimationUsingKeyFrames>
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="Border" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00.0000000" Value="1"/>
+							</DoubleAnimationUsingKeyFrames>
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="Border" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00.0000000" Value="1"/>
+							</DoubleAnimationUsingKeyFrames>
+						</Storyboard>
+						<Storyboard x:Key="AddSelectionCue">
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="SelectionCueBorder" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00" Value="1.15"/>
+								<SplineDoubleKeyFrame KeyTime="00:00:00.2000000" Value="1" KeySpline="1,0,0.836,0.916"/>
+							</DoubleAnimationUsingKeyFrames>
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="SelectionCueBorder" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00" Value="1.15"/>
+								<SplineDoubleKeyFrame KeyTime="00:00:00.2000000" Value="1" KeySpline="1,0,0.836,0.916"/>
+							</DoubleAnimationUsingKeyFrames>
+							<ObjectAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="SelectionCueBorder" Storyboard.TargetProperty="(UIElement.Visibility)" Duration="00:00:00.0010000">
+								<DiscreteObjectKeyFrame KeyTime="00:00:00" Value="{x:Static Visibility.Visible}"/>
+							</ObjectAnimationUsingKeyFrames>
+							<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="SelectionCueBorder" Storyboard.TargetProperty="(Shape.Stroke).(SolidColorBrush.Color)">
+								<SplineColorKeyFrame KeyTime="00:00:00.2000000" Value="#FFFFFF00"/>
+							</ColorAnimationUsingKeyFrames>
+						</Storyboard>
+						<Storyboard x:Key="RemoveSelectionCue">
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="SelectionCueBorder" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00.1000000" Value="1"/>
+								<SplineDoubleKeyFrame KeyTime="00:00:00.4000000" Value="1.1" KeySpline="0.581,0,0.469,0"/>
+							</DoubleAnimationUsingKeyFrames>
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="SelectionCueBorder" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00.1000000" Value="1"/>
+								<SplineDoubleKeyFrame KeyTime="00:00:00.4000000" Value="1.1" KeySpline="0.581,0,0.469,0"/>
+							</DoubleAnimationUsingKeyFrames>
+							<ObjectAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="SelectionCueBorder" Storyboard.TargetProperty="(UIElement.Visibility)">
+								<DiscreteObjectKeyFrame KeyTime="00:00:00" Value="{x:Static Visibility.Visible}"/>
+								<DiscreteObjectKeyFrame KeyTime="00:00:00.4000000">
+									<DiscreteObjectKeyFrame.Value>
+										<Visibility>Hidden</Visibility>
+									</DiscreteObjectKeyFrame.Value>
+								</DiscreteObjectKeyFrame>
+							</ObjectAnimationUsingKeyFrames>
+							<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="SelectionCueBorder" Storyboard.TargetProperty="(Shape.Stroke).(SolidColorBrush.Color)">
+								<SplineColorKeyFrame KeyTime="00:00:00" Value="#FFFFFF00"/>
+								<SplineColorKeyFrame KeyTime="00:00:00.4000000" Value="#00FFFF00" KeySpline="0.2,0.796,1,1"/>
+							</ColorAnimationUsingKeyFrames>
+						</Storyboard>
+						<Storyboard x:Key="PressButton">
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="Border" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00.0170000" Value="0.975"/>
+							</DoubleAnimationUsingKeyFrames>
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="Border" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00.0170000" Value="0.975"/>
+							</DoubleAnimationUsingKeyFrames>
+						</Storyboard>
+						<Storyboard x:Key="ReleaseButton">
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="Border" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00.0500000" Value="1"/>
+							</DoubleAnimationUsingKeyFrames>
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="Border" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00.0500000" Value="1"/>
+							</DoubleAnimationUsingKeyFrames>
+						</Storyboard>
+						<Storyboard x:Key="DoubleClickButton">
+							<ObjectAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="ActivationOverlay" Storyboard.TargetProperty="(UIElement.Visibility)">
+								<DiscreteObjectKeyFrame KeyTime="00:00:00" Value="{x:Static Visibility.Visible}"/>
+								<DiscreteObjectKeyFrame KeyTime="00:00:00.3000000" Value="{x:Static Visibility.Hidden}"/>
+							</ObjectAnimationUsingKeyFrames>
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="ActivationOverlay" Storyboard.TargetProperty="(UIElement.Opacity)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00" Value="0"/>
+								<SplineDoubleKeyFrame KeyTime="00:00:00.1000000" Value="0.975"/>
+								<SplineDoubleKeyFrame KeyTime="00:00:00.3000000" Value="0"/>
+							</DoubleAnimationUsingKeyFrames>
+						</Storyboard>
+					
+					</ControlTemplate.Resources>
+
+					<Grid>
+						<Grid.RowDefinitions>
+							<RowDefinition/>
+							
+							<!-- NOTE: This should match the extra space added to DefaultVisualThumbnailHeight (minus 2) -->
+							<RowDefinition Height="46"/>
+							
+						</Grid.RowDefinitions>
+						<Border x:Name="Border" 								
+							BorderThickness="1,1,1,1"
+							RenderTransformOrigin="0.5,0.5" BorderBrush="#97000000" Opacity="1" Padding="0,0,0,0" Margin="10,0,10,0">
+
+							<Border.RenderTransform>
+								<TransformGroup>
+									<ScaleTransform ScaleX="1" ScaleY="1"/>
+									<SkewTransform AngleX="0" AngleY="0"/>
+									<RotateTransform Angle="0"/>
+									<TranslateTransform X="0" Y="0"/>
+								</TransformGroup>
+							</Border.RenderTransform>
+							
+							<Grid RenderTransformOrigin="0.5,0.5">
+								<Grid.RenderTransform>
+									<TransformGroup>
+										<ScaleTransform ScaleX="1" ScaleY="1"/>
+										<SkewTransform AngleX="0" AngleY="0"/>
+										<RotateTransform Angle="0"/>
+										<TranslateTransform X="0" Y="0"/>
+									</TransformGroup>
+								</Grid.RenderTransform>
+								
+								<!-- Note that for Width and Height, we're binding to the AssetCanvas's properties for thumbnail dimensions -->
+								<Image Stretch="Uniform" Source="{TemplateBinding Thumbnail}" Width="{Binding Path=VisualThumbnailWidth}" Height="{Binding Path=VisualThumbnailHeight}" x:Name="Thumbnail"/>
+
+								<Rectangle x:Name="HighlightStroke" Panel.ZIndex="10" StrokeThickness="{Binding Path=VisualThumnbailHighlightBorderThickness}">
+									<Rectangle.Stroke>
+										<LinearGradientBrush EndPoint="0.75,1" StartPoint="0.25,0">
+											<GradientStop Color="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=ObjectTypeHighlightColor}" Offset="0.2"/>
+											<GradientStop Color="#C7000000" Offset="1"/>
+										</LinearGradientBrush>
+									</Rectangle.Stroke>
+								</Rectangle>
+								<Rectangle Fill="#FFFFFFFF" Stroke="#FF000000" Panel.ZIndex="5" Visibility="Hidden" x:Name="ActivationOverlay" IsHitTestVisible="False"/>
+								<StackPanel Grid.Row="0">
+										<TextBlock Padding="5,5,5,5" HorizontalAlignment="Center" VerticalAlignment="Center" Text="{TemplateBinding ObjectTypeLabel}" Foreground="#7EFFFFFF" FontSize="{TemplateBinding ContentBrowser:AssetVisual.DynamicObjectTypeLabelFontSize}" IsHitTestVisible="False" />
+										<TextBlock Padding="5,10,5,5" HorizontalAlignment="Center" VerticalAlignment="Center" Text="{DynamicResource AssetVisual_NotVerifiedYetWarning}" Foreground="#FFFFD300" FontSize="{TemplateBinding ContentBrowser:AssetVisual.DynamicObjectTypeLabelFontSize}" IsHitTestVisible="False" Visibility="{TemplateBinding IsVerified, Converter={StaticResource NegatedBoolToVisConverter}}"/>
+										<!-- Add some empty strings to push the warning messages to the bottom of the thumbnail -->
+										<TextBlock Padding="5,5,5,5" HorizontalAlignment="Center" VerticalAlignment="Center" Text="" Foreground="#00000000" FontSize="{TemplateBinding ContentBrowser:AssetVisual.DynamicWarningLabelFontSize}" IsHitTestVisible="False"/>
+										<TextBlock Padding="5,5,5,5" HorizontalAlignment="Center" VerticalAlignment="Center" Text="" Foreground="#00000000" FontSize="{TemplateBinding ContentBrowser:AssetVisual.DynamicWarningLabelFontSize}" IsHitTestVisible="False"/>
+										<TextBlock Padding="5,5,5,5" HorizontalAlignment="Center" VerticalAlignment="Center" Text="" Foreground="#00000000" FontSize="{TemplateBinding ContentBrowser:AssetVisual.DynamicWarningLabelFontSize}" IsHitTestVisible="False"/>
+										<TextBlock Padding="5,5,5,5" HorizontalAlignment="Center" VerticalAlignment="Center" Text="" Foreground="#00000000" FontSize="{TemplateBinding ContentBrowser:AssetVisual.DynamicWarningLabelFontSize}" IsHitTestVisible="False"/>
+										<TextBlock Padding="5,5,5,5" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Text="{TemplateBinding WarningLabel}" Foreground="#FFFFBB00" FontSize="{TemplateBinding ContentBrowser:AssetVisual.DynamicWarningLabelFontSize}" IsHitTestVisible="False"/>
+								</StackPanel>
+								<Rectangle Grid.Row="0" x:Name="HoverCueBorder" Stroke="#00D9820C" StrokeThickness="3" Panel.ZIndex="15" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5" Visibility="Hidden" Margin="-4,-4,-4,-4" >
+									<Rectangle.RenderTransform>
+										<TransformGroup>
+											<ScaleTransform ScaleX="1" ScaleY="1"/>
+											<SkewTransform AngleX="0" AngleY="0"/>
+											<RotateTransform Angle="0"/>
+											<TranslateTransform X="0" Y="0"/>
+										</TransformGroup>
+									</Rectangle.RenderTransform>
+								</Rectangle>
+								<Rectangle Grid.Row="0" x:Name="SelectionCueBorder" StrokeDashArray="{TemplateBinding SelectionStrokeDashArray}" Stroke="#00FFFF00" StrokeThickness="4" Panel.ZIndex="20" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False" Visibility="Hidden" Margin="-5,-5,-5,-5" >
+									<Rectangle.RenderTransform>
+										<TransformGroup>
+											<ScaleTransform ScaleX="1.05" ScaleY="1.05"/>
+											<SkewTransform AngleX="0" AngleY="0"/>
+											<RotateTransform Angle="0"/>
+											<TranslateTransform X="0" Y="0"/>
+										</TransformGroup>
+									</Rectangle.RenderTransform>
+								</Rectangle>
+								
+								<!-- Hacky-but-fast drop shadow image -->
+								<Image Source="pack://application:,,,/UnrealEdCSharp;Component/images/TightDropShadow.png" RenderTransformOrigin="0.5,0.5" Opacity="0.75" Panel.ZIndex="-10" Stretch="Fill" IsHitTestVisible="False" x:Name="ThumbnailDropShadow">
+									<Image.RenderTransform>
+										<TransformGroup>
+											<ScaleTransform ScaleX="1.15" ScaleY="1.15"/>
+											<SkewTransform AngleX="0" AngleY="0"/>
+											<RotateTransform Angle="0"/>
+											<TranslateTransform X="1.1" Y="1.1"/>
+										</TransformGroup>
+									</Image.RenderTransform>
+								</Image>
+								
+								<!-- Simple button that you an click to load the asset -->
+								<ContentBrowser:AssetVisualLoadAssetButton x:Name="PART_LoadAssetButton" Focusable="False" VerticalAlignment="Bottom"  Margin="4,0,0,4" HorizontalAlignment="Left" Visibility="{TemplateBinding ShouldShowLoadAssetButton, Converter={StaticResource BoolToVisConverter}}" Width="14" Height="14" Panel.ZIndex="2"/>
+								<Rectangle Fill="#FF000000" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" x:Name="ThumbnailBackgroundRect" Panel.ZIndex="-5"/>
+
+								<Canvas Width="32" Height="32" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="3" Visibility="{TemplateBinding IsQuarantined, Converter={StaticResource BoolToVisConverter}}" >
+									<Ellipse Width="32" Height="32" Fill="{DynamicResource Slate_Warning_Background}" Stroke="{DynamicResource Slate_Warning_Foreground}" StrokeThickness="2" />
+									<Path Width="32" Height="32" Canvas.Left="3" Canvas.Top="2" Data="{StaticResource QuarantinedSymbol}" StrokeLineJoin="Bevel" Fill="{DynamicResource Slate_Warning_Foreground}" />
+								</Canvas>
+								
+							</Grid>
+						</Border>
+						<StackPanel Grid.Row="1" IsHitTestVisible="False" >
+							<TextBlock Text="{TemplateBinding Label}" FontSize="{TemplateBinding ContentBrowser:AssetVisual.DynamicLabelFontSize}" Foreground="#FFFFFFFF" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" IsHitTestVisible="False" Margin="0,3,0,0" />
+							<TextBlock TextTrimming="CharacterEllipsis" Text="{TemplateBinding CustomLabel}" FontSize="{TemplateBinding ContentBrowser:AssetVisual.DynamicLabelFontSize}" Foreground="#FFC0C0C0" Visibility="{TemplateBinding CustomLabel, Converter={StaticResource EmptyStringToCollapsedVisibility}}" HorizontalAlignment="Center" IsHitTestVisible="False"/>
+						</StackPanel>
+					</Grid>
+					<ControlTemplate.Triggers>
+						<EventTrigger RoutedEvent="Control.PreviewMouseDoubleClick">
+							<BeginStoryboard Storyboard="{StaticResource DoubleClickButton}" x:Name="DoubleClickButton_BeginStoryboard"/>
+						</EventTrigger>
+						<EventTrigger RoutedEvent="UIElement.PreviewMouseLeftButtonUp">
+							<BeginStoryboard Storyboard="{StaticResource ReleaseButton}" x:Name="ReleaseButton_BeginStoryboard"/>
+						</EventTrigger>
+						<EventTrigger RoutedEvent="UIElement.PreviewMouseLeftButtonDown">
+							<BeginStoryboard x:Name="PressButton_BeginStoryboard" Storyboard="{StaticResource PressButton}"/>
+						</EventTrigger>
+						<EventTrigger RoutedEvent="Mouse.MouseEnter">
+							<BeginStoryboard Storyboard="{StaticResource AddHoverCue}" x:Name="AddHoverCue_BeginStoryboard"/>
+						</EventTrigger>
+						<EventTrigger RoutedEvent="Mouse.MouseLeave">
+							<BeginStoryboard Storyboard="{StaticResource RemoveHoverCue}" x:Name="RemoveHoverCue_BeginStoryboard"/>
+						</EventTrigger>
+						<Trigger Property="VisualState" Value="DeselectedInteractively">
+							<Trigger.EnterActions>
+								<BeginStoryboard Storyboard="{StaticResource RemoveSelectionCue}" x:Name="RemoveSelectionCue_BeginStoryboard"/>
+							</Trigger.EnterActions>
+							<Trigger.ExitActions>
+								<RemoveStoryboard BeginStoryboardName="RemoveSelectionCue_BeginStoryboard"/>
+							</Trigger.ExitActions>
+						</Trigger>
+						<Trigger Property="VisualState" Value="SelectedInteractively">
+							<Trigger.EnterActions>
+								<BeginStoryboard Storyboard="{StaticResource AddSelectionCue}" x:Name="AddSelectionCue_BeginStoryboard" />
+							</Trigger.EnterActions>
+							<Trigger.ExitActions>
+								<RemoveStoryboard BeginStoryboardName="AddSelectionCue_BeginStoryboard"/>
+							</Trigger.ExitActions>
+						</Trigger>
+						<Trigger Property="VisualState" Value="Selected">
+							<Trigger.EnterActions>
+								<BeginStoryboard x:Name="AddSelectionCue_BeginStoryboard1" Storyboard="{StaticResource AddSelectionCue}"/>
+								<SkipStoryboardToFill BeginStoryboardName="AddSelectionCue_BeginStoryboard1"/>
+							</Trigger.EnterActions>
+							<Trigger.ExitActions>
+								<RemoveStoryboard BeginStoryboardName="AddSelectionCue_BeginStoryboard1"/>
+							</Trigger.ExitActions>
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+		<Setter Property="Focusable" Value="False"/>
+		<Setter Property="IsTabStop" Value="False"/>
+	</Style>
+
+
+
+
+	<!-- AssetVisual "load asset button" control default theme -->
+	<Style TargetType="{x:Type ContentBrowser:AssetVisualLoadAssetButton}">
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type ContentBrowser:AssetVisualLoadAssetButton}">
+					<ControlTemplate.Resources>
+						<Storyboard x:Key="OnMouseEnter1">
+							<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="ButtonRect" Storyboard.TargetProperty="(Shape.Fill).(GradientBrush.GradientStops)[2].(GradientStop.Color)">
+								<SplineColorKeyFrame KeyTime="00:00:00.1000000" Value="#FF404040"/>
+							</ColorAnimationUsingKeyFrames>
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="ButtonRect" Storyboard.TargetProperty="(Shape.Fill).(GradientBrush.GradientStops)[3].(GradientStop.Offset)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00.1000000" Value="0.9"/>
+							</DoubleAnimationUsingKeyFrames>
+							<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="ButtonRect" Storyboard.TargetProperty="(Shape.Fill).(GradientBrush.GradientStops)[3].(GradientStop.Color)">
+								<SplineColorKeyFrame KeyTime="00:00:00.1000000" Value="#FF515151"/>
+							</ColorAnimationUsingKeyFrames>
+						</Storyboard>
+						<Storyboard x:Key="OnMouseLeave1">
+							<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="ButtonRect" Storyboard.TargetProperty="(Shape.Fill).(GradientBrush.GradientStops)[2].(GradientStop.Color)">
+								<SplineColorKeyFrame KeyTime="00:00:00.4000000" Value="#96404040"/>
+							</ColorAnimationUsingKeyFrames>
+							<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="ButtonRect" Storyboard.TargetProperty="(Shape.Fill).(GradientBrush.GradientStops)[3].(GradientStop.Color)">
+								<SplineColorKeyFrame KeyTime="00:00:00.4000000" Value="#96515151"/>
+							</ColorAnimationUsingKeyFrames>
+						</Storyboard>
+						<Storyboard x:Key="OnMouseDown1">
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="ButtonGrid" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00.0250000" Value="0.8"/>
+							</DoubleAnimationUsingKeyFrames>
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="ButtonGrid" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00.0250000" Value="0.8"/>
+							</DoubleAnimationUsingKeyFrames>
+						</Storyboard>
+						<Storyboard x:Key="OnMouseUp1">
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="ButtonGrid" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00.0500000" Value="1"/>
+							</DoubleAnimationUsingKeyFrames>
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="ButtonGrid" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+								<SplineDoubleKeyFrame KeyTime="00:00:00.0500000" Value="1"/>
+							</DoubleAnimationUsingKeyFrames>
+						</Storyboard>
+					</ControlTemplate.Resources>
+					<Grid x:Name="ButtonGrid" RenderTransformOrigin="0.5,0.5" >
+						<Grid.RenderTransform>
+							<TransformGroup>
+							<ScaleTransform ScaleX="1" ScaleY="1"/>
+								<SkewTransform AngleX="0" AngleY="0"/>
+								<RotateTransform Angle="0"/>
+								<TranslateTransform X="0" Y="0"/>
+							</TransformGroup>
+						</Grid.RenderTransform>
+						<Rectangle x:Name="ButtonRect" Stroke="#FD000000" RadiusX="2" RadiusY="2">
+							<Rectangle.Fill>
+								<LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+									<GradientStop Color="#97000000" Offset="0"/>
+									<GradientStop Color="#99737373" Offset="1"/>
+									<GradientStop Color="#97404040" Offset="0.098"/>
+									<GradientStop Color="#97515151" Offset="0.904"/>
+								</LinearGradientBrush>
+							</Rectangle.Fill>
+						</Rectangle>
+						<Path Stretch="Fill" Data="M0,0 C0,0 1,1 1,1 L1,0 z" Margin="4,2,2,4" >
+							<Path.Fill>
+								<LinearGradientBrush StartPoint="1,0" EndPoint="0.5,0.5" >
+									<GradientStop Color="#FFFFEED0" Offset="0"/>
+									<GradientStop Color="#FF2E1F06" Offset="0.994"/>
+									<GradientStop Color="#FFB17D1A" Offset="0.357"/>
+									<GradientStop Color="#FFB77C15" Offset="0.872"/>
+									<GradientStop Color="#FFF1BC5D" Offset="0.055"/>
+								</LinearGradientBrush>
+							</Path.Fill>
+						</Path>
+					</Grid>
+					<ControlTemplate.Triggers>
+						<EventTrigger RoutedEvent="Mouse.MouseUp">
+							<BeginStoryboard Storyboard="{StaticResource OnMouseUp1}" x:Name="OnMouseUp1_BeginStoryboard"/>
+						</EventTrigger>
+						<EventTrigger RoutedEvent="Mouse.MouseDown">
+							<BeginStoryboard x:Name="OnMouseDown1_BeginStoryboard" Storyboard="{StaticResource OnMouseDown1}"/>
+						</EventTrigger>
+						<EventTrigger RoutedEvent="Mouse.MouseEnter">
+							<BeginStoryboard x:Name="OnMouseEnter1_BeginStoryboard" Storyboard="{StaticResource OnMouseEnter1}"/>
+							<RemoveStoryboard BeginStoryboardName="OnMouseLeave1_BeginStoryboard"/>
+						</EventTrigger>
+						<EventTrigger RoutedEvent="Mouse.MouseLeave">
+							<BeginStoryboard x:Name="OnMouseLeave1_BeginStoryboard" Storyboard="{StaticResource OnMouseLeave1}"/>
+							<RemoveStoryboard BeginStoryboardName="OnMouseEnter1_BeginStoryboard"/>
+						</EventTrigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+
+	<!-- AssetItemToolTip control default theme -->
+	<Style TargetType="{x:Type ContentBrowser:AssetItemToolTip}">
+		<Style.Resources>
+			<Storyboard x:Key="DelayedShowStorybord">
+				<BooleanAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="{x:Null}" Storyboard.TargetProperty="(ContentBrowser:AssetItemToolTip.ToolTipIsVisible)">
+					<DiscreteBooleanKeyFrame KeyTime="00:00:00.1000000" Value="True"/>
+				</BooleanAnimationUsingKeyFrames>
+			</Storyboard>
+			<Storyboard x:Key="DelayedHideStoryboard">
+				<BooleanAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="{x:Null}" Storyboard.TargetProperty="(ContentBrowser:AssetItemToolTip.ToolTipIsVisible)">
+					<DiscreteBooleanKeyFrame KeyTime="00:00:00.1000000" Value="False"/>
+				</BooleanAnimationUsingKeyFrames>
+			</Storyboard>
+		</Style.Resources>
+		<Setter Property="Visibility" Value="Hidden" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type ContentBrowser:AssetItemToolTip}">
+					<ControlTemplate.Resources>
+						<Storyboard x:Key="FadeInStoryboard">
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="{x:Null}" Storyboard.TargetProperty="(ContentBrowser:AssetItemToolTip.Opacity)">
+								<!--<SplineDoubleKeyFrame KeyTime="00:00:00" Value="0"/>-->
+								<SplineDoubleKeyFrame KeyTime="00:00:00.2000000" Value="1"/>
+							</DoubleAnimationUsingKeyFrames>
+							<ObjectAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="{x:Null}" Storyboard.TargetProperty="(ContentBrowser:AssetItemToolTip.Visibility)">
+								<DiscreteObjectKeyFrame KeyTime="00:00:00" Value="{x:Static Visibility.Visible}"/>
+								<DiscreteObjectKeyFrame KeyTime="00:00:00.2000000" Value="{x:Static Visibility.Visible}"/>
+							</ObjectAnimationUsingKeyFrames>
+						</Storyboard>
+						<Storyboard x:Key="FadeOutStoryboard">
+							<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="{x:Null}" Storyboard.TargetProperty="(ContentBrowser:AssetItemToolTip.Opacity)">
+								<!--<SplineDoubleKeyFrame KeyTime="00:00:00" Value="1"/>-->
+								<SplineDoubleKeyFrame KeyTime="00:00:00.3000000" Value="0"/>
+							</DoubleAnimationUsingKeyFrames>
+							<ObjectAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="{x:Null}" Storyboard.TargetProperty="(ContentBrowser:AssetItemToolTip.Visibility)">
+								<DiscreteObjectKeyFrame KeyTime="00:00:00" Value="{x:Static Visibility.Visible}"/>
+								<DiscreteObjectKeyFrame KeyTime="00:00:00.3000000" Value="{x:Static Visibility.Collapsed}" />
+
+							</ObjectAnimationUsingKeyFrames>
+						</Storyboard>
+					</ControlTemplate.Resources>
+						<Grid HorizontalAlignment="Left" VerticalAlignment="Top" Panel.ZIndex="1000000" x:Name="MainGrid" IsHitTestVisible="False">
+							<Grid.Effect>
+								<DropShadowEffect ShadowDepth="4" Opacity="1" BlurRadius="7" Color="#FF000000"/>
+							</Grid.Effect>
+							<Border x:Name="Border"
+								BorderThickness="1,1,1,1" IsHitTestVisible="False" Background="#B3000000">
+								<Border.BorderBrush>
+									<SolidColorBrush Color="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=ObjectTypeHighlightColor}"/>
+								</Border.BorderBrush>
+								<StackPanel>
+									<Grid IsHitTestVisible="False">
+										<Grid.ColumnDefinitions>
+											<ColumnDefinition/>
+											<ColumnDefinition/>
+										</Grid.ColumnDefinitions>
+										<StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Background="#9F494949">
+											<TextBlock Text="{TemplateBinding ContentBrowser:AssetItemToolTip.AssetName}" Foreground="#FFFFFFFF" x:Name="Name" FontSize="14" Panel.ZIndex="5" IsHitTestVisible="False" Padding="5,5,5,5"/>
+											<TextBlock Text="{TemplateBinding ContentBrowser:AssetItemToolTip.AssetType}" x:Name="Type" Foreground="#FF8D8D8D" IsHitTestVisible="False" Padding="5,5,5,5"/>
+										</StackPanel>
+									</Grid>
+									<StackPanel Orientation="Horizontal">
+										<TextBlock x:Name="PathLabel" Text="{DynamicResource ContentBrowser_AssetItemToolTip_PathLabel}" Foreground="{DynamicResource Slate_Control_Foreground_Disabled}" Padding="5,2,5,2" FontWeight="Bold" IsHitTestVisible="False"/>
+										<TextBlock Text="{TemplateBinding ContentBrowser:AssetItemToolTip.AssetPath}" x:Name="Path" Foreground="#FF8E8E8E" Padding="5,2,5,2" IsHitTestVisible="False"/>
+									</StackPanel>
+									<StackPanel Orientation="Horizontal">
+										<TextBlock x:Name="TagsLabel" Text="{DynamicResource ContentBrowser_AssetItemToolTip_TagsLabel}" Foreground="{DynamicResource Slate_Control_Foreground_Disabled}" Padding="5,2,5,2" FontWeight="Bold" IsHitTestVisible="False" Visibility="{TemplateBinding ContentBrowser:AssetItemToolTip.AssetTags, Converter={StaticResource EmptyStringToCollapsedVisibility}}"/>
+										<TextBlock Text="{TemplateBinding ContentBrowser:AssetItemToolTip.AssetTags}" x:Name="Tags" Padding="5,2,5,2" FontWeight="Bold" IsHitTestVisible="False" Visibility="{TemplateBinding ContentBrowser:AssetItemToolTip.AssetTags, Converter={StaticResource EmptyStringToCollapsedVisibility}}" Foreground="#FFD79842"/>
+									</StackPanel>
+									<StackPanel Orientation="Horizontal">
+										<TextBlock x:Name="CollectionsLabel" Text="{DynamicResource ContentBrowser_AssetItemToolTip_CollectionsLabel}" Foreground="{DynamicResource Slate_Control_Foreground_Disabled}" Padding="5,2,5,2" FontWeight="Bold" IsHitTestVisible="False" Visibility="{TemplateBinding ContentBrowser:AssetItemToolTip.AssetCollections, Converter={StaticResource EmptyStringToCollapsedVisibility}}"/>
+										<TextBlock Text="{TemplateBinding ContentBrowser:AssetItemToolTip.AssetCollections}" x:Name="Collections" Foreground="#FFF0E050" Padding="5,2,5,2" FontWeight="Bold" IsHitTestVisible="False" Visibility="{TemplateBinding ContentBrowser:AssetItemToolTip.AssetCollections, Converter={StaticResource EmptyStringToCollapsedVisibility}}"/>
+									</StackPanel>
+									<StackPanel Orientation="Horizontal">
+										<TextBlock x:Name="InfoLabel" Text="{DynamicResource ContentBrowser_AssetItemToolTip_InfoLabel}" Foreground="{DynamicResource Slate_Control_Foreground_Disabled}" Padding="5,2,5,2" FontWeight="Bold" IsHitTestVisible="False" Visibility="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=CustomLabels[0], Converter={StaticResource EmptyStringToCollapsedVisibility}}"/>
+										<StackPanel Orientation="Vertical">
+											<TextBlock Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=CustomLabels[0]}" x:Name="Info0" Foreground="#FF8E8E8E" IsHitTestVisible="False" Padding="5,2,5,2" Visibility="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=CustomLabels[0], Converter={StaticResource EmptyStringToCollapsedVisibility}}" />
+											<TextBlock Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=CustomLabels[1]}" x:Name="Info1" Foreground="#FF8E8E8E" IsHitTestVisible="False" Padding="5,2,5,2" Visibility="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=CustomLabels[1], Converter={StaticResource EmptyStringToCollapsedVisibility}}"/>
+											<TextBlock Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=CustomLabels[2]}" x:Name="Info2" Foreground="#FF8E8E8E" IsHitTestVisible="False" Padding="5,2,5,2" Visibility="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=CustomLabels[2], Converter={StaticResource EmptyStringToCollapsedVisibility}}" />
+											<TextBlock Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=CustomLabels[3]}" x:Name="Info3" Foreground="#FF8E8E8E" IsHitTestVisible="False" Padding="5,2,5,2" Visibility="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=CustomLabels[3], Converter={StaticResource EmptyStringToCollapsedVisibility}}" />
+										</StackPanel>
+									</StackPanel>
+									<StackPanel Orientation="Horizontal">
+										<TextBlock x:Name="DateAddedLabel" Text="{DynamicResource ContentBrowser_AssetItemToolTip_DateAddedLabel}" Foreground="{DynamicResource Slate_Control_Foreground_Disabled}" Padding="5,2,5,2" FontWeight="Bold" IsHitTestVisible="False" Visibility="{TemplateBinding ContentBrowser:AssetItemToolTip.DateAdded, Converter={StaticResource EmptyStringToCollapsedVisibility}}"/>
+										<TextBlock Text="{TemplateBinding ContentBrowser:AssetItemToolTip.DateAdded}" x:Name="DateAdded" Padding="5,2,5,2" FontWeight="Bold" IsHitTestVisible="False" Visibility="{TemplateBinding ContentBrowser:AssetItemToolTip.DateAdded, Converter={StaticResource EmptyStringToCollapsedVisibility}}" Foreground="#FF8E8E8E"/>
+									</StackPanel>
+									<StackPanel Orientation="Horizontal">
+										<TextBlock x:Name="StatusLabel" Text="{DynamicResource ContentBrowser_AssetItemToolTip_StatusLabel}" Foreground="{DynamicResource Slate_Control_Foreground_Disabled}" Padding="5,2,5,2" FontWeight="Bold" IsHitTestVisible="False"/>
+										<TextBlock Text="{TemplateBinding ContentBrowser:AssetItemToolTip.AssetStatus}" x:Name="Status" Padding="5,2,5,2" FontWeight="Bold" IsHitTestVisible="False" Foreground="#FF8C8C8C"/>
+									</StackPanel>
+									<StackPanel Orientation="Horizontal">
+										<TextBlock x:Name="MemUsageLabel" Text="{DynamicResource ContentBrowser_AssetItemToolTip_MemoryUsageLabel}" Foreground="{DynamicResource Slate_Control_Foreground_Disabled}" Padding="5,2,5,2" FontWeight="Bold" IsHitTestVisible="False" Visibility="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=AssetMemUsage, Converter={StaticResource EmptyStringToCollapsedVisibility}}" />
+										<TextBlock Text="{TemplateBinding ContentBrowser:AssetItemToolTip.AssetMemUsage}" x:Name="MemUsage" Padding="5,2,5,5" FontWeight="Bold" IsHitTestVisible="False" Visibility="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=AssetMemUsage, Converter={StaticResource EmptyStringToCollapsedVisibility}}" Foreground="#FF8C8C8C"/>
+									</StackPanel>
+								</StackPanel>
+							</Border>
+						</Grid>
+					<ControlTemplate.Triggers>
+						<Trigger Property="ToolTipIsVisible" Value="True">
+							<Trigger.ExitActions>
+								<BeginStoryboard Storyboard="{StaticResource FadeOutStoryboard}" x:Name="FadeOutStoryboard_BeginStoryboard1"/>
+							</Trigger.ExitActions>
+							<Trigger.EnterActions>
+								<BeginStoryboard Storyboard="{StaticResource FadeInStoryboard}"/>
+							</Trigger.EnterActions>
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+		<Style.Triggers>
+			<Trigger Property="ToolTipShouldBeVisible" Value="True">
+				<Trigger.ExitActions>
+					<BeginStoryboard Storyboard="{StaticResource DelayedHideStoryboard}" x:Name="DelayedHideStoryboard_BeginStoryboard"/>
+				</Trigger.ExitActions>
+				<Trigger.EnterActions>
+					<BeginStoryboard Storyboard="{StaticResource DelayedShowStorybord}" x:Name="DelayedShowStorybord_BeginStoryboard"/>
+				</Trigger.EnterActions>
+			</Trigger>
+		</Style.Triggers>
+	</Style>
+
+
+	<!--                                                            		-->
+	<!-- TreeNodeVisual ( CustomControls.TreeView )                 		-->
+	<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  -->
+	<!-- The TreeViewItem template was hollowed out		            		-->
+	<!-- so that collapse and select visualization can be delegated 		-->
+	<!-- to the TreeNodeVisuals (us).                                    	-->
+	<!--                                                            		-->
+
+	<!--  Expander TreeArrow												-->
+	<PathGeometry x:Key="TreeArrow" Figures="M0,0 L0,8 L4.8,4 z"/>
+
+	<!--  Transparent button for the expander TreeArrows					-->
+	<Style x:Key="ExpanderButtonStyle" TargetType="{x:Type Button}">
+		<Setter Property="Background" Value="#00000000"/>
+		<Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+		<Setter Property="BorderThickness" Value="3"/>
+		<Setter Property="HorizontalContentAlignment" Value="Left"/>
+		<Setter Property="VerticalContentAlignment" Value="Center"/>
+		<Setter Property="Padding" Value="0,0,1,1"/>
+		<Setter Property="SnapsToDevicePixels" Value="True" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type Button}">
+					<Border Background="{TemplateBinding Background}">
+						<ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" RecognizesAccessKey="True"/>
+					</Border>
+					<ControlTemplate.Triggers>
+						<!--<Trigger Property="IsEnabled" Value="false">
+							<Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
+						</Trigger>-->
+						<Trigger Property="IsMouseOver" Value="true">
+							<Setter Property="Background" Value="#33000000"/>
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+	<!--  The TreeNodeVisual itself											-->
+	<Style TargetType="{x:Type CustomControls:TreeNodeVisual}">
+		<Setter Property="Background" Value="Transparent"/>
+		<Setter Property="BorderBrush" Value="Blue"/>
+		<Setter Property="BorderThickness" Value="2"/>
+		<Setter Property="Padding" Value="1"/>
+		<Setter Property="Foreground" Value="{DynamicResource Slate_ListItem_Foreground}"/>
+		<Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
+		<Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+		<Setter Property="VerticalContentAlignment" Value="Center"/>
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type CustomControls:TreeNodeVisual}" xmlns:s="clr-namespace:System;assembly=mscorlib">
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="16"/>
+							<ColumnDefinition Width="Auto"/>
+							<ColumnDefinition />
+							<ColumnDefinition Width="1"/>
+						</Grid.ColumnDefinitions>
+						<!-- Hack the border to appear as if it is the width of the entire treeview -->
+						<Border x:Name="Bd" Grid.Column="3"
+								SnapsToDevicePixels="True" HorizontalAlignment="Right"
+								Background="{TemplateBinding Background}"
+								BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Slate_ListItem_Separator}">
+							<!-- Hack the selection to be 8000 pixels wide; it will be clipped by the scroll viewer-->
+							<Border.Width>
+								<s:Double>1</s:Double>
+							</Border.Width>
+							<Border.RenderTransformOrigin>
+								<Point>1, 0.5</Point>
+							</Border.RenderTransformOrigin>
+							<Border.RenderTransform>
+								<TransformGroup>
+									<ScaleTransform ScaleX="8000" />
+								</TransformGroup>
+							</Border.RenderTransform>
+						</Border>
+						<!-- Button with an arrow that expands and collapses the treeview -->
+						<Border x:Name="PART_ExpanderGlyph"
+								Grid.Column="0"																
+								Width="16" Height="16" 
+								Visibility="{TemplateBinding HasChildren, Converter={StaticResource BoolToVisConverter}}"
+								Background="Transparent">
+							<Border x:Name="ExpanderGlyph" VerticalAlignment="Center" HorizontalAlignment="Center" >
+								<Path SnapsToDevicePixels="True" x:Name="ExpandPath" Stroke="White" StrokeThickness="0.5" Data="{StaticResource TreeArrow}" RenderTransformOrigin="0.5, 0.5">
+									<Path.RenderTransform>
+										<TransformGroup>
+											<RotateTransform Angle="0"/>
+										</TransformGroup>
+									</Path.RenderTransform>
+								</Path>
+							</Border>
+						</Border>
+						<Canvas Grid.Column="1" Height="16" Width="18">
+							<Image x:Name="Img" Height="16" Source="{TemplateBinding Icon}" />
+							<Image x:Name="OverlayImg" Height="16" Source="{TemplateBinding OverlayIcon}" />							
+						</Canvas>
+						<TextBlock Padding="1" Grid.Column="2" Text="{TemplateBinding DisplayLabel}" Foreground="{TemplateBinding Foreground}" />
+					</Grid>
+					<ControlTemplate.Triggers>
+						<Trigger Property="IsExpanded" Value="True">
+							<Setter TargetName="ExpandPath" Property="Fill">
+								<Setter.Value>White</Setter.Value>
+							</Setter>
+							<Setter TargetName="ExpandPath" Property="RenderTransform">
+								<Setter.Value>
+									<TransformGroup>
+										<RotateTransform Angle="45"/>
+									</TransformGroup>
+								</Setter.Value>
+							</Setter>
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+		<Style.Triggers>
+			<Trigger Property="IsMouseOver" Value="true">
+				<Setter Property="Background" Value="{DynamicResource Slate_ListItem_Background_Hover}"/>
+			</Trigger>
+			<Trigger Property="IsSelected" Value="true">
+				<Setter Property="Foreground" Value="#444" />
+				<Setter Property="Background" Value="#FF9a9a9a" />
+			</Trigger>
+		</Style.Triggers>
+	</Style>
+
+	<!--  																	-->
+	<!--  Image Radio Button												-->
+	<!--  																	-->
+	<Style TargetType="{x:Type CustomControls:ImageRadioButton}">
+		<Style.Resources>
+			<Storyboard x:Key="Grow">
+				<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+					<SplineDoubleKeyFrame KeyTime="00:00:00.100" Value="1.15"/>
+				</DoubleAnimationUsingKeyFrames>
+				<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+					<SplineDoubleKeyFrame KeyTime="00:00:00.100" Value="1.15"/>
+				</DoubleAnimationUsingKeyFrames>
+			</Storyboard>
+			<Storyboard x:Key="Shrink">
+				<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+					<SplineDoubleKeyFrame KeyTime="00:00:00.000" Value="1.15"/>
+				</DoubleAnimationUsingKeyFrames>
+				<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+					<SplineDoubleKeyFrame KeyTime="00:00:00.000" Value="1.15"/>
+				</DoubleAnimationUsingKeyFrames>
+				<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+					<SplineDoubleKeyFrame KeyTime="00:00:00.200" Value="1"/>
+				</DoubleAnimationUsingKeyFrames>
+				<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+					<SplineDoubleKeyFrame KeyTime="00:00:00.200" Value="1"/>
+				</DoubleAnimationUsingKeyFrames>
+			</Storyboard>		  
+		</Style.Resources>
+		<Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+		<Setter Property="RenderTransform">
+			<Setter.Value>
+				<TransformGroup>
+					<ScaleTransform ScaleX="1" ScaleY="1"/>
+				</TransformGroup>			 
+			</Setter.Value>		  
+		</Setter>
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type CustomControls:ImageRadioButton}">
+					<Grid Width="{TemplateBinding Width}" Height="{TemplateBinding Height}"
+						  HorizontalAlignment="{TemplateBinding HorizontalAlignment}" VerticalAlignment="{TemplateBinding VerticalAlignment}">
+						<Image x:Name="ImgUnchecked" Visibility="Visible" Source="{TemplateBinding UncheckedImage}" SnapsToDevicePixels="True" />
+						<Image x:Name="ImgChecked" Visibility="Hidden" Source="{TemplateBinding CheckedImage}" SnapsToDevicePixels="True" />
+            <Image x:Name="ImgDisabled" Visibility="Hidden" Source="{TemplateBinding DisabledImage}" SnapsToDevicePixels="True" />
+					</Grid>
+					<ControlTemplate.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="ImgUnchecked" Property="Visibility" Value="Hidden" />
+              <Setter TargetName="ImgChecked" Property="Visibility" Value="Hidden" />
+              <Setter TargetName="ImgDisabled" Property="Visibility" Value="Visible" />
+            </Trigger>            
+						<Trigger Property="IsChecked" Value="True">
+							<Setter TargetName="ImgUnchecked" Property="Visibility" Value="Hidden" />
+							<Setter TargetName="ImgChecked" Property="Visibility" Value="Visible" />
+              <Setter TargetName="ImgDisabled" Property="Visibility" Value="Hidden" />
+						</Trigger>
+						<Trigger Property="IsPressed" Value="True">
+							<Trigger.ExitActions>
+								<BeginStoryboard Storyboard="{StaticResource Grow}" />
+							</Trigger.ExitActions>
+							<Setter Property="RenderTransform">
+								<Setter.Value>
+									<TransformGroup>
+										<ScaleTransform ScaleX="1.1" ScaleY="1.1"/>
+									</TransformGroup>
+								</Setter.Value>
+							</Setter>
+						</Trigger>						
+						<Trigger Property="IsMouseOver" Value="True">
+							<Trigger.EnterActions>
+								<BeginStoryboard Storyboard="{StaticResource Grow}" />
+							</Trigger.EnterActions>
+							<Trigger.ExitActions>
+								<BeginStoryboard Storyboard="{StaticResource Shrink}" />
+							</Trigger.ExitActions>
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+  <!--  																	-->
+  <!--  Image Radio Button with dropdown list  -->
+  <!--  																	-->
+  <Style TargetType="{x:Type CustomControls:ToolDropdownRadioButton}">
+    <Style.Resources>
+      <Storyboard x:Key="Grow">
+        <DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+          <SplineDoubleKeyFrame KeyTime="00:00:00.100" Value="1.15"/>
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+          <SplineDoubleKeyFrame KeyTime="00:00:00.100" Value="1.15"/>
+        </DoubleAnimationUsingKeyFrames>
+      </Storyboard>
+      <Storyboard x:Key="Shrink">
+        <DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+          <SplineDoubleKeyFrame KeyTime="00:00:00.000" Value="1.15"/>
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+          <SplineDoubleKeyFrame KeyTime="00:00:00.000" Value="1.15"/>
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)">
+          <SplineDoubleKeyFrame KeyTime="00:00:00.200" Value="1"/>
+        </DoubleAnimationUsingKeyFrames>
+        <DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)">
+          <SplineDoubleKeyFrame KeyTime="00:00:00.200" Value="1"/>
+        </DoubleAnimationUsingKeyFrames>
+      </Storyboard>
+    </Style.Resources>
+    <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+    <Setter Property="RenderTransform">
+      <Setter.Value>
+        <TransformGroup>
+          <ScaleTransform ScaleX="1" ScaleY="1"/>
+        </TransformGroup>
+      </Setter.Value>
+    </Setter>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type CustomControls:ToolDropdownRadioButton}">
+          <Grid Width="{TemplateBinding Width}" Height="{TemplateBinding Height}"
+						  HorizontalAlignment="{TemplateBinding HorizontalAlignment}" VerticalAlignment="{TemplateBinding VerticalAlignment}">
+            <Image x:Name="ImgUnchecked" Visibility="Visible" Source="{TemplateBinding UncheckedImage}" SnapsToDevicePixels="True" />
+            <Image x:Name="ImgChecked" Visibility="Hidden" Source="{TemplateBinding CheckedImage}" SnapsToDevicePixels="True" />
+            <Image x:Name="ImgDisabled" Visibility="Hidden" Source="{TemplateBinding DisabledImage}" SnapsToDevicePixels="True" />
+            <Popup Name="Popup" PlacementTarget="{TemplateBinding Name}" Placement="Bottom" VerticalOffset="0" PopupAnimation="Slide" StaysOpen="False">
+              <ListBox Name="DropdownList" Width="{TemplateBinding ActualWidth}" ItemsSource="{TemplateBinding ListItems}" Margin="0">
+                <ListBox.ItemContainerStyle>
+                  <Style TargetType="ListBoxItem">
+                    <Setter Property="Padding" Value="0,0,0,0" />
+                  </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <Grid Width="{TemplateBinding Width}" Height="{TemplateBinding Height}"
+                        HorizontalAlignment="{TemplateBinding HorizontalAlignment}" VerticalAlignment="{TemplateBinding VerticalAlignment}">
+                      <Image x:Name="ListImgUnchecked" Visibility="Visible" Source="{Binding Path=UncheckedImage}" ToolTip="{Binding Path=ToolTip}" SnapsToDevicePixels="True"/>
+                      <Image x:Name="ListImgChecked" Visibility="Hidden" Source="{Binding Path=CheckedImage}" ToolTip="{Binding Path=ToolTip}" SnapsToDevicePixels="True"/>
+                    </Grid>
+                    <DataTemplate.Triggers>
+                      <DataTrigger Binding="{Binding IsMouseOver,RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                        <Setter TargetName="ListImgUnchecked" Property="Visibility" Value="Hidden" />
+                        <Setter TargetName="ListImgChecked" Property="Visibility" Value="Visible" />
+                      </DataTrigger>
+                    </DataTemplate.Triggers>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Popup>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <MultiTrigger>
+              <MultiTrigger.Conditions>
+                <Condition Property="IsChecked" Value="True" />
+                <Condition Property="IsEnabled" Value="True" />
+              </MultiTrigger.Conditions>
+              <Setter TargetName="ImgUnchecked" Property="Visibility" Value="Hidden" />
+              <Setter TargetName="ImgChecked" Property="Visibility" Value="Visible" />
+              <Setter TargetName="ImgDisabled" Property="Visibility" Value="Hidden" />
+            </MultiTrigger>
+            <MultiTrigger>
+              <MultiTrigger.Conditions>
+                <Condition Property="IsChecked" Value="False" />
+                <Condition Property="IsEnabled" Value="True" />
+              </MultiTrigger.Conditions>
+              <Setter TargetName="ImgUnchecked" Property="Visibility" Value="Visible" />
+              <Setter TargetName="ImgChecked" Property="Visibility" Value="Hidden" />
+              <Setter TargetName="ImgDisabled" Property="Visibility" Value="Hidden" />
+            </MultiTrigger>
+            <MultiTrigger>
+              <MultiTrigger.Conditions>
+                <Condition Property="IsEnabled" Value="False" />
+              </MultiTrigger.Conditions>
+              <Setter Property="IsChecked" Value="False" />
+              <Setter TargetName="ImgUnchecked" Property="Visibility" Value="Hidden" />
+              <Setter TargetName="ImgChecked" Property="Visibility" Value="Hidden" />
+              <Setter TargetName="ImgDisabled" Property="Visibility" Value="Visible" />
+            </MultiTrigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Trigger.ExitActions>
+                <BeginStoryboard Storyboard="{StaticResource Grow}" />
+              </Trigger.ExitActions>
+              <Setter Property="RenderTransform">
+                <Setter.Value>
+                  <TransformGroup>
+                    <ScaleTransform ScaleX="1.1" ScaleY="1.1"/>
+                  </TransformGroup>
+                </Setter.Value>
+              </Setter>
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Trigger.EnterActions>
+                <BeginStoryboard Storyboard="{StaticResource Grow}" />
+              </Trigger.EnterActions>
+              <Trigger.ExitActions>
+                <BeginStoryboard Storyboard="{StaticResource Shrink}" />
+              </Trigger.ExitActions>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+
+
+  <!--                                                            -->
+	<!-- Versatile Border for the Slate Style			            -->
+	<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  -->
+	<Style TargetType="{x:Type CustomControls:SlateBorder}">
+		<!-- The style of border -->
+		<Setter Property="BorderStyle" Value="Sunken" />
+		
+		<!-- Properties that are affected by the border style (these are here so -->
+		<!-- we do not have to change the template on the fly.)                  -->
+		<Setter Property="InnerBorderThickness" Value="1" />
+		<Setter Property="InnerBorderBrush" Value="{DynamicResource Slate_Panel_Shadow}" />
+		<Setter Property="InnerBorderPadding" Value="0" />
+		<Setter Property="OuterBorderThickness" Value="0,0,1,1" />
+		<Setter Property="OuterBorderBrush" Value="{DynamicResource Slate_Panel_Highlight}" />
+		<Setter Property="CornerRadius" Value="0" />
+		
+		<Setter Property="Background" Value="Transparent" />
+		
+		<!-- Warning! Changing the template at runtime has drastically unpleasant consequences for its contents. -->
+		<!-- Avoid doing this at all costs.                                                                      -->
+		<Setter Property="Template">
+			<Setter.Value>            
+				<ControlTemplate TargetType="{x:Type CustomControls:SlateBorder}">
+					<Border x:Name="OuterBorder" SnapsToDevicePixels="True"
+							BorderThickness="{TemplateBinding OuterBorderThickness}"
+							BorderBrush="{TemplateBinding OuterBorderBrush}"
+							CornerRadius="{TemplateBinding CornerRadius}">
+						<Border x:Name="InnerBorder" SnapsToDevicePixels="True"
+								BorderThickness="{TemplateBinding InnerBorderThickness}"
+								BorderBrush="{TemplateBinding InnerBorderBrush}"
+								Background="{TemplateBinding Background}"
+								CornerRadius="{TemplateBinding CornerRadius}"
+								Padding="{TemplateBinding InnerBorderPadding}">
+							<ContentPresenter Margin="{TemplateBinding Padding}"/>
+						</Border>
+					</Border>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+		
+		<Style.Triggers>
+			<Trigger Property="BorderStyle" Value="Raised">
+				<Setter Property="InnerBorderThickness" Value="1,1,0,0" />
+				<Setter Property="InnerBorderBrush" Value="{DynamicResource Slate_Panel_Highlight}" />
+				<Setter Property="OuterBorderThickness" Value="1" />
+				<Setter Property="OuterBorderBrush" Value="{DynamicResource Slate_Panel_Shadow}" />
+			</Trigger>
+
+			<Trigger Property="BorderStyle" Value="FilterHeader">
+				<Setter Property="InnerBorderThickness" Value="0,1,0,0" />
+				<Setter Property="InnerBorderBrush" Value="{DynamicResource Slate_FilterListHighlight}" />
+				<Setter Property="OuterBorderThickness" Value="0,0,0,1" />
+				<Setter Property="OuterBorderBrush" Value="{DynamicResource Slate_FilterListShadow}" />
+				<Setter Property="Background" Value="{DynamicResource Slate_FilterListHeaderBackground}" />
+			</Trigger>
+
+			<Trigger Property="BorderStyle" Value="ActiveFilterHeader">
+				<Setter Property="InnerBorderThickness" Value="0,1,0,0" />
+				<Setter Property="InnerBorderBrush" Value="{DynamicResource Slate_FilterListHighlight}" />
+				<Setter Property="OuterBorderThickness" Value="0,0,0,1" />
+				<Setter Property="OuterBorderBrush" Value="{DynamicResource Slate_FilterListShadow}" />
+				<Setter Property="Background" Value="{DynamicResource Slate_ActiveFilterHeader_Background}" />
+			</Trigger>
+
+			<Trigger Property="BorderStyle" Value="Splitter">
+				<Setter Property="InnerBorderThickness" Value="1,1,0,0" />
+				<Setter Property="InnerBorderBrush" Value="{DynamicResource Slate_Panel_Highlight}" />
+				<Setter Property="OuterBorderThickness" Value="1" />
+				<Setter Property="OuterBorderBrush" Value="{DynamicResource Slate_Panel_Shadow}" />
+				<Setter Property="Background" Value="{DynamicResource Slate_Panel_Background}" />
+			</Trigger>
+
+			<Trigger Property="BorderStyle" Value="Button">
+				<Setter Property="InnerBorderThickness" Value="1,1,0,0" />
+				<Setter Property="InnerBorderBrush" Value="{DynamicResource Slate_Control_Highlight}" />
+				<Setter Property="OuterBorderThickness" Value="1" />
+				<Setter Property="OuterBorderBrush" Value="{DynamicResource Slate_Control_Shadow}" />
+				<Setter Property="Background" Value="{DynamicResource Slate_Control_Background}" />
+			</Trigger>
+
+			<Trigger Property="BorderStyle" Value="ButtonPressed">
+				<Setter Property="InnerBorderBrush" Value="{DynamicResource Slate_Control_Shadow}" />
+				<Setter Property="OuterBorderBrush" Value="{DynamicResource Slate_Control_Highlight}" />
+				<Setter Property="Background" Value="{DynamicResource Slate_Control_Background_Hover_Fancy}" />
+			</Trigger>
+
+			<Trigger Property="BorderStyle" Value="ToolbarButton">
+				<Setter Property="InnerBorderThickness" Value="1,1,0,0" />
+				<Setter Property="InnerBorderBrush" Value="Transparent" />
+				<Setter Property="OuterBorderThickness" Value="0,0,1,1" />
+				<Setter Property="OuterBorderBrush" Value="Transparent" />
+				<Setter Property="Background" Value="Transparent" />
+			</Trigger>
+
+			<Trigger Property="BorderStyle" Value="ToolbarButtonHover">
+				<Setter Property="InnerBorderThickness" Value="1,1,0,0" />
+				<Setter Property="InnerBorderBrush" Value="{DynamicResource Slate_ToolbarButton_Highlight}" />
+				<Setter Property="OuterBorderThickness" Value="0,0,1,1" />
+				<Setter Property="OuterBorderBrush" Value="{DynamicResource Slate_ToolbarButton_Shadow}" />
+				<Setter Property="Background" Value="Transparent" />
+			</Trigger>
+
+			<Trigger Property="BorderStyle" Value="ToolbarButtonPressed">
+				<Setter Property="InnerBorderThickness" Value="1,1,0,0" />
+				<Setter Property="InnerBorderBrush" Value="{DynamicResource Slate_ToolbarButton_Shadow}" />
+				<Setter Property="OuterBorderThickness" Value="0,0,1,1" />
+				<Setter Property="OuterBorderBrush" Value="{DynamicResource Slate_ToolbarButton_Highlight}" />
+				<Setter Property="Background" Value="{DynamicResource Slate_ToolbarButton_HoveredBackground}" />
+			</Trigger>
+			
+			
+
+		</Style.Triggers>
+	</Style>
+
+
+
+	<!-- Button used by CollectionVisual for adding items to a collection -->
+	<Style x:Key="AddToCollectionButtonStyle" TargetType="{x:Type Button}">
+		<Setter Property="Background" Value="Transparent"/>
+		<Setter Property="Foreground" Value="White"/>
+		<Setter Property="BorderThickness" Value="0"/>
+		<Setter Property="HorizontalContentAlignment" Value="Right"/>
+		<Setter Property="VerticalContentAlignment" Value="Center"/>
+		<Setter Property="Padding" Value="1"/>
+		<Setter Property="SnapsToDevicePixels" Value="True" />
+		<Setter Property="Opacity" Value="0.4" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type Button}">
+					<Image x:Name="AddToCollectionImage" DockPanel.Dock="Right" HorizontalAlignment="Right" Width="16" Height="16" Margin="{TemplateBinding Padding}" Source="{DynamicResource imgAddToCollection}" SnapsToDevicePixels="True" />
+					<ControlTemplate.Triggers>
+						<Trigger Property="IsEnabled" Value="false">
+							<Setter Property="Opacity" Value="0.1"/>
+						</Trigger>
+						<Trigger Property="IsMouseOver" Value="true">
+							<Setter Property="Opacity" Value="0.8"/>
+							<Setter Property="Padding" Value="0,0,2,2"/>
+						</Trigger>
+						<Trigger Property="IsPressed" Value="true">
+							<Setter Property="Opacity" Value="1.0"/>
+							<Setter Property="Padding" Value="1"/>
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+
+	<!--                                                            -->
+	<!-- Dedicated visual for displaying collections	            -->
+	<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  -->
+	<Style TargetType="{x:Type CustomControls:CollectionVisual}">
+		<Setter Property="Background" Value="Transparent" />
+		<Setter Property="Template">
+			<Setter.Value>            
+				<ControlTemplate TargetType="{x:Type CustomControls:CollectionVisual}">
+					<Border x:Name="Border" SnapsToDevicePixels="True"
+							Background="{TemplateBinding Background}"
+							BorderThickness="{TemplateBinding BorderThickness}"
+							BorderBrush="{TemplateBinding BorderBrush}">
+						<DockPanel >
+							<Image Source="{TemplateBinding Icon}" Height="16" />
+							<TextBlock Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=AssetCollection.DisplayName}" Margin="4,0" />
+							<Button x:Name="PART_AddToCollectionButton" Style="{StaticResource AddToCollectionButtonStyle}" DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Top" IsEnabled="{TemplateBinding CanAddToCollection}" />
+						</DockPanel>
+					</Border>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+		
+		<Style.Triggers>
+			<Trigger Property="HoveredByDragDrop" Value="true">
+				<Setter Property="Background" Value="{DynamicResource Slate_ListItem_Background_Hover}" />
+				<Setter Property="Foreground" Value="{DynamicResource Slate_Control_Foreground}" />
+			</Trigger>
+		</Style.Triggers>
+	</Style>
+
+
+
+
+	<!-- DragSlider -->
+	<Style TargetType="{x:Type CustomControls:DragSlider}">
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type CustomControls:DragSlider}">
+					<Grid x:Name="SliderMainGrid" Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" MinWidth="{TemplateBinding MinWidth}" MinHeight="{TemplateBinding MinHeight}" MaxWidth="{TemplateBinding MaxWidth}" MaxHeight="{TemplateBinding MaxHeight}" Background="#FF000000" SnapsToDevicePixels="True" Cursor="SizeWE">
+						<Rectangle Panel.ZIndex="0">
+							<Rectangle.Stroke>
+								<SolidColorBrush Color="#000" />
+							</Rectangle.Stroke>
+							<Rectangle.Fill>						    
+								<LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+									<GradientStop Color="#FF3B3B3B" Offset="1"/>
+									<GradientStop Color="#FF151515"/>
+								</LinearGradientBrush>
+							</Rectangle.Fill>
+						</Rectangle>
+						<Rectangle x:Name="ProgressRect" Margin="1,1,1,1" IsHitTestVisible="False" RenderTransformOrigin="0,0.5" Panel.ZIndex="1" Opacity="0.745">
+							<Rectangle.RenderTransform>
+								<TransformGroup>
+									<ScaleTransform ScaleX="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=ProgressAmount}" ScaleY="1"/>
+									<SkewTransform AngleX="0" AngleY="0"/>
+									<RotateTransform Angle="0"/>
+									<TranslateTransform X="0" Y="0"/>
+								</TransformGroup>												 
+							</Rectangle.RenderTransform>
+							<Rectangle.Fill>
+								<LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+									<GradientStop Color="#FFC2920A" Offset="0"/>
+									<GradientStop Color="#FF845300" Offset="1"/>
+								</LinearGradientBrush>
+							</Rectangle.Fill>
+						</Rectangle>
+						<TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" Panel.ZIndex="20" FontSize="10" FontWeight="Bold" Text="{TemplateBinding ValueText}" Margin="0,0,0,2" Visibility="{TemplateBinding IsEditingInlineText, Converter={StaticResource NegatedBoolToVisConverter}}" />
+						<TextBox x:Name="PART_ValueTextBox" HorizontalAlignment="Center" d:LayoutOverrides="Height" VerticalAlignment="Center" Panel.ZIndex="25" FontSize="10" FontWeight="Bold" Margin="0,0,0,2" BorderThickness="0,0,0,0" Visibility="{TemplateBinding IsEditingInlineText, Converter={StaticResource BoolToVisConverter}}" />
+					</Grid>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+    <BitmapImage x:Key="imgColorWheel" UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/ColorWheel.png" />
+
+    <Style TargetType="{x:Type CustomControls:ColorWheel}">
+		<Style.Resources>
+		</Style.Resources>
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type CustomControls:ColorWheel}">
+					<Grid>						
+						<Image Stretch="Uniform" Source="{StaticResource imgColorWheel}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="{TemplateBinding SelectorDiameter}" />
+						<Ellipse Stretch="Uniform" Fill="{TemplateBinding OverlayColor}" />
+						<Canvas>
+							<Grid Canvas.Left="{TemplateBinding SelectorOffsetX}" Canvas.Top="{TemplateBinding SelectorOffsetY}" x:Name="Indicator" HorizontalAlignment="Left" VerticalAlignment="Top" Width="{TemplateBinding SelectorDiameter}" Height="{TemplateBinding SelectorDiameter}">
+								<Ellipse Stroke="Black" Stretch="UniformToFill" StrokeThickness="1" />
+								<Ellipse Stroke="White" Stretch="UniformToFill" StrokeThickness="1" Margin="1"/>
+							</Grid>
+						</Canvas>
+					</Grid>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+	<Style TargetType="{x:Type CustomControls:GradientSlider}">
+		<Style.Resources>
+			<CustomControls:WhitepointToMaxValue x:Key="WhitepointToMaxValueConverter" />
+			<CustomControls:ValueToStringConverter x:Key="ValueToString" />			
+			<Geometry x:Key="DownCaretGeometry">M0,0 L4,4 L8,0</Geometry>
+			<Geometry x:Key="WhitepointCaret">M0,0 L0,16</Geometry><!--M0,6 L4,0 L8,6-->
+		</Style.Resources>
+		<Setter Property="Height" Value="24" />
+		<Setter Property="Background" Value="Black" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type CustomControls:GradientSlider}">
+					<Grid x:Name="Overlay">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" />
+							<ColumnDefinition Width="1*" />
+						</Grid.ColumnDefinitions>
+						
+						<ContentPresenter x:Name="HeaderPresented" Margin="0,12,0,0" Grid.Column="0" Content="{TemplateBinding Property=Header}" />
+						
+						<Rectangle Grid.Column="1"  x:Name="PART_Track" Margin="0,12,0,0" Fill="{TemplateBinding Background}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" SnapsToDevicePixels="True" />
+						
+						<Canvas Grid.Column="1" x:Name="CaretContainer" SnapsToDevicePixels="True">
+
+							<Grid x:Name="mPART_WhitepointCaret" Canvas.Left="{TemplateBinding WhitepointOffset}" Canvas.Bottom="0" HorizontalAlignment="Center" Visibility="{TemplateBinding IsVariableRange, Converter={StaticResource BoolToVisConverter}}">
+								<Grid.RowDefinitions>
+									<RowDefinition Height="Auto" />
+									<RowDefinition Height="Auto" />
+								</Grid.RowDefinitions>
+								<Path Margin="-15,0,0,0" Grid.Row="0" HorizontalAlignment="Center" Data="{StaticResource WhitepointCaret}" SnapsToDevicePixels="True" StrokeThickness="1" Stroke="Black" />
+								<Border Grid.Row="1" Width="30" Margin="-15,0,0,0" Padding="0" CornerRadius="3" HorizontalAlignment="Center" BorderBrush="{DynamicResource Slate_Panel_Highlight}" BorderThickness="1" Background="{DynamicResource Slate_Panel_Shadow}" Cursor="Hand" SnapsToDevicePixels="True">
+									<TextBlock Text="1.0" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource Slate_Control_Foreground}" FontSize="9" />
+								</Border>
+							</Grid>
+							
+							
+							<Grid x:Name="Caret" Canvas.Left="{TemplateBinding CaretOffset}" Canvas.Top="0" >
+								<Grid.RowDefinitions>
+									<RowDefinition Height="Auto" />
+									<RowDefinition Height="Auto" />
+								</Grid.RowDefinitions>
+								<Border BorderBrush="Black" BorderThickness="1" CornerRadius="3" Background="White" Margin="-15,0,0,0" HorizontalAlignment="Center" Width="30" >
+									<TextBlock FontSize="9" VerticalAlignment="Top" Foreground="Black" Text="{TemplateBinding Value, Converter={StaticResource ValueToString}}" TextAlignment="Center" />
+								</Border>
+								<Path Grid.Row="1" Data="{StaticResource DownCaretGeometry}" Margin="-15,-1,0,0" HorizontalAlignment="Center" SnapsToDevicePixels="True" StrokeThickness="1" Stroke="Black" Fill="White"/>
+							</Grid>
+						
+						</Canvas>
+					</Grid>
+					<ControlTemplate.Triggers>
+						<Trigger Property="IsVariableRange" Value="true">
+							<Setter TargetName="PART_Track" Property="Margin" Value="0,12,0,16" />
+							<Setter TargetName="HeaderPresented" Property="Margin" Value="0,12,0,16" />
+							<Setter Property="Height" Value="40" />
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+	
+</ResourceDictionary>
+
+	

@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Classes">
+      <UniqueIdentifier>{00e5697d-45ab-40cb-946b-5b28b1c9ee40}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Src">
+      <UniqueIdentifier>{0bfba00a-c754-4a49-ae7b-0ecd119857bc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Inc">
+      <UniqueIdentifier>{e1a8be09-4bfb-4153-8924-d7409fb1091e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Classes\GenericBrowserType_SubstanceAirGraphInstance.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GenericBrowserType_SubstanceAirImageInput.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GenericBrowserType_SubstanceAirInstanceFactory.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\GenericBrowserType_SubstanceAirTexture2D.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\ImageInputThumbnailRenderer.uc">
+      <Filter>Classes</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\SubstanceAirEd.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirEdCreateTestSceneCommandlet.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirEdGenericBrowser.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirEdHelpers.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirEdImageInputFactory.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirEdImportCommandlet.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirEdPreset.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirEdThumbnailRenderer.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirEdXmlHelper.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirEdNewGraphInstanceDlg.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirEdImportFactory.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SubstanceAirEdCreateImageInputDlg.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\SubstanceAirEdBrowserClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirEdCommandlet.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirEdFactoryClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirEdGraphInstanceEditorWindowShared.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirEdHelpers.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirEdImageReaders.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirEdNames.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirEdPreset.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirEdThumbnailRendererClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirEdXmlHelper.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirEdNewGraphInstanceDlg.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SubstanceAirEdCreateImageInputDlg.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

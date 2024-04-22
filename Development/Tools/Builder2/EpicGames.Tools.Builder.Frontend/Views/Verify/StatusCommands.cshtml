@@ -1,0 +1,139 @@
+﻿@model IEnumerable<EpicGames.Tools.Builder.Frontend.Database.SP_GetVerificationBranchCommandsResult>
+
+@{
+    Layout = null;
+
+    const int RecentlyFailedDays = 7;
+}
+
+
+<div class="grid6">
+    <a name="failing"></a><h2>Latest Verification Failures</h2>
+
+    @{
+        int failing = Model.Count(c => !c.BuildStarted.HasValue && (c.LastGoodChangelist != c.LastAttemptedChangelist));
+        
+        if (failing > 0)
+        {
+            <p>
+                <strong>@failing.ToString()</strong> of @Model.Count().ToString() verification commands are currently failing.
+                The following commands failed within the last @RecentlyFailedDays.ToString() days:
+            </p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Branch</th>
+                        <th class="numeric">Days Broken</th>
+                        <th class="enum">Last Attempted</th>
+                        <th class="enum">Last Good</th>
+                        <th class="numeric">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model)
+                    {
+                        if (!c.BuildStarted.HasValue && (c.LastAttemptedChangelist != c.LastGoodChangelist))
+                        {
+                            if ((DateTime.UtcNow - c.LastAttemptedDateTime).TotalDays <= RecentlyFailedDays)
+                            {
+                                Html.RenderPartial("_StatusCommand", c);
+                            }
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div>There are no verification failures at this time.</div>
+        }
+    }
+
+    <a class="linkUp" href="#top">Back to top</a>
+</div>
+
+<div class="grid6">
+    <a name="verifying"></a><h2>Currently Verifying</h2>
+
+    @{
+        int building = Model.Count(c => c.BuildStarted.HasValue && !c.Pending);
+        
+        if (building > 0)
+        {
+            <p>
+                <strong>@building.ToString()</strong> of @Model.Count().ToString() verification commands are currently executing:
+
+                <span class="fr">[ @Html.ActionLink("Show all failing builds", "Failures", "Build") ]</span>
+            </p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Branch</th>
+                        <th class="numeric">Days Broken</th>
+                        <th class="enum">Last Attempted</th>
+                        <th class="enum">Last Good</th>
+                        <th class="numeric">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model)
+                    {
+                        if (c.BuildStarted.HasValue && !c.Pending)
+                        {
+                            Html.RenderPartial("_StatusCommand", c);
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div>There are currently no verifications in progress.</div>
+        }
+    }
+
+    <a class="linkUp" href="#top">Back to top</a>
+</div>
+
+<div class="grid6">
+    <a name="pending"></a><h2>Pending Verifications</h2>
+
+    @{
+        int pending = Model.Count(c => c.Pending);
+        
+        if (pending > 0)
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Branch</th>
+                        <th class="numeric">Days Broken</th>
+                        <th class="enum">Last Attempted</th>
+                        <th class="enum">Last Good</th>
+                        <th class="numeric">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model)
+                    {
+                        if (c.Pending)
+                        {
+                            Html.RenderPartial("_StatusCommand", c);
+                        }
+                    }
+                </tbody>
+            </table>   
+        }
+        else
+        {
+            <div>There are are no pending verifications at this time.</div>
+        }
+    }
+
+    <a class="linkUp" href="#top">Back to top</a>
+</div>

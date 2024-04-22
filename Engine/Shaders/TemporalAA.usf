@@ -1,0 +1,118 @@
+/*=============================================================================
+	TemporalAA.usf: Shaders for temporal AA.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+/** Full screen quad vertex shader used by the various temporal AA passes. */
+void MainVertexShader(
+	in float4 InPosition : POSITION,
+	out float4 OutScreenPosition : TEXCOORD0,
+	out float2	OutScreenUV : TEXCOORD1,
+	out float4 OutPosition : POSITION
+	)
+{
+	OutPosition = InPosition;
+	OutScreenPosition = InPosition;
+	OutScreenUV = InPosition.xy * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+}
+
+float TemporalAAStartDepth;
+
+void MaskSetupPixelShader(
+	float4 ScreenPosition : TEXCOORD0,
+	float2 ScreenUV : TEXCOORD1,
+	out float4 OutColor : COLOR0
+	)
+{
+	float CurrentFrameW = CalcSceneDepth(ScreenUV);
+	float TemporalAAMask = CurrentFrameW > TemporalAAStartDepth;
+
+	OutColor = float4(0, 0, 0, TemporalAAMask);
+}
+
+float2 TexelSizes;
+
+void MaskExpandPixelShader(
+	float4 ScreenPosition : TEXCOORD0,
+	float2 ScreenUV : TEXCOORD1,
+	out float4 OutColor : COLOR0
+	)
+{
+	float CurrentFrameW = CalcSceneDepth(ScreenUV);
+
+	OutColor = float4(0,0,0,0);
+
+	BRANCH
+	if (CurrentFrameW > TemporalAAStartDepth)
+	{
+		float4 NeighborDepths;
+
+	#if XBOX
+
+		asm 
+		{
+			tfetch2D NeighborDepths.x___, ScreenUV.xy, SceneDepthTexture, OffsetX = -1.0, OffsetY = 0.0, UseComputedLOD = false
+			tfetch2D NeighborDepths._x__, ScreenUV.xy, SceneDepthTexture, OffsetX = +1.0, OffsetY = 0.0, UseComputedLOD = false
+			tfetch2D NeighborDepths.__x_, ScreenUV.xy, SceneDepthTexture, OffsetX = 0.0, OffsetY = -1.0, UseComputedLOD = false
+			tfetch2D NeighborDepths.___x, ScreenUV.xy, SceneDepthTexture, OffsetX = 0.0, OffsetY = +1.0, UseComputedLOD = false
+		};
+
+		NeighborDepths = 1.f / (NeighborDepths * MinZ_MaxZRatio[2] - MinZ_MaxZRatio[3]);
+
+	#else
+
+		NeighborDepths.x = CalcSceneDepth(ScreenUV + float2(-TexelSizes.x, 0));
+		NeighborDepths.y = CalcSceneDepth(ScreenUV + float2(TexelSizes.x, 0));
+		NeighborDepths.z = CalcSceneDepth(ScreenUV + float2(0, -TexelSizes.y));
+		NeighborDepths.w = CalcSceneDepth(ScreenUV + float2(0, TexelSizes.y));
+
+	#endif
+
+		float AnyNeighborsCloser = any((CurrentFrameW.xxxx - NeighborDepths) > 100.0f);
+
+		//RHISetBlendState(TStaticBlendState<BO_Add,BF_Zero,BF_One,BO_Add,BF_InvDestAlpha,BF_Zero>::GetRHI());
+		//Mask = (1 - TemporalAAMask) * AnyNeighborsCloser + TemporalAAMask;
+
+		OutColor = float4(0, 0, 0, AnyNeighborsCloser);
+	}
+}
+
+sampler2D CurrentFrameSceneColor;
+sampler2D PreviousFrameSceneColor;
+
+float4x4 CurrentFrameToPreviousFrameTransform;
+
+void MainPixelShader(
+	float4 ScreenPosition : TEXCOORD0,
+	float2 ScreenUV : TEXCOORD1,
+	out float4 OutColor : COLOR0
+	)
+{
+	float CurrentFrameW = CalcSceneDepth(ScreenUV);
+
+	OutColor = float4(0,0,0,0);
+
+	BRANCH
+	if (CurrentFrameW > TemporalAAStartDepth)
+	{
+		float4 CurrentFramePosition = float4(ScreenPosition.xy * CurrentFrameW, CurrentFrameW, 1);
+
+		float4 PreviousFramePosition = MulMatrix(CurrentFrameToPreviousFrameTransform, CurrentFramePosition);
+		float2 PreviousFrameProjectedPosition = PreviousFramePosition.xy / PreviousFramePosition.w;
+		float2 PreviousFrameUV = PreviousFrameProjectedPosition * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+
+		FLATTEN 
+		if (all(PreviousFrameProjectedPosition > -0.99) && all(PreviousFrameProjectedPosition < 0.99))
+		{
+			float4 PreviousFrameColorAndMask = FixupSceneColor(tex2Dlod(PreviousFrameSceneColor, float4(PreviousFrameUV,0,0)));
+
+			float TemporalAAMask = tex2Dlod(CurrentFrameSceneColor, float4(ScreenUV, 0, 0)).w;
+
+			OutColor = RETURN_COLOR(float4(
+				PreviousFrameColorAndMask.rgb, 
+				TemporalAAMask * PreviousFrameColorAndMask.w * .5));
+		}
+	}
+}

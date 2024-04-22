@@ -1,0 +1,181 @@
+﻿<!--
+  Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+-->
+<Application
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:Microsoft_Windows_Themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero" x:Class="UnrealFrontend.App"
+	xmlns:ufe2="clr-namespace:UnrealFrontend"
+	StartupUri="MainWindow.xaml">
+	<Application.Resources>
+
+		<BooleanToVisibilityConverter x:Key="BoolToVis" />
+		<ufe2:BooleanToVisibilityConverter_Hidden x:Key="BoolToVis_Hide" />
+		<ufe2:BooleanToOpacityConverter x:Key="BoolToOpacity" />		
+		<ufe2:NegatedBooleanToVisibilityConverter x:Key="Negated_BoolToVis" />
+		<ufe2:NegatingConverter x:Key="Negator" />
+		<ufe2:IsNotNullToBoolConverter x:Key="IsNotNull" />
+
+		<!-- App icon -->
+		<BitmapImage x:Key="UFE2_icon" UriSource="pack://application:,,,/UnrealFrontend;Component/images/UFE2.ico" />
+		
+		<!-- Images and Geometry -->
+        <PathGeometry x:Key="DownArrow_path" Figures="M-1,-1 L1,-1 L0,1 z" x:Shared="False" />
+
+		<BitmapImage x:Key="Step_missing_icon_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/Step_missing_icon.png" />
+		
+		<BitmapImage x:Key="UFE2_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/UFE2.png" />
+		
+		<BitmapImage x:Key="Arrow_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/Arrow.png" />
+		
+		<BitmapImage x:Key="Throbber_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/Throbber.png" />
+		
+		<BitmapImage x:Key="Reset_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/Reset.png" />
+		
+		<BitmapImage x:Key="Reset_20_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/Reset_20.png" />
+
+		<BitmapImage x:Key="Play_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/Play.png" />
+		
+		<BitmapImage x:Key="Stop_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/Stop.png" />
+		
+		<BitmapImage x:Key="MakeScript_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/MakeScript.png" />
+
+		<BitmapImage x:Key="Cook_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/Cook.png" />
+
+		<BitmapImage x:Key="Sync_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/Sync.png" />
+
+		<BitmapImage x:Key="Launch_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/Launch.png" />
+
+		<BitmapImage x:Key="Console_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/Console.png" />
+		
+		<BitmapImage x:Key="UnrealEd_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/UnrealEd.png" />
+		
+		<BitmapImage x:Key="Package_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/Package.png" />
+
+		<BitmapImage x:Key="UnProp_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/UnProp.png" />
+
+		<BitmapImage x:Key="SyncMobile_png" UriSource="pack://application:,,,/UnrealFrontend;Component/images/SyncMobile.png" />
+
+
+		<!--                -->
+		<!-- Control Styles -->
+		<!--                -->
+		<SolidColorBrush x:Key="HighlightedBorder" Color="#3399ff" />
+		<SolidColorBrush x:Key="HighlightedBackground" Color="#c2e0ff" />
+		<SolidColorBrush x:Key="PressedBackground" Color="#99ccff" />
+
+		<!-- Toolbar buttons immitate visual studio toolbars: blue background and border when hovered -->
+		<Style x:Key="UFE2ToolbarButton" TargetType="{x:Type Button}">
+			<Setter Property="OverridesDefaultStyle" Value="true"/>
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="BorderBrush" Value="Transparent"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+			<Setter Property="HorizontalContentAlignment" Value="Center"/>
+			<Setter Property="VerticalContentAlignment" Value="Center"/>
+			<Setter Property="Padding" Value="2"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="{x:Type Button}">
+							<Border x:Name="Bd" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" SnapsToDevicePixels="True" >
+								<ContentPresenter x:Name="TheContent" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" RecognizesAccessKey="True"/>
+							</Border>
+						<ControlTemplate.Triggers>
+							<Trigger Property="IsEnabled" Value="false">
+								<Setter Property="Opacity" Value="0.25"/>
+							</Trigger>
+							<Trigger Property="IsMouseOver" Value="true">
+								<Setter Property="Background" Value="{StaticResource HighlightedBackground}" />
+								<Setter Property="BorderBrush" Value="{StaticResource HighlightedBorder}" />
+							</Trigger>
+							<Trigger Property="IsPressed" Value="true">
+								<Setter Property="Background" Value="{StaticResource PressedBackground}" />
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+
+		<!-- Toolbar buttons immitate visual studio toolbars: blue background and border when hovered -->
+		<Style x:Key="UFE2ToolbarToggleButton" TargetType="{x:Type ToggleButton}">
+			<Setter Property="OverridesDefaultStyle" Value="true"/>
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="BorderBrush" Value="Transparent"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+			<Setter Property="HorizontalContentAlignment" Value="Center"/>
+			<Setter Property="VerticalContentAlignment" Value="Center"/>
+			<Setter Property="Padding" Value="2"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="{x:Type ToggleButton}">
+						<Border x:Name="Bd" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" SnapsToDevicePixels="True" >
+							<ContentPresenter x:Name="TheContent" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" RecognizesAccessKey="True"/>
+						</Border>
+						<ControlTemplate.Triggers>
+							<Trigger Property="IsMouseOver" Value="true">
+								<Setter Property="Background" Value="{StaticResource HighlightedBackground}" />
+								<Setter Property="BorderBrush" Value="{StaticResource HighlightedBorder}" />
+							</Trigger>
+							<Trigger Property="IsPressed" Value="true">
+								<Setter Property="Background" Value="{StaticResource PressedBackground}" />
+							</Trigger>
+							<Trigger Property="IsChecked" Value="true">
+								<Setter Property="Background" Value="{StaticResource PressedBackground}" />
+								<Setter Property="BorderBrush" Value="{StaticResource HighlightedBorder}" />
+							</Trigger>
+							<Trigger Property="IsEnabled" Value="false">
+								<Setter Property="Opacity" Value="0.25"/>
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+		
+		<!-- ComboButton style and template. -->
+		<Style TargetType="{x:Type ufe2:ComboButton}">
+			<Style.Resources>
+				<SolidColorBrush x:Key="Background_for_MenuItemIconColumn" Color="#e9eeee" />
+				<SolidColorBrush x:Key="Border_for_MenuItemIconColumn" Color="#c5c5c5" />
+			</Style.Resources>
+			<Setter Property="OverridesDefaultStyle" Value="true"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="{x:Type ufe2:ComboButton}">
+						<StackPanel>
+							<ToggleButton x:Name="mPART_Button" Style="{StaticResource UFE2ToolbarToggleButton}">
+								<ContentPresenter Content="{TemplateBinding Header}" />
+							</ToggleButton>
+							<Popup x:Name="mPART_Popup" PlacementTarget="{Binding ElementName=mPART_Button}" IsOpen="{Binding ElementName=mPART_Button, Path=IsChecked}" StaysOpen="false">
+								<Border Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}" BorderThickness="1" BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}">
+									<ContentPresenter Content="{TemplateBinding Content}" Margin="1" />
+								</Border>
+							</Popup>
+						</StackPanel>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+
+		
+		<!-- Reusable controls -->
+		<TextBlock x:Key="SkipOverlay"
+				x:Shared="False"
+				HorizontalAlignment="Center"
+				Text="Skip" FontWeight="Bold"
+				Foreground="White"
+				FontSize="20">
+			<TextBlock.Effect>
+				<DropShadowEffect ShadowDepth="0" Direction="0" Color="Black" Opacity="1" BlurRadius="3"/>
+			</TextBlock.Effect>
+		</TextBlock>
+
+		<Path x:Key="DownArrow" x:Shared="False"
+				Data="{StaticResource DownArrow_path}"
+				Stretch="Fill" Width="8" Height="6" Margin="3,2,0,0"
+				Fill="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+		
+	</Application.Resources>
+</Application>

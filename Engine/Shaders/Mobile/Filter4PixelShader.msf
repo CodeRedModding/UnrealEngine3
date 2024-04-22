@@ -1,0 +1,24 @@
+/*=============================================================================
+	FilterPixelShader.usf: Filter pixel shader source.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#define NUM_SAMPLES	4
+
+UNIFORM_SAMPLER2D(TextureBase, TEXUNIT0);
+UNIFORM(vec4, SampleWeights4[NUM_SAMPLES]);
+
+IN_VARYING_ARRAY_DEFAULT(vec2, OffsetUVs, NUM_SAMPLES, TEXCOORD0);
+
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+PIXEL_MAIN
+{
+	vec4 Sum  = USE_SCENECOLOR(texture2D(TextureBase,OffsetUVs[0].xy)) * SampleWeights4[0];
+	     Sum += USE_SCENECOLOR(texture2D(TextureBase,OffsetUVs[1].yx)) * SampleWeights4[1];
+
+	     Sum += USE_SCENECOLOR(texture2D(TextureBase,OffsetUVs[2].xy)) * SampleWeights4[2];
+	     Sum += USE_SCENECOLOR(texture2D(TextureBase,OffsetUVs[3].yx)) * SampleWeights4[3];
+
+	gl_FragColor = Sum;
+}

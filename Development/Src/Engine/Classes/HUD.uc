@@ -1,10 +1,13 @@
 //=============================================================================
 // HUD: Superclass of the heads-up display.
+//
+//Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 //=============================================================================
 class HUD extends Actor
 	native
 	config(Game)
-	transient;
+	transient
+	dependson(Canvas);
 
 //=============================================================================
 // Variables.
@@ -12,43 +15,35 @@ class HUD extends Actor
 var	const	color	WhiteColor, GreenColor, RedColor;
 
 var PlayerController 	PlayerOwner; // always the actual owner
-var HUD 				HudOwner;	 // Used for sub-huds like the scoreboard
 
-var PlayerReplicationInfo ViewedInfo;	// The PRI of the current view target
-
-var float ProgressFadeTime;
-var Color MOTDColor;
-
-var actor AnimDebugThis;
-
-var ScoreBoard 	Scoreboard;
+/** Tells whether the game was paused due to lost focus */
+var transient bool bLostFocusPaused;
 
 // Visibility flags
 
-var bool 	bShowHUD;				// Is the hud visible
-var bool	bShowScores;			// Is the Scoreboard visible
-var bool	bShowDebugInfo;			// if true, show properties of current ViewTarget
-var config bool	bShowAIDebug;
-var config bool	bShowPhysicsDebug;
-var config bool	bShowWeaponDebug;
-var config bool	bShowNetworkDebug;
-var config bool	bShowCollisionDebug;
-var bool	bShowAnimDebug;			// If true, the animation system will show it's debug data
+var config	bool 	bShowHUD;					// Is the hud visible
+var			bool	bShowScores;				// Is the Scoreboard visible
+var			bool	bShowDebugInfo;				// If true, show properties of current ViewTarget
+var()		bool	bShowBadConnectionAlert;	// Display indication of bad connection (set in C++ based on lag and packetloss).
 
-var bool	bHideCenterMessages;			// don't draw centered messages (screen center being used)
-var() bool bShowBadConnectionAlert;     // Display indication of bad connection
+var config  bool    bShowDirectorInfoDebug;     // If true matinee/director information will be visible in the HUD in DebugText
+var config  bool    bShowDirectorInfoHUD;       // If true matinee/director information will be visible in the HUD (using KismetTextInfo)
 
-var config bool bMessageBeep;				// If true, any console messages will make a beep
+var globalconfig bool	bMessageBeep;				// If true, any console messages will make a beep
 
 var globalconfig float HudCanvasScale;    	// Specifies amount of screen-space to use (for TV's).
 
-// Level Action Messages
+/** Use the full screen extents for the canvas. Ignores splitscreen and cinematic mode scaling. */
+var bool bRenderFullScreen;
 
-var localized string LoadingMessage;
-var localized string SavingMessage;
-var localized string ConnectingMessage;
-var localized string PausedMessage;
-var localized string PrecachingMessage;
+/** Scale the canvas in with the cinematic black bars. Default behavior. */
+var bool bScaleCanvasForCinematicMode;
+
+/** If true, render actor overlays */
+var bool bShowOverlays;
+
+/** Holds a list of Actors that need PostRender calls */
+var array<Actor> PostRenderedActors;
 
 // Console Messages
 
@@ -60,12 +55,14 @@ struct native ConsoleMessage
 	var PlayerReplicationInfo PRI;
 };
 
-var ConsoleMessage 		ConsoleMessages[8];
+var array<ConsoleMessage> ConsoleMessages;
 var const Color 		ConsoleColor;
 
-var globalconfig int 	ConsoleMessageCount;
+var config int 	ConsoleMessageCount;
 var globalconfig int 	ConsoleFontSize;
 var globalconfig int 	MessageFontOffset;
+
+var int MaxHUDAreaMessageCount;
 
 // Localized Messages
 struct native HudLocalizedMessage
@@ -88,24 +85,24 @@ struct native HudLocalizedMessage
 	var Font StringFont;
 	var float DX, DY;
 	var bool Drawn;
+	var int Count;
+	var object OptionalObject;
 };
 var() transient HudLocalizedMessage LocalMessages[8];
 
-
 var() float ConsoleMessagePosX, ConsoleMessagePosY; // DP_LowerLeft
 
-
-/** 
- * Canvas to Draw HUD on. 
+/**
+ * Canvas to Draw HUD on.
  * NOTE: a new Canvas is given every frame, only draw on it from the HUD::PostRender() event */
-var	const Canvas	Canvas;
+var	/*const*/ Canvas	Canvas;
 
 //
 // Useful variables
 //
 
 /** Used to create DeltaTime */
-var transient	float	LastRenderTime;
+var transient	float	LastHUDRenderTime;
 /** Time since last render */
 var	transient	float	RenderDelta;
 /** Size of ViewPort in pixels */
@@ -115,43 +112,94 @@ var transient	float	CenterX, CenterY;
 /** Ratio of viewport compared to native resolution 1024x768 */
 var	transient	float	RatioX, RatioY;
 
+var globalconfig array<name> DebugDisplay;		// array of strings specifying what debug info to display for viewtarget actor
+									// base engine types include "AI", "physics", "weapon", "net", "camera", and "collision"
+
+struct native KismetDrawTextInfo
+{
+	var() string	MessageText;
+	var   string    AppendedText;
+	var() Font		MessageFont;
+	var() vector2d	MessageFontScale;
+	var() vector2d	MessageOffset;
+	var() Color		MessageColor;
+	var	  float		MessageEndTime;
+};
+var array<KismetDrawTextInfo> KismetTextInfo;
 
 //=============================================================================
 // Utils
 //=============================================================================
 
-// Draw3DLine  - draw line in world space. Should be used when engine calls RenderWorldOverlays() event.
-
+// Draw3DLine  - draw line in world space. 
 native final function Draw3DLine(vector Start, vector End, color LineColor);
+native final function Draw2DLine(int X1, int Y1, int X2, int Y2, color LineColor);
 
-simulated event PostBeginPlay()
+event PostBeginPlay()
 {
 	super.PostBeginPlay();
 
 	PlayerOwner = PlayerController(Owner);
+
+	// e.g. getting material pointers to control effects for gameplay
+	NotifyBindPostProcessEffects();
 }
 
-// SpawnScoreBoard - Sets the scoreboard
+/* DrawActorOverlays()
+draw overlays for actors that were rendered this tick and have added themselves to the PostRenderedActors array
+*/
+native function DrawActorOverlays(vector Viewpoint, rotator ViewRotation);
 
-function SpawnScoreBoard(class<Scoreboard> ScoringType)
+/************************************************************************************************************
+ Actor Render - These functions allow for actors in the world to gain access to the hud and render
+ information on it.
+************************************************************************************************************/
+
+/** RemovePostRenderedActor()
+remove an actor from the PostRenderedActors array
+*/
+function RemovePostRenderedActor(Actor A)
 {
-	if ( ScoringType != None )
-		Scoreboard = Spawn(ScoringType, PlayerOwner);
+	local int i;
 
-	if (ScoreBoard!=None)
-    	ScoreBoard.HudOwner = self;
+	for ( i=0; i<PostRenderedActors.Length; i++ )
+	{
+		if ( PostRenderedActors[i] == A )
+		{
+			PostRenderedActors[i] = None;
+			return;
+		}
+	}
 }
 
-// Clean up
-
-simulated event Destroyed()
+/** AddPostRenderedActor()
+add an actor to the PostRenderedActors array
+*/
+function AddPostRenderedActor(Actor A)
 {
-    if( ScoreBoard != None )
-    {
-        ScoreBoard.Destroy();
-        ScoreBoard = None;
-    }
-	Super.Destroyed();
+	local int i;
+
+	// make sure that A is not already in list
+	for ( i=0; i<PostRenderedActors.Length; i++ )
+	{
+		if ( PostRenderedActors[i] == A )
+		{
+			return;
+		}
+	}
+
+	// add A at first empty slot
+	for ( i=0; i<PostRenderedActors.Length; i++ )
+	{
+		if ( PostRenderedActors[i] == None )
+		{
+			PostRenderedActors[i] = A;
+			return;
+		}
+	}
+
+	// no empty slot found, so grow array
+	PostRenderedActors[PostRenderedActors.Length] = A;
 }
 
 //=============================================================================
@@ -164,88 +212,95 @@ exec function ToggleHUD()
 	bShowHUD = !bShowHUD;
 }
 
+exec function ShowHUD()
+{
+	ToggleHUD();
+}
+
 /* toggles displaying scoreboard
 */
 exec function ShowScores()
 {
-	bShowScores = !bShowScores;
+	SetShowScores(!bShowScores);
 }
 
-/* toggles displaying properties of player's current viewtarget
-*/
-exec function ShowDebug()
+/** sets bShowScores to a specific value (not toggle) */
+exec function SetShowScores(bool bNewValue)
 {
-	bShowDebugInfo = !bShowDebugInfo;
+	bShowScores = bNewValue;
 }
 
-exec function ShowAIDebug()
+/**
+ * Toggles displaying properties of player's current ViewTarget
+ * DebugType input values supported by base engine include "AI", "physics", "weapon", "net", "camera", and "collision"
+ */
+exec function ShowDebug(optional name DebugType)
 {
-	bShowAIDebug = !bShowAIDebug;
-}
+	//local int i;
+	local bool bRemoved;
 
-exec function ShowPhysicsDebug()
-{
-	bShowPhysicsDebug = !bShowPhysicsDebug;
-}
-
-exec function ShowWeaponDebug()
-{
-	bShowWeaponDebug = !bShowWeaponDebug;
-}
-
-exec function ShowNetworkDebug()
-{
-	bShowNetworkDebug = !bShowNetworkDebug;
-}
-
-exec function ShowCollisionDebug()
-{
-	bShowCollisionDebug = !bShowCollisionDebug;
-}
-
-// Show debug information for owner's pawn's skeletal mesh
-exec function ShowAnimDebug()
-{
-	bShowAnimDebug = !bShowAnimDebug;
-
-	if ( bShowAnimDebug )
-		AnimDebugThis = PlayerOwner.Pawn;
-}
-// Show debug information for owner's pawn's weapon's skeletal mesh
-exec function ShowWeapAnimDebug()
-{
-	bShowAnimDebug = !bShowAnimDebug;
-    if ( bShowAnimDebug )
-    	AnimDebugThis = PlayerOwner.Pawn.Weapon;
-}
-
-
-// Show debug information for another pawns skeletal mesh. Finds nearest of given class (excluding owner's pawn).
-exec function ShowPawnAnimDebug(class<Pawn> aClass)
-{
-	local Pawn P, ClosestPawn;
-	local float ThisDistance, ClosestPawnDistance;
-
-	bShowAnimDebug = !bShowAnimDebug;
-
-	if(bShowAnimDebug)
+	if (DebugType == 'None')
 	{
-		ClosestPawn = None;
-		ClosestPawnDistance = 10000000.0;
-		ForEach DynamicActors(class'Pawn', P)
+		bShowDebugInfo = !bShowDebugInfo;
+	}
+	else
+	{
+		if (bShowDebugInfo)
 		{
-			if ( ClassIsChildOf(P.class, aClass) && (P != PlayerOwner.Pawn) )
+			// remove debugtype if already in array
+			if (INDEX_NONE != DebugDisplay.RemoveItem(DebugType))
 			{
-				ThisDistance = VSize(P.Location - PlayerOwner.Pawn.Location);
-				if(ThisDistance < ClosestPawnDistance)
-				{
-					ClosestPawn = P;
-					ClosestPawnDistance = ThisDistance;
-				}
+				bRemoved = true;
 			}
 		}
+		if (!bRemoved)
+		{
+			DebugDisplay[DebugDisplay.Length] = DebugType;
+		}
 
-		AnimDebugThis = ClosestPawn;
+		bShowDebugInfo = true;
+
+		SaveConfig();
+	}
+}
+
+function bool ShouldDisplayDebug(name DebugType)
+{
+	local int i;
+
+	for ( i=0; i<DebugDisplay.Length; i++ )
+	{
+		if ( DebugDisplay[i] == DebugType )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+exec function ToggleDirectorInfoHUD()
+{
+    bShowDirectorInfoHUD = !bShowDirectorInfoHUD;
+}
+
+exec function ToggleDirectorInfoDebug()
+{
+    bShowDirectorInfoDebug = !bShowDirectorInfoDebug;
+}
+
+/** Entry point for basic debug rendering on the HUD.  Activated and controlled via the "showdebug" console command.  Can be overridden to display custom debug per-game. */
+function ShowDebugInfo(out float out_YL, out float out_YPos)
+{
+	PlayerOwner.ViewTarget.DisplayDebug(self, out_YL, out_YPos);
+
+	if (ShouldDisplayDebug('Game'))
+	{
+		WorldInfo.Game.DisplayDebug(self, out_YL, out_YPos);
+	}
+
+	if (ShouldDisplayDebug('AI') && (Pawn(PlayerOwner.ViewTarget) != None))
+	{
+		DrawRoute(Pawn(PlayerOwner.ViewTarget));
 	}
 }
 
@@ -255,27 +310,57 @@ exec function ShowPawnAnimDebug(class<Pawn> aClass)
 
 // DrawRoute - Bot Debugging
 
-simulated function DrawRoute()
+function DrawRoute(Pawn Target)
 {
 	local int			i;
 	local Controller	C;
-	local vector		Start, End, RealStart;;
+	local vector		Start, RealStart, Dest;
 	local bool			bPath;
 	local Actor			FirstRouteCache;
+	local Pylon FoundPylon;
 
-	C = Pawn(PlayerOwner.ViewTarget).Controller;
+	C = Target.Controller;
 	if ( C == None )
 		return;
 	if ( C.CurrentPath != None )
 		Start = C.CurrentPath.Start.Location;
 	else
-		Start = PlayerOwner.ViewTarget.Location;
+		Start = Target.Location;
 	RealStart = Start;
 
 	if ( C.bAdjusting )
 	{
-		Draw3DLine(C.Pawn.Location, C.AdjustLoc, MakeColor(255,0,255,255));
-		Start = C.AdjustLoc;
+		Draw3DLine(C.Pawn.Location, C.GetAdjustLocation(), MakeColor(255,0,255,255));
+		Start = C.GetAdjustLocation();
+	}
+
+	Dest = C.GetDestinationPosition();
+
+	// check if using navmesh
+	Foreach WorldInfo.AllNavigationPoints(class'Pylon', FoundPylon)
+		break;
+
+	if ( FoundPylon != None )
+	{
+		if( C.NavigationHandle == none )
+		{
+			C.NavigationHandle = new(C) class'NavigationHandle';
+		}
+
+		class'NavmeshPath_Toward'.static.TowardPoint(C.NavigationHandle,Dest);
+		class'NavMeshGoal_At'.static.AtLocation(C.NavigationHandle,Dest);
+		C.NavigationHandle.bVisualPathDebugging = TRUE;
+		if(C.NavigationHandle.FindPath())
+		{
+			DrawDebugCoordinateSystem(Dest,rot(0,0,0),25.f,TRUE);
+			C.NavigationHandle.DrawPathCache(,true);
+		}
+		else
+		{
+			DrawDebugCoordinateSystem(Dest,rot(0,0,0),25.f,TRUE);
+			DrawDebugBox(Target.Location,Target.GetCollisionExtent(),255,0,0,TRUE);
+		}
+		return;
 	}
 
 	if( C.RouteCache.Length > 0 )
@@ -287,14 +372,14 @@ simulated function DrawRoute()
 	if ( (C == PlayerOwner)
 		|| (C.MoveTarget == FirstRouteCache) && (C.MoveTarget != None) )
 	{
-		if ( (C == PlayerOwner) && (C.Destination != vect(0,0,0)) )
+		if ( (C == PlayerOwner) && (Dest != vect(0,0,0)) )
 		{
-			if ( C.PointReachable(C.Destination) )
+			if ( C.PointReachable(Dest) )
 			{
-				Draw3DLine(C.Pawn.Location, C.Destination, MakeColor(255,255,255,255));
+				Draw3DLine(C.Pawn.Location, Dest, MakeColor(255,255,255,255));
 				return;
 			}
-			C.FindPathTo(C.Destination);
+			C.FindPathTo(Dest);
 		}
 		if( C.RouteCache.Length > 0 )
 		{
@@ -307,27 +392,23 @@ simulated function DrawRoute()
 				Start = C.RouteCache[i].Location;
 			}
 			if ( bPath )
-				Draw3DLine(RealStart,C.Destination,MakeColor(255,255,255,255));
+				Draw3DLine(RealStart,Dest,MakeColor(255,255,255,255));
 		}
 	}
-	else if ( PlayerOwner.ViewTarget.Velocity != vect(0,0,0) )
-		Draw3DLine(RealStart,C.Destination,MakeColor(255,255,255,255));
+	else if (Target.Velocity != vect(0,0,0))
+		Draw3DLine(RealStart,Dest,MakeColor(255,255,255,255));
 
 	if ( C == PlayerOwner )
 		return;
 
 	// show where pawn is looking
-	if ( C.Focus != None )
-		End = C.Focus.Location;
-	else
-		End = C.FocalPoint;
-	Draw3DLine(PlayerOwner.ViewTarget.Location + Pawn(PlayerOwner.ViewTarget).BaseEyeHeight * vect(0,0,1),End,MakeColor(255,0,0,255));
+	Draw3DLine(Target.Location + Target.BaseEyeHeight * vect(0,0,1), C.GetFocalPoint(), MakeColor(255,0,0,255));
 }
 
 /**
  * Pre-Calculate most common values, to avoid doing 1200 times the same operations
  */
-simulated function PreCalcValues()
+function PreCalcValues()
 {
 	// Size of Viewport
 	SizeX	= Canvas.SizeX;
@@ -345,436 +426,278 @@ simulated function PreCalcValues()
 /**
  * PostRender is the main draw loop.
  */
-simulated event PostRender()
+event PostRender()
 {
 	local float		XL, YL, YPos;
 
 	// Set up delta time
-    RenderDelta = Level.TimeSeconds - LastRenderTime;
+	RenderDelta = WorldInfo.TimeSeconds - LastHUDRenderTime;
 
 	// Pre calculate most common variables
 	if ( SizeX != Canvas.SizeX || SizeY != Canvas.SizeY )
+	{
 		PreCalcValues();
+	}
 
 	// Set PRI of view target
-    if ( PlayerOwner != None )
-    {
-    	if ( PlayerOwner.ViewTarget != None )
-	    {
-	        if ( Pawn(PlayerOwner.ViewTarget) != None )
-				ViewedInfo = Pawn(PlayerOwner.ViewTarget).PlayerReplicationInfo;
-        	else
-            	ViewedInfo = PlayerOwner.PlayerReplicationInfo;
-        }
-        else if ( PlayerOwner.Pawn != None )
-        	ViewedInfo = PlayerOwner.Pawn.PlayerReplicationInfo;
-    	else
-        	ViewedInfo = PlayerOwner.PlayerReplicationInfo;
-    }
-	else
-   		ViewedInfo = PlayerOwner.PlayerReplicationInfo;
+	if ( PlayerOwner != None )
+	{
+		// draw any debug text in real-time
+		PlayerOwner.DrawDebugTextList(Canvas,RenderDelta);
+	}
 
-
-    if ( bShowDebugInfo )
-    {
-        Canvas.Font			= class'Engine'.Default.TinyFont;
-        Canvas.DrawColor	= ConsoleColor;
+	if ( bShowDebugInfo )
+	{
+		Canvas.Font = class'Engine'.Static.GetTinyFont();
+		Canvas.DrawColor = ConsoleColor;
 		Canvas.StrLen("X", XL, YL);
 		YPos = 0;
-        PlayerOwner.ViewTarget.DisplayDebug (self, YL, YPos);
 
-		if ( bShowAIDebug && (Pawn(PlayerOwner.ViewTarget) != None) )
-			DrawRoute();
+		ShowDebugInfo(YL, YPos);
 	}
 	else if ( bShowHud )
-    {
-        if ( bShowScores )
-        {
-            if ( ScoreBoard != None )
-            {
-                ScoreBoard.DrawHud();
-				if ( Scoreboard.bDisplayMessages )
-					DisplayConsoleMessages();
-			}
-        }
-        else
-        {
-            DrawHud();
-
-            if ( !DrawLevelAction() )
-            {
-                if ((PlayerOwner != None) && (PlayerOwner.ProgressTimeOut > Level.TimeSeconds))
-                    DisplayProgressMessage();
-            }
-
-            DisplayConsoleMessages();
-			DisplayLocalMessages();
-
-		    PlayerOwner.DrawHud( Self );
-        }
-    }
-
-	bHideCenterMessages = DrawLevelAction();
-
-	if ( !bHideCenterMessages && (PlayerOwner.ProgressTimeOut > Level.TimeSeconds) )
-		DisplayProgressMessage();
-
-
-	if ( bShowBadConnectionAlert )
-		DisplayBadConnectionAlert();
-
-    if ( bShowAnimDebug && AnimDebugThis != None )
 	{
-		// Draw animation Debug
-    	if ( Pawn(AnimDebugThis) != None && Pawn(AnimDebugThis).Mesh != None )
-        	Pawn(AnimDebugThis).Mesh.DrawAnimDebug( Canvas );
+		if ( !bShowScores )
+		{
+			DrawHud();
+
+			DisplayConsoleMessages();
+			DisplayLocalMessages();
+			DisplayKismetMessages();
+		}
 	}
 
-	LastRenderTime = Level.TimeSeconds;
-}
+	if ( bShowBadConnectionAlert )
+	{
+		DisplayBadConnectionAlert();
+	}
 
+	LastHUDRenderTime = WorldInfo.TimeSeconds;
+}
 
 /**
  * The Main Draw loop for the hud.  Gets called before any messaging.  Should be subclassed
  */
 function DrawHUD()
 {
-	DrawEngineHUD();
-}
+	local vector ViewPoint;
+	local rotator ViewRotation;
 
-/**
- * Special HUD for Engine demo
- */
-function DrawEngineHUD()
-{
-	local	float	CrosshairSize;
-	local	float	xl,yl,Y;
-	local	String	myText;
-
-	// Draw Copyright Notice
-	Canvas.SetDrawColor(255, 255, 255, 255);
-	myText = "UnrealEngine3";
-	Canvas.Font = class'Engine'.Default.SmallFont;
-	Canvas.StrLen(myText, XL, YL);
-	Y = YL*1.67;
-	Canvas.SetPos( CenterX - (XL/2), YL*0.5);
-	Canvas.DrawText(myText, true);
-
-	Canvas.SetDrawColor(200,200,200,255);
-	myText = "Copyright (C) 2004, Epic Games";
-	Canvas.Font = class'Engine'.Default.TinyFont;
-	Canvas.StrLen(myText, XL, YL);
-	Canvas.SetPos( CenterX - (XL/2), Y);
-	Canvas.DrawText(myText, true);
-
-	// Draw Temporary Crosshair
-	CrosshairSize = 4;
-	Canvas.SetPos(CenterX - CrosshairSize, CenterY);
-	Canvas.DrawRect(2*CrosshairSize + 1, 1);
-
-	Canvas.SetPos(CenterX, CenterY - CrosshairSize);
-	Canvas.DrawRect(1, 2*CrosshairSize + 1);
-}
-
-
-/**
- * display progress messages in center of screen
- */
-simulated function DisplayProgressMessage()
-{
-    local int i, LineCount;
-    local float FontDX, FontDY;
-    local float X, Y;
-    local int Alpha;
-    local float TimeLeft;
-
-    TimeLeft = PlayerOwner.ProgressTimeOut - Level.TimeSeconds;
-
-    if ( TimeLeft >= ProgressFadeTime )
-        Alpha = 255;
-    else
-        Alpha = (255 * TimeLeft) / ProgressFadeTime;
-
-    LineCount = 0;
-
-    for (i = 0; i < ArrayCount (PlayerOwner.ProgressMessage); i++)
-    {
-        if (PlayerOwner.ProgressMessage[i] == "")
-            continue;
-
-        LineCount++;
-    }
-
-    if ( (Level.GRI != None) && (Level.GRI.MessageOfTheDay != "") )
-    {
-        LineCount++;
-    }
-
-    Canvas.Font = class'Engine'.Default.LargeFont;
-    Canvas.TextSize ("A", FontDX, FontDY);
-
-    X = (0.5 * HudCanvasScale * Canvas.SizeX) + (((1.0 - HudCanvasScale) / 2.0) * Canvas.SizeX);
-    Y = (0.5 * HudCanvasScale * Canvas.SizeY) + (((1.0 - HudCanvasScale) / 2.0) * Canvas.SizeY);
-
-    Y -= FontDY * (float (LineCount) / 2.0);
-
-    for (i = 0; i < ArrayCount (PlayerOwner.ProgressMessage); i++)
-    {
-        if (PlayerOwner.ProgressMessage[i] == "")
-            continue;
-
-        Canvas.DrawColor = PlayerOwner.ProgressColor[i];
-        Canvas.DrawColor.A = Alpha;
-
-        Canvas.TextSize (PlayerOwner.ProgressMessage[i], FontDX, FontDY);
-        Canvas.SetPos (X - (FontDX / 2.0), Y);
-        Canvas.DrawText (PlayerOwner.ProgressMessage[i]);
-
-        Y += FontDY;
-    }
-
-    if( (Level.GRI != None) && (Level.NetMode != NM_StandAlone) )
-    {
-        Canvas.DrawColor = MOTDColor;
-        Canvas.DrawColor.A = Alpha;
-
-        if( Level.GRI.MessageOfTheDay != "" )
-        {
-            Canvas.TextSize (Level.GRI.MessageOfTheDay, FontDX, FontDY);
-            Canvas.SetPos (X - (FontDX / 2.0), Y);
-            Canvas.DrawText (Level.GRI.MessageOfTheDay);
-            Y += FontDY;
-        }
-    }
-}
-
-
-/**
- * Displays the current action message for the level
- */
-function bool DrawLevelAction()
-{
-	local string BigMessage;
-
-	if (Level.LevelAction == LEVACT_None )
+	if ( bShowOverlays && (PlayerOwner != None) )
 	{
-		if ( (Level.Pauser != None) && (Level.TimeSeconds > Level.PauseDelay + 0.2) )
-			BigMessage = PausedMessage; // Add pauser name?
-		else
-		{
-			BigMessage = "";
-			return false;
-		}
+		Canvas.Font = GetFontSizeIndex(0);
+		PlayerOwner.GetPlayerViewPoint(ViewPoint, ViewRotation);
+		DrawActorOverlays(Viewpoint, ViewRotation);
 	}
-	else if ( Level.LevelAction == LEVACT_Loading )
-		BigMessage = LoadingMessage;
-	else if ( Level.LevelAction == LEVACT_Saving )
-		BigMessage = SavingMessage;
-	else if ( Level.LevelAction == LEVACT_Connecting )
-		BigMessage = ConnectingMessage;
-	else if ( Level.LevelAction == LEVACT_Precaching )
-		BigMessage = PrecachingMessage;
-
-	if ( BigMessage != "" )
-	{
-		PrintActionMessage( BigMessage );
-		return true;
-	}
-	return false;
-}
-
-/**
- * Print a centered level action message with a drop shadow.
- */
-function PrintActionMessage( string BigMessage )
-{
-	local float XL, YL;
-
-	Canvas.Font = class'Engine'.Default.LargeFont;
-	Canvas.bCenter = false;
-	Canvas.StrLen( BigMessage, XL, YL );
-	Canvas.SetPos(0.5 * (Canvas.ClipX - XL) + 1, 0.66 * Canvas.ClipY - YL * 0.5 + 1);
-	Canvas.SetDrawColor(0,0,0);
-	Canvas.DrawText( BigMessage, false );
-	Canvas.SetPos(0.5 * (Canvas.ClipX - XL), 0.66 * Canvas.ClipY - YL * 0.5);
-	Canvas.SetDrawColor(0,0,255);;
-	Canvas.DrawText( BigMessage, false );
+	PlayerOwner.DrawHud( Self );
 }
 
 // DisplayBadConnectionAlert() - Warn user that net connection is bad
-
 function DisplayBadConnectionAlert();	// Subclass Me
 
 //=============================================================================
 // Messaging.
 //=============================================================================
 
-event ConnectFailure(string FailCode, string URL)
-{
-	PlayerOwner.ReceiveLocalizedMessage(class'FailedConnect', class'FailedConnect'.Static.GetFailSwitch(FailCode));
-}
-
-function PlayStartupMessage(byte Stage);
-
-
-// Manipulation
-
-
-simulated function ClearMessage( out HudLocalizedMessage M )
+function ClearMessage( out HudLocalizedMessage M )
 {
 	M.Message = None;
     M.StringFont = None;
 }
 
-simulated function PlayReceivedMessage( string S, string PName, ZoneInfo PZone )
-{
-	PlayerOwner.ClientMessage(S);
-
-	if ( bMessageBeep )
-		PlayerOwner.PlayBeepSound();
-}
-
 // Console Messages
 
-simulated function Message( PlayerReplicationInfo PRI, coerce string Msg, name MsgType )
+function Message( PlayerReplicationInfo PRI, coerce string Msg, name MsgType, optional float LifeTime )
 {
+	local string ThePlayerName;
+
 	if ( bMessageBeep )
+	{
 		PlayerOwner.PlayBeepSound();
+	}
+
 
 	if ( (MsgType == 'Say') || (MsgType == 'TeamSay') )
-		Msg = PRI.PlayerName$": "$Msg;
+	{
+		ThePlayerName = PRI != None ? PRI.PlayerName : "";
+		Msg = ThePlayerName $ ": "$Msg;
+	}
 
-	AddConsoleMessage(Msg,class'LocalMessage',PRI);
+	AddConsoleMessage(Msg,class'LocalMessage',PRI,LifeTime);
 }
-
-
 
 /**
  * Display current messages
  */
 function DisplayConsoleMessages()
 {
-    local int i, j, XPos, YPos,MessageCount;
+    local int Idx, XPos, YPos;
     local float XL, YL;
 
-    for( i = 0; i < ConsoleMessageCount; i++ )
-    {
-        if ( ConsoleMessages[i].Text == "" )
-            break;
-        else if( ConsoleMessages[i].MessageLife < Level.TimeSeconds )
-        {
-            ConsoleMessages[i].Text = "";
+	if ( ConsoleMessages.Length == 0 )
+		return;
 
-            if( i < ConsoleMessageCount - 1 )
-            {
-                for( j=i; j<ConsoleMessageCount-1; j++ )
-                    ConsoleMessages[j] = ConsoleMessages[j+1];
-            }
-            ConsoleMessages[j].Text = "";
-            break;
-        }
-        else
-			MessageCount++;
+    for (Idx = 0; Idx < ConsoleMessages.Length; Idx++)
+    {
+		if ( ConsoleMessages[Idx].Text == "" || ConsoleMessages[Idx].MessageLife < WorldInfo.TimeSeconds )
+		{
+			ConsoleMessages.Remove(Idx--,1);
+		}
     }
 
     XPos = (ConsoleMessagePosX * HudCanvasScale * Canvas.SizeX) + (((1.0 - HudCanvasScale) / 2.0) * Canvas.SizeX);
     YPos = (ConsoleMessagePosY * HudCanvasScale * Canvas.SizeY) + (((1.0 - HudCanvasScale) / 2.0) * Canvas.SizeY);
 
-    Canvas.Font = class'Engine'.Default.SmallFont;
+    Canvas.Font = class'Engine'.Static.GetSmallFont();
     Canvas.DrawColor = ConsoleColor;
 
     Canvas.TextSize ("A", XL, YL);
 
-    YPos -= YL * MessageCount+1; // DP_LowerLeft
+    YPos -= YL * ConsoleMessages.Length; // DP_LowerLeft
     YPos -= YL; // Room for typing prompt
 
-    for( i=0; i<MessageCount; i++ )
+    for (Idx = 0; Idx < ConsoleMessages.Length; Idx++)
     {
-        if ( ConsoleMessages[i].Text == "" )
-            break;
+		if (ConsoleMessages[Idx].Text == "")
+		{
+			continue;
+		}
 
-        Canvas.StrLen( ConsoleMessages[i].Text, XL, YL );
-        Canvas.SetPos( XPos, YPos );
-        Canvas.DrawColor = ConsoleMessages[i].TextColor;
-        Canvas.DrawText( ConsoleMessages[i].Text, false );
-        YPos += YL;
+		if( ShouldShowConsoleMessage(ConsoleMessages[Idx]) == FALSE )
+		{
+			continue;
+		}
+
+		Canvas.StrLen( ConsoleMessages[Idx].Text, XL, YL );
+		Canvas.SetPos( XPos, YPos );
+		Canvas.DrawColor = ConsoleMessages[Idx].TextColor;
+		Canvas.DrawText( ConsoleMessages[Idx].Text, false );
+		YPos += YL;
     }
 }
 
-function AddConsoleMessage(string M, class<LocalMessage> MessageClass, PlayerReplicationInfo PRI)
+/** Determines whether or not the speciific console message should be displayed **/
+function bool ShouldShowConsoleMessage( const  ConsoleMessage InConsoleMessage )
 {
-	local int i;
+	return TRUE;
+}
 
 
-	if( bMessageBeep && MessageClass.Default.bBeep )
+
+/**
+ * Add a new console message to display.
+ */
+function AddConsoleMessage(string M, class<LocalMessage> InMessageClass, PlayerReplicationInfo PRI, optional float LifeTime)
+{
+	local int Idx, MsgIdx;
+	MsgIdx = -1;
+	// check for beep on message receipt
+	if( bMessageBeep && InMessageClass.default.bBeep )
+	{
 		PlayerOwner.PlayBeepSound();
-
-    for( i=0; i<ConsoleMessageCount; i++ )
+	}
+	// find the first available entry
+	if (ConsoleMessages.Length < ConsoleMessageCount)
+	{
+		MsgIdx = ConsoleMessages.Length;
+	}
+	else
+	{
+		// look for an empty entry
+		for (Idx = 0; Idx < ConsoleMessages.Length && MsgIdx == -1; Idx++)
+		{
+			if (ConsoleMessages[Idx].Text == "")
+			{
+				MsgIdx = Idx;
+			}
+		}
+	}
+    if( MsgIdx == ConsoleMessageCount || MsgIdx == -1)
     {
-        if ( ConsoleMessages[i].Text == "" )
-            break;
+		// push up the array
+		for(Idx = 0; Idx < ConsoleMessageCount-1; Idx++ )
+		{
+			ConsoleMessages[Idx] = ConsoleMessages[Idx+1];
+		}
+		MsgIdx = ConsoleMessageCount - 1;
     }
+	// fill in the message entry
+	if (MsgIdx >= ConsoleMessages.Length)
+	{
+		ConsoleMessages.Length = MsgIdx + 1;
+	}
 
-    if( i == ConsoleMessageCount )
-    {
-        for( i=0; i<ConsoleMessageCount-1; i++ )
-            ConsoleMessages[i] = ConsoleMessages[i+1];
-    }
+    ConsoleMessages[MsgIdx].Text = M;
+	if (LifeTime != 0.f)
+	{
+		ConsoleMessages[MsgIdx].MessageLife = WorldInfo.TimeSeconds + LifeTime;
+	}
+	else
+	{
+		ConsoleMessages[MsgIdx].MessageLife = WorldInfo.TimeSeconds + InMessageClass.default.LifeTime;
+	}
 
-    ConsoleMessages[i].Text = M;
-    ConsoleMessages[i].MessageLife = Level.TimeSeconds + MessageClass.Default.LifeTime;
-    ConsoleMessages[i].TextColor = MessageClass.static.GetConsoleColor(PRI);
-    ConsoleMessages[i].PRI = PRI;
+    ConsoleMessages[MsgIdx].TextColor = InMessageClass.static.GetConsoleColor(PRI);
+    ConsoleMessages[MsgIdx].PRI = PRI;
 }
 
 //===============================================
 // Localized Message rendering
 
 function LocalizedMessage
-( 
-	class<LocalMessage>		Message, 
-	PlayerReplicationInfo	RelatedPRI_1, 
-	string					CriticalString, 
-	int						Switch, 
-	float					Position, 
-	float					LifeTime, 
-	int						FontSize, 
-	color					DrawColor
+(
+	class<LocalMessage>		InMessageClass,
+	PlayerReplicationInfo	RelatedPRI_1,
+	PlayerReplicationInfo	RelatedPRI_2,
+	string					CriticalString,
+	int						Switch,
+	float					Position,
+	float					LifeTime,
+	int						FontSize,
+	color					DrawColor,
+	optional object			OptionalObject
 )
 {
-	local int i, LocalMessagesArrayCount;
+	local int i, LocalMessagesArrayCount, MessageCount;
 
-    if( Message == None )
+    if( InMessageClass == None || CriticalString == "" )
 	{
-        return;
+		return;
 	}
 
-	//FIXMESTEVE - move to LocalMessage class
-	if( bMessageBeep && Message.default.bBeep )
+	if( bMessageBeep && InMessageClass.default.bBeep )
 		PlayerOwner.PlayBeepSound();
 
-    if( !Message.default.bIsSpecial )
+    if( !InMessageClass.default.bIsSpecial )
     {
-	    AddConsoleMessage( CriticalString, Message,RelatedPRI_1 );
-        return;
+	    AddConsoleMessage( CriticalString, InMessageClass, RelatedPRI_1 );
+		return;
     }
+
 	LocalMessagesArrayCount = ArrayCount(LocalMessages);
     i = LocalMessagesArrayCount;
-	if( Message.default.bIsUnique )
+	if( InMessageClass.default.bIsUnique )
 	{
 		for( i = 0; i < LocalMessagesArrayCount; i++ )
 		{
-		    if( LocalMessages[i].Message == Message )
-                break;
+		    if( LocalMessages[i].Message == InMessageClass )
+			{
+				if ( InMessageClass.default.bCountInstances && (LocalMessages[i].StringMessage ~= CriticalString) )
+				{
+					MessageCount = (LocalMessages[i].Count == 0) ? 2 : LocalMessages[i].Count + 1;
+				}
+				break;
+			}
 		}
 	}
-	else if ( Message.default.bIsPartiallyUnique )
+	else if ( InMessageClass.default.bIsPartiallyUnique )
 	{
 		for( i = 0; i < LocalMessagesArrayCount; i++ )
 		{
-		    if( ( LocalMessages[i].Message == Message ) && ( LocalMessages[i].Switch == Switch ) )
-                break;
-        }
+		    if( ( LocalMessages[i].Message == InMessageClass )
+				&& InMessageClass.static.PartiallyDuplicates(Switch, LocalMessages[i].Switch, OptionalObject, LocalMessages[i].OptionalObject) )
+				break;
+		}
 	}
 
     if( i == LocalMessagesArrayCount )
@@ -782,7 +705,7 @@ function LocalizedMessage
 	    for( i = 0; i < LocalMessagesArrayCount; i++ )
 	    {
 		    if( LocalMessages[i].Message == None )
-                break;
+				break;
 	    }
     }
 
@@ -794,65 +717,111 @@ function LocalizedMessage
 
     ClearMessage( LocalMessages[i] );
 
-	LocalMessages[i].Message		= Message;
-	LocalMessages[i].Switch			= Switch;
-	LocalMessages[i].EndOfLife		= LifeTime + Level.TimeSeconds;
-	LocalMessages[i].StringMessage	= CriticalString;
-	LocalMessages[i].LifeTime		= LifeTime;
-	LocalMessages[i].PosY			= Position;
-	LocalMessages[i].DrawColor		= DrawColor;
-	LocalMessages[i].FontSize		= FontSize;
+	// Add the local message to the spot.
+	AddLocalizedMessage(i, InMessageClass, CriticalString, Switch, Position, LifeTime, FontSize, DrawColor, MessageCount, OptionalObject);
+
+}
+
+/**
+ * Add the actual message to the array.  Made easier to tweak in a subclass
+ *
+ * @Param	Index				The index in to the LocalMessages array to place it.
+ * @Param	InMessageClass		Class of the message
+ * @Param	CriticialString		String of the message
+ * @Param	Switch				The message switch
+ * @Param	Position			Where on the screen is the message
+ * @Param	LifeTime			How long does this message live
+ * @Param	FontSize			How big is the message
+ * @Param	DrawColor			The Color of the message
+ */
+function AddLocalizedMessage
+(
+	int						Index,
+	class<LocalMessage>		InMessageClass,
+	string					CriticalString,
+	int						Switch,
+	float					Position,
+	float					LifeTime,
+	int						FontSize,
+	color					DrawColor,
+	optional int			MessageCount,
+	optional object			OptionalObject
+)
+{
+	LocalMessages[Index].Message		= InMessageClass;
+	LocalMessages[Index].Switch			= Switch;
+	LocalMessages[Index].EndOfLife		= LifeTime + WorldInfo.TimeSeconds;
+	LocalMessages[Index].StringMessage	= CriticalString;
+	LocalMessages[Index].LifeTime		= LifeTime;
+	LocalMessages[Index].PosY			= Position;
+	LocalMessages[Index].DrawColor		= DrawColor;
+	LocalMessages[Index].FontSize		= FontSize;
+	LocalMessages[Index].Count			= MessageCount;
+	LocalMessages[Index].OptionalObject	= OptionalObject;
 }
 
 
-simulated function GetScreenCoords(float PosY, out float ScreenX, out float ScreenY, out HudLocalizedMessage Message )
+function GetScreenCoords(float PosY, out float ScreenX, out float ScreenY, out HudLocalizedMessage InMessage )
 {
     ScreenX = 0.5 * Canvas.ClipX;
     ScreenY = (PosY * HudCanvasScale * Canvas.ClipY) + (((1.0f - HudCanvasScale) * 0.5f) * Canvas.ClipY);
 
-    ScreenX -= Message.DX * 0.5;
-    ScreenY -= Message.DY * 0.5;
+    ScreenX -= InMessage.DX * 0.5;
+    ScreenY -= InMessage.DY * 0.5;
 }
 
-simulated function DrawMessage(int i, float PosY, out float DX, out float DY )
+function DrawMessage(int i, float PosY, out float DX, out float DY )
 {
     local float FadeValue;
     local float ScreenX, ScreenY;
 
-	FadeValue = (LocalMessages[i].EndOfLife - Level.TimeSeconds);
-	Canvas.DrawColor = LocalMessages[i].DrawColor;
-	Canvas.DrawColor.A = LocalMessages[i].DrawColor.A * (FadeValue/LocalMessages[i].LifeTime);
+	FadeValue = FMin(1.0, LocalMessages[i].EndOfLife - WorldInfo.TimeSeconds);
 
+	Canvas.DrawColor = LocalMessages[i].DrawColor;
+	Canvas.DrawColor.A = FadeValue * Canvas.DrawColor.A;
 	Canvas.Font = LocalMessages[i].StringFont;
 	GetScreenCoords( PosY, ScreenX, ScreenY, LocalMessages[i] );
-	Canvas.SetPos( ScreenX, ScreenY );
 	DX = LocalMessages[i].DX / Canvas.ClipX;
     DY = LocalMessages[i].DY / Canvas.ClipY;
 
-	Canvas.DrawTextClipped( LocalMessages[i].StringMessage, false );
-
+	DrawMessageText(LocalMessages[i], ScreenX, ScreenY);
     LocalMessages[i].Drawn = true;
 }
 
-simulated function DisplayLocalMessages()
+function DrawMessageText(HudLocalizedMessage LocalMessage, float ScreenX, float ScreenY)
+{
+	local FontRenderInfo FontInfo;
+
+	Canvas.SetPos(ScreenX, ScreenY);
+	FontInfo.bClipText = true;
+	Canvas.DrawText(LocalMessage.StringMessage, FALSE,,, FontInfo);
+}
+
+function DisplayLocalMessages()
 {
 	local float PosY, DY, DX;
-    local int i, j;
+    local int i, j, LocalMessagesArrayCount, AreaMessageCount;
     local float FadeValue;
     local int FontSize;
 
- 	Canvas.Reset();
+	// early out
+	if ( LocalMessages[0].Message == None )
+		return;
+
+ 	Canvas.Reset(true);
+	LocalMessagesArrayCount = ArrayCount(LocalMessages);
 
     // Pass 1: Layout anything that needs it and cull dead stuff.
-
-    for( i = 0; i < ArrayCount(LocalMessages); i++ )
+    for( i = 0; i < LocalMessagesArrayCount; i++ )
     {
 		if( LocalMessages[i].Message == None )
-            break;
+		{
+			break;
+		}
 
-        LocalMessages[i].Drawn = false;
+		LocalMessages[i].Drawn = false;
 
-        if( LocalMessages[i].StringFont == None )
+		if( LocalMessages[i].StringFont == None )
 		{
 			FontSize = LocalMessages[i].FontSize + MessageFontOffset;
 			LocalMessages[i].StringFont = GetFontSizeIndex(FontSize);
@@ -863,9 +832,9 @@ simulated function DisplayLocalMessages()
 
 			if( LocalMessages[i].StringFont == None )
 			{
-				log( "LayoutMessage("$LocalMessages[i].Message$") failed!", 'Error' );
+//				`warn( "LayoutMessage("$LocalMessages[i].Message$") failed!" );
 
-				for( j = i; j < ArrayCount(LocalMessages) - 1; j++ )
+				for( j = i; j < LocalMessagesArrayCount - 1; j++ )
 					LocalMessages[j] = LocalMessages[j+1];
 				ClearMessage( LocalMessages[j] );
 				i--;
@@ -873,103 +842,153 @@ simulated function DisplayLocalMessages()
 			}
 		}
 
-		FadeValue = (LocalMessages[i].EndOfLife - Level.TimeSeconds);
+		FadeValue = (LocalMessages[i].EndOfLife - WorldInfo.TimeSeconds);
 
 		if( FadeValue <= 0.0 )
-        {
-	        for( j = i; j < ArrayCount(LocalMessages) - 1; j++ )
-		        LocalMessages[j] = LocalMessages[j+1];
-            ClearMessage( LocalMessages[j] );
-            i--;
-            continue;
-        }
+		{
+			for( j = i; j < LocalMessagesArrayCount - 1; j++ )
+				LocalMessages[j] = LocalMessages[j+1];
+			ClearMessage( LocalMessages[j] );
+			i--;
+			continue;
+		}
      }
 
     // Pass 2: Go through the list and draw each stack:
-
-    for( i = 0; i < ArrayCount(LocalMessages); i++ )
+    for( i = 0; i < LocalMessagesArrayCount; i++ )
 	{
 		if( LocalMessages[i].Message == None )
-            break;
+			break;
 
-        if( LocalMessages[i].Drawn )
-            continue;
-	    PosY = LocalMessages[i].PosY;
+		if( LocalMessages[i].Drawn )
+			continue;
 
-        for( j = i; j < ArrayCount(LocalMessages); j++ )
-        {
-            if( LocalMessages[j].Drawn )
-                continue;
+		PosY = LocalMessages[i].PosY;
+		AreaMessageCount = 0;
 
-            if( LocalMessages[i].PosY != LocalMessages[j].PosY )
-                continue;
+		for( j = i; j < LocalMessagesArrayCount; j++ )
+		{
+			if( LocalMessages[j].Drawn || (LocalMessages[i].PosY != LocalMessages[j].PosY) )
+			{
+				continue;
+			}
 
-            DrawMessage( j, PosY, DX, DY );
+			DrawMessage( j, PosY, DX, DY );
 
-            PosY += DY;
-        }
+			PosY += DY;
+			AreaMessageCount++;
+		}
+		if ( AreaMessageCount > MaxHUDAreaMessageCount )
+		{
+			LocalMessages[i].EndOfLife = WorldInfo.TimeSeconds;
+		}
     }
 }
 
-function Font GetFontSizeIndex(int FontSize)
+function DisplayKismetMessages()
+{
+	local int KismetTextIdx;
+
+	KismetTextIdx = 0;
+	while( KismetTextIdx < KismetTextInfo.length )
+	{
+		if( KismetTextInfo[KismetTextIdx].MessageEndTime > 0 && KismetTextInfo[KismetTextIdx].MessageEndTime <= WorldInfo.TimeSeconds)
+		{
+			KismetTextInfo.Remove(KismetTextIdx,1);
+		}
+		else
+		{
+			DrawText(KismetTextInfo[KismetTextIdx].MessageText$KismetTextInfo[KismetTextIdx].AppendedText, 
+					 KismetTextInfo[KismetTextIdx].MessageOffset, KismetTextInfo[KismetTextIdx].MessageFont, KismetTextInfo[KismetTextIdx].MessageFontScale, KismetTextInfo[KismetTextIdx].MessageColor);
+			++KismetTextIdx;
+		}
+	}
+}
+
+
+function DrawText(string Text, vector2d Position, Font TextFont, vector2d FontScale, Color TextColor, optional const out FontRenderInfo RenderInfo)
+{
+	local float XL, YL;
+
+	Canvas.Font = TextFont;
+	Canvas.TextSize(Text, XL, YL);
+	Canvas.SetPos(Canvas.ClipX/2 - XL/2 + Position.X, Canvas.ClipY/3 - YL/2 + Position.Y);
+	Canvas.SetDrawColor(TextColor.R, TextColor.G, TextColor.B, TextColor.A);
+	Canvas.DrawText(Text, FALSE, FontScale.X, FontScale.Y, RenderInfo);
+}
+
+static function Font GetFontSizeIndex(int FontSize)
 {
 	if ( FontSize == 0 )
 	{
-		return class'Engine'.Default.TinyFont;
+		return class'Engine'.Static.GetTinyFont();
 	}
 	else if ( FontSize == 1 )
 	{
-		return class'Engine'.Default.SmallFont;
+		return class'Engine'.Static.GetSmallFont();
 	}
 	else if ( FontSize == 2 )
 	{
-		return class'Engine'.Default.MediumFont;
+		return class'Engine'.Static.GetMediumFont();
 	}
 	else if ( FontSize == 3 )
 	{
-		return class'Engine'.Default.LargeFont;
+		return class'Engine'.Static.GetLargeFont();
 	}
 	else
 	{
-		return class'Engine'.Default.LargeFont;
+		return class'Engine'.Static.GetLargeFont();
+	}
+}
+
+/**
+ * Called when the player owner has died.
+ */
+function PlayerOwnerDied()
+{
+}
+
+/**
+ * Called in PostBeginPlay or postprocessing chain has changed (happens because of the worldproperties can define it's own chain and this one is set late).
+ */
+function NotifyBindPostProcessEffects()
+{
+	// overload with custom code e.g. getting material pointers to control effects for gameplay.
+}
+
+/**
+ *	Pauses or unpauses the game due to main window's focus being lost.
+ *	@param Enable tells whether to enable or disable the pause state
+ */
+event OnLostFocusPause(bool bEnable)
+{
+	if ( bLostFocusPaused == bEnable )
+		return;
+
+	if ( WorldInfo.NetMode != NM_Client )
+	{
+		bLostFocusPaused = bEnable;
+		PlayerOwner.SetPause(bEnable);
 	}
 }
 
 defaultproperties
 {
-	CollisionComponent=None
-	Components.Remove(CollisionCylinder)
-	Components.Remove(Sprite)
-	bMessageBeep=true
+	TickGroup=TG_DuringAsyncWork
+
 	bHidden=true
 	RemoteRole=ROLE_None
 
 	WhiteColor=(R=255,G=255,B=255,A=255)
-    ConsoleColor=(R=153,G=216,B=253,A=255)
+	ConsoleColor=(R=153,G=216,B=253,A=255)
 	GreenColor=(R=0,G=255,B=0,A=255)
 	RedColor=(R=255,G=0,B=0,A=255)
 
-    MOTDColor=(R=255,G=255,B=255,A=255)
-    ProgressFadeTime=1.0
-
 	ConsoleMessagePosY=0.8
-    HudCanvasScale=0.95
+	MaxHUDAreaMessageCount=3
 
-	LoadingMessage="LOADING"
-	SavingMessage="SAVING"
-	ConnectingMessage="CONNECTING"
-	PausedMessage="PAUSED"
-	PrecachingMessage=""
+	bLostFocusPaused=false
 
-    ConsoleMessageCount=4
-    ConsoleFontSize=5
-    MessageFontOffset=0
-
- 	bShowHud=true
-
-	bShowAIDebug=true
-	bShowPhysicsDebug=false
-	bShowWeaponDebug=false
-	bShowNetworkDebug=false
-	bShowCollisionDebug=false
+	bScaleCanvasForCinematicMode=true
+	bRenderFullScreen=false
 }

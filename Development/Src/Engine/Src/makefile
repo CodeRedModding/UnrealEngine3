@@ -1,5 +1,6 @@
 #=============================================================================
 # Unreal Engine makefile for non-Windows platforms.
+# Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 #=============================================================================
 
 # Unreal directory. (Required by makefile-header.)

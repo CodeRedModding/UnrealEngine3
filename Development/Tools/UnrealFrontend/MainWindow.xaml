@@ -1,0 +1,109 @@
+﻿<!--
+  Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+-->
+<Window x:Class="UnrealFrontend.MainWindow"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:ufe2="clr-namespace:UnrealFrontend"
+	MinHeight="150"
+	MinWidth="350"
+	x:Name="This"
+	Title="UFE2"
+	Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
+
+	
+	<Grid>
+
+		<Grid.RowDefinitions>
+			<RowDefinition x:Name="mProfilesRow" Height="Auto" MinHeight="150" MaxHeight="800"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="*" />
+		</Grid.RowDefinitions>
+		
+
+		<Border Grid.Row="0" >
+			<DockPanel >
+				<!--              -->
+				<!-- Main Toolbar -->
+				<!--              -->
+				<ufe2:Toolbar x:Name="mToolbar" DockPanel.Dock="Top" Margin="0,0,0,5"
+								  CurrentProfile="{Binding ElementName=This, Path=CurrentProfile, Mode=OneWay}"
+								  MainWindow="{Binding ElementName=This}"
+								  IsWorking="{Binding Source={x:Static ufe2:Session.Current}, Path=IsWorking}"/>
+
+				
+				<Border HorizontalAlignment="Stretch">
+					<TabControl >
+						<TabItem Padding="1">
+							<TabItem.Header>
+								<TextBlock FontSize="10" Text="Profiles" />
+							</TabItem.Header>
+
+							<Grid DockPanel.Dock="Bottom">
+							
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition x:Name="mProfilesColumn" Width="Auto" MinWidth="100" MaxWidth="250"/>
+									<ColumnDefinition Width="Auto"/>
+									<ColumnDefinition Width="*"/>
+								</Grid.ColumnDefinitions>
+
+								<!--               -->
+								<!-- Profiles List -->
+								<!--               -->
+								<DockPanel x:Name="mProfilesPanel"  Grid.Column="0">
+									<UniformGrid Columns="3" DockPanel.Dock="Bottom" Margin="0,2,0,0">
+										<Button Content="Clone" ToolTip="Creates a copy of the selected profile." Margin="2" Click="OnCloneProfile" />
+										<Button Content="Rename" ToolTip="Renames the selected profile." Margin="2" Click="OnRenameProfile" />
+										<Button Content="Delete" ToolTip="Deletes the selected profile." Margin="2" Click="OnDeleteProfile" />
+									</UniformGrid>
+									<ListView x:Name="mProfilesList" KeyDown="mProfilesList_KeyDown"
+											  DockPanel.Dock="Top"
+											  AllowDrop="True"
+											  Drop="OnDragDrop"
+											  ItemsSource="{Binding Source={x:Static ufe2:Session.Current}, Path=Profiles}" SelectionMode="Single">
+										<ListView.ContextMenu>
+											<ContextMenu>
+												<MenuItem Header="Clone Profile" Click="OnCloneProfile" />
+												<MenuItem Header="Rename Profile" Click="OnRenameProfile" />
+												<MenuItem Header="Delete Profile" Click="OnDeleteProfile" />
+												<MenuItem Header="Import Profile" Click="OnImportProfile" />
+												<MenuItem Header="Export Profile" Click="OnExportProfile" />
+											</ContextMenu>
+										</ListView.ContextMenu>
+										<ListView.ItemTemplate>
+											<DataTemplate>
+												<ufe2:ProfileListItem TheProfile="{Binding}" MouseDown="mProfilesList_MouseDown"/>
+											</DataTemplate>
+										</ListView.ItemTemplate>
+									</ListView>
+								</DockPanel>
+
+								<!-- Alignment must be set to stretch for GridSplitter to function correctly. WPF weirdness -->
+								<GridSplitter Grid.Column="1"  Grid.Row="0" Height="Auto" Width="5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+
+								<!--                -->
+								<!-- Profile Editor -->
+								<!--                -->
+								<Border Grid.Column="2" BorderThickness="1" BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}" SnapsToDevicePixels="True">
+									<ufe2:ProfileEditor Margin="0" x:Name="mProfileEditor" Profile="{Binding ElementName=This, Path=CurrentProfile, Mode=OneWay}" />
+								</Border>
+
+							</Grid>
+							
+						</TabItem>
+					</TabControl>
+				</Border>
+
+			</DockPanel>
+		</Border>
+
+		<!-- Alignment must be set to stretch for GridSplitter to function correctly. WPF weirdness -->
+		<GridSplitter Grid.Row="1" Height="5" Width="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+		
+		<ufe2:LogWindow Grid.Row="2" x:Name="mLogWindow" />
+
+	</Grid>
+	
+	
+		
+</Window>

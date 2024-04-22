@@ -1,0 +1,116 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+
+////////////////////////
+// Conditions
+////////////////////////
+
+#define NEED_MASK_TEXTURE 0
+
+#if (ALPHA_VALUE_SOURCE >= ALPHA_VALUE_SOURCE_MASK_RED) && (ALPHA_VALUE_SOURCE <= ALPHA_VALUE_SOURCE_MASK_BLUE)
+	#undef NEED_MASK_TEXTURE
+	#define NEED_MASK_TEXTURE 1
+#endif
+
+#if USE_UNIFORM_COLOR_MULTIPLY
+	#if (COLOR_MULTIPLY_SOURCE >= COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_RED)&& (COLOR_MULTIPLY_SOURCE <= COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_ALPHA)
+		#undef NEED_MASK_TEXTURE
+		#define NEED_MASK_TEXTURE 1
+	#endif
+#endif
+
+
+////////////////////////
+// Variables
+////////////////////////
+
+UNIFORM(mat4, LocalToWorld);
+UNIFORM(mat4, ViewProjection);
+UNIFORM(vec4, CameraRight);
+UNIFORM(vec4, CameraUp);
+UNIFORM(vec4, FadeColorAndAmount);
+
+ATTRIBUTE(vec4, Position, POSITION);
+ATTRIBUTE(vec3, Size, TANGENT);
+ATTRIBUTE(vec2, Rotation_Sizer, BLENDWEIGHT);
+ATTRIBUTE(vec2, TexCoords0, TEXCOORD0);
+ATTRIBUTE(vec4, ParticleColor, TEXCOORD1);
+
+OUT_VARYING_DEFAULT( vec4, Interp_TexCoord, TEXCOORD0 );
+OUT_VARYING_MEDIUM( vec4, Interp_Color, COLOR0 );
+OUT_VARYING_LOW( vec4, GlobalEffectColorAndAmount, COLOR1 );
+
+#if NEED_MASK_TEXTURE
+    OUT_VARYING_HIGH( vec2, UVMask, TEXCOORD6 );
+#endif
+
+#if USE_UNIFORM_COLOR_MULTIPLY
+	UNIFORM(vec4, UniformMultiplyColor);
+	OUT_VARYING_LOW( vec4, ColorMultiply, TEXCOORD5 );
+#endif
+
+
+////////////////////////
+// Implementation
+////////////////////////
+
+void main()
+{
+	// Calculate position
+	float Cosine = cos(Rotation_Sizer.x);
+	float Sine = sin(Rotation_Sizer.x);
+
+	vec4 Right = (Sine * CameraRight) - (Cosine * CameraUp);
+	vec4 Up = (Sine * CameraUp) + (Cosine * CameraRight);
+
+	vec4 Pos = MulMatrix(LocalToWorld, Position);
+
+	Pos =	Pos +
+			Size.x * (TexCoords0.x - 0.5) * Right +
+			Size.y * (TexCoords0.y - 0.5) * Up;
+
+	gl_Position = MulMatrix( ViewProjection, Pos );
+
+	// Texture coordinates
+	Interp_TexCoord.xy = TexCoords0.xy;
+
+	#if USE_BASE_TEX_COORD_XFORM || USE_NORMAL_TEX_COORD_XFORM || USE_EMISSIVE_TEX_COORD_XFORM
+	    Interp_TexCoord.zw = XFORM_TEX_COORD(TexCoords0.xy);
+	#else
+		Interp_TexCoord.zw = TexCoords0.xy;
+	#endif
+
+	// Calculate color
+	Interp_Color = ParticleColor;
+
+	#if USE_PREMULTIPLIED_OPACITY
+		Interp_Color.rgb *= Interp_Color.a;
+	#endif
+
+	// Color multiply
+	#if USE_UNIFORM_COLOR_MULTIPLY
+		ColorMultiply = UniformMultiplyColor;
+
+		#if USE_PREMULTIPLIED_OPACITY
+			ColorMultiply.rgb *= UniformMultiplyColor.a;
+			ColorMultiply.w = 1.0;
+		#endif
+	#endif
+
+	// Texture masking
+	#if NEED_MASK_TEXTURE
+        vec2 MaskTexCoords;
+        MaskTexCoords = TexCoords0;
+
+        // Store the mask offset UVs.  Note that we do not transform these UVs.
+        UVMask = MASK_TEX_COORD_XFORM(MaskTexCoords);
+	#endif
+
+	// Pre-multiply the fade color per-vertex and pass that through to avoid a per-pixel mix
+        GlobalEffectColorAndAmount.xyz = FadeColorAndAmount.xyz * FadeColorAndAmount.w;
+        GlobalEffectColorAndAmount.w = 1.0 - FadeColorAndAmount.w;
+}

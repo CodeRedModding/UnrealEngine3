@@ -5,29 +5,28 @@ class InterpTrackFloatBase extends InterpTrack
 /** 
  * InterpTrackFloatBase
  *
- * Created by:	James Golding
- * Copyright:	(c) 2004
- * Company:		Epic Games, Inc.
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
  */
 
 cpptext
 {
 	// UObject interface
-	virtual void PostEditChange(UProperty* PropertyThatChanged);
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent);
 
 	// InterpTrack interface
-	virtual INT GetNumKeyframes();
-	virtual void GetTimeRange(FLOAT& StartTime, FLOAT& EndTime);
-	virtual FLOAT GetKeyframeTime(INT KeyIndex);
+	virtual INT GetNumKeyframes() const;
+	virtual void GetTimeRange(FLOAT& StartTime, FLOAT& EndTime) const;
+	virtual FLOAT GetTrackEndTime() const;
+	virtual FLOAT GetKeyframeTime(INT KeyIndex) const;
 	virtual INT SetKeyframeTime(INT KeyIndex, FLOAT NewKeyTime, UBOOL bUpdateOrder=true);
 	virtual void RemoveKeyframe(INT KeyIndex);
 	virtual INT DuplicateKeyframe(INT KeyIndex, FLOAT NewKeyTime);
-
-	virtual FColor GetKeyframeColor(INT KeyIndex);
+	virtual UBOOL GetClosestSnapPosition(FLOAT InPosition, TArray<INT> &IgnoreKeys, FLOAT& OutPosition);
+	virtual FColor GetKeyframeColor(INT KeyIndex) const;
 
 	// FCurveEdInterface interface
 	virtual INT		GetNumKeys();
-	virtual INT		GetNumSubCurves();
+	virtual INT		GetNumSubCurves() const;
 	virtual FLOAT	GetKeyIn(INT KeyIndex);
 	virtual FLOAT	GetKeyOut(INT SubIndex, INT KeyIndex);
 	virtual void	GetInRange(FLOAT& MinIn, FLOAT& MaxIn);
@@ -43,6 +42,12 @@ cpptext
 	virtual void	SetKeyOut(INT SubIndex, INT KeyIndex, FLOAT NewOutVal);
 	virtual void	SetKeyInterpMode(INT KeyIndex, EInterpCurveMode NewMode);
 	virtual void	SetTangents(INT SubIndex, INT KeyIndex, FLOAT ArriveTangent, FLOAT LeaveTangent);
+
+	/** Returns TRUE if this curve uses legacy tangent/interp algorithms and may be 'upgraded' */
+	virtual UBOOL	UsingLegacyInterpMethod() const;
+
+	/** 'Upgrades' this curve to use the latest tangent/interp algorithms (usually, will 'bake' key tangents.) */
+	virtual void	UpgradeInterpMethod();
 }
 
 /** Actually track data containing keyframes of float as it varies over time. */

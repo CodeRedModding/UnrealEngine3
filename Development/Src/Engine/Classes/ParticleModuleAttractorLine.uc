@@ -1,37 +1,37 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class ParticleModuleAttractorLine extends ParticleModuleAttractorBase
 	native(Particle)
 	editinlinenew
-	collapsecategories
 	hidecategories(Object);
 
-// The endpoints of the line
-var() vector												EndPoint0;
-var() vector												EndPoint1;
-// The range of the line attractor.
-var() editinlinenotify export noclear	distributionfloat	Range;
-// The strength of the line attractor.
-var() editinlinenotify export noclear	distributionfloat	Strength;
+/** The first endpoint of the line. */
+var(Attractor) vector												EndPoint0;
+/** The second endpoint of the line. */
+var(Attractor) vector												EndPoint1;
+/** The range of the line attractor. */
+var(Attractor) rawdistributionfloat	Range;
+/** The strength of the line attractor. */
+var(Attractor) rawdistributionfloat	Strength;
 
 cpptext
 {
-	virtual void Spawn( FParticleEmitterInstance* Owner, INT Offset, FLOAT SpawnTime );
-	virtual void Update( FParticleEmitterInstance* Owner, INT Offset, FLOAT DeltaTime );
-
-	virtual void Render3DPreview(FParticleEmitterInstance* Owner, const FSceneContext& Context,FPrimitiveRenderInterface* PRI);
+	virtual void	Update(FParticleEmitterInstance* Owner, INT Offset, FLOAT DeltaTime);
+	virtual void	Render3DPreview(FParticleEmitterInstance* Owner, const FSceneView* View,FPrimitiveDrawInterface* PDI);
 }
 
 defaultproperties
 {
-	bSpawnModule=true
 	bUpdateModule=true
-	
+
 	Begin Object Class=DistributionFloatConstant Name=DistributionStrength
 	End Object
-	Strength=DistributionStrength
+	Strength=(Distribution=DistributionStrength)
 
 	Begin Object Class=DistributionFloatConstant Name=DistributionRange
 	End Object
-	Range=DistributionRange
-	
+	Range=(Distribution=DistributionRange)
+
 	bSupported3DDrawMode=true
 }

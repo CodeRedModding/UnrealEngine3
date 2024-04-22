@@ -1,0 +1,308 @@
+/*=============================================================================
+	BranchingPCFCommon.usf: Contains functions that filter a depth buffer.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+#include "Common.usf"
+
+float4x4 ScreenToShadowMatrix;
+
+/* Either a color or a depth stencil texture containing depth values from the light's POV */
+sampler2D ShadowDepthTexture;
+
+/* Texture containing cos and sin of a random angle in x and y, used to rotate sampling grid per-pixel */
+sampler2D RandomAngleTexture;
+
+/* Refining samples are done 4 at a time, to take advantage of vectorized instructions.  Each chunk is then 4 samples,
+and 2 registers, since 2 samples fit in a register. */
+float4 RefiningSampleOffsets[NUM_REFINING_SAMPLE_CHUNKS * 2];
+
+/* Edge samples are done 2 at a time, to allow smaller increments.  Each chunk is then 2 samples,
+and 1 register, since 2 samples fit in a register. */
+float4 EdgeSampleOffsets[NUM_EDGE_SAMPLE_CHUNKS];
+
+/* 1 / RandomAngleTexture size */
+float2 InvRandomAngleTextureSize;
+
+/* size of the shadow buffer */
+float2 ShadowBufferSize;
+
+/**
+* Transforms screen position (depth is looked up from scene depth) into lightspace
+*/
+void CalculateShadowPosition(float4 ScreenPosition, out float4 ShadowPosition, out half SceneW)
+{
+	SceneW = PreviousDepthForShadows(ScreenPosition);
+	
+	ShadowPosition = MulMatrix(ScreenToShadowMatrix,float4(ScreenPosition.xy / ScreenPosition.w * SceneW,SceneW,1));
+	ShadowPosition.xy /= ShadowPosition.w;
+	ShadowPosition.z = min(ShadowPosition.z,0.999);
+}
+
+
+/**
+* Rotates offsets and takes edge samples.  Comparison and averaging are done manually.
+*
+* @return a PCF value between 0 and 1
+*/
+half EdgeSamplesManualPCF(float4 vPos, float4 ShadowPosition)
+{
+	//Lookup cos and sin of a random angle, using this pixel's unique screenspace position, scaled by texture size, as an index.
+	//Expand from [0,1] to [-1, 1], the range of cos and sin.
+	half2 RandomCosSin = (tex2D(RandomAngleTexture, (vPos.xy/vPos.w + 1)*0.5*InvRandomAngleTextureSize.xy) * 2 - 1).xy;
+
+	half ShadowCoverage = 0;
+	
+	//used to normalize accumulated coverage, since there are 2 samples per chunk
+	half SampleWeight = .5 / NUM_EDGE_SAMPLE_CHUNKS;
+	half2 FlipVector = half2(1, -1);
+	
+	//Go through each edge-detecting chunk and take samples
+	UNROLL
+	for(int ChunkIndex = 0;ChunkIndex < NUM_EDGE_SAMPLE_CHUNKS;ChunkIndex++)
+	{
+		float2	ShadowDepths;
+		half4 RotCoords;
+		
+		//Rotate the edge sample offsets, using the cos and sin of a random angle previously looked up,
+		//and add this offset to the base.  Two samples are rotated together to take advantage of vector operations.
+		//For reference, this is how a single sample is rotated:
+		//rotatedOffset.x= cos(theta) * sampleOffset.x + sin(theta) * sampleOffset.y;
+		//rotatedOffset.y= -sin(theta) * sampleOffset.x + cos(theta) * sampleOffset.y;
+		RotCoords = ShadowPosition.xyxy + FlipVector.xyxy * RandomCosSin.xyxy * EdgeSampleOffsets[ChunkIndex].xxzz + RandomCosSin.yxyx * EdgeSampleOffsets[ChunkIndex].yyww;
+
+		//take two samples of the depth buffer
+		ShadowDepths.x = texDepth2D(ShadowDepthTexture,RotCoords.xy).r;
+		ShadowDepths.y = texDepth2D(ShadowDepthTexture,RotCoords.zw).r;
+		
+		//depth compare and combine the results, then accumulate with previous results
+		ShadowCoverage = ShadowCoverage + dot(ShadowPosition.z < ShadowDepths ? half2(1,1) : half2(0,0), SampleWeight.xx);
+		
+	}
+	return ShadowCoverage;
+}
+
+
+/**
+* Takes refining samples.  Comparison and averaging are done manually.
+*
+* @return a PCF value between 0 and 1
+*/
+half RefiningSamplesManualPCF(float4 ShadowPosition)
+{
+	//used to normalize accumulated coverage, since there are 4 samples per chunk
+	half SampleWeight = .25 / NUM_REFINING_SAMPLE_CHUNKS;
+	half RefinedShadowCoverage = 0;
+	
+	//Go through each refining chunk and take samples
+	UNROLL
+	for(int ChunkIndex = 0;ChunkIndex < NUM_REFINING_SAMPLE_CHUNKS;ChunkIndex++)
+	{
+		float4	ShadowDepths;
+		half4 FinalCoords;
+		
+		FinalCoords = ShadowPosition.xyxy + RefiningSampleOffsets[ChunkIndex * 2].xyzw;
+		
+		//use the special tex instruction that is allowed inside a dynamic branch
+		//the texture LOD to use is specified in w
+		ShadowDepths.x = texDepth2Dlod(ShadowDepthTexture, half4(FinalCoords.xy, 0, 0)).r;
+		ShadowDepths.y = texDepth2Dlod(ShadowDepthTexture, half4(FinalCoords.zw, 0, 0)).r;
+		
+		FinalCoords = ShadowPosition.xyxy + RefiningSampleOffsets[ChunkIndex * 2 + 1].xyzw;
+		
+		ShadowDepths.z = texDepth2Dlod(ShadowDepthTexture, half4(FinalCoords.xy, 0, 0)).r;
+		ShadowDepths.w = texDepth2Dlod(ShadowDepthTexture, half4(FinalCoords.zw, 0, 0)).r;
+		
+		//compare and accumulate all 4 results together
+		RefinedShadowCoverage = RefinedShadowCoverage + dot(ShadowPosition.z < ShadowDepths ? half4(1,1,1,1) : half4(0,0,0,0), SampleWeight.xxxx);
+	}
+	return RefinedShadowCoverage;
+}
+		
+		
+/**
+* Rotates offsets and takes edge samples.  Comparison and bilinear filtering are done by the hardware.
+*
+* @return a PCF value between 0 and 1
+*/	
+half EdgeSamplesHardwarePCF(float4 vPos, float4 ShadowPosition) 
+{
+	//Lookup cos and sin of a random angle, using this pixel's unique screenspace position, scaled by texture size, as an index.
+	//Expand from [0,1] to [-1, 1], the range of cos and sin.
+	half2 RandomCosSin = (tex2D(RandomAngleTexture, (vPos.xy/vPos.w + 1)*0.5*InvRandomAngleTextureSize.xy) * 2 - 1).xy;
+
+	half ShadowCoverage = 0;
+	half2 FlipVector = half2(1, -1);
+	
+	//Go through each edge-detecting chunk and take samples
+	UNROLL
+	for(int ChunkIndex = 0;ChunkIndex < NUM_EDGE_SAMPLE_CHUNKS;ChunkIndex++)
+	{
+		half4 RotCoords;
+		
+		//Rotate the edge sample offsets, using the cos and sin of a random angle previously looked up,
+		//and add this offset to the base.  Two samples are rotated together to take advantage of vector operations.
+		//For reference, this is how a single sample is rotated:
+		//rotatedOffset.x= cos(theta) * sampleOffset.x + sin(theta) * sampleOffset.y;
+		//rotatedOffset.y= -sin(theta) * sampleOffset.x + cos(theta) * sampleOffset.y;
+		RotCoords = ShadowPosition.xyxy + FlipVector.xyxy * RandomCosSin.xyxy * EdgeSampleOffsets[ChunkIndex].xxzz + RandomCosSin.yxyx * EdgeSampleOffsets[ChunkIndex].yyww;
+
+		//take two samples of the depth buffer
+		ShadowCoverage += texDepth2Dlod(ShadowDepthTexture,float4(RotCoords.xy, ShadowPosition.z, 0)).r;
+		ShadowCoverage += texDepth2Dlod(ShadowDepthTexture,float4(RotCoords.zw, ShadowPosition.z, 0)).r;
+	}
+	
+	//normalize the coverage calculated so far
+	return ShadowCoverage * .5 / NUM_EDGE_SAMPLE_CHUNKS;
+}
+
+
+/**
+* Takes refining samples.  Comparison and bilinear filtering are done by the hardware.
+*
+* @return a PCF value between 0 and 1
+*/
+half RefiningSamplesHardwarePCF(float4 ShadowPosition)
+{
+	half RefinedShadowCoverage = 0;
+		
+	//Go through each refining chunk and take samples
+	UNROLL
+	for(int ChunkIndex = 0;ChunkIndex < NUM_REFINING_SAMPLE_CHUNKS;ChunkIndex++)
+	{
+		half4 FinalCoords;
+		
+		FinalCoords = ShadowPosition.xyxy + RefiningSampleOffsets[ChunkIndex * 2].xyzw;
+		//use the special tex instruction that is allowed inside a dynamic branch
+		//the texture LOD to use is specified in w
+		RefinedShadowCoverage += texDepth2Dlod(ShadowDepthTexture,float4(FinalCoords.xy, ShadowPosition.z, 0)).r;
+		RefinedShadowCoverage += texDepth2Dlod(ShadowDepthTexture,float4(FinalCoords.zw, ShadowPosition.z, 0)).r;
+		
+		FinalCoords = ShadowPosition.xyxy + RefiningSampleOffsets[ChunkIndex * 2 + 1].xyzw;
+
+		RefinedShadowCoverage += texDepth2Dlod(ShadowDepthTexture,float4(FinalCoords.xy, ShadowPosition.z, 0)).r;
+		RefinedShadowCoverage += texDepth2Dlod(ShadowDepthTexture,float4(FinalCoords.zw, ShadowPosition.z, 0)).r;
+	}
+	//normalize the coverage calculated so far
+	return RefinedShadowCoverage * .25 / NUM_REFINING_SAMPLE_CHUNKS;
+}
+		
+
+/**
+* Takes edge samples, retrieving 4 neighboring values in every texture lookup using Fetch4. 
+*
+* @return a PCF value between 0 and 1
+*/	
+half EdgeSamplesFetch4(float4 vPos, float4 ShadowPosition) 
+{
+	//Lookup cos and sin of a random angle, using this pixel's unique screenspace position, scaled by texture size, as an index.
+	//Expand from [0,1] to [-1, 1], the range of cos and sin.
+	half2 RandomCosSin = (tex2D(RandomAngleTexture, (vPos.xy/vPos.w + 1)*0.5*InvRandomAngleTextureSize.xy) * 2 - 1).xy;
+	half ShadowCoverage = 0;
+
+	//used to normalize accumulated coverage, since there are 8 samples per chunk
+	half SampleWeight = .125 / NUM_EDGE_SAMPLE_CHUNKS;
+	half2 FlipVector = half2(1, -1);
+	
+	//Go through each edge-detecting chunk and take samples
+	UNROLL
+	for(int ChunkIndex = 0;ChunkIndex < NUM_EDGE_SAMPLE_CHUNKS;ChunkIndex++)
+	{
+		half4 RotCoords;
+		
+		//Rotate the edge sample offsets, using the cos and sin of a random angle previously looked up,
+		//and add this offset to the base.  Two samples are rotated together to take advantage of vector operations.
+		//For reference, this is how a single sample is rotated:
+		//rotatedOffset.x= cos(theta) * sampleOffset.x + sin(theta) * sampleOffset.y;
+		//rotatedOffset.y= -sin(theta) * sampleOffset.x + cos(theta) * sampleOffset.y;
+		RotCoords = ShadowPosition.xyxy + FlipVector.xyxy * RandomCosSin.xyxy * EdgeSampleOffsets[ChunkIndex].xxzz + RandomCosSin.yxyx * EdgeSampleOffsets[ChunkIndex].yyww;
+
+		//lookup 4 neighboring depth values using Fetch4 in each texDepth2Dlod
+		float4 ShadowDepthsOne = texDepth2Dlod(ShadowDepthTexture,float4(RotCoords.xy, ShadowPosition.z, 0));
+		float4 ShadowDepthsTwo = texDepth2Dlod(ShadowDepthTexture,float4(RotCoords.zw, ShadowPosition.z, 0));
+
+		//compare depths, weight results and accumulate
+		ShadowCoverage = ShadowCoverage + dot(ShadowPosition.z < ShadowDepthsOne, SampleWeight.xxxx) + dot(ShadowPosition.z < ShadowDepthsTwo, SampleWeight.xxxx);
+	}
+	
+	return ShadowCoverage;
+}
+
+
+/**
+* Takes refining samples, retrieving 4 neighboring values in every texture lookup using Fetch4.  
+* The neighboring values are then bilinearly filtered in the shader.
+*
+* @return a PCF value between 0 and 1
+*/
+		
+half RefiningSamplesFetch4(float4 ShadowPosition)
+{
+	half RefinedShadowCoverage = 0;
+	
+	//used to normalize accumulated coverage, since there are 4 bilinearly filtered samples per chunk
+	half SampleWeight = .25 / NUM_REFINING_SAMPLE_CHUNKS;
+
+	//Go through each refining chunk and take samples
+	UNROLL
+	for(int ChunkIndex = 0;ChunkIndex < NUM_REFINING_SAMPLE_CHUNKS;ChunkIndex++)
+	{
+		/* first two bilinearly filtered lookups in this chunk */
+
+		//offset this pixel's position in lightspace
+		half4 FinalCoords = ShadowPosition.xyxy + RefiningSampleOffsets[ChunkIndex * 2].xyzw;
+		
+		//use the special tex instruction that is allowed inside a dynamic branch
+		//the texture LOD to use is specified in w
+		//lookup 4 neighboring depth values using Fetch4 in each texDepth2Dlod
+		float4 ShadowDepthsOne = texDepth2Dlod(ShadowDepthTexture,float4(FinalCoords.xy, ShadowPosition.z, 0));
+		float4 ShadowDepthsTwo = texDepth2Dlod(ShadowDepthTexture,float4(FinalCoords.zw, ShadowPosition.z, 0));
+
+		half4 TopCoverageValues;
+		half4 BottomCoverageValues;
+		//Compare this pixel's depth, projected into lightspace, with the depths from the light's POV.
+		TopCoverageValues.xy = ShadowPosition.z < ShadowDepthsOne.wx;
+		TopCoverageValues.zw = ShadowPosition.z < ShadowDepthsTwo.wx;
+		BottomCoverageValues.xy = ShadowPosition.z < ShadowDepthsOne.yz;
+		BottomCoverageValues.zw = ShadowPosition.z < ShadowDepthsTwo.yz;
+
+		//calculate the fraction this pixel is between neighboring texels in the shadowmap
+		half4 fracCoordOne = frac(FinalCoords.xyzw * ShadowBufferSize.xyxy);
+
+		//linearly interpolate between the top four samples and the bottom four using the appropriate vertical fraction as a weight
+		half4 VerticalShadowPercentOne = lerp(TopCoverageValues, BottomCoverageValues, fracCoordOne.yyww);
+		
+		/* second two bilinearly filtered lookups in this chunk */
+
+		//offset this pixel's position in lightspace
+		FinalCoords = ShadowPosition.xyxy + RefiningSampleOffsets[ChunkIndex * 2 + 1].xyzw;
+
+		//use the special tex instruction that is allowed inside a dynamic branch
+		//the texture LOD to use is specified in w
+		//lookup 4 neighboring depth values using Fetch4 in each texDepth2Dlod
+		ShadowDepthsOne = texDepth2Dlod(ShadowDepthTexture,float4(FinalCoords.xy, ShadowPosition.z, 0));
+		ShadowDepthsTwo = texDepth2Dlod(ShadowDepthTexture,float4(FinalCoords.zw, ShadowPosition.z, 0));
+
+		//Compare the pixel's depth, projected into lightspace, with the depths from the light's POV.
+		TopCoverageValues.xy = ShadowPosition.z < ShadowDepthsOne.wx;
+		TopCoverageValues.zw = ShadowPosition.z < ShadowDepthsTwo.wx;
+		BottomCoverageValues.xy = ShadowPosition.z < ShadowDepthsOne.yz;
+		BottomCoverageValues.zw = ShadowPosition.z < ShadowDepthsTwo.yz;
+
+		//calculate the fraction this pixel is between neighboring texels in the shadowmap
+		half4 fracCoordTwo = frac(FinalCoords.xyzw * ShadowBufferSize.xyxy);
+
+		//linearly interpolate between the top four samples and the bottom four using the appropriate vertical fraction as a weight
+		half4 VerticalShadowPercentTwo = lerp(TopCoverageValues, BottomCoverageValues, fracCoordTwo.yyww);
+
+		half4 BillinearShadowPercent;
+		//linearly interpolate between the first two vertical results weighted with the appropriate horizontal fraction
+		BillinearShadowPercent.xy = lerp(VerticalShadowPercentOne.xz, VerticalShadowPercentOne.yw, fracCoordOne.xz);
+		//linearly interpolate between the second two vertical results weighted with the appropriate horizontal fraction
+		BillinearShadowPercent.zw = lerp(VerticalShadowPercentTwo.xz, VerticalShadowPercentTwo.yw, fracCoordTwo.xz);
+
+		//weight the 4 bilinearly filtered samples and accumulate
+		RefinedShadowCoverage = RefinedShadowCoverage + dot(BillinearShadowPercent, SampleWeight.xxxx);
+
+	}
+	return RefinedShadowCoverage;
+}

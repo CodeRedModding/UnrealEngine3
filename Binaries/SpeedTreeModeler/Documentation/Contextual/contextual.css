@@ -1,0 +1,105 @@
+@charset "utf-8";
+
+/* tags */
+body { font: 100% Verdana, Arial, Helvetica, sans-serif; margin: 0; padding: 0; text-align: left; color: #000000; overflow: hidden; }
+a:link { color: #889955; }
+a:visited { color: #667443; }
+a:hover { text-decoration: none; }
+a:active { color: #BBDD87; }
+b { overflow: hidden; }
+p { font-size:x-small; margin: 0; padding: 4px 8px; }
+ul, ol { padding: 0; margin: 0 0 0 1em; }
+li { font-size:x-small; }
+img { float: right; margin: 0 0 0 5px; border: none; }
+div { overflow: hidden; }
+
+/* common */
+#container { overflow: hidden; }
+.object_label { overflow: hidden; }
+.object_label div { float: right; }
+.object_label div.object_desc { float: none; background: #FFF; min-height: 59px; }
+.object_label .btn_house { z-index: 200; border-bottom: 1px solid #000; padding-bottom: 2px; }
+.object_label p b { float: right; clear: right; margin: -4px -8px 0 0; }
+h5 { color: #FFF; border-bottom: 1px solid #000; height: 19px; padding-left: 5px !Important; }
+.highlighted { color:#FFFF66; }
+.group_label { border-bottom: 1px solid #000; }
+h1 { font-family:Arial, Helvetica, sans-serif; font-size: medium; margin: 0; padding: 0 0 0 3px; cursor: pointer; text-indent: 2px; }
+.group { padding-bottom: 0; }
+.group .group { margin-left: 10px; }
+.property_label { background-color: #f4f3eb; border-bottom: 1px solid #D0CFC6; clear: both; padding-left: 5px; }
+.property_label span { text-align: right; font-size:x-small; color: #A4A398; float: right; padding: 3px 5px 3px 0; }
+h2, h4, h5 { font-family:Arial, Helvetica, sans-serif; font-size: medium; margin: 0; padding: 1px 0 0 8px; }
+.btn_house { float: right; cursor: default; clear: none; white-space: nowrap; }
+.btn_house img, .btn_house div, .btn_house b {float: left; cursor: pointer; margin: 4px -4px 0 8px; }
+.container + .property { width: 100%; }
+.property { margin: 0; padding: 0 0 6px 6px; overflow: auto; zoom: 1; /* min-height: 59px; */ }
+h3 { font-family:Arial, Helvetica, sans-serif; font-size: smaller; margin: 0; padding: 4px 0 0 8px; clear: left; /* float: left; */ }
+h3 span { font-family:Verdana, Arial, Helvetica, sans-serif; font-size: x-small; font-weight: normal; }
+h3 img, h3 div { float: left; margin: 0 5px 0 0; }
+h3 + p { padding-top: 0; /* float: left; */ }
+.note { background:#FAFAE3; border: 1px dashed #A4A398; padding: 5px; margin: 6px 8px 3px 8px; /*margin: 6px 55px 8px 6px; */ }
+
+/* node pages */
+.reference_list { height: 23px; overflow: hidden; }
+.reference_list .property_label { }
+.property_label .link {}
+h4 { font-size: small; padding: 3px 0 3px 9px; }
+h4 a:link { color: #667443; }
+h4 span { margin-top: -2px; }
+.instructions, #instructions { padding-left: 5px; overflow: auto; }
+
+/* extras */
+.footer { padding: 0 5px; clear:left; text-align: right; }
+.footer p { margin: 0; padding: 5px 0; }
+.right { float: right; margin-left: 8px; }
+.left { float: left; margin-right: 8px; }
+.clear_float { clear:both; height:0; font-size: 1px; line-height: 0px; }
+.hidden { display: none; }
+.fixed { display: none; }
+
+/* graphics.png */
+.button-auto { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -21px -55px; }
+.button-auto_down { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -33px -55px; }
+.button-prev { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -45px -55px; }
+.button-prev_down { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat 0 -7px; }
+.button-next_down { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -17px -40px; }
+.button-next { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -29px -40px; }
+.note .icon { width: 17px; height: 17px; background: url('Graphics/graphics.png') no-repeat 0 -36px; float: left; margin: -14px -4px 0 -12px}
+.button-fixed { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -41px -40px; display: none; }
+.button-fixed_down { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -17px -27px; }
+.button-random { width: 21px; height: 15px; background: url('Graphics/graphics.png') no-repeat 0 -53px; }
+.group_label { width: 64px; height: 20px; background: url('Graphics/graphics.png') no-repeat 0 -108px; background-repeat: repeat-x; height: auto; width: auto; overflow: visible; }
+.icon-expand { width: 9px; height: 9px; background: url('Graphics/graphics.png') no-repeat -53px -44px; margin: 5px 0 0 0; float: right; display: none; }
+.icon-collapse { width: 9px; height: 9px; background: url('Graphics/graphics.png') no-repeat -53px -31px; margin: 5px 0 0 0; float: right; }
+.property_label { width: 64px; height: 20px; background: url('Graphics/graphics.png') no-repeat 0 -88px; background-repeat: repeat-x; height: 20px; width: auto; overflow: visible;  }
+.button-help { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -17px -14px; }
+.button-help_down { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -17px -1px; }
+.object_label { width: 64px; height: 20px; background: #fff url('Graphics/graphics.png') no-repeat 0 -68px; background-repeat: repeat-x; height: 20px; width: auto;}
+.icon-16 { width: 16px; height: 16px; background: url('Graphics/graphics.png') no-repeat 0 -20px; float: right;}
+.button-auto:hover { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -29px -27px; }
+.button-fixed:hover { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -41px -27px; }
+.button-prev:hover { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -29px -14px; }
+.button-next:hover { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -29px -1px; }
+.button-help:hover { width: 12px; height: 13px; background: url('Graphics/graphics.png') no-repeat -41px -14px; }
+
+/* generators.png */
+.force-mesh { width: 28px; height: 28px; background: url('Graphics/generators.png') no-repeat 0 0; float: right; margin: 2px; }
+.force-planar { width: 28px; height: 28px; background: url('Graphics/generators.png') no-repeat -28px 0; float: right; margin: 2px; }
+.force-twist { width: 15px; height: 28px; background: url('Graphics/generators.png') no-repeat -183px 0; float: right; margin: 2px 9px; }
+.force-gnarl { width: 20px; height: 28px; background: url('Graphics/generators.png') no-repeat -163px 0; float: right; margin: 2px 6px; }
+.force-curl { width: 28px; height: 28px; background: url('Graphics/generators.png') no-repeat -56px 0; float: right; margin: 2px; }
+.force-magnet { width: 28px; height: 28px; background: url('Graphics/generators.png') no-repeat -84px 0; float: right; margin: 2px; }
+.force-direction { width: 28px; height: 28px; background: url('Graphics/generators.png') no-repeat -112px 0; float: right; margin: 2px; }
+.object-force { width: 50px; height: 50px; background: url('Graphics/generators.png') no-repeat 0 -28px; }
+.object-light { width: 50px; height: 50px; background: url('Graphics/generators.png') no-repeat -50px -78px; }
+.object-fan { width: 50px; height: 50px; background: url('Graphics/generators.png') no-repeat 0 -78px; }
+.object-collision { width: 23px; height: 28px; background: url('Graphics/generators.png') no-repeat -140px 0; margin: 5px; }
+.generator-frond { width: 50px; height: 50px; background: url('Graphics/generators.png') no-repeat -50px -28px; float: right; }
+.generator-branch { width: 50px; height: 50px; background: url('Graphics/generators.png') no-repeat -100px -78px; float: right; }
+.generator-node { width: 40px; height: 40px; background: url('Graphics/generators.png') no-repeat -200px -8px; float: right; margin-top: -2px; }
+.generator-spine { width: 50px; height: 50px; background: url('Graphics/generators.png') no-repeat -100px -28px; }
+.generator-tree { width: 50px; height: 50px; background: url('Graphics/generators.png') no-repeat -150px -78px; }
+.generator-leaf { width: 50px; height: 50px; background: url('Graphics/generators.png') no-repeat -150px -28px; }
+.generator-handdrawn { width: 40px; height: 40px; background: url('Graphics/generators.png') no-repeat -200px -88px; margin: 3px; }
+.generator-link { width: 15px; height: 25px; background: url('Graphics/generators.png') no-repeat -240px -103px; margin: 0 5px; }
+.icon-random { width: 40px; height: 40px; background: url('Graphics/generators.png') no-repeat -200px -48px; float: right; }

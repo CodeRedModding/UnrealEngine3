@@ -1,0 +1,116 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Src">
+      <UniqueIdentifier>{f9ace961-abea-4ddd-9ed1-e59977316f6f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Inc">
+      <UniqueIdentifier>{87dd383b-bc15-4def-8045-2f05603502c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Classes">
+      <UniqueIdentifier>{9e86bf97-b11d-4f35-938e-52192d2086c8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="OpenAutomate">
+      <UniqueIdentifier>{cbf624e1-33e3-4fe3-b57d-5a0af686931d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\WinClient.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\WinDrv.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\FacebookWindows.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\WinViewport.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\XnaForceFeedbackManager.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\HttpRequestWindows.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\HttpImplementationWinInet.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\HttpResponseWindows.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\External\OpenAutomateSDK-1.0-7\src\OpenAutomate.c">
+      <Filter>OpenAutomate</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\OpenAutomate.cpp">
+      <Filter>OpenAutomate</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SwrveAnalyticsProviderWindows.cpp">
+      <Filter>Src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Src\WinDrvPrivate.h">
+      <Filter>Src</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\MinWindows.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\PostWindowsApi.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\PreWindowsApi.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\WinDrv.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\WintabSupport.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\XnaForceFeedbackManager.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\WinDrvClasses.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\WinDrvNames.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\HttpImplementationWinInet.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UHttpRequestWindows.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UHttpResponseWindows.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UFacebookWindows.h">
+      <Filter>Inc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\OpenAutomateSDK-1.0-7\inc\OpenAutomate.h">
+      <Filter>OpenAutomate</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\External\OpenAutomateSDK-1.0-7\inc\OpenAutomate_Internal.h">
+      <Filter>OpenAutomate</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\OpenAutomate.h">
+      <Filter>OpenAutomate</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Classes\HttpRequestWindows.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\HttpResponseWindows.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\FacebookWindows.uc">
+      <Filter>Classes</Filter>
+    </None>
+    <None Include="Classes\HttpRequestWindowsMcp.uc">
+      <Filter>Classes</Filter>
+    </None>
+  </ItemGroup>
+</Project>

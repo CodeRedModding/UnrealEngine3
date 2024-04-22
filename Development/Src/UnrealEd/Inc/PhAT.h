@@ -1,10 +1,12 @@
 /*=============================================================================
 	PhAT.h: Physics Asset Tool main header
-	Copyright 2003 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by James Golding
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
+
+#ifndef __PHAT_H__
+#define __PHAT_H__
+
+#include "TrackableWindow.h"
 
 //
 //	HPhATBoneProxy
@@ -18,6 +20,7 @@ struct HPhATBoneProxy : public HHitProxy
 	INT							PrimIndex;
 
 	HPhATBoneProxy(INT InBodyIndex, EKCollisionPrimitiveType InPrimType, INT InPrimIndex):
+		HHitProxy(HPP_UI),
 		BodyIndex(InBodyIndex),
 		PrimType(InPrimType),
 		PrimIndex(InPrimIndex) {}
@@ -33,6 +36,7 @@ struct HPhATConstraintProxy : public HHitProxy
 	INT							ConstraintIndex;
 
 	HPhATConstraintProxy(INT InConstraintIndex):
+		HHitProxy(HPP_UI),
 		ConstraintIndex(InConstraintIndex) {}
 };
 
@@ -46,6 +50,7 @@ struct HPhATWidgetProxy : public HHitProxy
 	EAxis		Axis;
 
 	HPhATWidgetProxy(EAxis InAxis):
+		HHitProxy(HPP_UI),
 		Axis(InAxis) {}
 };
 
@@ -59,44 +64,51 @@ struct HPhATBoneNameProxy : public HHitProxy
 	INT			BoneIndex;
 
 	HPhATBoneNameProxy(INT InBoneIndex):
-	BoneIndex(InBoneIndex) {}
+		HHitProxy(HPP_UI),
+		BoneIndex(InBoneIndex) {}
 };
+
 
 //
 //	FPhATViewportClient
 //
 struct FPhATViewportClient: public FEditorLevelViewportClient
 {
-	class WPhAT*			AssetEditor;
+	class WxPhAT*			AssetEditor;
 
-	ULevel*						Level;
+	FPreviewScene			PreviewScene;
+	
+	/** Helper class that draws common scene elements. */
+	FEditorCommonDrawHelper		DrawHelper;
+
 	UDirectionalLightComponent*	DirectionalLightComponent;
 	USkyLightComponent*			SkyLightComponent;
 
 	UFont*					PhATFont;
 
-	UMaterialInstance*		ElemSelectedMaterial;
-	UMaterialInstance*		BoneSelectedMaterial;
-	UMaterialInstance*		BoneUnselectedMaterial;
-	UMaterialInstance*		BoneNoCollisionMaterial;
+	UMaterialInterface*		ElemSelectedMaterial;
+	UMaterialInterface*		BoneSelectedMaterial;
+	UMaterialInterface*		BoneUnselectedMaterial;
+	UMaterialInterface*		BoneNoCollisionMaterial;
 
-	UMaterialInstance*		JointLimitMaterial;
+	UMaterialInterface*		JointLimitMaterial;
 
-	FPhATViewportClient(WPhAT* InAssetEditor);
-	~FPhATViewportClient();
+	INT						DistanceDragged;
 
-	virtual FScene* GetScene() { return Level; }
-	virtual ULevel* GetLevel() { return Level; }
-	virtual FColor GetBackgroundColor();
-	virtual void CalcSceneView(FSceneView* View);
-	virtual void InputKey(FChildViewport* Viewport, FName Key, EInputEvent Event,FLOAT AmountDepressed = 1.f);
-	virtual void InputAxis(FChildViewport* Viewport, FName Key, FLOAT Delta, FLOAT DeltaTime);
+	FPhATViewportClient(class WxPhAT* InAssetEditor);
 
-	virtual void Draw(FChildViewport* Viewport, FRenderInterface* RI);
+	virtual FSceneInterface* GetScene() { return PreviewScene.GetScene(); }
+	virtual FLinearColor GetBackgroundColor();
+	virtual UBOOL InputKey(FViewport* Viewport, INT ControllerId, FName Key, EInputEvent Event,FLOAT AmountDepressed = 1.f,UBOOL bGamepad=FALSE);
+	virtual UBOOL InputAxis(FViewport* Viewport, INT ControllerId, FName Key, FLOAT Delta, FLOAT DeltaTime, UBOOL bGamepad=FALSE);
+	virtual void MouseMove(FViewport* Viewport, INT X, INT Y);
+
+	virtual void Draw(const FSceneView* View,FPrimitiveDrawInterface* PDI);
+	virtual void Draw(FViewport* Viewport, FCanvas* Canvas);
 
 	virtual void Serialize(FArchive& Ar);
 
-	virtual void DoHitTest(FChildViewport* Viewport, FName Key, EInputEvent Event);
+	virtual void DoHitTest(FViewport* Viewport, FName Key, EInputEvent Event);
 
 	virtual void Tick(FLOAT DeltaSeconds);
 
@@ -146,23 +158,128 @@ enum EPhATNextSelectEvent
 	PNS_MakeNewBody
 };
 
-//
-//	WPhAT
-//
-class WPhAT : public WWindow, public FNotifyHook
+/*-----------------------------------------------------------------------------
+	WxPhATMenuBar
+-----------------------------------------------------------------------------*/
+
+class WxPhATMenuBar : public wxMenuBar
 {
-	DECLARE_WINDOWCLASS(WPhAT,WWindow,UnrealEd)
+public:
+	wxMenu	*EditMenu, *ToolsMenu;
 
-	HWND hWndToolBar; // Main ToolBar.
-	WToolTip* ToolTipCtrl;
+	WxPhATMenuBar(class WxPhAT* InPhAT);
+	~WxPhATMenuBar();
+};
 
-	TMap<DWORD,FWindowAnchor> Anchors;
+/*-----------------------------------------------------------------------------
+	WxBodyContextMenu
+-----------------------------------------------------------------------------*/
+class WxBodyContextMenu : public wxMenu
+{
+public:
+	WxBodyContextMenu(WxPhAT* AssetEditor);
+	~WxBodyContextMenu();
+};
 
-	FContainer*							Container;
-	WLabel*								WindowLabel; // Overall window
-	WObjectProperties*					PropertyWindow;
+/*-----------------------------------------------------------------------------
+	WxConstraintContextMenu
+-----------------------------------------------------------------------------*/
+class WxConstraintContextMenu : public wxMenu
+{
+public:
+	WxConstraintContextMenu(WxPhAT* AssetEditor);
+	~WxConstraintContextMenu();
+};
+
+/*-----------------------------------------------------------------------------
+	WxPhATToolBar
+-----------------------------------------------------------------------------*/
+
+class WxPhATToolBar : public WxToolBar
+{
+public:
+	WxPhATToolBar( wxWindow* InParent, wxWindowID InID );
+	~WxPhATToolBar();
+
+	WxMaskedBitmap BodyModeB, ConstraintModeB;
+	WxMaskedBitmap HighlightVertB, StartSimB, StopSimB;
+	WxMaskedBitmap RotModeB, TransModeB, ScaleModeB;
+	WxMaskedBitmap WorldSpaceB, LocalSpaceB;
+	WxMaskedBitmap AddSphereB, AddSphylB, AddBoxB, DupPrimB, DelPrimB;
+	WxMaskedBitmap ShowSkelB, ShowCOMB;
+	WxMaskedBitmap ShowContactsB;
+	WxMaskedBitmap HideCollB, WireCollB, ShowCollB;
+	WxMaskedBitmap HideMeshB, WireMeshB, ShowMeshB;
+	WxMaskedBitmap ConFrameB, SnapB;
+	WxMaskedBitmap ConSnapToBoneB, ConSnapAllToBoneB;
+	WxMaskedBitmap ConHideB, ConPosB, ConLimitB;
+	WxMaskedBitmap BSJointB, HingeB, PrismaticB, SkelB, DelJointB;
+	WxMaskedBitmap DisablePairB, EnablePairB;
+	WxMaskedBitmap CopyPropsB, InstancePropsB, WeldB, AddBoneB, ShowFloorB;
+	WxMaskedBitmap LockB, ShowAnimSkelB;
+
+	wxBitmapButton *ModeButton, *SpaceButton, *SimButton, *MeshViewButton, *CollisionViewButton, *ConstraintViewButton, *AnimPlayButton;
+	WxComboBox *AnimCombo;
+
+	DECLARE_EVENT_TABLE()
+};
+
+/*-----------------------------------------------------------------------------
+	WxPhATPreview
+-----------------------------------------------------------------------------*/
+
+// wxWindows Holder for FPhATViewportClient
+class WxPhATPreview : public wxWindow
+{
+public:
+	FPhATViewportClient* PhATPreviewVC;
+
+	WxPhATPreview( wxWindow* InParent, wxWindowID InID, class WxPhAT* InPhAT );
+	~WxPhATPreview();
+
+	void OnSize( wxSizeEvent& In );
+
+	DECLARE_EVENT_TABLE()
+};
+
+
+/*-----------------------------------------------------------------------------
+	FPhATTreeBoneItem
+-----------------------------------------------------------------------------*/
+
+struct FPhATTreeBoneItem
+{
+	INT							BodyIndex;
+	EKCollisionPrimitiveType	PrimType;
+	INT							PrimIndex;
+
+	FPhATTreeBoneItem( INT InBodyIndex, EKCollisionPrimitiveType InPrimType, INT InPrimIndex )
+	:	BodyIndex(InBodyIndex)
+	,	PrimType(InPrimType)
+	,	PrimIndex(InPrimIndex)
+	{}	
+};
+
+/*-----------------------------------------------------------------------------
+	WxPhAT
+-----------------------------------------------------------------------------*/
+class WxPhAT : public WxTrackableFrame, public FNotifyHook, public FSerializableObject, public FDockingParent
+{
+public:
+	WxPhATToolBar*						ToolBar;
+	WxPhATMenuBar*						MenuBar;
+	WxPhATPreview*						PreviewWindow;
+	WxTreeCtrl*							TreeCtrl;
+
+	TMap<wxTreeItemId,FPhATTreeBoneItem> TreeItemBodyIndexMap;
+	TMap<wxTreeItemId,INT>				TreeItemConstraintIndexMap;
+	TMap<wxTreeItemId,INT>				TreeItemBoneIndexMap;
+
+	WxPropertyWindowHost*				PropertyWindow;
 
 	FPhATViewportClient*				PhATViewportClient;
+
+	FRBPhysScene*						RBPhysScene;
 
 	UPhysicsAsset*						PhysicsAsset;
 	TArray<FBoneVertInfo>				DominantWeightBoneInfos;
@@ -170,14 +287,14 @@ class WPhAT : public WWindow, public FNotifyHook
 	TArray<INT>							ControlledBones; // Array of graphics bone indices that are controlled by currently selected body.
 	TArray<INT>							NoCollisionBodies; // Array of physics bodies that have no collision with selected body.
 
-	ULevel*								EditorLevel;
-	APhATActor*							EditorActor;
-	APhATFloor*							EditorFloor;
+	UStaticMeshComponent*				EditorFloorComp;
 	UPhATSkeletalMeshComponent*			EditorSkelComp;
+	UAnimNodeSequence*					EditorSeqNode;
 	USkeletalMesh*						EditorSkelMesh;
+	class URB_Handle*					MouseHandle;
 	UPhATSimOptions*					EditorSimOptions;
 
-	FVector								EditorActorStartLocation;
+	class WxPropertyWindowFrame*		SimOptionsWindow;
 
 	// We have a different set of view setting per editing mode.
 	EPhATRenderMode						BodyEdit_MeshViewMode;
@@ -193,17 +310,25 @@ class WPhAT : public WWindow, public FNotifyHook
 	EPhATConstraintViewMode				Sim_ConstraintViewMode;
 
 	UBOOL								bShowHierarchy;
+	UBOOL								bShowContacts;
 	UBOOL								bShowCOM;
 	UBOOL								bShowInfluences;
 	UBOOL								bDrawGround;
+	UBOOL								bShowFixedStatus;
+	UBOOL								bShowAnimSkel;
 
 	UBOOL								bSnap;
 	UBOOL								bSelectionLock;
 	UBOOL								bRunningSimulation;
+	UBOOL								bShowInstanceProps;
 
 	EPhATMovementMode					MovementMode;
 	EPhATEditingMode					EditingMode;
 	EPhATMovementSpace					MovementSpace;
+
+	FLOAT								TotalTickTime;
+	FLOAT								LastPokeTime;
+
 
 	// Collision editing
 	INT									SelectedBodyIndex;
@@ -243,18 +368,33 @@ class WPhAT : public WWindow, public FNotifyHook
 	FVector								SimGrabZ;
 
 	// Constructor.
-	WPhAT(UPhysicsAsset* InAsset);
+	WxPhAT( wxWindow* InParent, wxWindowID InID, class UPhysicsAsset* InAsset );
+	~WxPhAT();
 
-	// WWindow interface
+	/**
+	 * This function is called when the window has been selected from within the ctrl + tab dialog.
+	 */
+	virtual void OnSelected();
 
+	/**
+	* Called once to load PhAT settings, including window position.
+	*/
+	void LoadSettings();
+
+	/**
+	* Writes out values we want to save to the INI file.
+	*/
+	void SaveSettings();
+
+	// wxWidgets Events
+	void OnClose( wxCloseEvent& In );
+	void OnHandleCommand( wxCommandEvent& In );
+	void OnUpdateUI( wxUpdateUIEvent& In );
+	void OnFillTree(wxCommandEvent &In);
+
+	// FSerializableObject interface
 	void Serialize(FArchive& Ar);
-	void OpenWindow();
-	void OnCreate();
-	void OnDestroy();
-	void OnCommand( INT Command );
-	void OnSize( DWORD Flags, INT NewX, INT NewY );
-	void OnPaint();
-	void PositionChildControls();
+
 
 	// FNotify interface
 
@@ -263,22 +403,39 @@ class WPhAT : public WWindow, public FNotifyHook
 	void NotifyPostChange( void* Src, UProperty* PropertyThatChanged );
 	void NotifyExec( void* Src, const TCHAR* Cmd );
 
-	// WPhAT interface
+	// WxPhAT interface
 		
 	void ToggleSelectionLock();
 
 	void ToggleEditingMode();
 	void ToggleMovementSpace();
 	void SetMovementMode(EPhATMovementMode NewMovementMode);
+	void CycleMovementMode();
 	void ToggleSnap();
 	
 	void UpdateToolBarStatus(); // Update enabled status of ToolBar.
 
+	void ChangeDefaultSkelMesh();
 	void RecalcEntireAsset();
 	void CopyPropertiesToNextSelect(); // Works for bodies or constraints.
+	void ToggleInstanceProperties();
+	void ShowSimOptionsWindow();
+	void FillTree();
 
 	void Undo();
 	void Redo();
+
+	// Selection
+
+	void HitBone( INT BodyIndex, EKCollisionPrimitiveType PrimType, INT PrimIndex );
+	void HitConstraint( INT ConstraintIndex );
+	void HitNothing();
+	void OnTreeSelChanged( wxTreeEvent& In );
+	void OnTreeItemDblClick(wxTreeEvent& InEvent);
+
+	/** Displays a context menu for the bone tree. */
+	void OnTreeItemRightClick( wxTreeEvent& In );
+
 
 	////////////////////// Rendering support //////////////////////
 	void CycleMeshViewMode();
@@ -289,35 +446,45 @@ class WPhAT : public WWindow, public FNotifyHook
 	void ToggleViewContacts();
 
 	void ToggleDrawGround();
+	void ToggleShowFixed();
 	void ToggleViewInfluences();
 	void UpdateControlledBones();
+	void CenterViewOnSelected();
 
 	EPhATRenderMode GetCurrentMeshViewMode();
 	EPhATRenderMode GetCurrentCollisionViewMode();
 	EPhATConstraintViewMode GetCurrentConstraintViewMode();
 
 	// Low level
+	void ReattachPhATComponent();
 	void SetCurrentMeshViewMode(EPhATRenderMode NewViewMode);
 	void SetCurrentCollisionViewMode(EPhATRenderMode  NewViewMode);
 	void SetCurrentConstraintViewMode(EPhATConstraintViewMode  NewViewMode);
 
-	void DrawCurrentWidget(const FSceneContext& Context, FPrimitiveRenderInterface* PRI, UBOOL bHitTest);
+	void DrawCurrentWidget(const FSceneView* View, FPrimitiveDrawInterface* PDI, UBOOL bHitTest);
 
 	////////////////////// Constraint editing //////////////////////
 	void SetSelectedConstraint(INT ConstraintIndex);
 
 	FMatrix GetSelectedConstraintWorldTM(INT BodyIndex);
 	void SetSelectedConstraintRelTM(const FMatrix& RelTM);
+	void SnapSelectedConstraintToBone();
+	void SnapAllConstraintsToBone();
+	void SnapConstraintToBone(INT ConstraintIndex, const FMatrix& WParentFrame);
 	void CycleSelectedConstraintOrientation();
 
 	FMatrix GetConstraintMatrix(INT ConstraintIndex, INT BodyIndex, FLOAT Scale);
 
-	void DrawConstraint(INT ConstraintIndex, FLOAT Scale, FPrimitiveRenderInterface* PRI);
+	void DrawConstraint(INT ConstraintIndex, const FSceneView* View, FPrimitiveDrawInterface* PDI, UBOOL bDrawAsPoint);
 
 	void CreateOrConvertConstraint(URB_ConstraintSetup* NewSetup);
 	void DeleteCurrentConstraint();
 
 	void CopyConstraintProperties(INT ToConstraintIndex, INT FromConstraintIndex);
+
+	void GetConstraintIndicesBelow(TArray<INT>& OutConstraintIndices, FName InBoneName);
+	void ToggleSelectedConstraintMotorised();
+	void SetConstraintsBelowSelectedMotorised(UBOOL bMotorised);
 
 	////////////////////// Collision geometry editing //////////////////////
 	void SetSelectedBody(INT BodyIndex, EKCollisionPrimitiveType PrimitiveType, INT PrimitiveIndex);
@@ -330,13 +497,14 @@ class WPhAT : public WWindow, public FNotifyHook
 	void ModifyPrimitiveSize(INT BodyIndex, EKCollisionPrimitiveType PrimType, INT PrimIndex, FVector DeltaSize);
 	void AddNewPrimitive(EKCollisionPrimitiveType PrimitiveType, UBOOL bCopySelected = false);
 	void DeleteCurrentPrim();
+	void DeleteBody(INT DelBodyIndex);
 	
 	FMatrix GetPrimitiveMatrix(FMatrix& BoneTM, INT BodyIndex, EKCollisionPrimitiveType PrimType, INT PrimIndex, FLOAT Scale);
 	FColor GetPrimitiveColor(INT BodyIndex, EKCollisionPrimitiveType PrimitiveType, INT PrimitiveIndex);
-	UMaterialInstance* GetPrimitiveMaterial(INT BodyIndex, EKCollisionPrimitiveType PrimitiveType, INT PrimitiveIndex);
+	UMaterialInterface* GetPrimitiveMaterial(INT BodyIndex, EKCollisionPrimitiveType PrimitiveType, INT PrimitiveIndex);
 
 	void UpdateNoCollisionBodies();
-	void DrawCurrentInfluences(FPrimitiveRenderInterface* PRI);
+	void DrawCurrentInfluences(FPrimitiveDrawInterface* PDI);
 
 	void DisableCollisionWithNextSelect();
 	void EnableCollisionWithNextSelect();
@@ -351,18 +519,58 @@ class WPhAT : public WWindow, public FNotifyHook
 
 	void CopyBodyProperties(INT ToBodyIndex, INT FromBodyIndex);
 	void SetAssetPhysicalMaterial();
+	void CopyJointSettingsToAll();
+
+	void ToggleSelectedBodyFixed();
+	void SetBodiesBelowSelectedFixed(UBOOL bFix);
+
+	void DeleteBodiesBelowSelected();
 
 	////////////////////// Simulation //////////////////////
 
 	void ToggleSimulation();
-	void TickSimulation(FLOAT DeltaSeconds);
+	void ViewContactsToggle();
 
 	// Simulation mouse forces
-	void SimMousePress(FChildViewport* Viewport, UBOOL bConstrainRotation);
+	void SimMousePress(FViewport* Viewport, UBOOL bConstrainRotation, FName Key);
 	void SimMouseMove(FLOAT DeltaX, FLOAT DeltaY);
 	void SimMouseRelease();
 	void SimMouseWheelUp();
 	void SimMouseWheelDown();
+
+	////////////////////// Animation //////////////////////
+	void AnimComboSelected();
+	void ToggleAnimPlayback();
+	void SetAnimPlayback(UBOOL bPlayAnim);
+	void UpdateAnimCombo();
+	void ToggleShowAnimSkel();
+	void UpdatePhysBlend();
+
+protected:
+	/**
+	*	This function returns the name of the docking parent.  This name is used for saving and loading the layout files.
+	*  @return A string representing a name to use for this docking parent.
+	*/
+	virtual const TCHAR* GetDockingParentName() const;
+
+	/**
+	* @return The current version of the docking parent, this value needs to be increased every time new docking windows are added or removed.
+	*/
+	virtual const INT GetDockingParentVersion() const;
+
+
+	DECLARE_EVENT_TABLE()
+
+private:
+
+	/**
+	 * Helper method to initialize a constraint setup between two bodies.
+	 *
+	 * @param	ConstraintSetup		Constraint setup to initialize
+	 * @param	ChildBodyIndex		Index of the child body in the physics asset body setup array
+	 * @param	ParentBodyIndex		Index of the parent body in the physics asset body setup array
+	 */
+	void InitConstraintSetup( URB_ConstraintSetup* ConstraintSetup, INT ChildBodyIndex, INT ParentBodyIndex );
 };
 
 /*-----------------------------------------------------------------------------
@@ -373,58 +581,25 @@ class WxDlgNewPhysicsAsset : public wxDialog
 {
 public:
 	WxDlgNewPhysicsAsset();
-	~WxDlgNewPhysicsAsset();
+	virtual ~WxDlgNewPhysicsAsset();
 
-	FString Package, Name;
 	FPhysAssetCreateParams Params;
 	USkeletalMesh* Mesh;
 	UBOOL bOpenAssetNow;
 
-	wxTextCtrl *PackageEdit, *NameEdit, *MinSizeEdit;
-	wxCheckBox *AlignBoneCheck, *OpenAssetNowCheck, *MakeJointsCheck, *WalkPastSmallCheck;
+	wxTextCtrl *MinSizeEdit;
+	wxCheckBox *AlignBoneCheck, *OpenAssetNowCheck, *MakeJointsCheck, *WalkPastSmallCheck, *BodyForAllCheck;
 	wxComboBox *GeomTypeCombo, *VertWeightCombo;
 
-	int ShowModal( FString InPackage, FString InName, USkeletalMesh* InMesh, UBOOL bReset );
-
-	void OnOK( wxCommandEvent& In );
-
-	DECLARE_EVENT_TABLE()
-};
-
-/*-----------------------------------------------------------------------------
-	WxDlgSetAssetPhysMaterial.
------------------------------------------------------------------------------*/
-
-class WxDlgSetAssetPhysMaterial : public wxDialog
-{
+	int ShowModal( USkeletalMesh* InMesh, UBOOL bReset );
+private:
+	using wxDialog::ShowModal;		// Hide parent implementation
 public:
-	WxDlgSetAssetPhysMaterial();
-	~WxDlgSetAssetPhysMaterial();
 
-	UClass* PhysMaterialClass;
-	wxComboBox *PhysMaterialCombo;
-
-	int ShowModal();
 	void OnOK( wxCommandEvent& In );
 
 	DECLARE_EVENT_TABLE()
 };
 
-/*-----------------------------------------------------------------------------
-	WxDlgSetAssetDisableParams.
------------------------------------------------------------------------------*/
 
-class WxDlgSetAssetDisableParams : public wxDialog
-{
-public:
-	WxDlgSetAssetDisableParams();
-	~WxDlgSetAssetDisableParams();
-
-	FLOAT LinVel, LinAcc, AngVel, AngAcc;
-	wxTextCtrl *LinVelEdit, *LinAccEdit, *AngVelEdit, *AngAccEdit;
-
-	int ShowModal(FLOAT InLinVel, FLOAT InLinAcc, FLOAT InAngVel, FLOAT InAngAcc);
-	void OnOK( wxCommandEvent& In );
-
-	DECLARE_EVENT_TABLE()
-};
+#endif // __PHAT_H__

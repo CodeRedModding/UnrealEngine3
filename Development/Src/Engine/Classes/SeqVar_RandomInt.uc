@@ -1,17 +1,32 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class SeqVar_RandomInt extends SeqVar_Int
 	native(Sequence);
 
 cpptext
 {
-	virtual INT* GetIntRef()
+	virtual INT* GetRef()
 	{
-		IntValue = Min + (appRand() % (Max - Min));
+		if( Min < Max )
+		{
+			IntValue = Min + (appRand() % (Max - Min + 1));
+		}
+		else
+		{
+			IntValue = Max + (appRand() % (Min - Max + 1));
+		}
 		return &IntValue;
 	}
 
 	virtual FString GetValueStr()
 	{
 		return FString::Printf(TEXT("%d..%d"),Min,Max);
+	}
+
+	virtual UBOOL SupportsProperty(UProperty *Property)
+	{
+		return FALSE;
 	}
 }
 
@@ -23,7 +38,8 @@ var() int Max;
 
 defaultproperties
 {
-	ObjName="Int - Random"
+	ObjName="Random Int"
+	ObjCategory="Int"
 
 	Min=0
 	Max=100

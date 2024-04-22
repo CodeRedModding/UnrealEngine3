@@ -1,0 +1,35 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+OUT_BUILTIN(half4, gl_FragColor, COLOR0)
+
+
+////////////////////////
+// Variables
+////////////////////////
+
+UNIFORM_SAMPLER2D(TextureBase, TEXUNIT0);
+
+IN_VARYING_DEFAULT( vec2, UVBase, TEXCOORD0 );
+IN_VARYING_LOW( vec4, PrimColor, COLOR0 );
+
+
+////////////////////////
+// Implementation
+////////////////////////
+
+PIXEL_MAIN
+{
+	lowp vec4 BaseColor = texture2D(TextureBase, UVBase);
+	
+	ALPHAKILL(BaseColor.w)
+	
+	lowp vec4 PolyColor = PrimColor * BaseColor;
+	
+	// Convert to gamma 2.2 space
+	PolyColor.xyz = HANDLE_SRGB_WRITE( PolyColor.xyz );
+
+	gl_FragColor = AlphaBlend( PolyColor );
+}
+

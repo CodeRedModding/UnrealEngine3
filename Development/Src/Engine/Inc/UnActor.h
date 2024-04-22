@@ -1,11 +1,6 @@
 /*=============================================================================
 	UnActor.h: AActor class inlines.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
-        * Aug 30, 1996: Mark added PLevel
-		* Oct 19, 1996: Tim redesigned to eliminate redundency
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 /*-----------------------------------------------------------------------------
@@ -35,14 +30,10 @@ struct FActorLink
 // Brush checking.
 //
 inline UBOOL AActor::IsBrush()       const {return ((AActor *)this)->IsABrush();}
-inline UBOOL AActor::IsStaticBrush() const {return ((AActor *)this)->IsABrush() && bStatic && !((AActor *)this)->IsAVolume(); }
+inline UBOOL AActor::IsStaticBrush() const {return ((AActor *)this)->IsABrush() && bStatic && !((AActor *)this)->IsAVolume() && !((AActor *)this)->IsABrushShape(); }
 inline UBOOL AActor::IsVolumeBrush() const {return ((AActor *)this)->IsAVolume();}
-inline UBOOL AActor::IsEncroacher()  const {return bCollideActors && 
-											(Physics==PHYS_Articulated || Physics==PHYS_RigidBody || Physics==PHYS_Interpolating);}
-inline UBOOL AActor::IsShapeBrush() const
-{
-	return ((AActor *)this)->IsAShape();
-}
+inline UBOOL AActor::IsBrushShape() const {return ((AActor *)this)->IsABrushShape();}
+inline UBOOL AActor::IsEncroacher()  const {return bCollideActors && (Physics==PHYS_RigidBody || Physics==PHYS_Interpolating || bCollideAsEncroacher);}
 
 //
 // See if this actor is owned by TestOwner.
@@ -67,15 +58,6 @@ inline AActor* AActor::GetTopOwner()
 	return Top;
 }
 
-
-//
-// See if this actor is in the specified zone.
-//
-inline UBOOL AActor::IsInZone( const AZoneInfo* TestZone ) const
-{
-	return Region.Zone!=Level ? Region.Zone==TestZone : 1;
-}
-
 //
 // Return whether this actor's movement is based on another actor.
 //
@@ -89,43 +71,9 @@ inline UBOOL AActor::IsBasedOn( const AActor* Other ) const
 
 inline AActor* AActor::GetBase() const
 {
-	if(Base)
-	{
-		return Base;
-	}
-	else if(AttachTag != NAME_None)
-	{
-		ULevel* Level = GetLevel();
-		for(INT i=0; i<Level->Actors.Num(); i++)
-		{
-			AActor* TestActor = Level->Actors(i);
-			if( TestActor && (TestActor->Tag == AttachTag || TestActor->GetFName() == AttachTag) )
-			{
-				return TestActor;
-			}
-		}
-
-		return NULL;
-	}
-	else
-	{
-		return NULL;
-	}
+	return Base;
 }
 
-//
-// Return the level of an actor.
-//
-inline class ULevel* AActor::GetLevel() const
-{
-	return XLevel;
-}
-
-/*-----------------------------------------------------------------------------
-	AActor audio.
------------------------------------------------------------------------------*/
-
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
-
+/** Get Pawn from the given Actor **/
+extern APawn * GetPawn(AActor *Actor);
+extern USkeletalMeshComponent * GetSkeletalMeshComp( AActor * Actor );

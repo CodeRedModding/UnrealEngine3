@@ -1,0 +1,59 @@
+/*=============================================================================
+	DistortApplyScreenPixelShader.usf: Pixel shader for rendering screen distortion pass
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+static const half InvDistortionScaleBias = 1 / 4.0f;
+
+/** 
+ * contains accumulated distortion values as 
+ * R=positive horizontal offset
+ * G=positive vertical offset
+ * B=negative horizontal offset
+ * A=negative vertical offset 
+ */
+sampler2D	AccumulatedDistortionTexture;
+
+/**
+ * Contains the valid region in the scenecolor texture (in UV space).
+ * Trying to sample outside this region will yield garbage colors.
+ * X,Y = Upper-left corner
+ * Z,W = Lower-left corner
+ */
+float4		SceneColorRect;
+
+/** distorts screen texture using accumulated distortion offsets */
+void Main(
+	in float2 TexCoord: TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	// sample accumulated distortion and apply inverse scale
+	half4 AccumDist = tex2D(AccumulatedDistortionTexture,TexCoord);
+	// offset = [R-B,G-A] and flip Y
+	half2 DistOffset = (AccumDist.rg - AccumDist.ba) * half2(InvDistortionScaleBias,-InvDistortionScaleBias);
+	half2 NewTexCoord = TexCoord + DistOffset;
+
+	// If we're about to sample outside the valid SceneColorRect, set to 0 distortion.
+	if ( NewTexCoord.x < SceneColorRect.x || NewTexCoord.x > SceneColorRect.z ||
+	     NewTexCoord.y < SceneColorRect.y || NewTexCoord.y > SceneColorRect.w )
+	{
+		NewTexCoord = TexCoord;
+	}
+	// Note: We tried using a clamp on the texture coordinates but on Xbox360 this brough in image content
+	// that was outside of the rectangle that was resolved pink (pink). The rectangle should be made tightly fitting
+	// to avoid that. On the other hand refraction with screenspace content might require samples from further outside
+	// this rectangle.
+	
+#if SUPPORTS_DEPTH_TEXTURES   
+	// sample screen using offset coords
+	half4 DistColor = tex2D(SceneColorTexture, NewTexCoord);
+	OutColor = DistColor;
+#else
+	// sample screen using offset coords, distorting both scene color and depth
+	half4 DistColor = CalcFullSceneColor(NewTexCoord);
+	OutColor = RETURN_COLOR( DistColor );
+#endif
+}

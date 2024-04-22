@@ -1,9 +1,6 @@
 /*=============================================================================
 	UnCDKey.cpp: CD Key validation
-	Copyright 1997-2002 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Jack Porter
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "EnginePrivate.h"
@@ -23,13 +20,12 @@ static FString GetDigestString( BYTE* Digest )
 	return MD5;
 }
 
-static FString MD5HashAnsiString( const TCHAR* String )
+FString MD5HashAnsiString( const TCHAR* String )
 {
-	const ANSICHAR* AnsiChallenge = TCHAR_TO_ANSI( String );
 	BYTE Digest[16];
 	FMD5Context Context;
 	appMD5Init( &Context );
-	appMD5Update( &Context, (unsigned char*)AnsiChallenge, appStrlen( String ) );
+	appMD5Update( &Context, (unsigned char*)TCHAR_TO_ANSI( String ), appStrlen( String ) );
 	appMD5Final( Digest, &Context );
 	return GetDigestString( Digest );
 }
@@ -56,8 +52,4 @@ FString GetCDKeyResponse( const TCHAR* Challenge )
 	// MD5
 	return MD5HashAnsiString( *CDKey );
 }
-
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
 

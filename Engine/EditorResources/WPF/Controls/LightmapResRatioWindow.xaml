@@ -1,0 +1,320 @@
+﻿<Border
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:UnrealEd="clr-namespace:UnrealEd;assembly=UnrealEdCSharp"
+    xmlns:CustomControls="clr-namespace:CustomControls;assembly=UnrealEdCSharp"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d"
+	xmlns:System="clr-namespace:System;assembly=mscorlib"
+	x:Name="MainBorder"
+	Width="308"
+	Background="{DynamicResource Slate_Panel_Background}"
+	BorderBrush="{DynamicResource Slate_Panel_Shadow}"
+	BorderThickness="2,2,2,2"
+	>
+
+	<Border.Resources>
+	
+		<Style x:Key="NewButtonStyle" TargetType="{x:Type Button}" >
+			<Setter Property="Foreground" Value="{DynamicResource Slate_Control_Foreground}" />
+			<Setter Property="Background" Value="{DynamicResource Slate_Panel_Background}" />
+			<Setter Property="BorderBrush" Value="#FF000000"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="{x:Type ButtonBase}">
+						<ControlTemplate.Resources>
+							<Storyboard x:Key="OnMouseEnter1">
+								<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverCue" Storyboard.TargetProperty="(UIElement.Opacity)">
+									<SplineDoubleKeyFrame KeyTime="00:00:00.1000000" Value="1"/>
+								</DoubleAnimationUsingKeyFrames>
+							</Storyboard>
+							<Storyboard x:Key="OnMouseLeave1">
+								<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverCue" Storyboard.TargetProperty="(UIElement.Opacity)">
+									<SplineDoubleKeyFrame KeyTime="00:00:00.1000000" Value="0.0"/>
+								</DoubleAnimationUsingKeyFrames>
+							</Storyboard>
+						</ControlTemplate.Resources>
+						<Grid>
+							<CustomControls:SlateBorder x:Name="slateBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1,1,1,1" BorderStyle="Raised" >
+								<ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" Content="{TemplateBinding Content}" ContentStringFormat="{TemplateBinding ContentStringFormat}" ContentTemplate="{TemplateBinding ContentTemplate}" RecognizesAccessKey="True"/>
+							</CustomControls:SlateBorder>
+							<Rectangle x:Name="HoverCue" Stroke="#FF000000" Opacity="0">
+								<Rectangle.Fill>
+									<LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+										<GradientStop Color="#64000000" Offset="0"/>
+										<GradientStop Color="#64FFFFFF" Offset="0.901"/>
+										<GradientStop Color="#64000000" Offset="1"/>
+									</LinearGradientBrush>
+								</Rectangle.Fill>
+							</Rectangle>
+						</Grid>
+						<ControlTemplate.Triggers>
+							<EventTrigger RoutedEvent="Mouse.MouseLeave">
+								<BeginStoryboard x:Name="OnMouseLeave1_BeginStoryboard" Storyboard="{StaticResource OnMouseLeave1}"/>
+							</EventTrigger>
+							<Trigger Property="IsEnabled" Value="False">
+								<Setter Property="Foreground" Value="#FF626262"/>
+							</Trigger>
+							<EventTrigger RoutedEvent="Mouse.MouseEnter">
+								<BeginStoryboard Storyboard="{StaticResource OnMouseEnter1}"/>
+							</EventTrigger>
+
+							<Trigger Property="IsKeyboardFocused" Value="True">
+			<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedFocused"/> -->
+							</Trigger>
+							<Trigger Property="Button.IsDefaulted" Value="True">
+			<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedFocused"/> -->
+							</Trigger>
+							<Trigger Property="IsPressed" Value="True">
+								<Setter Property="BorderStyle" TargetName="slateBorder" Value="ButtonPressed"/>
+			<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedPressed"/> -->
+							</Trigger>
+							<Trigger Property="ToggleButton.IsChecked" Value="True">
+			<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedPressed"/> -->
+							</Trigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+
+    <Style TargetType="ToolTip">
+      <Setter Property="ContentTemplate">
+        <Setter.Value>
+          <DataTemplate>
+            <StackPanel>
+              <TextBlock Text="{Binding}" MaxWidth="250" TextWrapping='Wrap' />
+            </StackPanel>
+          </DataTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <ControlTemplate x:Key="SwappyButton" TargetType="{x:Type ButtonBase}">
+			<ControlTemplate.Resources>
+				<Storyboard x:Key="OnMouseEnter1">
+					<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="path" Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)">
+						<SplineColorKeyFrame KeyTime="00:00:00.1000000" Value="#FFFFFFFF"/>
+					</ColorAnimationUsingKeyFrames>
+				</Storyboard>
+				<Storyboard x:Key="OnMouseLeave1">
+					<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="path" Storyboard.TargetProperty="(Shape.Fill).(SolidColorBrush.Color)">
+						<SplineColorKeyFrame KeyTime="00:00:00.1000000" Value="#FFB6B6B6"/>
+					</ColorAnimationUsingKeyFrames>
+				</Storyboard>
+			</ControlTemplate.Resources>
+			<Grid>
+				<CustomControls:SlateBorder x:Name="ContentContainer" SnapsToDevicePixels="True" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderStyle="Raised">
+					<Path x:Name="path" Fill="#FFB6B6B6" Stretch="Fill" Stroke="#FF000000" VerticalAlignment="Stretch" Data="M3.6708304,0.76682552 L6.0946088,0.76653786 6.0946088,3.3557344 5.2866826,2.4928743 C5.2866826,2.4928743 3.2607647,3.36478 3.2607647,3.9980173 3.2607647,4.6337383 5.2866826,5.0819476 5.2866826,5.0816699 L6.0946088,4.2186504 6.0946088,6.8077089 3.6708292,6.8074213 4.4787557,5.9446894 C4.4787565,5.944972 1.7708882,4.9132305 1.7771497,3.9896823 1.7834112,3.0661342 4.4787565,1.6298499 4.4787565,1.6298499 z" StrokeThickness="0.25" RenderTransformOrigin="0.5,0.5">
+						<Path.RenderTransform>
+							<TransformGroup>
+								<ScaleTransform ScaleX="-1" ScaleY="1"/>
+								<SkewTransform AngleX="0" AngleY="0"/>
+								<RotateTransform Angle="0"/>
+								<TranslateTransform X="0" Y="0"/>
+							</TransformGroup>
+						</Path.RenderTransform>
+					</Path>
+				</CustomControls:SlateBorder>
+			</Grid>
+			<ControlTemplate.Triggers>
+				<Trigger Property="IsKeyboardFocused" Value="True">
+<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedFocused"/> -->
+				</Trigger>
+				<Trigger Property="Button.IsDefaulted" Value="True">
+<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedFocused"/> -->
+				</Trigger>
+				<Trigger Property="IsPressed" Value="True">
+					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="ButtonPressed"/>
+				</Trigger>
+				<EventTrigger RoutedEvent="Mouse.MouseEnter">
+					<BeginStoryboard Storyboard="{StaticResource OnMouseEnter1}"/>
+				</EventTrigger>
+				<EventTrigger RoutedEvent="Mouse.MouseLeave">
+					<BeginStoryboard x:Name="OnMouseLeave1_BeginStoryboard" Storyboard="{StaticResource OnMouseLeave1}"/>
+				</EventTrigger>
+				<Trigger Property="ToggleButton.IsChecked" Value="True">
+<!--					<Setter Property="BorderStyle" TargetName="ContentContainer" Value="RaisedPressed"/> -->
+				</Trigger>
+				<Trigger Property="IsEnabled" Value="False">
+<!--					<Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/> -->
+				</Trigger>
+			</ControlTemplate.Triggers>
+		</ControlTemplate>
+		
+		<Style x:Key="ColorPreviewButtonStyle" TargetType="{x:Type Button}" >
+			<Setter Property="Foreground" Value="{DynamicResource Slate_Control_Foreground}" />
+			<Setter Property="Background" Value="{DynamicResource Slate_Panel_Background}" />
+			<Setter Property="BorderBrush" Value="#FF000000"/>
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="{x:Type ButtonBase}">
+						<Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1,1,1,1">
+							<ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" Content="{TemplateBinding Content}" ContentStringFormat="{TemplateBinding ContentStringFormat}" ContentTemplate="{TemplateBinding ContentTemplate}" RecognizesAccessKey="True"/>
+						</Border>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+		
+		<Storyboard x:Key="FadeInTitle">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="TitleHighlightRect" Storyboard.TargetProperty="(UIElement.Opacity)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.2000000" Value="1"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		
+		<Storyboard x:Key="FadeOutTitle">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="TitleHighlightRect" Storyboard.TargetProperty="(UIElement.Opacity)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.3000000" Value="0"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Key="FadeInBorderHoverCue">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverCueBorder" Storyboard.TargetProperty="(UIElement.Opacity)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.0500000" Value="1"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Key="FadeOutBorderHoverCue">
+			<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverCueBorder" Storyboard.TargetProperty="(UIElement.Opacity)">
+				<SplineDoubleKeyFrame KeyTime="00:00:00.1000000" Value="0"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		
+	</Border.Resources>
+	
+	
+	<Border.Triggers>
+	
+		<EventTrigger RoutedEvent="Mouse.MouseEnter" SourceName="TitleGrid">
+			<BeginStoryboard x:Name="FadeInTitle_BeginStoryboard" Storyboard="{StaticResource FadeInTitle}"/>
+			<RemoveStoryboard BeginStoryboardName="FadeOutTitle_BeginStoryboard"/>
+		</EventTrigger>
+		
+		<EventTrigger RoutedEvent="Mouse.MouseLeave" SourceName="TitleGrid">
+			<RemoveStoryboard BeginStoryboardName="FadeInTitle_BeginStoryboard"/>
+			<BeginStoryboard x:Name="FadeOutTitle_BeginStoryboard" Storyboard="{StaticResource FadeOutTitle}"/>
+		</EventTrigger>
+		<EventTrigger RoutedEvent="Mouse.MouseEnter">
+			<BeginStoryboard x:Name="FadeInBorderHoverCue_BeginStoryboard" Storyboard="{StaticResource FadeInBorderHoverCue}"/>
+		</EventTrigger>
+		<EventTrigger RoutedEvent="Mouse.MouseLeave">
+			<BeginStoryboard x:Name="FadeOutBorderHoverCue_BeginStoryboard" Storyboard="{StaticResource FadeOutBorderHoverCue}"/>
+		</EventTrigger>
+		
+	</Border.Triggers>
+
+	
+	<Grid Margin="0,0,-2,0">
+
+    <StackPanel x:Name="TitleSeparatorStack">
+			<Grid x:Name="TitleGrid" Width="Auto" Height="Auto" IsHitTestVisible="True" Background="#00000000">
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition/>
+					<ColumnDefinition Width="Auto"/>
+					<ColumnDefinition/>
+				</Grid.ColumnDefinitions>
+				<Rectangle Fill="{DynamicResource Slate_Panel_Shadow}" Stroke="{DynamicResource Slate_Panel_Highlight}" Margin="4,0,4,0" x:Name="LeftTitleDecoRect" Height="3" Grid.Column="0" IsHitTestVisible="False"/>
+				<Label  x:Name="TitleText" Grid.Column="1" FontWeight="Bold" IsHitTestVisible="False" Content="{DynamicResource LightmapResRatioWindow_Title}"/>
+				<Rectangle Fill="{DynamicResource Slate_Panel_Shadow}" Stroke="{DynamicResource Slate_Panel_Highlight}" Margin="4,0,4,0" x:Name="RightTitleDecoRect" Height="3" Grid.Column="2" IsHitTestVisible="False"/>
+				<Rectangle x:Name="TitleHighlightRect" Grid.ColumnSpan="3" Panel.ZIndex="-2" StrokeThickness="2" RadiusX="2" RadiusY="2" Opacity="0">
+					<Rectangle.Fill>
+						<LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+							<GradientStop Color="#28FFB56D" Offset="0"/>
+							<GradientStop Color="#51FF9023" Offset="1"/>
+						</LinearGradientBrush>
+					</Rectangle.Fill>
+					<Rectangle.Stroke>
+						<LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+							<GradientStop Color="#86FF7200" Offset="0.08"/>
+							<GradientStop Color="#5D572700" Offset="1"/>
+							<GradientStop Color="#ACFFD3AE" Offset="0"/>
+						</LinearGradientBrush>
+					</Rectangle.Stroke>
+				</Rectangle>
+			</Grid>
+			<Grid x:Name="MainContentGrid">
+				<CustomControls:SlateBorder Background="{DynamicResource Slate_List_Background}" Margin="4,4,4,4">
+					<StackPanel Margin="6,6,6,6">
+						<DockPanel Height="24" Visibility="Collapsed">
+							<TextBlock Text="{DynamicResource MeshPaintWindow_ResourceType}" x:Name="ResourceTypeLabel"  VerticalAlignment="Center"/>
+							<StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+								<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_ResourceType_VertexColors}"  x:Name="ResourceTypeRadio_VertexColors" GroupName="ResourceType" VerticalAlignment="Center" Margin="0,0,8,0"/>
+								<UnrealEd:BindableRadioButton Content="{DynamicResource MeshPaintWindow_ResourceType_Texture}"  x:Name="ResourceTypeRadio_Texture" GroupName="ResourceType" VerticalAlignment="Center"/>
+							</StackPanel>
+						</DockPanel>
+						<Separator Margin="9" />
+						<Grid x:Name="PrimitiveTypeGrid" Margin="-1,0,1,0">
+							<GroupBox x:Name="PrimitiveTypesGroup" VerticalAlignment="Top" Foreground="#FFFCFAFA" Header="{DynamicResource LightmapResRatioWindow_PrimitiveTypes}" d:LayoutOverrides="GridBox">
+								<StackPanel>
+									<DockPanel LastChildFill="False">
+										<CheckBox x:Name="PrimitiveStaticMeshesCheckBox" Margin="0,1,0,0" Content="{DynamicResource LightmapResRatioWindow_StaticMeshes}" ToolTip="{DynamicResource LightmapResRatioWindow_StaticMeshes_ToolTip}" VerticalAlignment="Top"/>
+										<CustomControls:DragSlider x:Name="StaticMeshMaxDragSlider" Height="18"  ValuesPerMouseWheelScroll="0.5" ValuesPerDragPixel="0.1" Margin="5,3,5,0" LargeChange="500" Minimum="4" RenderTransformOrigin="0.241,0.427" VerticalAlignment="Top" d:LayoutOverrides="Height" Width="64" DockPanel.Dock="Right" DrawAsInteger="True" SmallChange="0.01" Maximum="4096" Value="64" ToolTip="{DynamicResource StaticMeshMax_ToolTip}"/>
+										<CustomControls:DragSlider x:Name="StaticMeshMinDragSlider" Height="18"  ValuesPerMouseWheelScroll="0.5" ValuesPerDragPixel="0.1" Margin="5,3,5,0" LargeChange="500" Minimum="4" RenderTransformOrigin="0.241,0.427" VerticalAlignment="Top" Width="64" DockPanel.Dock="Right" DrawAsInteger="True" SmallChange="0.01" Maximum="4096" Value="64" d:LayoutOverrides="Height" ToolTip="{DynamicResource StaticMeshMin_ToolTip}"/>
+									</DockPanel>
+									<DockPanel Margin="0" LastChildFill="False">
+										<CheckBox x:Name="PrimitiveBSPSurfacesCheckBox" Margin="0,1,0,0" Content="{DynamicResource LightmapResRatioWindow_BSP}" ToolTip="{DynamicResource LightmapResRatioWindow_BSP_ToolTip}" VerticalAlignment="Top"/>
+										<CustomControls:DragSlider x:Name="BSPMaxDragSlider"  ValuesPerMouseWheelScroll="0.5" ValuesPerDragPixel="0.1" Margin="5,3,5,0" LargeChange="5000" Maximum="63556.0" Minimum="1" RenderTransformOrigin="0.241,0.427" Width="64" DockPanel.Dock="Right" d:LayoutOverrides="VerticalMargin" Height="18" VerticalAlignment="Top" DrawAsInteger="True" SmallChange="1" Value="32" ToolTip="{DynamicResource BSPSurfaceMax_ToolTip}"/>
+										<CustomControls:DragSlider x:Name="BSPMinDragSlider"  ValuesPerMouseWheelScroll="0.5" ValuesPerDragPixel="0.1" Margin="5,3,5,0" LargeChange="5000" Maximum="63556.0" Minimum="1" RenderTransformOrigin="0.241,0.427" Width="64" DockPanel.Dock="Right" Height="18" VerticalAlignment="Top" DrawAsInteger="True" SmallChange="1" Value="32" ToolTip="{DynamicResource BSPSurfaceMin_ToolTip}"/>
+									</DockPanel>
+									<DockPanel Margin="0" LastChildFill="False">
+										<CheckBox x:Name="PrimitiveTerrainsCheckBox" Margin="0,1,0,0" Content="{DynamicResource LightmapResRatioWindow_Terrains}" ToolTip="{DynamicResource LightmapResRatioWindow_Terrains_ToolTip}" VerticalAlignment="Top"/>
+										<CustomControls:DragSlider x:Name="TerrainMaxDragSlider"  ValuesPerMouseWheelScroll="0.5" ValuesPerDragPixel="0.1" Margin="5,3,5,0" LargeChange="50" Maximum="512" Minimum="1" RenderTransformOrigin="0.241,0.427" Width="64" DockPanel.Dock="Right" VerticalAlignment="Top" Height="18" DrawAsInteger="True" SmallChange="1" Value="4" ToolTip="{DynamicResource TerrainMax_ToolTip}"/>
+										<CustomControls:DragSlider x:Name="TerrainMinDragSlider"  ValuesPerMouseWheelScroll="0.5" ValuesPerDragPixel="0.1" Margin="5,3,5,0" LargeChange="50" Maximum="512" Minimum="1" RenderTransformOrigin="0.241,0.427" Width="64" DockPanel.Dock="Right" VerticalAlignment="Top" Height="18" DrawAsInteger="True" SmallChange="1" Value="4" ToolTip="{DynamicResource TerrainMin_ToolTip}"/>
+									</DockPanel>
+									<DockPanel LastChildFill="False">
+										<CheckBox x:Name="PrimitiveFluidSurfacesCheckBox" Margin="0,1,0,0" Content="{DynamicResource LightmapResRatioWindow_FluidSurfaces}" ToolTip="{DynamicResource LightmapResRatioWindow_FluidSurfaces_ToolTip}" VerticalAlignment="Top"/>
+										<CustomControls:DragSlider x:Name="FluidMaxDragSlider"  ValuesPerMouseWheelScroll="0.5" ValuesPerDragPixel="0.1" Margin="5,3,5,0" LargeChange="500" Maximum="4096" Minimum="4" RenderTransformOrigin="0.241,0.427" Width="64" DockPanel.Dock="Right" VerticalAlignment="Top" Height="18" d:LayoutOverrides="VerticalAlignment, VerticalMargin" DrawAsInteger="True" SmallChange="1" Value="16" ToolTip="{DynamicResource FluidSurfaceMax_ToolTip}"/>
+										<CustomControls:DragSlider x:Name="FluidMinDragSlider"  ValuesPerMouseWheelScroll="0.5" ValuesPerDragPixel="0.1" Margin="5,3,5,0" LargeChange="500" Maximum="4096" Minimum="4" RenderTransformOrigin="0.241,0.427" Width="64" DockPanel.Dock="Right" VerticalAlignment="Top" Height="18" DrawAsInteger="True" SmallChange="1" Value="16" ToolTip="{DynamicResource FluidSurfaceMin_ToolTip}"/>
+									</DockPanel>
+								</StackPanel>
+							</GroupBox>
+						</Grid>
+						<Separator Margin="9" />
+						<Grid x:Name="SelectOptionsGrid">
+							<GroupBox x:Name="SelectOptionsGroup" VerticalAlignment="Top" BorderThickness="1" Foreground="White" Header="{DynamicResource LightmapResRatioWindow_SelectOptions}">
+								<StackPanel>
+									<StackPanel>
+										<UnrealEd:BindableRadioButton x:Name="LevelSelectRadio_Current" Margin="0,1" Content="{DynamicResource LightmapResRatioWindow_CurrentLevel}" d:LayoutOverrides="Width" ToolTip="{DynamicResource LightmapResRatioWindow_CurrentLevel_ToolTip}"/>
+										<UnrealEd:BindableRadioButton x:Name="LevelSelectRadio_Selected" Margin="0,1" Content="{DynamicResource LightmapResRatioWindow_SelectedLevels}" ToolTip="{DynamicResource LightmapResRatioWindow_SelectedLevels_ToolTip}"/>
+										<UnrealEd:BindableRadioButton x:Name="LevelSelectRadio_AllLoaded" Margin="0,1" Content="{DynamicResource LightmapResRatioWindow_AllLoadedLevels}" ToolTip="{DynamicResource LightmapResRatioWindow_AllLoadedLevels_ToolTip}"/>
+									</StackPanel>
+									<CheckBox x:Name="SelectedObjectsOnlyCheckBox" Margin="0,2,0,1" Content="{DynamicResource LightmapResRatioWindow_SelectedObjectsOnly}" ToolTip="{DynamicResource LightmapResRatioWindow_SelectedObjectsOnly_ToolTip}"/>
+								</StackPanel>
+							</GroupBox>
+						</Grid>
+						<Separator Margin="9" />
+						<Grid x:Name="RatioGrid">
+							<GroupBox x:Name="RatioGroup" Foreground="White" Header="{DynamicResource LightmapResRatioWindow_Ratio}" Margin="0,0,0,8">
+								<StackPanel>
+									<DockPanel Height="24" Margin="0,4">
+										<TextBlock x:Name="RatioLabel"  VerticalAlignment="Center" Text="{DynamicResource LightmapResRatioWindow_RatioValueLabel}"/>
+										<CustomControls:DragSlider x:Name="RatioDragSlider" Height="18"  ValuesPerMouseWheelScroll="0.01" ValuesPerDragPixel="0.01" Margin="5,0" LargeChange="0.1" Maximum="4" Minimum="0" RenderTransformOrigin="0.241,0.427" ToolTip="{DynamicResource LightmapResRatioWindow_Ratio_ToolTip}" DrawAsPercentage="True" SmallChange="0.001"/>
+									</DockPanel>
+									<DockPanel LastChildFill="False" Margin="0,4" HorizontalAlignment="Center">
+										<Button x:Name="RatioApplyButton" HorizontalAlignment="Center" VerticalAlignment="Top" Width="75" Content="{DynamicResource LightmapResRatioWindow_Apply}" ToolTip="{DynamicResource LightmapResRatioWindow_Apply_ToolTip}"/>
+									</DockPanel>
+								</StackPanel>
+							</GroupBox>
+						</Grid>
+						<Separator Margin="10" />
+						<DockPanel LastChildFill="False" HorizontalAlignment="Center">
+							<Button x:Name="RatioCloseButton" Width="75" Content="{DynamicResource LightmapResRatioWindow_Close}" ToolTip="{DynamicResource LightmapResRatioWindow_Close_ToolTip}"/>
+						</DockPanel>
+					</StackPanel>
+				</CustomControls:SlateBorder>
+			</Grid>
+		</StackPanel>
+		<Rectangle x:Name="HoverCueBorder" StrokeThickness="2" Opacity="0" Panel.ZIndex="10" IsHitTestVisible="False" d:IsHidden="True">
+			<Rectangle.Stroke>
+				<LinearGradientBrush EndPoint="1.202,0.893" StartPoint="-0.202,0.107" MappingMode="RelativeToBoundingBox">
+					<GradientStop Color="#FF2B2B2B" Offset="0.446"/>
+					<GradientStop Color="#FFFFFFFF" Offset="0.002"/>
+					<GradientStop Color="#FF4A4A4A" Offset="0.916"/>
+					<GradientStop Color="#FFA7A7A7" Offset="1"/>
+					<GradientStop Color="#FD626262" Offset="0.057"/>
+					<GradientStop Color="#FF252525" Offset="0.534"/>
+				</LinearGradientBrush>
+			</Rectangle.Stroke>
+		</Rectangle>
+		<Button HorizontalAlignment="Right" Margin="0,257,-115,0" VerticalAlignment="Top" Width="5" Height="0" Content="Button"/>
+	</Grid>
+</Border>

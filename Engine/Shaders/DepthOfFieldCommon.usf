@@ -1,0 +1,68 @@
+/*=============================================================================
+	DOFAndBloomCommon.usf: Code which is common to depth of field shaders.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+/** The packed parameters. */
+half4 PackedParameters;
+
+/** The distance which is 100% focused. */
+static half FocusDistance = PackedParameters.r;
+
+/** One over the minimum distance from the focal which is 0% focused. */
+static half InverseFocusRadius = PackedParameters.g;
+
+/** The focus falloff exponent. */
+static half FocusExponent = PackedParameters.b;
+
+/** clamp for min blur amount */
+static half MinBlurAmount = PackedParameters.a;
+
+/** xy: clamp for max blur amount values - default would be [1,1], zw: 1/SourceImageExtent.xy */
+float4 MinMaxBlurClamp;
+
+/**
+ * Computes the unfocused percent for a scene depth.
+ * @param SceneDepth - The scene depth.
+ * @return A unfocused percent for the depth. 0..1 (min and max ensures we don't exceed the range)
+ */
+half CalcUnfocusedPercentCustomBound(float SceneDepth, float MaxBlurNear, float MaxBlurFar)
+{
+	// Blur amount based on ratio of distance to focus plane to the focus radius
+	// it is clamped to [-1,1]. Note that FocusDistance can be negative if it 
+	// falls behind the near plane.
+	half RelativeDistance = SceneDepth - FocusDistance;
+	half MaxUnfocusedPercent = RelativeDistance < 0 ? MaxBlurNear : MaxBlurFar;
+
+	half Unbound = pow(saturate(abs(RelativeDistance) * InverseFocusRadius), FocusExponent);
+
+	return min(MaxUnfocusedPercent, Unbound);
+}
+
+
+half CalcUnfocusedPercent(float SceneDepth)
+{
+	half MaxBound = CalcUnfocusedPercentCustomBound(SceneDepth, MinMaxBlurClamp.x, MinMaxBlurClamp.y);
+
+	return max(MinBlurAmount, MaxBound);
+}
+
+
+// Material Expression function
+float MaterialExpressionDepthOfFieldFunction(float SceneDepth, int FunctionValueIndex)
+{
+	// tryed switch() but seems that doesn't work
+
+	if(FunctionValueIndex == 0) // TDOF_NearAndFarMask
+	{
+		return CalcUnfocusedPercentCustomBound(SceneDepth, 1, 1);
+	}
+	else if(FunctionValueIndex == 1) // TDOF_Near
+	{
+		return CalcUnfocusedPercentCustomBound(SceneDepth, 1, 0);
+	}
+	else if(FunctionValueIndex == 2) // TDOF_Far
+	{
+		return CalcUnfocusedPercentCustomBound(SceneDepth, 0, 1);
+	}
+}

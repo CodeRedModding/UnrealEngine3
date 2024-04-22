@@ -1,0 +1,88 @@
+/**
+ * This is the default chart style .css
+ *
+ * Copyright 1998-2007 Epic Games, Inc. All Rights Reserved.
+ */
+
+
+DIV.ChartStyle
+{  
+  font-size: 10px;
+  font-style: Tahoma;
+  vertical-align: center; 
+  text-align: center;  
+}
+
+
+TR.rowHeader
+{ 
+  font-size: 12px;
+  font-style: Tahoma;
+  vertical-align: center; 
+  text-align: center;  
+  font-weight: bold;
+  background-color: #C0C0C0;
+}
+
+TD.rowHeaderChangelist
+{ 
+  background-color: #CCCCFF;
+}
+
+TD.rowHeaderDateStamp
+{ 
+  background-color: #CCCCFF;
+}
+
+DIV.rowHeaderValue
+{ 
+}
+
+TR.dataRow
+{ 
+  font-size: 11px;
+  font-style: Tahoma;
+  vertical-align: center; 
+  text-align: center;  
+  background-color: #E9E9E9;
+}
+
+TD.rowEntryChangelist
+{ 
+  background-color:  	#CCCCFF;
+}
+
+TD.rowEntryDateStamp
+{ 
+  background-color:  	#CCCCFF;
+}
+
+TD.rowEntryMapName
+{ 
+  background-color:  	#CCCCFF;
+}
+
+
+
+TD.columnSeparator
+{ 
+  background-color:  	#FFFFFF;
+}
+
+DIV.rowEntryValue
+{ 
+}
+
+DIV.rowEntryChangelist
+{ 
+}
+
+DIV.rowEntryDateStamp
+{ 
+}
+
+DIV.rowEntryMapName
+{ 
+}
+
+

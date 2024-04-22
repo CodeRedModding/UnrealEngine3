@@ -1,0 +1,269 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Content Browser">
+      <UniqueIdentifier>{b8ad338c-0f5d-408f-bcdf-8dac1e300697}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Window Basics">
+      <UniqueIdentifier>{ee30e498-142f-42d5-a17c-ba6fae59031f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Mesh Paint Tool">
+      <UniqueIdentifier>{7dc7fe4a-1f32-46d3-afe9-f9f1a268cc18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Control">
+      <UniqueIdentifier>{f958d749-c43d-4d5b-b633-4f021386ae14}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CLR Support">
+      <UniqueIdentifier>{ee915f26-ad0f-4b02-94ba-e1310a949085}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Hardware Survey">
+      <UniqueIdentifier>{b957439f-05a7-486e-b2c2-fd267886a6e8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Start Page">
+      <UniqueIdentifier>{c419f4ca-0dc4-4d22-aa97-a5459b0a67a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lightmap Res Tool">
+      <UniqueIdentifier>{bbde1806-0887-454e-ad34-1dac94646581}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Matinee">
+      <UniqueIdentifier>{826eb55a-ec59-43b0-9fc9-e0ebe5e352e8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Consolidate Tool">
+      <UniqueIdentifier>{7502ad50-8b7e-41f4-8481-08a946356dbb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FileSystemNotification">
+      <UniqueIdentifier>{639b9a09-3f47-423e-98cd-96623e40291f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Build Windows">
+      <UniqueIdentifier>{bd5bef9b-3af2-4193-9812-ec3792d1a447}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lighting Tool">
+      <UniqueIdentifier>{7f22cc74-ad74-4cda-b996-af92e4cb2d99}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Landscape Edit Tool">
+      <UniqueIdentifier>{c2123c0b-403d-43ca-b4e3-80b5cfedeaf0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Welcome Screen">
+      <UniqueIdentifier>{37a8f586-2c4e-4ab3-8adb-1769407cf361}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Export Localization">
+      <UniqueIdentifier>{64ef1a5f-36ae-4742-94e1-117c22a29443}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Foliage Tool">
+      <UniqueIdentifier>{ccbb237a-2c3b-43d1-8f9c-ea76f5e0d001}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="New Map Screen">
+      <UniqueIdentifier>{d4de762e-9ee2-4d21-addf-23bbdb2a6076}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AboutScreen">
+      <UniqueIdentifier>{d6058bdc-6416-49f7-b504-ea449ff48f9e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Unit Tests">
+      <UniqueIdentifier>{c2e686f0-63bb-4ff1-8d85-df605a8e70b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="New Project Tool">
+      <UniqueIdentifier>{5b1bd7aa-f31c-497c-93fb-87634c894925}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\ContentBrowserCLR.cpp">
+      <Filter>Content Browser</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\GameAssetDatabaseCLR.cpp">
+      <Filter>Content Browser</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ColorPickerCLR.cpp">
+      <Filter>Window Basics</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\WPFFrameCLR.cpp">
+      <Filter>Window Basics</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\MeshPaintWindowCLR.cpp">
+      <Filter>Mesh Paint Tool</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\PerforceSourceControlProviderCLR.cpp">
+      <Filter>Source Control</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\SourceControlWindowsCLR.cpp">
+      <Filter>Source Control</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\InteropCLR.cpp">
+      <Filter>CLR Support</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ManagedCodeSupportCLR.cpp">
+      <Filter>CLR Support</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\MK2PanelBase.cpp">
+      <Filter>CLR Support</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ThumbnailToolsCLR.cpp">
+      <Filter>CLR Support</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnrealEdAssemblyInfoCLR.cpp">
+      <Filter>CLR Support</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\HardwareSurveyCLR.cpp">
+      <Filter>Hardware Survey</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\StartPageCLR.cpp">
+      <Filter>Start Page</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\LightmapResRatioWindowCLR.cpp">
+      <Filter>Lightmap Res Tool</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\MatineeDirectorWindowCLR.cpp">
+      <Filter>Matinee</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\MatineeRecordWindowCLR.cpp">
+      <Filter>Matinee</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ConsolidateWindowCLR.cpp">
+      <Filter>Consolidate Tool</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\FileSystemNotificationCLR.cpp">
+      <Filter>FileSystemNotification</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\BuildAndSubmitWindowCLR.cpp">
+      <Filter>Build Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\LightingToolsWindowCLR.cpp">
+      <Filter>Lighting Tool</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\LandscapeEditWindowCLR.cpp">
+      <Filter>Landscape Edit Tool</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\WelcomeScreenCLR.cpp">
+      <Filter>Welcome Screen</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ExportLocalizationWindowCLR.cpp">
+      <Filter>Export Localization</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\FoliageEditWindowCLR.cpp">
+      <Filter>Foliage Tool</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\NewMapCLR.cpp">
+      <Filter>New Map Screen</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\AboutScreenCLR.cpp">
+      <Filter>AboutScreen</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\UnitTestWindowCLR.cpp">
+      <Filter>Unit Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\NewProjectCLR.cpp">
+      <Filter>New Project Tool</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\ContentBrowserShared.h">
+      <Filter>Content Browser</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\GameAssetDatabaseShared.h">
+      <Filter>Content Browser</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\ColorPickerShared.h">
+      <Filter>Window Basics</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\LevelViewportHostWindowCLR.h">
+      <Filter>Window Basics</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\WPFFrameCLR.h">
+      <Filter>Window Basics</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\WPFFrameShared.h">
+      <Filter>Window Basics</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\WPFWindowWrapperCLR.h">
+      <Filter>Window Basics</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\MeshPaintWindowShared.h">
+      <Filter>Mesh Paint Tool</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\PerforceSourceControlProviderShared.h">
+      <Filter>Source Control</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\SourceControlWindowsShared.h">
+      <Filter>Source Control</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\ConvertersCLR.h">
+      <Filter>CLR Support</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\InteropShared.h">
+      <Filter>CLR Support</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\ManagedCodeSupportCLR.h">
+      <Filter>CLR Support</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\MK2PanelBase.h">
+      <Filter>CLR Support</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\ThumbnailToolsCLR.h">
+      <Filter>CLR Support</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnrealEdCLR.h">
+      <Filter>CLR Support</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\HardwareSurveyShared.h">
+      <Filter>Hardware Survey</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\StartPageShared.h">
+      <Filter>Start Page</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\LightmapResRatioWindowShared.h">
+      <Filter>Lightmap Res Tool</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\MatineeDirectorWindowShared.h">
+      <Filter>Matinee</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\MatineeRecordWindowShared.h">
+      <Filter>Matinee</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\ConsolidateWindowShared.h">
+      <Filter>Consolidate Tool</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\FileSystemNotificationShared.h">
+      <Filter>FileSystemNotification</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\BuildAndSubmitWindowShared.h">
+      <Filter>Build Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\LightingToolsWindowShared.h">
+      <Filter>Lighting Tool</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\LandscapeEditWindowShared.h">
+      <Filter>Landscape Edit Tool</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\WelcomeScreenShared.h">
+      <Filter>Welcome Screen</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\ExportLocalizationWindowShared.h">
+      <Filter>Export Localization</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\FoliageEditWindowShared.h">
+      <Filter>Foliage Tool</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\NewMapShared.h">
+      <Filter>New Map Screen</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\AboutScreenShared.h">
+      <Filter>AboutScreen</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\UnitTestWindowShared.h">
+      <Filter>Unit Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="Inc\NewProjectShared.h">
+      <Filter>New Project Tool</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\Engine\EditorResources\WPF\Controls\MeshPaintWindow.xaml">
+      <Filter>Mesh Paint Tool</Filter>
+    </None>
+    <None Include="..\..\..\Engine\EditorResources\WPF\Controls\LandscapeEditWindow.xaml">
+      <Filter>Landscape Edit Tool</Filter>
+    </None>
+    <None Include="..\..\..\Engine\EditorResources\WPF\Controls\FoliageEditWindow.xaml">
+      <Filter>Foliage Tool</Filter>
+    </None>
+  </ItemGroup>
+</Project>

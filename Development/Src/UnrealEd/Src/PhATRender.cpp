@@ -1,25 +1,27 @@
 /*=============================================================================
 	PhATRender.cpp: Physics Asset Tool rendering support
-	Copyright 2003 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-	* Created by James Golding
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #include "UnrealEd.h"
+#include "PhAT.h"
 #include "EnginePhysicsClasses.h"
+#include "EngineAnimClasses.h"
+#include "ScopedTransaction.h"
 #include "..\..\Launch\Resources\resource.h"
 
 static const FColor BoneUnselectedColor(170,155,225);
 static const FColor BoneSelectedColor(185,70,0);
 static const FColor ElemSelectedColor(255,166,0);
 static const FColor NoCollisionColor(200, 200, 200);
+static const FColor FixedColor(225,64,64);
 static const FColor	ConstraintBone1Color(255,0,0);
 static const FColor ConstraintBone2Color(0,0,255);
 
 static const FColor HeirarchyDrawColor(220, 255, 220);
+static const FColor AnimSkelDrawColor(255, 64, 64);
 
-static const FLOAT	WidgetSize(0.15f); // Proportion of the viewport the widget should fill
+extern FLOAT UnrealEd_WidgetSize; // Proportion of the viewport the widget should fill
 
 static const FLOAT	COMRenderSize(5.0f);
 static const FColor	COMRenderColor(255,255,100);
@@ -31,252 +33,221 @@ static const FColor	InfluenceLineColor(0,255,0);
 static const INT	SphereRenderSides(16);
 static const INT	SphereRenderRings(8);
 
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////// FPhATViewportClient ////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-FPhATViewportClient::FPhATViewportClient(WPhAT* InAssetEditor):
+FPhATViewportClient::FPhATViewportClient(WxPhAT* InAssetEditor):
 AssetEditor(InAssetEditor)
 {
-	Level = AssetEditor->EditorLevel;
+	// Setup defaults for the common draw helper.
+	DrawHelper.bDrawPivot = false;
+	DrawHelper.bDrawWorldBox = false;
+	DrawHelper.bDrawKillZ = false;
+	DrawHelper.GridColorHi = FColor(80,80,80);
+	DrawHelper.GridColorLo = FColor(72,72,72);
+	DrawHelper.PerspectiveGridSize = 32767;
 
-	SkyLightComponent = ConstructObject<USkyLightComponent>(USkyLightComponent::StaticClass());
-	SkyLightComponent->Scene = Level;
-	SkyLightComponent->Created();
+	// No postprocess
+	ShowFlags &= ~SHOW_PostProcess;
 
-	DirectionalLightComponent = ConstructObject<UDirectionalLightComponent>(UDirectionalLightComponent::StaticClass());
-	DirectionalLightComponent->Scene = Level;
-	DirectionalLightComponent->Created();
+	// Create SkeletalMeshComponent for rendering skeletal mesh
+	InAssetEditor->EditorSkelComp = ConstructObject<UPhATSkeletalMeshComponent>(UPhATSkeletalMeshComponent::StaticClass());
+	InAssetEditor->EditorSkelComp->BlockRigidBody = TRUE;
+	InAssetEditor->EditorSkelComp->PhATPtr = InAssetEditor;
+	PreviewScene.AddComponent(InAssetEditor->EditorSkelComp,FMatrix::Identity);
 
+	InAssetEditor->EditorSeqNode = CastChecked<UAnimNodeSequence>( InAssetEditor->EditorSkelComp->Animations );
+
+	// Create floor component
+	UStaticMesh* FloorMesh = LoadObject<UStaticMesh>(NULL, TEXT("EditorMeshes.PhAT_FloorBox"), NULL, LOAD_None, NULL);
+	check(FloorMesh);
+
+	InAssetEditor->EditorFloorComp = ConstructObject<UStaticMeshComponent>(UStaticMeshComponent::StaticClass());
+	InAssetEditor->EditorFloorComp->StaticMesh = FloorMesh;
+	InAssetEditor->EditorFloorComp->BlockRigidBody = TRUE;
+	InAssetEditor->EditorFloorComp->Scale = 4.f;
+	PreviewScene.AddComponent(InAssetEditor->EditorFloorComp,FMatrix::Identity);
+	
 	ShowFlags = SHOW_DefaultEditor; 
+
+	// Set the viewport to be lit
+	ShowFlags &= ~SHOW_ViewMode_Mask;
+	ShowFlags |= SHOW_ViewMode_Lit;
 
 	PhATFont = GEngine->SmallFont;
 	check(PhATFont);
 
 	// Body materials
-	ElemSelectedMaterial = LoadObject<UMaterialInstance>(NULL, TEXT("EditorMaterials.PhAT_ElemSelectedMaterial"), NULL, LOAD_NoFail, NULL);
+	ElemSelectedMaterial = LoadObject<UMaterialInterface>(NULL, TEXT("EditorMaterials.PhAT_ElemSelectedMaterial"), NULL, LOAD_None, NULL);
 	check(ElemSelectedMaterial);
 
-	BoneSelectedMaterial = LoadObject<UMaterialInstance>(NULL, TEXT("EditorMaterials.PhAT_BoneSelectedMaterial"), NULL, LOAD_NoFail, NULL);
+	BoneSelectedMaterial = LoadObject<UMaterialInterface>(NULL, TEXT("EditorMaterials.PhAT_BoneSelectedMaterial"), NULL, LOAD_None, NULL);
 	check(BoneSelectedMaterial);
 
-	BoneUnselectedMaterial = LoadObject<UMaterialInstance>(NULL, TEXT("EditorMaterials.PhAT_UnselectedMaterial"), NULL, LOAD_NoFail, NULL);
+	BoneUnselectedMaterial = LoadObject<UMaterialInterface>(NULL, TEXT("EditorMaterials.PhAT_UnselectedMaterial"), NULL, LOAD_None, NULL);
 	check(BoneUnselectedMaterial);
 
-	BoneNoCollisionMaterial = LoadObject<UMaterialInstance>(NULL, TEXT("EditorMaterials.PhAT_NoCollisionMaterial"), NULL, LOAD_NoFail, NULL);
+	BoneNoCollisionMaterial = LoadObject<UMaterialInterface>(NULL, TEXT("EditorMaterials.PhAT_NoCollisionMaterial"), NULL, LOAD_None, NULL);
 	check(BoneNoCollisionMaterial);
 
-	JointLimitMaterial = LoadObject<UMaterialInstance>(NULL, TEXT("EditorMaterials.PhAT_JointLimitMaterial"), NULL, LOAD_NoFail, NULL);
+	JointLimitMaterial = LoadObject<UMaterialInterface>(NULL, TEXT("EditorMaterials.PhAT_JointLimitMaterial"), NULL, LOAD_None, NULL);
 	check(JointLimitMaterial);
-}
+	bAllowMayaCam = TRUE;
 
-FPhATViewportClient::~FPhATViewportClient()
-{
-	if(SkyLightComponent->Initialized)
-		SkyLightComponent->Destroyed();
+	SetRealtime( TRUE );
 
-	delete SkyLightComponent;
-	SkyLightComponent = NULL;
-
-	if(DirectionalLightComponent->Initialized)
-		DirectionalLightComponent->Destroyed();
-
-	delete DirectionalLightComponent;
-	DirectionalLightComponent = NULL;
+	DistanceDragged = 0;
 }
 
 void FPhATViewportClient::Serialize(FArchive& Ar)
 { 
-	Ar << DirectionalLightComponent << SkyLightComponent << Input; 
+	Ar << Input; 
+	Ar << PreviewScene;
 }
 
-
-FColor FPhATViewportClient::GetBackgroundColor()
+FLinearColor FPhATViewportClient::GetBackgroundColor()
 {
 	return FColor(64,64,64);
 }
 
-void FPhATViewportClient::CalcSceneView(FSceneView* View)
-{
-	FEditorLevelViewportClient::CalcSceneView(View);
-}
-
-void FPhATViewportClient::DoHitTest(FChildViewport* Viewport, FName Key, EInputEvent Event)
+void FPhATViewportClient::DoHitTest(FViewport* Viewport, FName Key, EInputEvent Event)
 {
 	INT			HitX = Viewport->GetMouseX(),
 				HitY = Viewport->GetMouseY();
 	HHitProxy*	HitResult = Viewport->GetHitProxy(HitX,HitY);
-	FSceneView	View;
 
-	UBOOL bCtrlDown = Viewport->KeyState(KEY_LeftControl) || Viewport->KeyState(KEY_RightControl);
-	UBOOL bShiftDown = Viewport->KeyState(KEY_LeftShift) || Viewport->KeyState(KEY_RightShift);
+	FSceneViewFamilyContext ViewFamily(Viewport,GetScene(),ShowFlags,GWorld->GetTimeSeconds(),GWorld->GetDeltaSeconds(),GWorld->GetRealTimeSeconds());
+	FSceneView* View = CalcSceneView(&ViewFamily);
 
-	CalcSceneView(&View);
-
-	if( HitResult && HitResult->IsA(TEXT("HPhATBoneProxy")) )
+	if(Event == IE_Pressed)
 	{
-		HPhATBoneProxy* BoneProxy = (HPhATBoneProxy*)HitResult;
-
-		if(AssetEditor->EditingMode == PEM_BodyEdit)
+		if( HitResult && HitResult->IsA(HPhATWidgetProxy::StaticGetType()) )
 		{
-			if(AssetEditor->NextSelectEvent == PNS_EnableCollision)
-			{
-				AssetEditor->NextSelectEvent = PNS_Normal;
-				AssetEditor->SetCollisionBetween( AssetEditor->SelectedBodyIndex, BoneProxy->BodyIndex, true );
-			}
-			else if(AssetEditor->NextSelectEvent == PNS_DisableCollision)
-			{
-				AssetEditor->NextSelectEvent = PNS_Normal;
-				AssetEditor->SetCollisionBetween( AssetEditor->SelectedBodyIndex, BoneProxy->BodyIndex, false );
-			}
-			else if(AssetEditor->NextSelectEvent == PNS_CopyProperties)
-			{
-				AssetEditor->NextSelectEvent = PNS_Normal;
-				AssetEditor->CopyBodyProperties( BoneProxy->BodyIndex, AssetEditor->SelectedBodyIndex );
-			}
-			else if(AssetEditor->NextSelectEvent == PNS_WeldBodies)
-			{
-				AssetEditor->NextSelectEvent = PNS_Normal;
-				AssetEditor->WeldBodyToSelected( BoneProxy->BodyIndex );
-			}
-			else if(!AssetEditor->bSelectionLock)
-			{
-				AssetEditor->SetSelectedBody( BoneProxy->BodyIndex, BoneProxy->PrimType, BoneProxy->PrimIndex );
-			}
+			HPhATWidgetProxy* WidgetProxy = (HPhATWidgetProxy*)HitResult;
+
+			AssetEditor->StartManipulating( WidgetProxy->Axis, FViewportClick(View, this, Key, Event, HitX, HitY), View->ViewMatrix );
 		}
 	}
-	else if( HitResult && HitResult->IsA(TEXT("HPhATConstraintProxy")) )
+	else if(DistanceDragged < 4)
 	{
-		HPhATConstraintProxy* ConstraintProxy = (HPhATConstraintProxy*)HitResult;
-
-		if(AssetEditor->EditingMode == PEM_ConstraintEdit)
+		if( HitResult && HitResult->IsA(HPhATBoneProxy::StaticGetType()) )
 		{
-			if(AssetEditor->NextSelectEvent == PNS_CopyProperties)
+			HPhATBoneProxy* BoneProxy = (HPhATBoneProxy*)HitResult;
+
+			AssetEditor->HitBone( BoneProxy->BodyIndex, BoneProxy->PrimType, BoneProxy->PrimIndex );
+		}
+		else if( HitResult && HitResult->IsA(HPhATConstraintProxy::StaticGetType()) )
+		{
+			HPhATConstraintProxy* ConstraintProxy = (HPhATConstraintProxy*)HitResult;
+
+			AssetEditor->HitConstraint( ConstraintProxy->ConstraintIndex );
+		}
+		else if( HitResult && HitResult->IsA(HPhATBoneNameProxy::StaticGetType()) )
+		{
+			HPhATBoneNameProxy* NameProxy = (HPhATBoneNameProxy*)HitResult;
+
+			if( AssetEditor->NextSelectEvent == PNS_MakeNewBody )
 			{
 				AssetEditor->NextSelectEvent = PNS_Normal;
-				AssetEditor->CopyConstraintProperties( ConstraintProxy->ConstraintIndex, AssetEditor->SelectedConstraintIndex );
-			}
-			else if(!AssetEditor->bSelectionLock)
-			{
-				AssetEditor->SetSelectedConstraint( ConstraintProxy->ConstraintIndex );
-			}
-		}
-	}
-	else if( HitResult && HitResult->IsA(TEXT("HPhATWidgetProxy")) )
-	{
-		HPhATWidgetProxy* WidgetProxy = (HPhATWidgetProxy*)HitResult;
+				AssetEditor->MakeNewBody( NameProxy->BoneIndex );
 
-		AssetEditor->StartManipulating( WidgetProxy->Axis, FViewportClick(&View, this, Key, Event, HitX, HitY), View.ViewMatrix );
-	}
-	else if( HitResult && HitResult->IsA(TEXT("HPhATBoneNameProxy")) )
-	{
-		HPhATBoneNameProxy* NameProxy = (HPhATBoneNameProxy*)HitResult;
-
-		if( AssetEditor->NextSelectEvent == PNS_MakeNewBody )
-		{
-			AssetEditor->NextSelectEvent = PNS_Normal;
-			AssetEditor->MakeNewBody( NameProxy->BoneIndex );
+				// Rebuild tree to not show all bones.
+				AssetEditor->FillTree();
+			}
 		}
-	}
-	else
-	{	
-		if(AssetEditor->NextSelectEvent != PNS_Normal)
-		{
-			AssetEditor->NextSelectEvent = PNS_Normal;
-			Viewport->Invalidate();
-		}
-		else if(!AssetEditor->bSelectionLock)
-		{
-			if(AssetEditor->EditingMode == PEM_BodyEdit)
-				AssetEditor->SetSelectedBody( INDEX_NONE, KPT_Unknown, INDEX_NONE );	
-			else
-				AssetEditor->SetSelectedConstraint( INDEX_NONE );
+		else
+		{	
+			AssetEditor->HitNothing();
 		}
 	}
 }
 
 void FPhATViewportClient::UpdateLighting()
 {
-	SkyLightComponent->PreEditChange();
-	DirectionalLightComponent->PreEditChange();
-
-	SkyLightComponent->Brightness = AssetEditor->EditorSimOptions->SkyBrightness;
-	SkyLightComponent->Color = AssetEditor->EditorSimOptions->SkyColor;
-	SkyLightComponent->SetParentToWorld( FMatrix::Identity );
-
-	DirectionalLightComponent->Brightness = AssetEditor->EditorSimOptions->Brightness;
-	DirectionalLightComponent->Color = AssetEditor->EditorSimOptions->Color;
-	DirectionalLightComponent->SetParentToWorld( FRotationMatrix( FRotator(-AssetEditor->EditorSimOptions->LightElevation*(65535.f/360.f), AssetEditor->EditorSimOptions->LightDirection*(65535.f/360.f), 0.f) ) );
-
-	SkyLightComponent->PostEditChange(NULL);
-	DirectionalLightComponent->PostEditChange(NULL);
+	PreviewScene.SetSkyBrightness(AssetEditor->EditorSimOptions->SkyBrightness);
+	PreviewScene.SetLightBrightness(AssetEditor->EditorSimOptions->Brightness);
 }
 
-void FPhATViewportClient::Draw(FChildViewport* Viewport, FRenderInterface* RI)
+void FPhATViewportClient::Draw(FViewport* Viewport, FCanvas* Canvas)
 {
 	// Turn on/off the ground box
-	if(AssetEditor->bDrawGround)
-		AssetEditor->EditorFloor->bHiddenEd = false;
-	else
-		AssetEditor->EditorFloor->bHiddenEd = true;
+	AssetEditor->EditorFloorComp->SetHiddenEditor(!AssetEditor->bDrawGround);
 
 	// Do main viewport drawing stuff.
-	FEditorLevelViewportClient::Draw(Viewport, RI);
+	FEditorLevelViewportClient::Draw(Viewport, Canvas);
 
-	UBOOL bHitTesting = RI->IsHitTesting();
-
-	INT W, H;
+	FLOAT W, H;
 	PhATFont->GetCharSize( TEXT('L'), W, H );
 
 	// Write body/constraint count at top.
-	FString StatusString = FString::Printf( TEXT("%d BODIES, %d CONSTRAINTS"), AssetEditor->PhysicsAsset->BodySetup.Num(), AssetEditor->PhysicsAsset->ConstraintSetup.Num() );
-	RI->DrawString( 3, 3, *StatusString, PhATFont, FLinearColor::White );
+	FString StatusString = FString::Printf( LocalizeSecure(LocalizeUnrealEd("BodiesConstraints_F"),
+		  AssetEditor->PhysicsAsset->BodySetup.Num()
+		, AssetEditor->PhysicsAsset->BoundsBodies.Num()
+		, static_cast<FLOAT>(AssetEditor->PhysicsAsset->BoundsBodies.Num())/static_cast<FLOAT>(AssetEditor->PhysicsAsset->BodySetup.Num())
+		, AssetEditor->PhysicsAsset->ConstraintSetup.Num()) );
+	
+	DrawString(Canvas, 3, 3, *StatusString, PhATFont, FLinearColor::White );
 
 	if(AssetEditor->bRunningSimulation)
-		RI->DrawString( 3, Viewport->GetSizeY() - (3 + H) , TEXT("SIM"), PhATFont, FLinearColor::White );
+		DrawString(Canvas, 3, Viewport->GetSizeY() - (3 + H) , *LocalizeUnrealEd("Sim"), PhATFont, FLinearColor::White );
 	else if(AssetEditor->NextSelectEvent == PNS_EnableCollision)
-		RI->DrawString( 3, Viewport->GetSizeY() - (3 + H) , TEXT("ENABLE COLLISION..."), PhATFont, FLinearColor::White );
+		DrawString(Canvas, 3, Viewport->GetSizeY() - (3 + H) , *LocalizeUnrealEd("EnableCollision"), PhATFont, FLinearColor::White );
 	else if(AssetEditor->NextSelectEvent == PNS_DisableCollision)
-		RI->DrawString( 3, Viewport->GetSizeY() - (3 + H) , TEXT("DISABLE COLLISION..."), PhATFont, FLinearColor::White );
+		DrawString(Canvas, 3, Viewport->GetSizeY() - (3 + H) , *LocalizeUnrealEd("DisableCollision"), PhATFont, FLinearColor::White );
 	else if(AssetEditor->NextSelectEvent == PNS_CopyProperties)
-		RI->DrawString( 3, Viewport->GetSizeY() - (3 + H) , TEXT("COPY PROPERTIES TO..."), PhATFont, FLinearColor::White );
+		DrawString(Canvas, 3, Viewport->GetSizeY() - (3 + H) , *LocalizeUnrealEd("CopyPropertiesTo"), PhATFont, FLinearColor::White );
 	else if(AssetEditor->NextSelectEvent == PNS_WeldBodies)
-		RI->DrawString( 3, Viewport->GetSizeY() - (3 + H) , TEXT("WELD TO..."), PhATFont, FLinearColor::White );
+		DrawString(Canvas, 3, Viewport->GetSizeY() - (3 + H) , *LocalizeUnrealEd("WeldTo"), PhATFont, FLinearColor::White );
 	else if(AssetEditor->NextSelectEvent == PNS_MakeNewBody)
-		RI->DrawString( 3, Viewport->GetSizeY() - (3 + H) , TEXT("MAKE NEW BODY..."), PhATFont, FLinearColor::White );
+		DrawString(Canvas, 3, Viewport->GetSizeY() - (3 + H) , *LocalizeUnrealEd("MakeNewBody"), PhATFont, FLinearColor::White );
 	else if(AssetEditor->bSelectionLock)
-		RI->DrawString( 3, Viewport->GetSizeY() - (3 + H) , TEXT("LOCK"), PhATFont, FLinearColor::White );
+		DrawString(Canvas, 3, Viewport->GetSizeY() - (3 + H) , *LocalizeUnrealEd("Lock"), PhATFont, FLinearColor::White );
 
 	if(AssetEditor->bManipulating && !AssetEditor->bRunningSimulation)
 	{
 		if(AssetEditor->MovementMode == PMM_Translate)
 		{
 			FString TranslateString = FString::Printf( TEXT("%3.2f"), AssetEditor->ManipulateTranslation );
-			RI->DrawString( 3, Viewport->GetSizeY() - (2 * (3 + H)) , *TranslateString, PhATFont, FLinearColor::White );
+			DrawString(Canvas, 3, Viewport->GetSizeY() - (2 * (3 + H)) , *TranslateString, PhATFont, FLinearColor::White );
 		}
 		else if(AssetEditor->MovementMode == PMM_Rotate)
 		{
 			// note : The degree symbol is ASCII code 248 (char code 176)
 			FString RotateString = FString::Printf( TEXT("%3.2f%c"), AssetEditor->ManipulateRotation * (180.f/PI), 176 );
-			RI->DrawString( 3, Viewport->GetSizeY() - (2 * (3 + H)) , *RotateString, PhATFont, FLinearColor::White );
+			DrawString(Canvas, 3, Viewport->GetSizeY() - (2 * (3 + H)) , *RotateString, PhATFont, FLinearColor::White );
 		}
 	}
 
-	if(AssetEditor->bShowHierarchy || AssetEditor->NextSelectEvent == PNS_MakeNewBody)
+	// Draw current physics weight
+	if(AssetEditor->bRunningSimulation)
 	{
-		FSceneView	View;
-		CalcSceneView(&View);
+		FString PhysWeightString = FString::Printf( TEXT("Phys Blend: %3.0f pct"), AssetEditor->EditorSkelComp->PhysicsWeight * 100.f );
+		INT PWLW, PWLH;
+		StringSize( PhATFont, PWLW, PWLH, *PhysWeightString );
+		DrawString( Canvas, Viewport->GetSizeX() - (3 + PWLW + 2*W), Viewport->GetSizeY() - (3 + H), *PhysWeightString, PhATFont, FLinearColor::White );
+	}
 
+	// Get the SceneView. Need this for projecting world->screen
+	FSceneViewFamilyContext ViewFamily(Viewport,GetScene(),ShowFlags,GWorld->GetTimeSeconds(),GWorld->GetDeltaSeconds(),GWorld->GetRealTimeSeconds());
+	FSceneView* View = CalcSceneView(&ViewFamily);
+
+	INT HalfX = Viewport->GetSizeX()/2;
+	INT HalfY = Viewport->GetSizeY()/2;
+
+	if((AssetEditor->bShowHierarchy && AssetEditor->EditorSimOptions->bShowNamesInHierarchy)|| AssetEditor->NextSelectEvent == PNS_MakeNewBody)
+	{
+		// Iterate over each graphics bone.
 		for(INT i=0; i<AssetEditor->EditorSkelComp->SpaceBases.Num(); i++)
 		{
 			FVector BonePos = AssetEditor->EditorSkelComp->LocalToWorld.TransformFVector( AssetEditor->EditorSkelComp->SpaceBases(i).GetOrigin() );
 
-			FPlane proj = View.Project( BonePos );
+			FPlane proj = View->Project( BonePos );
 			if(proj.W > 0.f) // This avoids drawing bone names that are behind us.
 			{
-				INT HalfX = Viewport->GetSizeX()/2;
-				INT HalfY = Viewport->GetSizeY()/2;
 				INT XPos = HalfX + ( HalfX * proj.X );
 				INT YPos = HalfY + ( HalfY * (proj.Y * -1) );
 
@@ -292,123 +263,182 @@ void FPhATViewportClient::Draw(FChildViewport* Viewport, FRenderInterface* RI)
 					}
 				}
 
-				if(bHitTesting) RI->SetHitProxy( new HPhATBoneNameProxy(i) );
-				RI->DrawString(XPos, YPos, *BoneName, PhATFont, BoneNameColor);
-				if(bHitTesting) RI->SetHitProxy( NULL );
+				if(Canvas->IsHitTesting()) Canvas->SetHitProxy( new HPhATBoneNameProxy(i) );
+				DrawString(Canvas,XPos, YPos, *BoneName.ToString(), PhATFont, BoneNameColor);
+				if(Canvas->IsHitTesting()) Canvas->SetHitProxy( NULL );
+			}
+		}
+	}
+
+	// If showing center-of-mass, and physics is started up..
+	if(AssetEditor->bShowCOM && AssetEditor->EditorSkelComp->PhysicsAssetInstance)
+	{
+		// iterate over each bone
+		for(INT i=0; i<AssetEditor->EditorSkelComp->PhysicsAssetInstance->Bodies.Num(); i++)
+		{
+			URB_BodyInstance* BodyInst = AssetEditor->EditorSkelComp->PhysicsAssetInstance->Bodies(i);
+			check(BodyInst);
+
+			FVector BodyCOMPos = BodyInst->GetCOMPosition();
+			FLOAT BodyMass = BodyInst->GetBodyMass();
+
+			FPlane proj = View->Project( BodyCOMPos );
+			if(proj.W > 0.f) // This avoids drawing bone names that are behind us.
+			{
+				INT XPos = HalfX + ( HalfX * proj.X );
+				INT YPos = HalfY + ( HalfY * (proj.Y * -1) );
+
+				FString COMString = FString::Printf( TEXT("%3.3f"), BodyMass );
+
+				DrawString(Canvas,XPos, YPos, *COMString, PhATFont, COMRenderColor);
 			}
 		}
 	}
 }
 
+void FPhATViewportClient::Draw(const FSceneView* View,FPrimitiveDrawInterface* PDI)
+{
+	EPhATRenderMode MeshViewMode = AssetEditor->GetCurrentMeshViewMode();
+
+	if(MeshViewMode != PRM_None)
+	{
+		AssetEditor->EditorSkelComp->SetHiddenEditor(FALSE);
+
+		if(MeshViewMode == PRM_Wireframe)
+		{
+			AssetEditor->EditorSkelComp->SetForceWireframe(TRUE);
+		}
+		else
+		{
+			AssetEditor->EditorSkelComp->SetForceWireframe(FALSE);
+		}
+	}
+	else
+	{
+		AssetEditor->EditorSkelComp->SetHiddenEditor(TRUE);
+	}
+
+
+	// Draw common scene elements first.
+	DrawHelper.Draw(View, PDI);
+
+	// Draw phat skeletal component.
+	if(PDI->IsHitTesting())
+	{
+		AssetEditor->EditorSkelComp->RenderHitTest(View, PDI);
+	}
+	else
+	{
+		AssetEditor->EditorSkelComp->Render(View, PDI);
+	}
+	
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////// UPhATSkeletalMeshComponent /////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-void UPhATSkeletalMeshComponent::RenderAssetTools(const FSceneContext& Context, struct FPrimitiveRenderInterface* PRI, UBOOL bHitTest, UBOOL bDrawShadows)
+void UPhATSkeletalMeshComponent::RenderAssetTools(const FSceneView* View, class FPrimitiveDrawInterface* PDI, UBOOL bHitTest)
 {
 	check(PhysicsAsset);
 
-	// None of the widgets/collision stuff really needs shadows...
-	if( bDrawShadows )
-		return;
-
-	// Should always have an Owner in PhAT
-	check(Owner);
-	FVector Scale3D = Owner->DrawScale * Owner->DrawScale3D;
-	check( Scale3D.IsUniform() ); // Something wrong if this is the case...
-
-	APhATActor* PhATActor = Cast<APhATActor>(Owner);
-	check(PhATActor);
-	WPhAT* PhysEditor = (WPhAT*)PhATActor->PhysicsAssetEditor;
+	WxPhAT* PhysEditor = (WxPhAT*)PhATPtr;
+	check(PhysEditor);
 
 	EPhATRenderMode CollisionViewMode = PhysEditor->GetCurrentCollisionViewMode();
 
+	
 	// Draw bodies
 	for( INT i=0; i<PhysicsAsset->BodySetup.Num(); i++)
 	{
 		INT BoneIndex = MatchRefBone( PhysicsAsset->BodySetup(i)->BoneName );
-		check(BoneIndex != INDEX_NONE);
-		FMatrix BoneTM = GetBoneMatrix(BoneIndex);
-		BoneTM.RemoveScaling();
 
-		FKAggregateGeom* AggGeom = &PhysicsAsset->BodySetup(i)->AggGeom;
-
-		for(INT j=0; j<AggGeom->SphereElems.Num(); j++)
+		// If we found a bone for it, draw the collision.
+		if(BoneIndex != INDEX_NONE)
 		{
-			if(bHitTest) PRI->SetHitProxy( new HPhATBoneProxy(i, KPT_Sphere, j) );
+			FMatrix BoneTM = GetBoneMatrix(BoneIndex);
+			BoneTM.RemoveScaling();
 
-			FMatrix ElemTM = PhysEditor->GetPrimitiveMatrix(BoneTM, i, KPT_Sphere, j, Scale3D.X);
+			FKAggregateGeom* AggGeom = &PhysicsAsset->BodySetup(i)->AggGeom;
 
-			if(CollisionViewMode == PRM_Solid)
+			for(INT j=0; j<AggGeom->SphereElems.Num(); j++)
 			{
-				UMaterialInstance*	PrimMaterial = PhysEditor->GetPrimitiveMaterial(i, KPT_Sphere, j);
-				AggGeom->SphereElems(j).DrawElemSolid( PRI, ElemTM, Scale3D.X, PrimMaterial->GetMaterialInterface(0), PrimMaterial->GetInstanceInterface() );
+				if(bHitTest) PDI->SetHitProxy( new HPhATBoneProxy(i, KPT_Sphere, j) );
+
+				FMatrix ElemTM = PhysEditor->GetPrimitiveMatrix(BoneTM, i, KPT_Sphere, j, 1.f);
+
+				if(CollisionViewMode == PRM_Solid)
+				{
+					UMaterialInterface*	PrimMaterial = PhysEditor->GetPrimitiveMaterial(i, KPT_Sphere, j);
+					AggGeom->SphereElems(j).DrawElemSolid( PDI, ElemTM, 1.f, PrimMaterial->GetRenderProxy(0) );
+				}
+
+				if(CollisionViewMode == PRM_Solid || CollisionViewMode == PRM_Wireframe)
+					AggGeom->SphereElems(j).DrawElemWire( PDI, ElemTM, 1.f, PhysEditor->GetPrimitiveColor(i, KPT_Sphere, j) );
+
+				if(bHitTest) PDI->SetHitProxy(NULL);
 			}
 
-			if(CollisionViewMode == PRM_Solid || CollisionViewMode == PRM_Wireframe)
-				AggGeom->SphereElems(j).DrawElemWire( PRI, ElemTM, Scale3D.X, PhysEditor->GetPrimitiveColor(i, KPT_Sphere, j) );
-
-			if(bHitTest) PRI->SetHitProxy(NULL);
-		}
-
-		for(INT j=0; j<AggGeom->BoxElems.Num(); j++)
-		{
-			if(bHitTest) PRI->SetHitProxy( new HPhATBoneProxy(i, KPT_Box, j) );
-
-			FMatrix ElemTM = PhysEditor->GetPrimitiveMatrix(BoneTM, i, KPT_Box, j, Scale3D.X);
-
-			if(CollisionViewMode == PRM_Solid)
+			for(INT j=0; j<AggGeom->BoxElems.Num(); j++)
 			{
-				UMaterialInstance*	PrimMaterial = PhysEditor->GetPrimitiveMaterial(i, KPT_Box, j);
-				AggGeom->BoxElems(j).DrawElemSolid( PRI, ElemTM, Scale3D.X, PrimMaterial->GetMaterialInterface(0), PrimMaterial->GetInstanceInterface() );
+				if(bHitTest) PDI->SetHitProxy( new HPhATBoneProxy(i, KPT_Box, j) );
+
+				FMatrix ElemTM = PhysEditor->GetPrimitiveMatrix(BoneTM, i, KPT_Box, j, 1.f);
+
+				if(CollisionViewMode == PRM_Solid)
+				{
+					UMaterialInterface*	PrimMaterial = PhysEditor->GetPrimitiveMaterial(i, KPT_Box, j);
+					AggGeom->BoxElems(j).DrawElemSolid( PDI, ElemTM, 1.f, PrimMaterial->GetRenderProxy(0) );
+				}
+
+				if(CollisionViewMode == PRM_Solid || CollisionViewMode == PRM_Wireframe)
+					AggGeom->BoxElems(j).DrawElemWire( PDI, ElemTM, 1.f, PhysEditor->GetPrimitiveColor(i, KPT_Box, j) );
+
+				if(bHitTest) PDI->SetHitProxy(NULL);
 			}
 
-			if(CollisionViewMode == PRM_Solid || CollisionViewMode == PRM_Wireframe)
-				AggGeom->BoxElems(j).DrawElemWire( PRI, ElemTM, Scale3D.X, PhysEditor->GetPrimitiveColor(i, KPT_Box, j) );
-
-			if(bHitTest) PRI->SetHitProxy(NULL);
-		}
-
-		for(INT j=0; j<AggGeom->SphylElems.Num(); j++)
-		{
-			if(bHitTest) PRI->SetHitProxy( new HPhATBoneProxy(i, KPT_Sphyl, j) );
-
-			FMatrix ElemTM = PhysEditor->GetPrimitiveMatrix(BoneTM, i, KPT_Sphyl, j, Scale3D.X);
-
-			if(CollisionViewMode == PRM_Solid)
+			for(INT j=0; j<AggGeom->SphylElems.Num(); j++)
 			{
-				UMaterialInstance*	PrimMaterial = PhysEditor->GetPrimitiveMaterial(i, KPT_Sphyl, j);
-				AggGeom->SphylElems(j).DrawElemSolid( PRI, ElemTM, Scale3D.X, PrimMaterial->GetMaterialInterface(0), PrimMaterial->GetInstanceInterface() );
+				if(bHitTest) PDI->SetHitProxy( new HPhATBoneProxy(i, KPT_Sphyl, j) );
+
+				FMatrix ElemTM = PhysEditor->GetPrimitiveMatrix(BoneTM, i, KPT_Sphyl, j, 1.f);
+
+				if(CollisionViewMode == PRM_Solid)
+				{
+					UMaterialInterface*	PrimMaterial = PhysEditor->GetPrimitiveMaterial(i, KPT_Sphyl, j);
+					AggGeom->SphylElems(j).DrawElemSolid( PDI, ElemTM, 1.f, PrimMaterial->GetRenderProxy(0) );
+				}
+
+				if(CollisionViewMode == PRM_Solid || CollisionViewMode == PRM_Wireframe)
+					AggGeom->SphylElems(j).DrawElemWire( PDI, ElemTM, 1.f, PhysEditor->GetPrimitiveColor(i, KPT_Sphyl, j) );
+
+				if(bHitTest) PDI->SetHitProxy(NULL);
 			}
 
-			if(CollisionViewMode == PRM_Solid || CollisionViewMode == PRM_Wireframe)
-				AggGeom->SphylElems(j).DrawElemWire( PRI, ElemTM, Scale3D.X, PhysEditor->GetPrimitiveColor(i, KPT_Sphyl, j) );
-	
-			if(bHitTest) PRI->SetHitProxy(NULL);
-		}
-
-		for(INT j=0; j<AggGeom->ConvexElems.Num(); j++)
-		{
-			if(bHitTest) PRI->SetHitProxy( new HPhATBoneProxy(i, KPT_Convex, j) );
-
-			FMatrix ElemTM = PhysEditor->GetPrimitiveMatrix(BoneTM, i, KPT_Convex, j, Scale3D.X);
-
-			if(CollisionViewMode == PRM_Solid )
+			for(INT j=0; j<AggGeom->ConvexElems.Num(); j++)
 			{
-				UMaterialInstance*	PrimMaterial = PhysEditor->GetPrimitiveMaterial(i, KPT_Convex, j);
-				AggGeom->ConvexElems(j).DrawElemSolid( PRI, ElemTM, Scale3D, PrimMaterial->GetMaterialInterface(0), PrimMaterial->GetInstanceInterface() );
+				if(bHitTest) PDI->SetHitProxy( new HPhATBoneProxy(i, KPT_Convex, j) );
+
+				FMatrix ElemTM = PhysEditor->GetPrimitiveMatrix(BoneTM, i, KPT_Convex, j, 1.f);
+
+#if 0 // JTODO when we add convex support to PhAT.
+				if(CollisionViewMode == PRM_Solid )
+				{
+					UMaterialInterface*	PrimMaterial = PhysEditor->GetPrimitiveMaterial(i, KPT_Convex, j);
+					AggGeom->ConvexElems(j).DrawElemSolid( PDI, ElemTM, FVector(1.f), PrimMaterial->GetRenderProxy(0) );
+				}
+#endif
+
+				if(CollisionViewMode == PRM_Solid || CollisionViewMode == PRM_Wireframe)
+					AggGeom->ConvexElems(j).DrawElemWire( PDI, ElemTM, FVector(1.f), PhysEditor->GetPrimitiveColor(i, KPT_Convex, j) );
+
+				if(bHitTest) PDI->SetHitProxy(NULL);
 			}
 
-			if(CollisionViewMode == PRM_Solid || CollisionViewMode == PRM_Wireframe)
-				AggGeom->ConvexElems(j).DrawElemWire( PRI, ElemTM, Scale3D, PhysEditor->GetPrimitiveColor(i, KPT_Convex, j) );
-
-			if(bHitTest) PRI->SetHitProxy(NULL);
-		}
-
-		if(!bHitTest && PhysicsAssetInstance && PhysEditor->bShowCOM)
-		{
-			PhysicsAssetInstance->Bodies(i)->DrawCOMPosition(PRI, COMRenderSize, COMRenderColor);
+			if(!bHitTest && PhysicsAssetInstance && PhysEditor->bShowCOM)
+			{
+				PhysicsAssetInstance->Bodies(i)->DrawCOMPosition(PDI, COMRenderSize, COMRenderColor);
+			}
 		}
 	}
 
@@ -418,119 +448,91 @@ void UPhATSkeletalMeshComponent::RenderAssetTools(const FSceneContext& Context, 
 	{
 		for(INT i=0; i<PhysicsAsset->ConstraintSetup.Num(); i++)
 		{
-			if(bHitTest) PRI->SetHitProxy( new HPhATConstraintProxy(i) );
-
-			PhysEditor->DrawConstraint(i, Scale3D.X, PRI);
-
-			if(bHitTest) PRI->SetHitProxy(NULL);
+			if(bHitTest) PDI->SetHitProxy( new HPhATConstraintProxy(i) );
+			PhysEditor->DrawConstraint(i, View, PDI, PhysEditor->EditorSimOptions->bShowConstraintsAsPoints);
+			if(bHitTest) PDI->SetHitProxy(NULL);
 		}
 	}
 
 	if(!bHitTest && PhysEditor->EditingMode == PEM_BodyEdit && PhysEditor->bShowInfluences)
-		PhysEditor->DrawCurrentInfluences(PRI);
-}
-
-void UPhATSkeletalMeshComponent::RenderForegroundAssetTools(const FSceneContext& Context, struct FPrimitiveRenderInterface* PRI, UBOOL bHitTest, UBOOL bDrawShadows)
-{
-	check(PhysicsAsset);
-
-	// None of the widgets/collision stuff really needs shadows...
-	if( bDrawShadows )
-		return;
-
-	// Should always have an Owner in PhAT
-	check(Owner);
-	FVector Scale3D = Owner->DrawScale * Owner->DrawScale3D;
-	check( Scale3D.IsUniform() ); // Something wrong if this is the case...
-
-	APhATActor* PhATActor = Cast<APhATActor>(Owner);
-	check(PhATActor);
-	WPhAT* PhysEditor = (WPhAT*)PhATActor->PhysicsAssetEditor;
+	{
+		PhysEditor->DrawCurrentInfluences(PDI);
+	}
 
 	// If desired, draw bone hierarchy.
 	if(!bHitTest && (PhysEditor->bShowHierarchy || PhysEditor->NextSelectEvent == PNS_MakeNewBody) )
-		DrawHierarchy(PRI);
+	{
+		DrawHierarchy(PDI, FALSE);
+	}
+
+	// If desired, draw animation skeleton (only when simulating).
+	if(!bHitTest && PhysEditor->bShowAnimSkel && PhysEditor->bRunningSimulation)
+	{
+		DrawHierarchy(PDI, TRUE);
+	}
 
 	if(!PhysEditor->bRunningSimulation)
-		PhysEditor->DrawCurrentWidget(Context, PRI, bHitTest);	
-}
-
-DWORD UPhATSkeletalMeshComponent::GetLayerMask(const FSceneContext& Context) const
-{
-	DWORD	LayerMask = Super::GetLayerMask(Context) | PLM_Foreground;
-
-	if(((WPhAT*)CastChecked<APhATActor>(Owner)->PhysicsAssetEditor)->GetCurrentCollisionViewMode() == PRM_Solid)
-		LayerMask |= PLM_Translucent;
-
-	return LayerMask;
-}
-
-void UPhATSkeletalMeshComponent::Render(const FSceneContext& Context, FPrimitiveRenderInterface* PRI)
-{
-	WPhAT* PhysEditor = (WPhAT*)( ((APhATActor*)Owner)->PhysicsAssetEditor );
-	EPhATRenderMode MeshViewMode = PhysEditor->GetCurrentMeshViewMode();
-
-	if(MeshViewMode != PRM_None)
 	{
-		DWORD	OldViewMode = Context.View->ViewMode;
-		if(MeshViewMode == PRM_Wireframe)
-			Context.View->ViewMode = SVM_Wireframe;
-
-		Super::Render(Context, PRI);
-
-		Context.View->ViewMode = OldViewMode;
+		PhysEditor->DrawCurrentWidget(View, PDI, bHitTest);	
 	}
+}
 
-	RenderAssetTools(Context, PRI, 0, 0);
+/** Renders non-hitproxy elements for the viewport, this function is called in the Game Thread. */
+void UPhATSkeletalMeshComponent::Render(const FSceneView* View, FPrimitiveDrawInterface* PDI)
+{
+	RenderAssetTools(View, PDI, 0);
 
 	//FBox AssetBox = PhysicsAsset->CalcAABB(this);
-	//PRI->DrawWireBox(AssetBox, FColor(255,255,255), 0);
+	//DrawWireBox(PDI,AssetBox, FColor(255,255,255), 0);
 }
 
-void UPhATSkeletalMeshComponent::RenderForeground(const FSceneContext& Context, FPrimitiveRenderInterface* PRI)
+/** Renders hitproxy elements for the viewport, this function is called in the Game Thread. */
+void UPhATSkeletalMeshComponent::RenderHitTest(const FSceneView* View, class FPrimitiveDrawInterface* PDI)
 {
-	RenderForegroundAssetTools(Context, PRI, 0, 0);
+	RenderAssetTools(View, PDI, 1);
 }
 
-void UPhATSkeletalMeshComponent::RenderHitTest(const FSceneContext& Context, struct FPrimitiveRenderInterface* PRI)
+/**
+ * Creates a proxy to represent the primitive to the scene manager in the rendering thread.
+ * @return The proxy object.
+ */
+FPrimitiveSceneProxy* UPhATSkeletalMeshComponent::CreateSceneProxy()
 {
-	RenderAssetTools(Context, PRI, 1, 0);
-}
+	WxPhAT* PhysEditor = (WxPhAT*)PhATPtr;
+	check(PhysEditor);
 
-void UPhATSkeletalMeshComponent::RenderForegroundHitTest(const FSceneContext& Context, struct FPrimitiveRenderInterface* PRI)
-{
-	RenderForegroundAssetTools(Context, PRI, 1, 0);
-}
+	FPrimitiveSceneProxy* Proxy = NULL;
 
-void UPhATSkeletalMeshComponent::RenderShadowDepth(const struct FSceneContext& Context, struct FPrimitiveRenderInterface* PRI)
-{
-	WPhAT* PhysEditor = (WPhAT*)( ((APhATActor*)Owner)->PhysicsAssetEditor );
 	EPhATRenderMode MeshViewMode = PhysEditor->GetCurrentMeshViewMode();
-
 	if(MeshViewMode != PRM_None)
 	{
-		DWORD	OldViewMode = Context.View->ViewMode;
-		if(MeshViewMode == PRM_Wireframe)
-			Context.View->ViewMode = SVM_Wireframe;
-
-		Super::Render(Context, PRI);
-
-		Context.View->ViewMode = OldViewMode;
+		Proxy = USkeletalMeshComponent::CreateSceneProxy();
 	}
 
-	RenderAssetTools(Context, PRI, 0, 1);
-	RenderForegroundAssetTools(Context,PRI,0,1);
+	return Proxy;
 }
 
-void UPhATSkeletalMeshComponent::DrawHierarchy(FPrimitiveRenderInterface* PRI)
+/** Draw the mesh skeleton using lines. bAnimSkel means draw the animation skeleton. */
+void UPhATSkeletalMeshComponent::DrawHierarchy(FPrimitiveDrawInterface* PDI, UBOOL bAnimSkel)
 {
 	for(INT i=1; i<SpaceBases.Num(); i++)
 	{
 		INT ParentIndex = SkeletalMesh->RefSkeleton(i).ParentIndex;
-		FVector ParentPos = LocalToWorld.TransformFVector( SpaceBases(ParentIndex).GetOrigin() );
-		FVector ChildPos = LocalToWorld.TransformFVector( SpaceBases(i).GetOrigin() );
 
-		PRI->DrawLine( ParentPos, ChildPos, HeirarchyDrawColor);
+		FVector ParentPos, ChildPos;
+		if(bAnimSkel)
+		{
+			ParentPos = LocalToWorld.TransformFVector( AnimationSpaceBases(ParentIndex).GetOrigin() );
+			ChildPos = LocalToWorld.TransformFVector( AnimationSpaceBases(i).GetOrigin() );
+		}
+		else
+		{
+			ParentPos = LocalToWorld.TransformFVector( SpaceBases(ParentIndex).GetOrigin() );
+			ChildPos = LocalToWorld.TransformFVector( SpaceBases(i).GetOrigin() );
+		}
+
+		FColor DrawColor = bAnimSkel ? AnimSkelDrawColor : HeirarchyDrawColor;
+		PDI->DrawLine( ParentPos, ChildPos, DrawColor, SDPG_Foreground);
 	}
 }
 
@@ -540,7 +542,7 @@ void UPhATSkeletalMeshComponent::DrawHierarchy(FPrimitiveRenderInterface* PRI)
 
 
 
-void WPhAT::DrawConstraint(INT ConstraintIndex, FLOAT Scale, FPrimitiveRenderInterface* PRI)
+void WxPhAT::DrawConstraint(INT ConstraintIndex, const FSceneView* View, FPrimitiveDrawInterface* PDI, UBOOL bDrawAsPoint)
 {
 	EPhATConstraintViewMode ConstraintViewMode = GetCurrentConstraintViewMode();
 	UBOOL bDrawLimits = false;
@@ -555,13 +557,16 @@ void WPhAT::DrawConstraint(INT ConstraintIndex, FLOAT Scale, FPrimitiveRenderInt
 
 	URB_ConstraintSetup* cs = PhysicsAsset->ConstraintSetup(ConstraintIndex);
 
-	FMatrix Con1Frame = GetConstraintMatrix(ConstraintIndex, 0, Scale);
-	FMatrix Con2Frame = GetConstraintMatrix(ConstraintIndex, 1, Scale);
+	FMatrix Con1Frame = GetConstraintMatrix(ConstraintIndex, 0, 1.f);
+	FMatrix Con2Frame = GetConstraintMatrix(ConstraintIndex, 1, 1.f);
 
-	cs->DrawConstraint(PRI, Scale, bDrawLimits, bDrawSelected, PhATViewportClient->JointLimitMaterial, Con1Frame, Con2Frame);
+	FLOAT ZoomFactor = Min<FLOAT>(View->ProjectionMatrix.M[0][0], View->ProjectionMatrix.M[1][1]);
+	FLOAT DrawScale = View->Project(Con1Frame.GetOrigin()).W * (EditorSimOptions->ConstraintDrawSize / ZoomFactor);
+
+	cs->DrawConstraint(PDI, 1.f, DrawScale, bDrawLimits, bDrawSelected, PhATViewportClient->JointLimitMaterial, Con1Frame, Con2Frame, bDrawAsPoint);
 }
 
-void WPhAT::CycleMeshViewMode()
+void WxPhAT::CycleMeshViewMode()
 {
 	EPhATRenderMode MeshViewMode = GetCurrentMeshViewMode();
 	if(MeshViewMode == PRM_Solid)
@@ -575,7 +580,7 @@ void WPhAT::CycleMeshViewMode()
 	PhATViewportClient->Viewport->Invalidate();
 }
 
-void WPhAT::CycleCollisionViewMode()
+void WxPhAT::CycleCollisionViewMode()
 {
 	EPhATRenderMode CollisionViewMode = GetCurrentCollisionViewMode();
 	if(CollisionViewMode == PRM_Solid)
@@ -589,7 +594,7 @@ void WPhAT::CycleCollisionViewMode()
 	PhATViewportClient->Viewport->Invalidate();
 }
 
-void WPhAT::CycleConstraintViewMode()
+void WxPhAT::CycleConstraintViewMode()
 {
 	EPhATConstraintViewMode ConstraintViewMode = GetCurrentConstraintViewMode();
 	if(ConstraintViewMode == PCV_None)
@@ -603,8 +608,13 @@ void WPhAT::CycleConstraintViewMode()
 	PhATViewportClient->Viewport->Invalidate();
 }
 
+void WxPhAT::ReattachPhATComponent()
+{
+	FComponentReattachContext ReattachContext(EditorSkelComp);
+}
+
 // View mode accessors
-EPhATRenderMode WPhAT::GetCurrentMeshViewMode()
+EPhATRenderMode WxPhAT::GetCurrentMeshViewMode()
 {
 	if(bRunningSimulation)
 		return Sim_MeshViewMode;
@@ -614,7 +624,7 @@ EPhATRenderMode WPhAT::GetCurrentMeshViewMode()
 		return ConstraintEdit_MeshViewMode;
 }
 
-EPhATRenderMode WPhAT::GetCurrentCollisionViewMode()
+EPhATRenderMode WxPhAT::GetCurrentCollisionViewMode()
 {
 	if(bRunningSimulation)
 		return Sim_CollisionViewMode;
@@ -624,7 +634,7 @@ EPhATRenderMode WPhAT::GetCurrentCollisionViewMode()
 		return ConstraintEdit_CollisionViewMode;
 }
 
-EPhATConstraintViewMode WPhAT::GetCurrentConstraintViewMode()
+EPhATConstraintViewMode WxPhAT::GetCurrentConstraintViewMode()
 {
 	if(bRunningSimulation)
 		return Sim_ConstraintViewMode;
@@ -635,7 +645,7 @@ EPhATConstraintViewMode WPhAT::GetCurrentConstraintViewMode()
 }
 
 // View mode mutators
-void WPhAT::SetCurrentMeshViewMode(EPhATRenderMode NewViewMode)
+void WxPhAT::SetCurrentMeshViewMode(EPhATRenderMode NewViewMode)
 {
 	if(bRunningSimulation)
 		Sim_MeshViewMode = NewViewMode;
@@ -645,7 +655,7 @@ void WPhAT::SetCurrentMeshViewMode(EPhATRenderMode NewViewMode)
 		ConstraintEdit_MeshViewMode = NewViewMode;
 }
 
-void WPhAT::SetCurrentCollisionViewMode(EPhATRenderMode NewViewMode)
+void WxPhAT::SetCurrentCollisionViewMode(EPhATRenderMode NewViewMode)
 {
 	if(bRunningSimulation)
 		Sim_CollisionViewMode = NewViewMode;
@@ -655,7 +665,7 @@ void WPhAT::SetCurrentCollisionViewMode(EPhATRenderMode NewViewMode)
 		ConstraintEdit_CollisionViewMode = NewViewMode;
 }
 
-void WPhAT::SetCurrentConstraintViewMode(EPhATConstraintViewMode NewViewMode)
+void WxPhAT::SetCurrentConstraintViewMode(EPhATConstraintViewMode NewViewMode)
 {
 	if(bRunningSimulation)
 		Sim_ConstraintViewMode = NewViewMode;
@@ -667,88 +677,145 @@ void WPhAT::SetCurrentConstraintViewMode(EPhATConstraintViewMode NewViewMode)
 
 
 
-void WPhAT::ToggleViewCOM()
+void WxPhAT::ToggleViewCOM()
 {
 	bShowCOM = !bShowCOM;
-
-	if(bShowCOM)
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_SHOWCOM, (LPARAM) MAKELONG(1, 0));
-	else
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_SHOWCOM, (LPARAM) MAKELONG(0, 0));
-
+	ToolBar->ToggleTool( IDMN_PHAT_SHOWCOM, bShowCOM == TRUE );
 	PhATViewportClient->Viewport->Invalidate();
 }
 
-void WPhAT::ToggleViewHierarchy()
+void WxPhAT::ToggleViewHierarchy()
 {
 	bShowHierarchy = !bShowHierarchy;
-
-	if(bShowHierarchy)
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_SHOWHIERARCHY, (LPARAM) MAKELONG(1, 0));
-	else
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_SHOWHIERARCHY, (LPARAM) MAKELONG(0, 0));
-
+	ToolBar->ToggleTool( IDMN_PHAT_SHOWHIERARCHY, bShowHierarchy == TRUE );
 	PhATViewportClient->Viewport->Invalidate();
 }
 
-void WPhAT::ToggleViewInfluences()
+void WxPhAT::ToggleViewContacts()
+{
+	bShowContacts = !bShowContacts;
+	ViewContactsToggle();
+	ToolBar->ToggleTool( IDMN_PHAT_SHOWCONTACTS, bShowContacts == TRUE );
+	PhATViewportClient->Viewport->Invalidate();
+}
+
+
+void WxPhAT::ToggleViewInfluences()
 {
 	bShowInfluences = !bShowInfluences;
-
-	if(bShowInfluences)
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_SHOWINFLUENCES, (LPARAM) MAKELONG(1, 0));
-	else
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_SHOWINFLUENCES, (LPARAM) MAKELONG(0, 0));
-
+	ToolBar->ToggleTool( IDMN_PHAT_SHOWINFLUENCES, bShowInfluences == TRUE );
 	PhATViewportClient->Viewport->Invalidate();
 }
 
-void WPhAT::ToggleDrawGround()
+void WxPhAT::ToggleDrawGround()
 {
 	bDrawGround = !bDrawGround;
-
-	if(bDrawGround)
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_DRAWGROUND, (LPARAM) MAKELONG(1, 0));
-	else
-		SendMessageX( hWndToolBar, TB_CHECKBUTTON,  IDMN_PHAT_DRAWGROUND, (LPARAM) MAKELONG(0, 0));
-
+	ToolBar->ToggleTool( IDMN_PHAT_DRAWGROUND, bDrawGround == TRUE );
 	PhATViewportClient->Viewport->Invalidate();
 }
 
-FColor WPhAT::GetPrimitiveColor(INT BodyIndex, EKCollisionPrimitiveType PrimitiveType, INT PrimitiveIndex)
+void WxPhAT::ToggleShowFixed()
 {
+	bShowFixedStatus = !bShowFixedStatus;
+	ToolBar->ToggleTool( IDMN_PHAT_SHOWFIXED, bShowFixedStatus == TRUE );
+	PhATViewportClient->Viewport->Invalidate();
+}
+
+static UBOOL ShapeHasNoRBCollision(URB_BodySetup* BS, EKCollisionPrimitiveType PrimitiveType, INT PrimitiveIndex)
+{
+	if(PrimitiveType == KPT_Box)
+	{
+		return BS->AggGeom.BoxElems(PrimitiveIndex).bNoRBCollision;
+	}
+	else if(PrimitiveType == KPT_Sphere)
+	{
+		return BS->AggGeom.SphereElems(PrimitiveIndex).bNoRBCollision;
+	}
+	else if(PrimitiveType == KPT_Sphyl)
+	{
+		return BS->AggGeom.SphylElems(PrimitiveIndex).bNoRBCollision;
+	}
+	else
+	{
+		return FALSE;
+	}
+}
+
+FColor WxPhAT::GetPrimitiveColor(INT BodyIndex, EKCollisionPrimitiveType PrimitiveType, INT PrimitiveIndex)
+{
+	URB_BodySetup* bs = PhysicsAsset->BodySetup( BodyIndex );
+
 	if(!bRunningSimulation && EditingMode == PEM_ConstraintEdit && SelectedConstraintIndex != INDEX_NONE)
 	{
 		URB_ConstraintSetup* cs = PhysicsAsset->ConstraintSetup( SelectedConstraintIndex );
-		URB_BodySetup* bs = PhysicsAsset->BodySetup( BodyIndex );
 
 		if(cs->ConstraintBone1 == bs->BoneName)
+		{
 			return ConstraintBone1Color;
+		}
 		else if(cs->ConstraintBone2 == bs->BoneName)
+		{
 			return ConstraintBone2Color;
+		}
 	}
 
-	if(bRunningSimulation || EditingMode == PEM_ConstraintEdit)
+	if(bRunningSimulation)
+	{
+		if(bShowFixedStatus && bs->bFixed)
+		{
+			return FixedColor;
+		}
+		else
+		{
+			return BoneUnselectedColor;
+		}
+	}
+
+	if(EditingMode == PEM_ConstraintEdit)
+	{
 		return BoneUnselectedColor;
+	}
 
 	if(BodyIndex == SelectedBodyIndex)
 	{
 		if(PrimitiveType == SelectedPrimitiveType && PrimitiveIndex == SelectedPrimitiveIndex)
+		{
 			return ElemSelectedColor;
+		}
 		else
+		{
 			return BoneSelectedColor;
+		}
 	}
 	else
 	{
-		// If there is no collision with this body, use 'no collision material'.
-		if( NoCollisionBodies.FindItemIndex(BodyIndex) != INDEX_NONE )
-			return NoCollisionColor;
+		if(bShowFixedStatus)
+		{
+			if(bs->bFixed)
+			{
+				return FixedColor;
+			}
+			else
+			{
+				return BoneUnselectedColor;
+			}
+		}
 		else
-			return BoneUnselectedColor;
+		{
+			// If there is no collision with this body, use 'no collision material'.
+			if( NoCollisionBodies.FindItemIndex(BodyIndex) != INDEX_NONE || ShapeHasNoRBCollision(bs, PrimitiveType, PrimitiveIndex) )
+			{
+				return NoCollisionColor;
+			}
+			else
+			{
+				return BoneUnselectedColor;
+			}
+		}
 	}
 }
 
-UMaterialInstance* WPhAT::GetPrimitiveMaterial(INT BodyIndex, EKCollisionPrimitiveType PrimitiveType, INT PrimitiveIndex)
+UMaterialInterface* WxPhAT::GetPrimitiveMaterial(INT BodyIndex, EKCollisionPrimitiveType PrimitiveType, INT PrimitiveIndex)
 {
 	if(bRunningSimulation || EditingMode == PEM_ConstraintEdit)
 		return PhATViewportClient->BoneUnselectedMaterial;
@@ -771,7 +838,7 @@ UMaterialInstance* WPhAT::GetPrimitiveMaterial(INT BodyIndex, EKCollisionPrimiti
 }
 
 // Draw little coloured lines to indicate which vertices are influenced by currently selected physics body.
-void WPhAT::DrawCurrentInfluences(FPrimitiveRenderInterface* PRI)
+void WxPhAT::DrawCurrentInfluences(FPrimitiveDrawInterface* PDI)
 {
 	// For each influenced bone, draw a little line for each vertex
 	for( INT i=0; i<ControlledBones.Num(); i++)
@@ -788,16 +855,14 @@ void WPhAT::DrawCurrentInfluences(FPrimitiveRenderInterface* PRI)
 			FVector WPos = BoneTM.TransformFVector( BoneInfo->Positions(j) );
 			FVector WNorm = BoneTM.TransformNormal( BoneInfo->Normals(j) );
 
-			PRI->DrawLine(WPos, WPos + WNorm * InfluenceLineLength, InfluenceLineColor);
+			PDI->DrawLine(WPos, WPos + WNorm * InfluenceLineLength, InfluenceLineColor, SDPG_World);
 		}
 	}
 }
 
-// This will update WPhAT::WidgetTM
-void WPhAT::DrawCurrentWidget(const FSceneContext& Context, FPrimitiveRenderInterface* PRI, UBOOL bHitTest)
+// This will update WxPhAT::WidgetTM
+void WxPhAT::DrawCurrentWidget(const FSceneView* View, FPrimitiveDrawInterface* PDI, UBOOL bHitTest)
 {
-	FVector Scale3D = EditorActor->DrawScale3D * EditorActor->DrawScale;
-
 	if(EditingMode == PEM_BodyEdit) /// BODY EDITING ///
 	{
 		// Don't draw widget if nothing selected.
@@ -809,34 +874,31 @@ void WPhAT::DrawCurrentWidget(const FSceneContext& Context, FPrimitiveRenderInte
 		FMatrix BoneTM = EditorSkelComp->GetBoneMatrix(BoneIndex);
 		BoneTM.RemoveScaling();
 
-		WidgetTM = GetPrimitiveMatrix(BoneTM, SelectedBodyIndex, SelectedPrimitiveType, SelectedPrimitiveIndex, Scale3D.X);
+		WidgetTM = GetPrimitiveMatrix(BoneTM, SelectedBodyIndex, SelectedPrimitiveType, SelectedPrimitiveIndex, 1.f);
 	}
 	else  /// CONSTRAINT EDITING ///
 	{
 		if(SelectedConstraintIndex == INDEX_NONE)
 			return;
 
-		WidgetTM = GetConstraintMatrix(SelectedConstraintIndex, 1, Scale3D.X);
+		WidgetTM = GetConstraintMatrix(SelectedConstraintIndex, 1, 1.f);
 	}
 
 	FVector WidgetOrigin = WidgetTM.GetOrigin();
 
-	FLOAT ZoomFactor = Min<FLOAT>(Context.View->ProjectionMatrix.M[0][0], Context.View->ProjectionMatrix.M[1][1]);
-	FLOAT WidgetRadius = Context.View->Project(WidgetOrigin).W * (WidgetSize / ZoomFactor);
+	FLOAT ZoomFactor = Min<FLOAT>(View->ProjectionMatrix.M[0][0], View->ProjectionMatrix.M[1][1]);
+	FLOAT WidgetRadius = View->Project(WidgetOrigin).W * (UnrealEd_WidgetSize / ZoomFactor);
 
 	FColor XColor(255, 0, 0);
 	FColor YColor(0, 255, 0);
 	FColor ZColor(0, 0, 255);
 
-	if(bManipulating)
-	{
-		if(ManipulateAxis == AXIS_X)
-			XColor = FColor(255, 255, 0);
-		else if(ManipulateAxis == AXIS_Y)
-			YColor = FColor(255, 255, 0);
-		else
-			ZColor = FColor(255, 255, 0);
-	}
+	if(ManipulateAxis == AXIS_X)
+		XColor = FColor(255, 255, 0);
+	else if(ManipulateAxis == AXIS_Y)
+		YColor = FColor(255, 255, 0);
+	else if(ManipulateAxis == AXIS_Z)
+		ZColor = FColor(255, 255, 0);
 
 	FVector XAxis, YAxis, ZAxis;
 
@@ -864,38 +926,38 @@ void WPhAT::DrawCurrentWidget(const FSceneContext& Context, FPrimitiveRenderInte
 
 		if(bHitTest)
 		{
-			PRI->SetHitProxy( new HPhATWidgetProxy(AXIS_X) );
+			PDI->SetHitProxy( new HPhATWidgetProxy(AXIS_X) );
 			WidgetMatrix = FMatrix(XAxis, YAxis, ZAxis, WidgetOrigin);
-			PRI->DrawDirectionalArrow(WidgetMatrix, XColor, WidgetRadius);
-			PRI->SetHitProxy( NULL );
+			DrawDirectionalArrow(PDI,WidgetMatrix, XColor, WidgetRadius, 1.f, SDPG_Foreground);
+			PDI->SetHitProxy( NULL );
 
-			PRI->SetHitProxy( new HPhATWidgetProxy(AXIS_Y) );
+			PDI->SetHitProxy( new HPhATWidgetProxy(AXIS_Y) );
 			WidgetMatrix = FMatrix(YAxis, ZAxis, XAxis, WidgetOrigin);
-			PRI->DrawDirectionalArrow(WidgetMatrix, YColor, WidgetRadius);
-			PRI->SetHitProxy( NULL );
+			DrawDirectionalArrow(PDI,WidgetMatrix, YColor, WidgetRadius, 1.f, SDPG_Foreground);
+			PDI->SetHitProxy( NULL );
 
-			PRI->SetHitProxy( new HPhATWidgetProxy(AXIS_Z) );
+			PDI->SetHitProxy( new HPhATWidgetProxy(AXIS_Z) );
 			WidgetMatrix = FMatrix(ZAxis, XAxis, YAxis, WidgetOrigin);
-			PRI->DrawDirectionalArrow(WidgetMatrix, ZColor, WidgetRadius);
-			PRI->SetHitProxy( NULL );
+			DrawDirectionalArrow(PDI,WidgetMatrix, ZColor, WidgetRadius, 1.f, SDPG_Foreground);
+			PDI->SetHitProxy( NULL );
 		}
 		else
 		{
 			WidgetMatrix = FMatrix(XAxis, YAxis, ZAxis, WidgetOrigin);
-			PRI->DrawDirectionalArrow(WidgetMatrix, XColor, WidgetRadius);
+			DrawDirectionalArrow(PDI,WidgetMatrix, XColor, WidgetRadius, 1.f, SDPG_Foreground);
 
 			WidgetMatrix = FMatrix(YAxis, ZAxis, XAxis, WidgetOrigin);
-			PRI->DrawDirectionalArrow(WidgetMatrix, YColor, WidgetRadius);
+			DrawDirectionalArrow(PDI,WidgetMatrix, YColor, WidgetRadius, 1.f, SDPG_Foreground);
 
 			WidgetMatrix = FMatrix(ZAxis, XAxis, YAxis, WidgetOrigin);
-			PRI->DrawDirectionalArrow(WidgetMatrix, ZColor, WidgetRadius);
+			DrawDirectionalArrow(PDI,WidgetMatrix, ZColor, WidgetRadius, 1.f, SDPG_Foreground);
 		}
 	}
 	////////////////// CIRCLES WIDGET //////////////////
 	else if(MovementMode == PMM_Rotate)
 	{
 		// ViewMatrix is WorldToCamera, so invert to get CameraToWorld
-		FVector LookDir = Context.View->ViewMatrix.Inverse().TransformNormal( FVector(0,0,1) );
+		FVector LookDir = View->ViewMatrix.Inverse().TransformNormal( FVector(0,0,1) );
 
 		if(MovementSpace == PMS_Local)
 		{
@@ -908,23 +970,23 @@ void WPhAT::DrawCurrentWidget(const FSceneContext& Context, FPrimitiveRenderInte
 
 		if(bHitTest)
 		{
-			PRI->SetHitProxy( new HPhATWidgetProxy(AXIS_X));
-			PRI->DrawCircle(WidgetOrigin, YAxis, ZAxis, XColor, WidgetRadius, 24);
-			PRI->SetHitProxy( NULL );
+			PDI->SetHitProxy( new HPhATWidgetProxy(AXIS_X));
+			DrawCircle(PDI,WidgetOrigin, YAxis, ZAxis, XColor, WidgetRadius, 24, SDPG_Foreground);
+			PDI->SetHitProxy( NULL );
 
-			PRI->SetHitProxy( new HPhATWidgetProxy(AXIS_Y) );
-			PRI->DrawCircle(WidgetOrigin, XAxis, ZAxis, YColor, WidgetRadius, 24);
-			PRI->SetHitProxy( NULL );
+			PDI->SetHitProxy( new HPhATWidgetProxy(AXIS_Y) );
+			DrawCircle(PDI,WidgetOrigin, XAxis, ZAxis, YColor, WidgetRadius, 24, SDPG_Foreground);
+			PDI->SetHitProxy( NULL );
 
-			PRI->SetHitProxy( new HPhATWidgetProxy(AXIS_Z) );
-			PRI->DrawCircle(WidgetOrigin, XAxis, YAxis, ZColor, WidgetRadius, 24);
-			PRI->SetHitProxy( NULL );
+			PDI->SetHitProxy( new HPhATWidgetProxy(AXIS_Z) );
+			DrawCircle(PDI,WidgetOrigin, XAxis, YAxis, ZColor, WidgetRadius, 24, SDPG_Foreground);
+			PDI->SetHitProxy( NULL );
 		}
 		else
 		{
-			PRI->DrawCircle(WidgetOrigin, YAxis, ZAxis, XColor, WidgetRadius, 24);
-			PRI->DrawCircle(WidgetOrigin, XAxis, ZAxis, YColor, WidgetRadius, 24);
-			PRI->DrawCircle(WidgetOrigin, XAxis, YAxis, ZColor, WidgetRadius, 24);
+			DrawCircle(PDI,WidgetOrigin, YAxis, ZAxis, XColor, WidgetRadius, 24, SDPG_Foreground);
+			DrawCircle(PDI,WidgetOrigin, XAxis, ZAxis, YColor, WidgetRadius, 24, SDPG_Foreground);
+			DrawCircle(PDI,WidgetOrigin, XAxis, YAxis, ZColor, WidgetRadius, 24, SDPG_Foreground);
 		}
 	}
 }

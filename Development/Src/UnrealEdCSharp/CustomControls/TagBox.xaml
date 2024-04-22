@@ -1,0 +1,43 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+<UserControl
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:CustomControls="clr-namespace:CustomControls" x:Class="CustomControls.TagBox"
+    x:Name="userControl" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d" d:DesignHeight="22" d:DesignWidth="83"
+    Background="{DynamicResource Slate_TextArea_Background}"
+    Foreground="{DynamicResource Slate_Control_Foreground}"
+    SnapsToDevicePixels="True">
+	<UserControl.Resources>
+		<!-- Animationg that fades the tagbox blue to indicate that changes were committed -->
+		<Storyboard x:Key="TagsModifiedPulse">
+			<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="m_TextBox" Storyboard.TargetProperty="(Panel.Background).(SolidColorBrush.Color)">
+				<SplineColorKeyFrame KeyTime="00:00:00" Value="#ff3d3d3d"/>
+				<SplineColorKeyFrame KeyTime="00:00:00.1000000" Value="#FF045DFF"/>
+				<SplineColorKeyFrame KeyTime="00:00:01" Value="#ff3d3d3d"/>
+			</ColorAnimationUsingKeyFrames>
+		</Storyboard>
+		<!-- Animationg that flashes the tagbox red to indicate that an error is present -->
+		<Storyboard x:Key="ErrorsPresentPulse">
+			<ColorAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="m_TextBox" Storyboard.TargetProperty="(Panel.Background).(SolidColorBrush.Color)">
+				<SplineColorKeyFrame KeyTime="00:00:00" Value="#ff3d3d3d"/>
+				<SplineColorKeyFrame KeyTime="00:00:00.1000000" Value="#FFBA0000" KeySpline="1,0,0,1"/>
+				<SplineColorKeyFrame KeyTime="00:00:00.2000000" Value="#ff3d3d3d" KeySpline="1,0,0,1"/>
+			</ColorAnimationUsingKeyFrames>
+		</Storyboard>
+	</UserControl.Resources>
+	
+	<Grid SnapsToDevicePixels="True">
+		<!-- The Autocomplete for the TagBox -->
+		<CustomControls:Autocomplete x:Name="m_Autocomplete" TextBoxControl="{Binding ElementName=m_TextBox}" />
+		<!-- An adorner that allows us to draw syntax and semantic errors in the tagbox -->
+		<AdornerDecorator ClipToBounds="True" VerticalAlignment="Stretch">
+			<!-- The textbox underlying the TagBox -->
+			<CustomControls:UnrealTextBox VerticalAlignment="Stretch" Grid.Column="2" x:Name="m_TextBox"
+                                          IsEnabled="{Binding Path=IsEnabled, ElementName=userControl, Mode=Default}"
+                                          Background="{Binding RelativeSource={RelativeSource Self}, Path=Background}"
+                                          Foreground="{Binding RelativeSource={RelativeSource Self}, Path=Foreground}"
+                                          SnapsToDevicePixels="{Binding RelativeSource={RelativeSource Self}, Path=SnapsToDevicePixels}"/>
+		</AdornerDecorator>
+	</Grid>
+	
+</UserControl>

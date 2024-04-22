@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="CachedFileInfo" targetNamespace="http://tempuri.org/CachedFileInfo.xsd" xmlns:mstns="http://tempuri.org/CachedFileInfo.xsd" xmlns="http://tempuri.org/CachedFileInfo.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:msprop="urn:schemas-microsoft-com:xml-msprop" attributeFormDefault="qualified" elementFormDefault="qualified">
+  <xs:annotation>
+    <xs:appinfo source="urn:schemas-microsoft-com:xml-msdatasource">
+      <DataSource DefaultConnectionIndex="0" FunctionsComponentName="QueriesTableAdapter" Modifier="AutoLayout, AnsiClass, Class, Public" SchemaSerializationMode="IncludeSchema" xmlns="urn:schemas-microsoft-com:xml-msdatasource">
+        <Connections>
+          <Connection AppSettingsObjectName="Settings" AppSettingsPropertyName="UPropConnectionString" ConnectionStringObject="" IsAppSettingsProperty="true" Modifier="Assembly" Name="UPropConnectionString (Settings)" ParameterPrefix="@" PropertyReference="ApplicationSettings.RemotableType.Properties.Settings.GlobalReference.Default.UPropConnectionString" Provider="System.Data.SqlClient" />
+        </Connections>
+        <Tables>
+          <TableAdapter BaseClass="System.ComponentModel.Component" DataAccessorModifier="AutoLayout, AnsiClass, Class, Public" DataAccessorName="CachedFileInfoTableAdapter" GeneratorDataComponentClassName="CachedFileInfoTableAdapter" Name="CachedFileInfo" UserDataComponentName="CachedFileInfoTableAdapter">
+            <MainSource>
+              <DbSource ConnectionRef="UPropConnectionString (Settings)" DbObjectName="UnrealProp.dbo.CachedFileInfo" DbObjectType="Table" FillMethodModifier="Public" FillMethodName="Fill" GenerateMethods="Both" GenerateShortCommands="false" GeneratorGetMethodName="GetData" GeneratorSourceName="Fill" GetMethodModifier="Public" GetMethodName="GetData" QueryType="Rowset" ScalarCallRetval="System.Object, mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" UseOptimisticConcurrency="false" UserGetMethodName="GetData" UserSourceName="Fill">
+                <SelectCommand>
+                  <DbCommand CommandType="Text" ModifiedByUser="true">
+                    <CommandText>SELECT        ID, Size, DateAndTime, Hash
+FROM            CachedFileInfo</CommandText>
+                    <Parameters />
+                  </DbCommand>
+                </SelectCommand>
+              </DbSource>
+            </MainSource>
+            <Mappings>
+              <Mapping SourceColumn="ID" DataSetColumn="ID" />
+              <Mapping SourceColumn="Size" DataSetColumn="Size" />
+              <Mapping SourceColumn="DateAndTime" DataSetColumn="DateAndTime" />
+              <Mapping SourceColumn="Hash" DataSetColumn="Hash" />
+            </Mappings>
+            <Sources />
+          </TableAdapter>
+        </Tables>
+        <Sources />
+      </DataSource>
+    </xs:appinfo>
+  </xs:annotation>
+  <xs:element name="CachedFileInfo" msdata:IsDataSet="true" msdata:UseCurrentLocale="true" msprop:Generator_UserDSName="CachedFileInfo" msprop:Generator_DataSetName="CachedFileInfo">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="CachedFileInfo" msprop:Generator_UserTableName="CachedFileInfo" msprop:Generator_RowDeletedName="CachedFileInfoRowDeleted" msprop:Generator_RowChangedName="CachedFileInfoRowChanged" msprop:Generator_RowClassName="CachedFileInfoRow" msprop:Generator_RowChangingName="CachedFileInfoRowChanging" msprop:Generator_RowEvArgName="CachedFileInfoRowChangeEvent" msprop:Generator_RowEvHandlerName="CachedFileInfoRowChangeEventHandler" msprop:Generator_TableClassName="CachedFileInfoDataTable" msprop:Generator_TableVarName="tableCachedFileInfo" msprop:Generator_RowDeletingName="CachedFileInfoRowDeleting" msprop:Generator_TablePropName="_CachedFileInfo">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="ID" msdata:ReadOnly="true" msdata:AutoIncrement="true" msprop:Generator_UserColumnName="ID" msprop:Generator_ColumnVarNameInTable="columnID" msprop:Generator_ColumnPropNameInRow="ID" msprop:Generator_ColumnPropNameInTable="IDColumn" type="xs:long" />
+              <xs:element name="Size" msprop:Generator_UserColumnName="Size" msprop:Generator_ColumnVarNameInTable="columnSize" msprop:Generator_ColumnPropNameInRow="Size" msprop:Generator_ColumnPropNameInTable="SizeColumn" type="xs:long" />
+              <xs:element name="DateAndTime" msprop:Generator_UserColumnName="DateAndTime" msprop:Generator_ColumnVarNameInTable="columnDateAndTime" msprop:Generator_ColumnPropNameInRow="DateAndTime" msprop:Generator_ColumnPropNameInTable="DateAndTimeColumn" type="xs:dateTime" />
+              <xs:element name="Hash" msprop:Generator_UserColumnName="Hash" msprop:Generator_ColumnVarNameInTable="columnHash" msprop:Generator_ColumnPropNameInRow="Hash" msprop:Generator_ColumnPropNameInTable="HashColumn">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:maxLength value="48" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:complexType>
+    <xs:unique name="Constraint1" msdata:PrimaryKey="true">
+      <xs:selector xpath=".//mstns:CachedFileInfo" />
+      <xs:field xpath="mstns:ID" />
+    </xs:unique>
+  </xs:element>
+</xs:schema>

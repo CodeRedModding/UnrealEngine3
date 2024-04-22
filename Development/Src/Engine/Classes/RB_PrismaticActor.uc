@@ -1,3 +1,6 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 //=============================================================================
 // The Prismatic joint class.
 //=============================================================================
@@ -12,12 +15,14 @@ defaultproperties
 	ConstraintSetup=MyPrismaticSetup
 
 	Begin Object Name=Sprite
-		Sprite=Texture2D'EngineResources.S_KPrismatic'
+		Sprite=Texture2D'EditorResources.S_KPrismatic'
 		HiddenGame=True
 	End Object
 
 	Begin Object Class=ArrowComponent Name=ArrowComponent0
 		ArrowColor=(R=255,G=64,B=64)
+		bTreatAsASprite=True
+		SpriteCategoryName="Physics"
 	End Object
 	Components.Add(ArrowComponent0)
 }

@@ -1,0 +1,57 @@
+/*=============================================================================
+	OcclusionQueryVertexShader.hlsl: Vertex shader for drawing occlusion queries.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+#if !XBOX || !defined(VERTICES_PER_PRIMITIVE_INSTANCE)
+#define VERTICES_PER_PRIMITIVE_INSTANCE 0
+#endif
+
+void Main(
+#if VERTICES_PER_PRIMITIVE_INSTANCE
+	in int InIndex : INDEX,	
+#else
+	in float4 InPosition : POSITION,
+#endif
+	out float4 OutPosition : POSITION
+	)
+{
+#if VERTICES_PER_PRIMITIVE_INSTANCE
+
+	int PrimitiveIndex = InIndex / VERTICES_PER_PRIMITIVE_INSTANCE;
+	int IndexIndexMajor = (InIndex - PrimitiveIndex * VERTICES_PER_PRIMITIVE_INSTANCE) / 4;
+
+    int4 VertexIndices;
+	float4 PrimitiveOrigin;
+	float4 PrimitiveExtent;
+    asm
+    {
+        vfetch PrimitiveOrigin, PrimitiveIndex, position1;
+        vfetch PrimitiveExtent, PrimitiveIndex, position2;
+        vfetch VertexIndices, IndexIndexMajor, position3;
+    };
+
+	int IndexIndexMinor = InIndex - (PrimitiveIndex * VERTICES_PER_PRIMITIVE_INSTANCE + IndexIndexMajor * 4);
+	
+	int VertexIndex = VertexIndices[IndexIndexMinor];
+
+	float4 InPosition;
+	asm
+	{
+        vfetch InPosition, VertexIndex, position0;
+	};
+	
+	float4 CalculatedPosition = (InPosition * PrimitiveExtent) + float4(PrimitiveOrigin.xyz,0);
+
+#else
+	float4 CalculatedPosition = InPosition;
+#endif
+#if WITH_REALD
+	FDepthAllocateOutput DBAResult = DepthAllocate(CalculatedPosition);
+	OutPosition = DBAResult.DBAPixelPosition;
+#else
+	OutPosition = MulMatrix(ViewProjectionMatrix, CalculatedPosition );
+#endif
+}

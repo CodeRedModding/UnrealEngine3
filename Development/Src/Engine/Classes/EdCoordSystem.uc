@@ -3,11 +3,12 @@
 *
 * A custom coordinate system used by the editor.
 *
-* =====================================================
-*/
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class EdCoordSystem extends Object
 	hidecategories(Object)
-	editinlinenew;
+	editinlinenew
+	native;
 
 /** The matrix that defines this coordinate system. */
 var()	matrix	M;

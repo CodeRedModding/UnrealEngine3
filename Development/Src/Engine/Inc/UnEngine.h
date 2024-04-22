@@ -1,166 +1,42 @@
 /*=============================================================================
-	UnEngine.h: Unreal engine definition.
-	Copyright 1997-2004 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	UnEngine.h: Unreal engine helper definitions.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
-
-/*-----------------------------------------------------------------------------
-	Unreal engine.
------------------------------------------------------------------------------*/
-
-class UEngine : public USubsystem
-{
-	DECLARE_ABSTRACT_CLASS(UEngine,USubsystem,CLASS_Config|CLASS_Transient,Engine)
-
-	// Fonts.
-
-	UFont*	TinyFont;
-	UFont*	SmallFont;
-	UFont*	MediumFont;
-	UFont*	LargeFont;
-
-	// Subsystems.
-	UClass*				NetworkDriverClass;
-
-	/** The material used when no material is explicitly applied. */
-	class UMaterial*	DefaultMaterial;
-
-	/** The material used to render surfaces in the LightingOnly viewmode. */
-	class UMaterial*	LightingOnlyMaterial;
-
-	/** A solid colored material with an instance parameter for the color. */
-	class UMaterial*	SolidColorMaterial;
-
-	/** A material used to render colored BSP nodes. */
-	class UMaterial*	ColoredNodeMaterial;
-
-	/** A translucent material used to render things in geometry mode. */
-	class UMaterial*	GeomMaterial;
-
-	/** Material used for drawing a tick mark. */
-	class UMaterial*	TickMaterial;
-
-	/** Material used for drawing a cross mark. */
-	class UMaterial*	CrossMaterial;
-
-	/** The colors used to rendering light complexity. */
-	TArrayNoInit<FColor> LightComplexityColors;
-
-	/** A material used to render the sides of brushes/volumes/etc. */
-	class UMaterial*	EditorBrushMaterial;
-
-	// Variables.
-	class UClient*			Client;
-	TArray<ULocalPlayer*>	Players;
-
-	INT					TickCycles GCC_PACK(PROPERTY_ALIGNMENT);
-	INT					GameCycles, ClientCycles;
-
-	BITFIELD			UseSound:1 GCC_PACK(PROPERTY_ALIGNMENT);
-	BITFIELD			UseStreaming:1;
-
-	/** Maximum number of miplevels being streamed in */
-	UINT				MaxStreamedInMips GCC_PACK(PROPERTY_ALIGNMENT);
-	/** Minimum number of miplevels being streamed in */
-	UINT				MinStreamedInMips;
-
-	/** Global debug manager */
-	UDebugManager*		DebugManager;
-
-	// Color preferences.
-	FColor
-		C_WorldBox,
-		C_GroundPlane,
-		C_GroundHighlight,
-		C_BrushWire,
-		C_Pivot,
-		C_Select,
-		C_Current,
-		C_AddWire,
-		C_SubtractWire,
-		C_GreyWire,
-		C_BrushVertex,
-		C_BrushSnap,
-		C_Invalid,
-		C_ActorWire,
-		C_ActorHiWire,
-		C_Black,
-		C_White,
-		C_Mask,
-		C_SemiSolidWire,
-		C_NonSolidWire,
-		C_WireBackground,
-		C_WireGridAxis,
-		C_ActorArrow,
-		C_ScaleBox,
-		C_ScaleBoxHi,
-		C_ZoneWire,
-		C_OrthoBackground,
-		C_Volume,
-		C_ConstraintLine,
-		C_AnimMesh,
-		C_TerrainWire;
-
-	/** Fudge factor for tweaking the distance based miplevel determination */
-	FLOAT StreamingDistanceFactor;
-
-	/** Mapping between PhysicalMaterial class name and physics-engine specific MaterialIndex. */
-	TMap<FName, UINT>* MaterialMap;
-
-	/** Class name of the scout to use for path building */
-	FStringNoInit ScoutClassName;
-
-	// Constructors.
-	UEngine();
-	void StaticConstructor();
-
-	// UObject interface.
-	void Destroy();
-	void PostEditChange(UProperty* PropertyThatChanged);
-
-	// UEngine interface.
-	virtual void Init();
-	virtual UBOOL Exec( const TCHAR* Cmd, FOutputDevice& Out=*GLog );
-	virtual void Flush();
-	virtual void Tick( FLOAT DeltaSeconds )=0;
-	virtual void SetClientTravel( const TCHAR* NextURL, UBOOL bItems, ETravelType TravelType )=0;
-	virtual INT ChallengeResponse( INT Challenge );
-	virtual FLOAT GetMaxTickRate() { return 0.0f; }
-	virtual void SetProgress( const TCHAR* Str1, const TCHAR* Str2, FLOAT Seconds );
-	virtual ULevel* GetLevel()=0;
-
-	/**
-	 * Allows the editor to accept or reject the drawing of wireframe brush shapes based on mode and tool.
-	 */
-	virtual UBOOL ShouldDrawBrushWireframe( AActor* InActor ) { return 1; }
-
-	/**
-	 * Looks at all currently loaded packages and prompts the user to save them
-	 * if their "bDirty" flag is set.
-	 */
-	virtual void SaveDirtyPackages() {}
-
-	UINT FindMaterialIndex(UClass* PhysMatClass);
-};
 
 /*-----------------------------------------------------------------------------
 	UServerCommandlet.
 -----------------------------------------------------------------------------*/
 
-class UServerCommandlet : public UCommandlet
-{
-	DECLARE_CLASS(UServerCommandlet,UCommandlet,CLASS_Transient,Engine);
-	void StaticConstructor();
-	INT Main( const TCHAR* Parms );
-};
+BEGIN_COMMANDLET(Server,Engine)
+	void StaticInitialize()
+	{
+		IsClient = FALSE;
+		IsEditor = FALSE;
+		LogToConsole = TRUE;
+	}
+END_COMMANDLET
+
+
+BEGIN_COMMANDLET(SmokeTest,Engine)
+	void StaticInitialize()
+	{
+		IsClient = FALSE;
+		IsEditor = FALSE;
+		LogToConsole = TRUE;
+	}
+END_COMMANDLET
+
+BEGIN_COMMANDLET(PatchScript,Engine)
+	void StaticInitialize();
+	class FScriptPatchWorker* Worker;
+END_COMMANDLET
+
 
 //
-//	FPlayerIterator - Iterates over local players in the game.
+//	FLocalPlayerIterator - Iterates over local players in the game.
 //
 
-class FPlayerIterator
+class FLocalPlayerIterator
 {
 protected:
 
@@ -171,7 +47,7 @@ public:
 
 	// Constructor.
 
-	FPlayerIterator(UEngine* InEngine):
+	FLocalPlayerIterator(UEngine* InEngine):
 		Engine(InEngine),
 		Index(-1)
 	{
@@ -180,28 +56,208 @@ public:
 
 	void operator++()
 	{
-		while(++Index < Engine->Players.Num() && !Engine->Players(Index));
+		if ( Engine != NULL )
+		{
+			while (Engine->GamePlayers.IsValidIndex(++Index) && !Engine->GamePlayers(Index));
+		}
 	}
 	ULocalPlayer* operator*()
 	{
-		return Engine->Players(Index);
+		return Engine && Engine->GamePlayers.IsValidIndex(Index) ? Engine->GamePlayers(Index) : NULL;
 	}
 	ULocalPlayer* operator->()
 	{
-		return Engine->Players(Index);
+		return Engine && Engine->GamePlayers.IsValidIndex(Index) ? Engine->GamePlayers(Index) : NULL;
 	}
 	operator UBOOL()
 	{
-		return Index<Engine->Players.Num();
+		return Engine && Engine->GamePlayers.IsValidIndex(Index);
 	}
 	void RemoveCurrent()
 	{
-		check(Index < Engine->Players.Num());
-		Engine->Players.Remove(Index--);
+		checkSlow(Engine);
+		check(Engine->GamePlayers.IsValidIndex(Index));
+		Engine->GamePlayers.Remove(Index--);
+	}
+	INT GetIndex()
+	{
+		return Index;
 	}
 };
 
 /*-----------------------------------------------------------------------------
-	The End.
+	Tick/ update stats helper for profiling.
 -----------------------------------------------------------------------------*/
 
+/**
+ * Helper structure encapsulating all information gathered.
+ */
+struct FTickStats
+{
+	/** Object associated with instances. We keep the name because the object might be gone.*/
+	FString ObjectPathName;
+	/** Result of GetDetailedInfo() on the above.  */
+	FString ObjectDetailedInfo;
+	/** Result of GetDetailedInfo() on the above.  */
+	FName ObjectClassFName;
+	/** Index of GC run when the validity of the UObject Pointer was last checked.  */
+	INT GCIndex;
+	/** Total accumulative time captured. */
+	FLOAT TotalTime;
+	/** Number of captures this frame. */
+	INT Count;
+	/** bForSummary is used for the logging code to know if this should be used for a summary or not **/
+	UBOOL bForSummary;
+
+	/** Compare helper for Sort<> */
+	static inline INT Compare( const FTickStats& A, const FTickStats& B	)
+	{
+		return (B.TotalTime - A.TotalTime) > 0 ? 1 : -1;
+	}
+};
+
+/**
+ * Helper struct for gathering detailed per object tick stats.
+ */
+struct FDetailedTickStats : public FCallbackEventDevice
+{
+	/** Constructor, initializing all members. */
+	FDetailedTickStats( INT InNumClassesToReport, FLOAT InTimeBetweenLogDumps, FLOAT InMinTimeBetweenLogDumps, FLOAT InTimesToReport, const TCHAR* InOperationPerformed );
+
+	/** Destructor */
+	virtual ~FDetailedTickStats();
+
+	/**
+	 * Starts tracking an object and returns whether it's a recursive call or not. If it is recursive
+	 * the function will return FALSE and EndObject should not be called on the object.
+	 *
+	 * @param	Object		Object to track
+	 * @return	FALSE if object is already tracked and EndObject should NOT be called, TRUE otherwise
+	 */
+	UBOOL BeginObject( UObject* Object );
+
+	/**
+	 * Finishes tracking the object and updates the time spent.
+	 *
+	 * @param	Object		Object to track
+	 * @param	DeltaTime	Time we've been tracking it
+	 * @param   bForSummary Object should be used for high level summary
+	 */
+	void EndObject( UObject* Object, FLOAT DeltaTime, UBOOL bForSummary );
+
+	/**
+	 * Reset stats to clean slate.
+	 */
+	void Reset();
+
+	/**
+	 * Dump gathered stats informatoin to the log.
+	 */
+	void DumpStats();
+
+	/**
+	 * Responds to CALLBACK_PreGarbageCollection; used indirectly to avoid GC issues
+	 * @param InType Callback type (should only be CALLBACK_PreGarbageCollection)
+	 */
+	virtual void Send( ECallbackEventType InType)
+	{
+		GCIndex++;
+		check(ObjectsInFlight.Num() == 0); // probably not required, but we shouldn't have anything in flight when we GC
+	}
+
+private:
+	/** This is the collection of stats; some refer to objects that are long gone. */
+	TArray<FTickStats> AllStats;
+	/** Mapping from class to an index into the AllStats array. */
+	TMap<const UObject*,INT> ObjectToStatsMap;
+	/** Set of objects currently being tracked. Needed to correctly handle recursion. */
+	TSet<const UObject*> ObjectsInFlight;
+
+	/** Index of GC run. This is used to invalidate UObject pointers to make the whole system GC safe.  */
+	INT GCIndex;
+	/** The GC callback cannot usually be registered at construction because this comes from a static data structure  */
+	UBOOL GCCallBackRegistered;
+	/** Number of objects to report. Top X */
+	INT	NumObjectsToReport;
+	/** Time between dumping to the log in seconds. */
+	FLOAT TimeBetweenLogDumps;
+	/** Minimum time between log dumps, used for e.g. slow frames dumping. */
+	FLOAT MinTimeBetweenLogDumps;
+	/** Last time stats where dumped to the log. */
+	DOUBLE LastTimeOfLogDump;
+	/** Tick time in ms to report if above. */
+	FLOAT TimesToReport;
+	/** Name of operation performed that is being tracked. */
+	FString OperationPerformed;
+};
+
+/** Scoped helper structure for capturing tick time. */
+struct FScopedDetailTickStats
+{
+	/**
+	 * Constructor, keeping track of object and start time.
+	 */
+	FScopedDetailTickStats( FDetailedTickStats& InDetailedTickStats, UObject* ObjectToTrack );
+
+	/**
+	 * Destructor, calculating delta time and updating global helper.
+	 */
+	~FScopedDetailTickStats();
+
+
+private:
+	/** Object to track. 
+		Not GC safe, but we won't have anything in-flight during GC so that should be moot
+	*/
+	UObject* Object;
+	/** Tick start time. */
+	DWORD StartCycles;
+	/** Detailed tick stats to update. */
+	FDetailedTickStats& DetailedTickStats;
+	/** Whether object should be tracked. FALSE e.g. when recursion is involved. */
+	UBOOL bShouldTrackObject;
+	/** Whether object class should be tracked. FALSE e.g. when recursion is involved. */
+	UBOOL bShouldTrackObjectClass;
+};
+
+/**
+ * Empty base class for post-ship patching support, allowing per-game
+ * code-based level patching, etc.
+ */
+class FGamePatchHelper
+{
+public:
+	/**
+	 * Fix up the world in code however necessary
+	 *
+	 * @param World UWorld object for the world to fix
+	 */
+	virtual void FixupWorld(UWorld* World)
+	{
+	}
+};
+
+/** Global GamePatchHelper object that a game can override */
+extern FGamePatchHelper* GGamePatchHelper;
+
+
+// Calculate the average frame time by using the stats system.
+inline void CalculateFPSTimings()
+{
+	extern FLOAT GAverageFPS;
+	extern FLOAT GAverageMS;
+#if STATS
+	// Calculate the average frame time by using the stats system.
+	GAverageMS	= (FLOAT)GFPSCounter.GetAverage() * 1000.0;
+#else
+	// Calculate the average frame time via continued averaging.
+	static DOUBLE LastTime	= 0;
+	DOUBLE CurrentTime		= appSeconds();
+	FLOAT FrameTime			= (CurrentTime - LastTime) * 1000;
+	// A 3/4, 1/4 split gets close to a simple 10 frame moving average
+	GAverageMS				= GAverageMS * 0.75f + FrameTime * 0.25f;
+	LastTime				= CurrentTime;
+#endif
+	// Calculate average framerate.
+	GAverageFPS = 1000.f / GAverageMS;
+}

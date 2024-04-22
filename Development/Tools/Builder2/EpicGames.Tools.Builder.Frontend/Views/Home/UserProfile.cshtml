@@ -1,0 +1,91 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.HomeUserProfileModel
+
+@{
+    ViewBag.Title = "Home";
+    ViewBag.Description = "User Profile for '" + @Model.UserName + "'";
+}
+
+
+<section>
+    <div class="grid6">
+        <span class="fr">
+            <a href="#details">User Details</a> |
+            <a href="#activity">Recent Activity</a> |
+            <a href="#changelists">Changelists History</a>
+        </span>
+    </div>
+</section>
+
+<section class="clearfix">
+    <div class="grid2">
+        <a name="details"></a><h2>Profile Details</h2>
+
+        <table class="tableKeyValue">
+            <tbody>
+                <tr>
+                    <th>User Name:</th>
+                    <td>@Model.UserName</td>
+                </tr>
+                <tr>
+                    <th>Access Level:</th>
+                    <td class="defunct">Not implemented yet</td>
+                </tr>
+                <tr>
+                    <th>Contact</th>
+                    <td>
+                        <a href="mailto:@(Model.UserName + "@epicgames.com")" title="Send Email"><img class="icon" src="~/Content/Themes/Base/Images/iconOutlook.png" alt="Email" /></a>
+                        <a href="sip:@(Model.UserName + "@epicgames.com")")" title="Send IM"><img class="icon" src="~/Content/Themes/Base/Images/iconLync.png" alt="IM" /></a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="activity"></a><h2>Recent Activity</h2>
+
+        <img class="chart" src="@Url.RouteUrl(new { action = "UserChangelists", controller = "Chart", id = Model.UserName, days = 45 })" alt="Build" />
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="changelists"></a><h2>Changelists History</h2>
+
+        @if (Model.SubmittedChangelists.Count() > 0)
+        {
+            <p>This user has recently submitted the following changelists:</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Changelist</th>
+                        <th class="enum">Branch</th>
+                        <th class="enum">Checked In</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var e in Model.SubmittedChangelists)
+                    {
+                        <tr>
+                            <td>@Html.ActionLink(@e.Changelist.ToString(), "Changelist", "Build", new { id = e.Changelist }, null)</td>
+                            <td class="enum">@e.Branch</td>
+                            <td class="enum">@e.TimeStamp.ToLocalTime().ToString()</td>
+                            <td>@e.Description</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <text>This user has not submitted any changelists yet.</text>
+        }
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>

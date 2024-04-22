@@ -1,0 +1,55 @@
+﻿@model CISStatus.Models.GeneralViewModel
+
+@{
+    ViewBag.Title = "Verification Builds";
+}
+
+@section ScriptContent
+{
+<script type="text/javascript">
+    $(document).ready(function () {
+        $(':checkbox').live("change", function () {
+            $.ajax(
+            {
+                url: "/BuildStatus/CheckBoxClicked",
+                data: "Name=" + $(this).attr('Name') + "&Checked=" + $(this).attr('checked'),
+                async: false
+            });
+        });
+    });
+</script>
+}
+
+<div id="VerificationsTable">
+<table width="90%">
+<tr>
+    <td style="width:1%"></td>
+    <td style="width:35%" align="center"><b>Verification Build</b></td>
+    <td style="width:5%" align="center"><b>State</b></td>
+    <td style="" align="center"><b>Days <font color="#33CC33">Good</font>/<font color="red">Bad</font></b></td>
+    <td style="width:10%" align="center"><b>Last Attempted Changelist</b></td>
+    <td style="width:10%" align="center"><b>Last Good Changelist</b></td>
+    <td style="width:10%" align="center"><b>Last Failed Changelist</b></td>
+    <td style="width:5%" align="center"><b>Subscribe Triggered</b></td>
+    <td style="width:5%" align="center"><b>Subscribe Successful</b></td>
+    <td style="width:5%" align="center"><b>Subscribe Failed</b></td>
+</tr>
+
+@foreach( CISStatus.Controllers.VerificationInfo Verification in Model.Verifications )
+{
+    <tr>
+        <td bgcolor="@Verification.GetBackground()"></td>
+        <td>@Verification.GetDescription()</td>
+
+        <td align="center"><img alt="@Verification.GetImage()" src="@Url.Content( "~/Content/themes/base/images/" + @Verification.GetImage() )" /></td>
+        <td align="center"><font color="@Verification.GetStateColor()">@Verification.GetStateTime()</font></td>
+        <td align="center">@Verification.GetAttempted()</td>
+        <td align="center">@Verification.GetGood()</td>
+        <td align="center">@Verification.GetFailed()</td>
+        <td align="center"><input type="checkbox" id="@Verification.GetCommandID( "" )" Name="@Verification.GetCommandID( "T" )" @Verification.GetSubscribeTriggered() /></td>
+        <td align="center"><input type="checkbox" id="@Verification.GetCommandID( "" )" Name="@Verification.GetCommandID( "S" )" @Verification.GetSubscribeSucceeded() /></td>
+        <td align="center"><input type="checkbox" id="@Verification.GetCommandID( "" )" Name="@Verification.GetCommandID( "F" )" @Verification.GetSubscribeFailed() /></td>
+    </tr>
+}
+</table>
+</div>

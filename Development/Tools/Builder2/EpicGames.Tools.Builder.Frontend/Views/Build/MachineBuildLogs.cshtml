@@ -1,0 +1,123 @@
+﻿@model IEnumerable<EpicGames.Tools.Builder.Frontend.Database.SP_GetMachineBuildLogsResult>
+
+@{
+    Layout = null;
+}
+
+
+<section>
+    <div class="grid6">
+        <a name="buildhistory"></a><h2>Build History</h2>
+
+        @if (Model.Count(l => l.Type != 1) > 0)
+        {
+            <p>This machine has recently executed the following build commands:</p>
+
+            <table class="detail">
+                <thead>
+                    <tr>
+                        <th class="string">Command</th>
+                        <th class="string">Changelist</th>
+                        <th class="enum">Started</th>
+                        <th class="enum">Duration</th>
+                        <th class="enum">Log</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var l in Model)
+                    {
+                        if (l.Type != 1)
+                        {
+                            Html.RenderPartial("_MachineBuildLogEntry", l);
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <text>This machine did not execute any CIS commands recently.</text>
+        }
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="cishistory"></a><h2>CIS History</h2>
+
+        @if (Model.Count(l => l.Type == 1) > 0)
+        {
+            <p>This machine has recently executed the following CIS commands:</p>
+
+            <table class="detail">
+                <thead>
+                    <tr>
+                        <th class="string">Command</th>
+                        <th class="string">Changelist</th>
+                        <th class="enum">Started</th>
+                        <th class="enum">Duration</th>
+                        <th class="enum">Log</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var l in Model)
+                    {
+                        if (l.Type == 1)
+                        {
+                            Html.RenderPartial("_MachineBuildLogEntry", l);
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <text>This machine did not execute any CIS commands recently.</text>
+        }
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="verifyhistory"></a><h2>Verify History</h2>
+
+        @if (Model.Count(l => l.Type == 2) > 0)
+        {
+            <p>This machine has recently executed the following build commands:</p>
+
+            <table class="detail">
+                <thead>
+                    <tr>
+                        <th class="string">Command</th>
+                        <th class="string">Changelist</th>
+                        <th class="enum">Started</th>
+                        <th class="enum">Duration</th>
+                        <th class="enum">Log</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var l in Model)
+                    {
+                        if (l.Type == 2)
+                        {
+                            Html.RenderPartial("_MachineBuildLogEntry", l);
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <text>This machine did not execute any Verification commands recently.</text>
+        }
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>

@@ -1,0 +1,51 @@
+/*=============================================================================
+	SimpleElementColorChannelMaskPixelShader.hlsl: Pixel shader for manipulating weights of color channels
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+sampler2D InTexture;
+
+float4x4 ColorWeights;
+float Gamma;
+
+bool bAlphaOnly;
+
+void Main(
+	in float2 TextureCoordinate : TEXCOORD0,
+	in float4 Color : TEXCOORD1,
+	out float4 OutColor : COLOR0
+#if SM5_PROFILE
+	,out float4 OutWorldNormal : COLOR1 
+	,out float4 OutReflectionWorldNormal : COLOR2 
+	,out float4 OutSpecularColorAndPower : COLOR3
+#endif
+	)
+{
+	float4 BaseColor = tex2D(InTexture,TextureCoordinate);
+	float4 FinalColor;
+
+	// Seperate the Color weights and use against the Base colour to detrmine the actual colour from our filter
+	FinalColor.r = dot(BaseColor, ColorWeights[0]);
+	FinalColor.g = dot(BaseColor, ColorWeights[1]);
+	FinalColor.b = dot(BaseColor, ColorWeights[2]);
+	FinalColor.a = dot(BaseColor, ColorWeights[3]);
+		 
+	if( Gamma != 1.0 )
+	{
+		// Gamma correct the output color.
+		FinalColor.rgb = pow(saturate(FinalColor.rgb),Gamma);
+	}
+		
+	FinalColor*=Color;
+	
+	OutColor = RETURN_COLOR(FinalColor);	
+
+#if SM5_PROFILE
+	// Set the G buffer bits that indicate that deferred lighting and image reflections are not enabled
+	OutWorldNormal = 0;
+	OutReflectionWorldNormal = 0;
+	OutSpecularColorAndPower = 0;
+#endif
+}

@@ -1,0 +1,110 @@
+/*=============================================================================
+	HeightFogCommon.usf: 
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+static const float FLT_EPSILON = 0.001f;
+static const float FLT_EPSILON2 = 0.01f;
+
+/** Shader parameters shared between exponential and multi-layer height fog, to reduce constant register usage. */
+float4 SharedFogParameter0;
+float4 SharedFogParameter1;
+float4 SharedFogParameter2;
+float4 SharedFogParameter3;
+
+//@todo - make this a bool, bool shader parameters currently do not work in vertex shaders on Xbox 360 (TTP 125134)
+float bUseExponentialHeightFog;
+
+/** FogDensity * exp2(-FogHeightFalloff * (CameraWorldPosition.z - FogHeight)) in x, FogHeightFalloff in y, PowFactor in z, StartDistance in w. */
+static float4 ExponentialFogParameters = SharedFogParameter0;
+/** Color to use in the opposite direction of ExponentialFogLightVector. */
+static float3 ExponentialFogColor = SharedFogParameter1.xyz;
+static float MinFogOpacity = SharedFogParameter1.w;
+/** Color to use in the direction of ExponentialFogLightVector. */
+static float3 LightInscatteringColor = SharedFogParameter2.xyz;
+static float3 ExponentialFogLightVector = SharedFogParameter3.xyz;
+
+/** Calculates fogging from exponential height fog, returns fog color in rgb, fog factor in a. */
+float4 GetExponentialHeightFog(float3 WorldPosition, float3 InCameraPosition)
+{
+	float3 CameraToReceiver = WorldPosition - InCameraPosition;
+	// Calculate the line integral of the ray from the camera to the receiver position through the fog density function
+	// The exponential fog density function is d = GlobalDensity * exp(-HeightFalloff * z)
+	float LineIntegral = ExponentialFogParameters.x * max(length(CameraToReceiver) - ExponentialFogParameters.w, 0.0f);
+
+	// adjust LineIntegral to make the fog non homogenious, avoids divide by 0
+	float EffectiveZ = (abs(CameraToReceiver.z) > FLT_EPSILON2) ? CameraToReceiver.z : FLT_EPSILON2;
+	LineIntegral *= (1.0f - exp2(-ExponentialFogParameters.y * EffectiveZ)) / (ExponentialFogParameters.y * EffectiveZ);
+
+	// 1 in the direction of the light vector, -1 in the opposite direction
+	float CosLightAngle = dot(ExponentialFogLightVector, normalize(CameraToReceiver));
+	float3 FogColor;
+
+	float PowFactor = ExponentialFogParameters.z;
+	// 1..-1 is mapped to 0.001..0.999
+	// (not to 0..1 because pow of 0 can cause NotANumber)
+	float Alpha = pow(0.5f - 0.499f * CosLightAngle, PowFactor);
+	FogColor = lerp(LightInscatteringColor, ExponentialFogColor, Alpha);	
+
+	// Calculate the amount of light that made it through the fog using the transmission equation
+	float FogFactor = max(saturate(exp2(-LineIntegral)), MinFogOpacity);
+	return float4(FogColor * (1 - FogFactor), FogFactor);
+}
+
+/** calculate ratio of distance between world z height and relative fog height */
+float4 LinePlaneIntersection(float3 RelativeB,float4 RelativeZ)
+{
+	return RelativeZ / (abs(RelativeB.z) <= FLT_EPSILON ? FLT_EPSILON : RelativeB.z);
+}
+/** used to scale fog layer distance */
+static float4	FogDistanceScale = SharedFogParameter0;
+/** any layer distance beyond this is clamped to full fog */
+static float4	FogExtinctionDistance = SharedFogParameter1;
+/** lighting contribution from fog.  This uses 4 components to avoid platform-specific alignment of each element of the array. */
+float4	FogInScattering[4];
+/** distance at which fog will start */
+static float4	FogStartDistance = SharedFogParameter2;
+/** world space min z height */
+static float4 FogMinHeight = SharedFogParameter3;
+/** world space max z height */
+float4 FogMaxHeight;
+
+half4 CalculateVertexHeightFog(float3 WorldPosition, float4 InCameraPosition)
+{
+	half4 Fog;
+	// Don't use exponential fog for combinations that would use too many vertex shader constants
+#if SUPPORTS_DECAL_FOGGING
+	BRANCH
+	if (bUseExponentialHeightFog)
+	{
+		Fog = GetExponentialHeightFog(WorldPosition, InCameraPosition.xyz);
+	}
+	else
+#endif
+	{
+		float3	WorldVector = WorldPosition.xyz - InCameraPosition.xyz;
+		float	Distance = length(WorldVector);
+
+				// maxfog - camera / z height
+		float4	MinHeightPercent = LinePlaneIntersection(WorldVector,FogMinHeight - InCameraPosition.z);
+				// minfog - camera / z height
+		float4	MaxHeightPercent = LinePlaneIntersection(WorldVector,FogMaxHeight - InCameraPosition.z);
+				// fog layer distance based on % over max/min fog heights
+		half4	LayerDistance = max(half4(0,0,0,0),half4(Distance,Distance,Distance,Distance)-FogStartDistance) * abs(saturate(MaxHeightPercent) - saturate(MinHeightPercent));
+
+				// clamp anything beyond the extinction distance to 0 scattering
+				// scattering falloff is exponential based on normalized layer distance
+		half4	Scattering = LayerDistance < FogExtinctionDistance ? exp2(FogDistanceScale * LayerDistance) : half4(0,0,0,0);			
+				// ratio of the inscattering color to be used
+		half4	InScattering = Scattering - 1;
+
+		Fog = half4(0,0,0,1);
+		for(int LayerIndex = 0;LayerIndex < 4;LayerIndex++)
+		{
+			Fog *= Scattering[LayerIndex];
+			Fog.rgb += InScattering[LayerIndex] * FogInScattering[LayerIndex].xyz;
+		}
+	}
+	return Fog;
+}
+

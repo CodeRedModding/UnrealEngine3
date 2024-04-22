@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DualMode2", "DualMode2.csproj", "{A3A5B46B-4A80-4FD4-84AA-DAD13F5D5559}"
+EndProject
+Global
+	GlobalSection(SourceCodeControl) = preSolution
+		SccNumberOfProjects = 2
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = DualMode2.csproj
+		SccLocalPath1 = .
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A3A5B46B-4A80-4FD4-84AA-DAD13F5D5559}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3A5B46B-4A80-4FD4-84AA-DAD13F5D5559}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3A5B46B-4A80-4FD4-84AA-DAD13F5D5559}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3A5B46B-4A80-4FD4-84AA-DAD13F5D5559}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

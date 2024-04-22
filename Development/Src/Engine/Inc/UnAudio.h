@@ -1,82 +1,115 @@
 /*=============================================================================
 	UnAudio.h: Unreal base audio.
-	Copyright 1997-2003 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
-		* Wave modification code by Erik de Neve
-		* Complete rewrite by Daniel Vogel
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
-#ifdef PlaySound
-#undef PlaySound
-#endif
+#ifndef _UNAUDIO_H_
+#define _UNAUDIO_H_
 
+/** 
+ * Maximum number of channels that can be set using the ini setting
+ */
+#define MAX_AUDIOCHANNELS				64
+
+/** 
+ * Number of ticks an inaudible source remains alive before being stopped
+ */
+#define AUDIOSOURCE_TICK_LONGEVITY		60
+
+/** 
+ * Length of sound in seconds to be considered as looping forever
+ */
+#define INDEFINITELY_LOOPING_DURATION	10000.0f
+
+/*
+ * Some defaults to help cross platform consistency
+ */
+#define SPEAKER_COUNT					6
+
+#define DEFAULT_LOW_FREQUENCY			600.0f
+#define DEFAULT_MID_FREQUENCY			1000.0f
+#define DEFAULT_HIGH_FREQUENCY			2000.0f
+
+#define MIN_PITCH						0.4f
+#define MAX_PITCH						2.0f
+
+/**
+ * Some filters don't work properly with extreme values, so these are the limits 
+ */
+#define MIN_FILTER_GAIN					0.126f
+#define MAX_FILTER_GAIN					7.94f
+
+#define MIN_FILTER_FREQUENCY			20.0f
+#define MAX_FILTER_FREQUENCY			20000.0f
+
+#define MIN_FILTER_BANDWIDTH			0.1f
+#define MAX_FILTER_BANDWIDTH			2.0f
+
+/**
+ * Audio stats
+ */
+enum EAudioStats
+{
+	STAT_AudioUpdateTime = STAT_AudioFirstStat,
+	STAT_AudioComponents,
+	STAT_AudioSources,
+	STAT_WaveInstances,
+	STAT_WavesDroppedDueToPriority,
+	STAT_AudibleWavesDroppedDueToPriority,
+	STAT_AudioFinishedDelegatesCalled,
+	STAT_AudioFinishedDelegates,
+	STAT_AudioMemorySize,
+	STAT_AudioBufferTime,
+	STAT_AudioBufferTimeChannels,
+	STAT_OggWaveInstances,
+	STAT_AudioGatherWaveInstances,
+	STAT_AudioStartSources,
+	STAT_AudioUpdateSources,
+	STAT_AudioUpdateEffects,
+	STAT_AudioSourceInitTime,
+	STAT_AudioSourceCreateTime,
+	STAT_AudioSubmitBuffersTime,
+	STAT_AudioDecompressTime,
+	STAT_VorbisDecompressTime,
+	STAT_AudioPrepareDecompressionTime,
+	STAT_VorbisPrepareDecompressionTime,
+	STAT_AudioFindNearestLocation,
+};
+
+/**
+ * Channel definitions for multistream waves
+ *
+ * These are in the sample order OpenAL expects for a 7.1 sound
+ * 
+ */
+enum EAudioSpeakers
+{							//	4.0	5.1	6.1	7.1
+	SPEAKER_FrontLeft,		//	*	*	*	*
+	SPEAKER_FrontRight,		//	*	*	*	*
+	SPEAKER_FrontCenter,		//		*	*	*
+	SPEAKER_LowFrequency,		//		*	*	*
+	SPEAKER_LeftSurround,		//	*	*	*	*
+	SPEAKER_RightSurround,		//	*	*	*	*
+	SPEAKER_LeftBack,			//			*	*		If there is no BackRight channel, this is the BackCenter channel
+	SPEAKER_RightBack,		//				*
+	SPEAKER_Count
+};
+
+enum EAudioFormats
+{
+	FORMAT_LPCM = 1, 
+	FORMAT_ADPCM = 2
+};
+
+// Forward declarations.
 class UAudioComponent;
-class FSoundSource;
+struct FReverbSettings;
 struct FSampleLoop;
 
-/*-----------------------------------------------------------------------------
-	UAudioDevice.
------------------------------------------------------------------------------*/
-
-// Listener.
-struct FListener
-{
-	FVector		Location,
-				Up,
-				Right,
-				Front;
-};
-
-//     2 UU == 1"
-// <=> 1 UU == 0.0127 m
-#define AUDIO_DISTANCE_FACTOR ( 0.0127f )
-
-class UAudioDevice : public USubsystem
-{
-	DECLARE_CLASS(UAudioDevice,USubsystem,CLASS_Config,Engine)
-
-	// Constructor.
-	UAudioDevice() {}
-	void StaticConstructor();
-
-	// UAudioDevice interface.
-	virtual UBOOL Init();
-	virtual void Flush();
-	virtual void Update( UBOOL Realtime );
-	void SetListener( const FVector& Location, const FVector& Up, const FVector& Right, const FVector& Front );
-
-	// Audio components.
-	void AddComponent( UAudioComponent* AudioComponent );
-	void RemoveComponent( UAudioComponent* AudioComponent );
-	static UAudioComponent* CreateComponent( USoundCue* SoundCue, FScene* Scene, AActor* Actor = NULL, UBOOL Play = 1 );
-
-	// UObject interface.
-	UBOOL Exec( const TCHAR* Cmd, FOutputDevice& Ar=*GLog ) { return false; }
-	void Serialize(FArchive& Ar);
-	virtual void SerializeHack(FArchive& Ar) { appErrorf(TEXT("UAudioDevice::SerializeHack shouldn never be called")); }
-
-protected:
-	// Internal.
-	void SortWaveInstances( INT MaxChannels );
-
-
-	// Configuration.
-	FLOAT										SoundVolume;
-	INT											MaxChannels;					
-
-	// Variables.		
-	TArray<UAudioComponent*>					AudioComponents;
-	TArray<FSoundSource*>						Sources;	
-	TArray<FSoundSource*>						FreeSources;
-	TDynamicMap<FWaveInstance*,FSoundSource*>	WaveInstanceSourceMap;
-	UBOOL										LastRealtime;
-	FListener									Listener;
-	QWORD										CurrentTick;
-
-	friend class FSoundSource;
-};
+/** 
+ * Removes the bulk data from any USoundNodeWave objects that were loaded 
+ */
+extern void appSoundNodeRemoveBulkData();
 
 /*-----------------------------------------------------------------------------
 	FSoundSource.
@@ -89,93 +122,155 @@ public:
 	FSoundSource( UAudioDevice* InAudioDevice )
 	:	AudioDevice( InAudioDevice ),
 		WaveInstance( NULL ),
+		Playing( FALSE ),
+		Paused( FALSE ),
+		bReverbApplied( FALSE ),
+		StereoBleed( 0.0f ),
+		LFEBleed( 0.5f ),
+		HighFrequencyGain( 1.0f ),
 		LastUpdate( 0 )
-	{}
+	{
+	}
+
+	virtual ~FSoundSource( void )
+	{
+	}
 
 	// Initialization & update.
 	virtual UBOOL Init( FWaveInstance* WaveInstance ) = 0;
-	virtual void Update() = 0;
+	virtual void Update( void ) = 0;
 
 	// Playback.
-	virtual void Play() = 0;
-	virtual void Stop();
-	virtual void Pause() = 0;
+	virtual void Play( void ) = 0;
+	virtual void Stop( void );
+	virtual void Pause( void ) = 0;
 
 	// Query.
-	virtual	UBOOL IsFinished() = 0;
-	
+	virtual	UBOOL IsFinished( void ) = 0;
+
+	/**
+	 * Returns whether the buffer associated with this source is using CPU decompression.
+	 *
+	 * @return TRUE if decompressed on the CPU, FALSE otherwise
+	 */
+	virtual UBOOL UsesCPUDecompression( void )
+	{
+		return( FALSE );
+	}
+
+	/**
+	 * Returns whether associated audio component is an ingame only component, aka one that will
+	 * not play unless we're in game mode (not paused in the UI)
+	 *
+	 * @return FALSE if associated component has bIsUISound set, TRUE otherwise
+	 */
+	UBOOL IsGameOnly( void );
+
+	/** 
+	 * @return	The wave instance associated with the sound. 
+	 */
+	const FWaveInstance* GetWaveInstance( void ) const
+	{
+		return( WaveInstance );
+	}
+
+	/** 
+	 * @return		TRUE if the sound is playing, FALSE otherwise. 
+	 */
+	UBOOL IsPlaying( void ) const
+	{
+		return( Playing );
+	}
+
+	/** 
+	 * @return		TRUE if the sound is paused, FALSE otherwise. 
+	 */
+	UBOOL IsPaused( void ) const
+	{
+		return( Paused );
+	}
+
+	/** 
+	 * Returns TRUE if reverb should be applied
+	 */
+	UBOOL IsReverbApplied( void ) const 
+	{	
+		return( bReverbApplied ); 
+	}
+
+	/** 
+	 * Returns TRUE if EQ should be applied
+	 */
+	UBOOL IsEQFilterApplied( void ) const 
+	{ 
+		return( WaveInstance->bEQFilterApplied ); 
+	}
+
+	/**
+	 * Set the bReverbApplied variable
+	 */
+	UBOOL SetReverbApplied( UBOOL bHardwareAvailable );
+
+	/**
+	 * Set the StereoBleed variable
+	 */
+	FLOAT SetStereoBleed( void );
+
+	/**
+	 * Set the LFEBleed variable
+	 */
+	FLOAT SetLFEBleed( void );
+
+	/**
+	 * Set the HighFrequencyGain value
+	 */
+	void SetHighFrequencyGain( void );
+
 protected:
 	// Variables.	
 	UAudioDevice*		AudioDevice;
 	FWaveInstance*		WaveInstance;
+
+	/** Cached status information whether we are playing or not. */
+	UBOOL				Playing;
+	/** Cached status information whether we are paused or not. */
+	UBOOL				Paused;
+	/** Cached sound mode value used to detect when to switch outputs. */
+	UBOOL				bReverbApplied;
+	/** The amount of stereo sounds to bleed to the rear speakers */
+	FLOAT				StereoBleed;
+	/** The amount of a sound to bleed to the LFE speaker */
+	FLOAT				LFEBleed;
+	/** Low pass filter setting */
+	FLOAT				HighFrequencyGain;
+
+	/** Last tick when this source was active */
 	INT					LastUpdate;
+	/** Last tick when this source was active *and* had a hearable volume */
+	INT					LastHeardUpdate;
 
 	friend class UAudioDevice;
 };
 
 /*-----------------------------------------------------------------------------
-	USoundCue. 
+	UDrawSoundRadiusComponent. 
 -----------------------------------------------------------------------------*/
 
-struct FSoundNodeEditorData
+class UDrawSoundRadiusComponent : public UDrawSphereComponent
 {
-	INT	NodePosX;
-	INT	NodePosY;
+	DECLARE_CLASS_NOEXPORT( UDrawSoundRadiusComponent, UDrawSphereComponent, 0, Engine );
 
-	friend FArchive& operator<<( FArchive& Ar, FSoundNodeEditorData* EditorData );
+	// UPrimitiveComponent interface.
+	/**
+	 * Creates a proxy to represent the primitive to the scene manager in the rendering thread.
+	 * @return The proxy object.
+	 */
+	virtual FPrimitiveSceneProxy* CreateSceneProxy( void );
+	virtual void UpdateBounds( void );
 };
 
-class USoundCue : public UObject
-{
-	DECLARE_CLASS(USoundCue,UObject,0,Engine)
-
-	class USoundNode*						FirstNode;
-	TMap<USoundNode*,FSoundNodeEditorData>	EditorData; // Editor-specific info (node position etc)
-
-
-	// UObject interface.
-
-	virtual void Serialize( FArchive& Ar );
-
-	// for Browser window
-	void DrawThumbnail( EThumbnailPrimType InPrimType, INT InX, INT InY, struct FChildViewport* InViewport, struct FRenderInterface* InRI, FLOAT InZoom, UBOOL InShowBackground, FLOAT InZoomPct, INT InFixedSz );
-	FThumbnailDesc GetThumbnailDesc( FRenderInterface* InRI, FLOAT InZoom, INT InFixedSz );
-	INT GetThumbnailLabels( TArray<FString>* InLabels );
-
-
-	// USoundCue interface
-
-	// Tool drawing
-	void DrawCue(FRenderInterface* RI, TArray<USoundNode*>& SelectedNodes);
-};
-
-/*-----------------------------------------------------------------------------
-	USoundNodeWave. 
------------------------------------------------------------------------------*/
-
-class USoundNodeWave : public USoundNode
-{
-	DECLARE_CLASS(USoundNodeWave,USoundNode,0,Engine)
-
-    FLOAT				Volume;
-    FLOAT				Pitch;
-	FLOAT				Duration;
-    FName				FileType;
-    TLazyArray<BYTE>	RawData;
-	INT					ResourceID;
-
-	// UObject interface.
-	virtual void Serialize( FArchive& Ar );
-
-	// USoundNode interface.
-	virtual void ParseNodes( class UAudioComponent* AudioComponent, TArray<FWaveInstance*>& WaveInstances );
-	virtual INT GetMaxChildNodes() { return 0; }
-
-	// Browser window.
-	void DrawThumbnail( EThumbnailPrimType InPrimType, INT InX, INT InY, struct FChildViewport* InViewport, struct FRenderInterface* InRI, FLOAT InZoom, UBOOL InShowBackground, FLOAT InZoomPct, INT InFixedSz );
-	FThumbnailDesc GetThumbnailDesc( FRenderInterface* InRI, FLOAT InZoom, INT InFixedSz );
-	INT GetThumbnailLabels( TArray<FString>* InLabels );
-};
+/**  Hash function. Needed to avoid UObject v FResource ambiguity due to multiple inheritance */
+DWORD GetTypeHash( const class USoundNodeWave* A );
 
 /*-----------------------------------------------------------------------------
 	FWaveModInfo. 
@@ -191,9 +286,10 @@ public:
 	// Pointers to variables in the in-memory WAVE file.
 	DWORD* pSamplesPerSec;
 	DWORD* pAvgBytesPerSec;
-	_WORD* pBlockAlign;
-	_WORD* pBitsPerSample;
-	_WORD* pChannels;
+	WORD* pBlockAlign;
+	WORD* pBitsPerSample;
+	WORD* pChannels;
+	WORD* pFormatTag;
 
 	DWORD  OldBitsPerSample;
 
@@ -204,17 +300,11 @@ public:
 	DWORD  SampleDataSize;
 	BYTE*  WaveDataEnd;
 
-	INT	   SampleLoopsNum;
-	FSampleLoop*  pSampleLoop;
-
 	DWORD  NewDataSize;
-	UBOOL  NoiseGate;
 
 	// Constructor.
 	FWaveModInfo()
 	{
-		NoiseGate   = false;
-		SampleLoopsNum = 0;
 	}
 	
 	// 16-bit padding.
@@ -225,20 +315,69 @@ public:
 
 	// Read headers and load all info pointers in WaveModInfo. 
 	// Returns 0 if invalid data encountered.
-	// UBOOL ReadWaveInfo( TArray<BYTE>& WavData );
-	UBOOL ReadWaveInfo( TArray<BYTE>& WavData );
+	UBOOL ReadWaveInfo( BYTE* WaveData, INT WaveDataSize );
+
+	// Validate wave file
+	UBOOL ValidateWaveInfo( BYTE* WaveData, INT WaveDataSize, const TCHAR* FileName, FFeedbackContext* Warn );
 };
+
+#if WITH_TTS
+/*-----------------------------------------------------------------------------
+	FTextToSpeech.
+-----------------------------------------------------------------------------*/
+
+#define TTS_CHUNK_SIZE	71
+
+class FTextToSpeech
+{
+public:
+	FTextToSpeech( void )
+	{
+		bInit = FALSE;
+	}
+
+	~FTextToSpeech( void );
+
+	/** Static callback from TTS engine to feed PCM data to sound system */
+	static SWORD* StaticCallback( SWORD* AudioData, long Flags );
+
+	/** Table used to convert UE3 language extension to TTS language index */
+	static const TCHAR* LanguageConvert[];
+
+	/** Function to convert UE3 language extension to TTS language index */
+	INT GetLanguageIndex( FString& Language );
+
+	/** Initialise the TTS and set the language to the current one */
+	void Init( void );
+
+	/** Write a chunk of data to a buffer */
+	void WriteChunk( SWORD* AudioData );
+
+	/** Convert a line of text into PCM data */
+	void CreatePCMData( USoundNodeWave* Wave );
+
+private:
+	/** Current speaker index (FnxDECtalkVoiceId) */
+	BYTE			CurrentSpeaker;
+
+	UBOOL			bInit;
+
+	SWORD			TTSBuffer[TTS_CHUNK_SIZE];
+	TArray<SWORD>	PCMData;
+
+};
+#endif // WITH TTS
 
 /*-----------------------------------------------------------------------------
 	USoundNode helper macros. 
 -----------------------------------------------------------------------------*/
 
 #define DECLARE_SOUNDNODE_ELEMENT(Type,Name)													\
-	Type& ##Name = *((Type*)(Payload));															\
+	Type& Name = *((Type*)(Payload));															\
 	Payload += sizeof(Type);														
 
 #define DECLARE_SOUNDNODE_ELEMENT_PTR(Type,Name)												\
-	Type* ##Name = (Type*)(Payload);															\
+	Type* Name = (Type*)(Payload);																\
 	Payload += sizeof(Type);														
 
 #define	RETRIEVE_SOUNDNODE_PAYLOAD( Size )														\
@@ -263,7 +402,5 @@ public:
 			Payload = &AudioComponent->SoundNodeData(Offset);									\
 		}
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
 
+#endif //_UNAUDIO_H_

@@ -1,0 +1,366 @@
+/*=============================================================================
+	DeferredLightShaders.usf: 
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "DynamicLightingCommon.usf"
+#include "DeferredLightingCommon.usf"
+
+#if SM5_PROFILE
+
+/** Light parameters */
+float4 LightPositionAndInvRadius;
+float4 LightDirectionAndChannel;
+float2 SpotAngles;
+
+Texture2DMS<float4> LightAttenuationSurface;
+
+/** Fetches the values in the light attenuation buffer. */
+half4 GetLightAttenuationMSAA(float2 UV,uint SampleIndex)
+{
+	float2 SurfaceDimensions;
+	int NumSurfaceSamples;
+	LightAttenuationSurface.GetDimensions(SurfaceDimensions.x,SurfaceDimensions.y,NumSurfaceSamples);
+
+	int2 IntUV = trunc(UV * SurfaceDimensions);
+	
+	return Square(LightAttenuationSurface.Load(IntUV,SampleIndex));
+}
+
+/** Calculates lighting for a given position, normal, etc. */
+float3 GetDynamicLighting(float3 WorldPosition, float3 WorldNormal, float3 CameraVector, float2 InUV, float3 DiffuseColor, float4 SpecularAndPower, float4 LightAttenuation)
+{
+	float3 OutLighting = 0;
+
+	float3 WorldLightVector = LightDirectionAndChannel.xyz;
+	float DistanceAttenuation = 1;
+#if RADIAL_ATTENUATION
+	WorldLightVector = (LightPositionAndInvRadius.xyz - WorldPosition) * LightPositionAndInvRadius.w;
+	DistanceAttenuation = RadialAttenuation(WorldLightVector, LightColorAndFalloffExponent.w);
+#endif
+
+	float SpotFalloff = 1;
+#if SPOT_ATTENUATION
+	SpotFalloff = SpotAttenuation(WorldLightVector.xyz, -LightDirectionAndChannel.xyz, SpotAngles);
+#endif
+	
+#if RADIAL_ATTENUATION || SPOT_ATTENUATION
+	BRANCH
+	if (DistanceAttenuation > 0 && SpotFalloff > 0)
+#endif
+	{
+		float3 WorldLightVectorNormalized = normalize(WorldLightVector);
+		float3 ReflectionVector = reflect(CameraVector, WorldNormal);
+
+		float3 IncidentLighting = PointLightPhong(
+			DiffuseColor, 
+			1,   
+			float3(0,0,0), 
+			DecodeSpecularColor(SpecularAndPower),
+			DecodeSpecularPower(SpecularAndPower), 
+			WorldLightVectorNormalized, 
+			CameraVector, 
+			WorldNormal,
+			ReflectionVector);
+
+		float DistanceFade = 0;
+#if !(RADIAL_ATTENUATION || SPOT_ATTENUATION)
+		DistanceFade = DistanceFromCameraFade(WorldPosition, CameraPositionPS.xyz);
+#endif
+		// Combine the whole scene dominant light shadow with per-object shadows and the light function if one was rendered
+		float3 DynamicShadowing = lerp(1, LightAttenuation.a, DistanceFade) * LightAttenuation.rgb;
+
+		float3 CombinedAttenuation = DistanceAttenuation * SpotFalloff * DynamicShadowing * LightColorAndFalloffExponent.rgb;
+		OutLighting = IncidentLighting * CombinedAttenuation;
+	}
+	return OutLighting;
+}
+
+float4 GetPerPixelLightAttenuation(float2 UV)
+{
+	return Square(tex2Dlod(LightAttenuationTexture, float4(UV, 0, 0)));
+}
+
+float4 GetPerSampleLightAttenuation(float2 UV,uint SampleIndex)
+{
+	return GetLightAttenuationMSAA(UV,SampleIndex);
+}
+
+float4 GetPerPixelDiffuseColor(float2 UV)
+{
+	return tex2Dlod(DiffuseGBufferTexture, float4(UV, 0, 0));
+}
+
+float4 GetPerSampleDiffuseColor(float2 UV,uint SampleIndex)
+{
+	float2 SurfaceDimensions;
+	int NumSurfaceSamples;
+	DiffuseGBufferTextureMS.GetDimensions(SurfaceDimensions.x,SurfaceDimensions.y,NumSurfaceSamples);
+
+	int2 IntUV = trunc(UV * SurfaceDimensions);
+	
+	return DiffuseGBufferTextureMS.Load(IntUV,SampleIndex);
+}
+
+float4 GetPerPixelSpecularAndPower(float2 UV)
+{
+	return tex2Dlod(SpecularGBufferTexture, float4(UV, 0, 0));
+}
+
+float4 GetPerSampleSpecularAndPower(float2 UV,uint SampleIndex)
+{
+	float2 SurfaceDimensions;
+	int NumSurfaceSamples;
+	SpecularGBufferTextureMS.GetDimensions(SurfaceDimensions.x,SurfaceDimensions.y,NumSurfaceSamples);
+
+	int2 IntUV = trunc(UV * SurfaceDimensions);
+	
+	return SpecularGBufferTextureMS.Load(IntUV,SampleIndex);
+}
+
+/** Vertex shader for rendering a directional light using a full screen quad. */
+void DirectionalVertexMain(
+	in float2 InPosition : POSITION,
+	in float2 InUV       : TEXCOORD0,
+	out float2 OutTexCoord : TEXCOORD0,
+	out float3 OutScreenVector : TEXCOORD1,
+	out float4 OutPosition : POSITION
+	)
+{	
+	OutPosition = float4(InPosition, 0, 1);
+	OutTexCoord = InUV;
+	OutScreenVector = MulMatrix(ScreenToWorldMatrix, float4(InPosition, 1, 0)).xyz;	
+}
+
+/** 
+ * Pixel shader for rendering a directional light using a full screen quad. 
+ * If MSAA is enabled, this will be the first pass, which calculates lighting per-pixel, 
+ * And kills the pixel if it is determined to be on a geometry edge, so that it will be processed in the second lighting pass.
+ */
+void DirectionalPixelMain(
+	float2 InUV : TEXCOORD0,
+	float3 ScreenVector : TEXCOORD1,
+	out float4 OutColor : COLOR0
+	)
+{
+	OutColor = 0;
+	float3 CameraVector = normalize(ScreenVector);
+	float4 WorldNormal = tex2Dlod(WorldNormalGBufferTexture, float4(InUV, 0, 0)) * float4(2,2,2,1) - float4(1,1,1,0);
+
+	BRANCH
+	// Only light pixels marked as using deferred shading
+	if (WorldNormal.w > 0)
+	{
+		float4 DiffuseAndLightChannel = GetPerPixelDiffuseColor(InUV);
+
+		BRANCH
+		// Only light pixels with compatible lighting channels
+		if ((int)(DiffuseAndLightChannel.w * 64) & (int)(LightDirectionAndChannel.w))
+		{
+#if DEFERRED_LIGHT_MSAA
+			
+			int Width; 
+			int Height;
+			int Dummy;
+			SceneDepthSurface.GetDimensions(Width, Height, Dummy);
+
+			float MinDepth = 100000000000000000.0f;
+			float MaxDepth = 0;
+
+			float2 ScreenUVMS = InUV * float2(Width, Height);
+			UNROLL
+			for (int SampleIndex = 0; SampleIndex < NumMSAASamples; SampleIndex++)
+			{
+				// Load the GBuffer values of each sample
+				float EncodedDepth = SceneDepthSurface.Load(ScreenUVMS, SampleIndex);
+				float SampleDepth = ConvertFromDeviceZ(EncodedDepth);
+				// Track the min and max MSAA sample depths
+				MinDepth = min(MinDepth, SampleDepth);
+				MaxDepth = max(MaxDepth, SampleDepth);
+			}
+
+			// If the MSAA samples are significantly different, kill this pixel so that it will be processed in the second pass
+			// Use the length of the resolved normal to determine if any of the subsamples were different
+			if (length(WorldNormal.xyz) < .95f
+				|| abs(MinDepth - MaxDepth) / (.5f * (MinDepth + MaxDepth)) > .04f)
+			{
+				discard;
+			}
+			else
+			{
+				// The MSAA samples are nearly the same, shade the average
+				float3 WorldPosition = ScreenVector * MaxDepth + CameraPositionPS.xyz;
+				OutColor.rgb = GetDynamicLighting(WorldPosition, WorldNormal.xyz, CameraVector, InUV, DiffuseAndLightChannel.xyz, GetPerPixelSpecularAndPower(InUV), GetPerPixelLightAttenuation(InUV));
+			}
+
+#else
+
+			float SceneDepth = CalcSceneDepth(InUV);
+			float3 WorldPosition = ScreenVector * SceneDepth + CameraPositionPS.xyz;
+
+			OutColor.rgb = GetDynamicLighting(WorldPosition, WorldNormal.xyz, CameraVector, InUV, DiffuseAndLightChannel.xyz, GetPerPixelSpecularAndPower(InUV), GetPerPixelLightAttenuation(InUV));
+#endif // #if DEFERRED_LIGHT_MSAA
+		}
+	}
+}
+
+/** Renders a directional light using a full screen quad, shading per MSAA sample. */
+EARLYDEPTHSTENCIL
+void DirectionalSampleMain(
+	float2 InUV : TEXCOORD0,
+	float3 ScreenVector : TEXCOORD1,
+	// Taking SV_SampleIndex as an input causes the shader to be run once per sample
+	uint SampleIndex : SV_SampleIndex,
+	out float4 OutColor : COLOR0
+	)
+{
+	OutColor = 0;
+	
+	int Width; 
+	int Height;
+	int Dummy;
+	WorldNormalGBufferTextureMS.GetDimensions(Width, Height, Dummy);
+
+	float4 WorldNormal = WorldNormalGBufferTextureMS.Load(InUV * float2(Width, Height), SampleIndex) * float4(2,2,2,1) - float4(1,1,1,0);
+
+	BRANCH
+	if (WorldNormal.w > 0)
+	{
+		float4 DiffuseAndLightChannel = GetPerSampleDiffuseColor(InUV,SampleIndex);
+
+		BRANCH
+		if ((int)(DiffuseAndLightChannel.w * 64) == (int)(LightDirectionAndChannel.w))
+		{
+			float EncodedDepth = SceneDepthSurface.Load(InUV * float2(Width, Height), SampleIndex);
+			float3 WorldPosition = ScreenVector * ConvertFromDeviceZ(EncodedDepth) + CameraPositionPS.xyz;
+			float3 CameraVector = normalize(ScreenVector);
+
+			OutColor.rgb = GetDynamicLighting(WorldPosition, WorldNormal.xyz, CameraVector, InUV, DiffuseAndLightChannel.xyz, GetPerSampleSpecularAndPower(InUV,SampleIndex), GetPerSampleLightAttenuation(InUV,SampleIndex));
+		}
+	}
+}
+
+/** Vertex shader for rendering a point or spot light using approximate bounding geometry. */
+void RadialVertexMain(
+	in float3 InPosition : POSITION,
+	out float4 OutScreenPosition : TEXCOORD0,
+	out float4 OutPosition : POSITION
+	)
+{	
+	OutScreenPosition = OutPosition = MulMatrix(ViewProjectionMatrix, float4(InPosition, 1));
+}
+
+/** 
+ * Pixel shader for rendering a point or spot light using approximate bounding geometry. 
+ * If MSAA is enabled, this will be the first pass, which calculates lighting per-pixel, 
+ * And kills the pixel if it is determined to be on a geometry edge, so that it will be processed in the second lighting pass.
+ */
+void RadialPixelMain(
+	float4 InScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	OutColor = 0;
+	float2 ScreenUV = InScreenPosition.xy / InScreenPosition.w * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+	float4 WorldNormal = tex2Dlod(WorldNormalGBufferTexture, float4(ScreenUV, 0, 0)) * float4(2,2,2,1) - float4(1,1,1,0);
+
+	BRANCH
+	// Only light pixels marked as using deferred shading
+	if (WorldNormal.w > 0)
+	{
+		float4 DiffuseAndLightChannel = GetPerPixelDiffuseColor(ScreenUV);
+
+		//BRANCH
+		// Only light pixels with compatible lighting channels
+		if ((int)(DiffuseAndLightChannel.w * 64) & (int)(LightDirectionAndChannel.w))
+		{
+#if DEFERRED_LIGHT_MSAA
+
+			int Width; 
+			int Height;
+			int Dummy;
+			SceneDepthSurface.GetDimensions(Width, Height, Dummy);
+
+			float MinDepth = 100000000000000000.0f;
+			float MaxDepth = 0;
+
+			float2 ScreenUVMS = ScreenUV * float2(Width, Height);
+			UNROLL
+			for (int SampleIndex = 0; SampleIndex < NumMSAASamples; SampleIndex++)
+			{
+				// Load the GBuffer values of each sample
+				float EncodedDepth = SceneDepthSurface.Load(ScreenUVMS, SampleIndex);
+				float SampleDepth = ConvertFromDeviceZ(EncodedDepth);
+				MinDepth = min(MinDepth, SampleDepth);
+				MaxDepth = max(MaxDepth, SampleDepth);
+			}
+
+			// If the MSAA samples are significantly different, kill this pixel
+			if (length(WorldNormal.xyz) < .95f
+				|| abs(MinDepth - MaxDepth) / (.5f * (MinDepth + MaxDepth)) > .04f)
+			{
+				discard;
+			}
+			else
+			{
+				// The MSAA samples are nearly the same, shade the average
+				float3 WorldPosition = MulMatrix(ScreenToWorldMatrix, float4(InScreenPosition.xy / InScreenPosition.w * MaxDepth, MaxDepth, 1)).xyz;
+				float3 CameraVector = normalize(WorldPosition - CameraPositionPS.xyz);
+
+				OutColor.rgb = GetDynamicLighting(WorldPosition, WorldNormal.xyz, CameraVector, ScreenUV, DiffuseAndLightChannel.xyz, GetPerPixelSpecularAndPower(ScreenUV), GetPerPixelLightAttenuation(ScreenUV));
+			}
+
+#else
+
+			float SceneDepth = CalcSceneDepth(ScreenUV);
+			float3 WorldPosition = MulMatrix(ScreenToWorldMatrix, float4(InScreenPosition.xy / InScreenPosition.w * SceneDepth, SceneDepth, 1)).xyz;
+			float3 CameraVector = normalize(WorldPosition - CameraPositionPS.xyz);
+
+			OutColor.rgb = GetDynamicLighting(WorldPosition, WorldNormal.xyz, CameraVector, ScreenUV, DiffuseAndLightChannel.xyz, GetPerPixelSpecularAndPower(ScreenUV), GetPerPixelLightAttenuation(ScreenUV));
+
+#endif // #if DEFERRED_LIGHT_MSAA
+		}
+	}
+}
+
+/** Renders a point or spot light using approximate bounding geometry, shading per MSAA sample. */
+EARLYDEPTHSTENCIL
+void RadialSampleMain(
+	float4 InScreenPosition : TEXCOORD0,
+	// Taking SV_SampleIndex as an input causes the shader to be run once per sample
+	uint SampleIndex : SV_SampleIndex,
+	out float4 OutColor : COLOR0
+	)
+{
+	OutColor = 0;
+
+	int Width; 
+	int Height;
+	int Dummy;
+	WorldNormalGBufferTextureMS.GetDimensions(Width, Height, Dummy);
+
+	float2 ScreenUV = InScreenPosition.xy / InScreenPosition.w * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+	float4 WorldNormal = WorldNormalGBufferTextureMS.Load(ScreenUV * float2(Width, Height), SampleIndex) * float4(2,2,2,1) - float4(1,1,1,0);
+
+	BRANCH
+	// Only light pixels marked as using deferred shading
+	if (WorldNormal.w > 0)
+	{
+		float4 DiffuseAndLightChannel = GetPerSampleDiffuseColor(ScreenUV,SampleIndex);
+
+		BRANCH
+		// Only light pixels with compatible lighting channels
+		if ((int)(DiffuseAndLightChannel.w * 64) & (int)(LightDirectionAndChannel.w))
+		{
+			float EncodedDepth = SceneDepthSurface.Load(ScreenUV * float2(Width, Height), SampleIndex);
+			float SceneDepth = ConvertFromDeviceZ(EncodedDepth);
+			float3 WorldPosition = MulMatrix(ScreenToWorldMatrix, float4(InScreenPosition.xy / InScreenPosition.w * SceneDepth, SceneDepth, 1)).xyz;
+			float3 CameraVector = normalize(WorldPosition - CameraPositionPS.xyz);
+
+			OutColor.rgb = GetDynamicLighting(WorldPosition, WorldNormal.xyz, CameraVector, ScreenUV, DiffuseAndLightChannel.xyz, GetPerSampleSpecularAndPower(ScreenUV,SampleIndex), GetPerSampleLightAttenuation(ScreenUV,SampleIndex));
+		}
+	}
+}
+
+#endif // #if SM5_PROFILE

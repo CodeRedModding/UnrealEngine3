@@ -1,0 +1,49 @@
+﻿<!--
+  Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+-->
+<UserControl x:Class="UnrealFrontend.AddMapsSearch"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	x:Name="This"
+	FocusManager.IsFocusScope="True"
+	KeyboardNavigation.TabNavigation="Cycle"
+	KeyDown="OnKeyDown"
+    >
+
+	<Border x:Name="mAddMapsPopup" Background="#AA000000">
+		<Border Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}" BorderThickness="1" BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
+				HorizontalAlignment="Center" Margin="20">
+
+			<Grid Margin="5">
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="*" />
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="Auto" />
+				</Grid.RowDefinitions>
+					<TextBox Grid.Row="0" x:Name="mFilterTextbox" TextChanged="OnAddMapsTextChanged" DockPanel.Dock="Top" />
+					<TextBlock Grid.Row="1" TextAlignment="Center" Text="[* and ? are wildcards]" DockPanel.Dock="Top" />
+					<Button Grid.Row="2" Content="Use txt file for filtering..." Click="OnImportMapsList" DockPanel.Dock="Top" Margin="3"	/>
+					<ListView Grid.Row="3" x:Name="mMapsAutocompleteList" ItemsSource="{Binding ElementName=This, Path=MapsAutocompleteList}" DockPanel.Dock="Top"
+							  MouseDoubleClick="OnMapDoubleClicked">
+						<ListView.ItemTemplate>
+							<DataTemplate>
+								<TextBlock Text="{Binding}" />
+							</DataTemplate>
+						</ListView.ItemTemplate>
+					</ListView>
+
+					<TextBlock Grid.Row="4" x:Name="mSummary" TextAlignment="Center" Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" DockPanel.Dock="Bottom"  />
+
+					<UniformGrid Grid.Row="5" Columns="2" Rows="1" DockPanel.Dock="Bottom">
+						<Button Content="Add Selected Maps" Click="OnAddSelectedMaps" Margin="5" />
+						<Button Content="Cancel" Click="OnCancel" Margin="5" />
+					</UniformGrid>
+
+			</Grid>
+		</Border>
+	</Border>
+	
+</UserControl>

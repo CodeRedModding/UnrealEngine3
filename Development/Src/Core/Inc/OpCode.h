@@ -1,10 +1,10 @@
 /*=============================================================================
 	OpCode.h: UDebugger bytecode debug information.
-	Copyright 1997-2004 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Ron Prestenback
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
+
+#ifndef __OPCODE_H__
+#define __OPCODE_H__
 
 /*-----------------------------------------------------------------------------
 	UDebugger Opcodes.
@@ -22,6 +22,7 @@ enum EDebugInfo
 	DI_NewStack				= 0x20,
 	DI_NewStackLatent		= 0x21,
 	DI_NewStackLabel		= 0x22,
+	DI_NewStackState		= 0x23,
 	DI_PrevStack			= 0x30,
 	DI_PrevStackLatent		= 0x31,
 	DI_PrevStackLabel		= 0x32,
@@ -39,11 +40,10 @@ enum EDebugInfo
 	DI_ContinueLoop			= 0x70,
 	DI_ContinueForeach		= 0x71,
 	DI_ContinueFor			= 0x72,
+	DI_FilterEditorOnly		= 0x73,
 	DI_MAX					= 0xFF,
 };
 
-TCHAR* GetOpCodeName( BYTE OpCode );
+const TCHAR* GetOpCodeName( BYTE OpCode );
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
+#endif

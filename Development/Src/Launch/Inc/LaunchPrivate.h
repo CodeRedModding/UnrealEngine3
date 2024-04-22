@@ -1,64 +1,58 @@
 /*=============================================================================
 	LaunchPrivate.h: Unreal launcher.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-Revision history:
-	* Created by Tim Sweeney.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
-#define DEMOGAME	1
-#define WARGAME		2
-#define UTGAME		3
+#if _WINDOWS || PLATFORM_MACOSX
+
+#if WITH_EDITOR //have to have the editor compiled in at least
+#define HAVE_WXWIDGETS 1
+#else
+#define HAVE_WXWIDGETS 0
+#endif
 
 //@warning: this needs to be the very first include
+#if _WINDOWS && WITH_EDITOR
 #include "UnrealEd.h"
+#endif
 
 #include "Engine.h"
-#include "EngineMaterialClasses.h"
-#include "EnginePhysicsClasses.h"
-#include "EngineSequenceClasses.h"
-#include "EngineSoundClasses.h"
-#include "EngineInterpolationClasses.h"
-#include "EngineParticleClasses.h"
-#include "EngineAIClasses.h"
-#include "EngineAnimClasses.h"
-#include "UnTerrain.h"
-#include "UnCodecs.h"
 #include "UnIpDrv.h"
-#if   GAMENAME == DEMOGAME
-#include "DemoGameClasses.h"
-#elif GAMENAME == WARGAME
-#include "WarfareGameClasses.h"
-#elif GAMENAME == UTGAME
-#include "UTGameClasses.h"
-#else
-	#error Hook up your game name here
-#endif
-#include "EditorPrivate.h"
-#include "ALAudio.h"
-#include "D3DDrv.h"
+#include "DemoRecording.h"
+
+#if _WINDOWS
 #include "WinDrv.h"
-#include "Window.h"
+#endif
+
+#include "LaunchGames.h"
 #include "FMallocAnsi.h"
 #include "FMallocDebug.h"
-#include "FMallocWindows.h"
-#include "FMallocDebugProxyWindows.h"
+#include "FMallocProfiler.h"
+#include "ScriptCallstackDecoder.h"
+#include "MallocProfilerEx.h"
+#include "FMallocProxySimpleTrack.h"
+#include "FMallocProxySimpleTag.h"
 #include "FMallocThreadSafeProxy.h"
-#include "FOutputDeviceDebug.h"
-#include "FOutputDeviceAnsiError.h"
 #include "FFeedbackContextAnsi.h"
-#include "FOutputDeviceFile.h"
-#include "FOutputDeviceWindowsError.h"
-#include "FOutputDeviceConsoleWindows.h"
-#include "FFeedbackContextWindows.h"
-#include "FFileManagerWindows.h"
 #include "FCallbackDevice.h"
 #include "FConfigCacheIni.h"
 #include "LaunchEngineLoop.h"
+
+#if _WINDOWS
+#if _WIN64
+#include "FMallocTBB.h"
+#else
+#include "MallocBinned.h"
+#endif
+#include "FFeedbackContextWindows.h"
+#include "FFileManagerWindows.h"
 #include "UnThreadingWindows.h"
+#elif PLATFORM_MACOSX
+#include "FFileManagerMac.h"
+#include "MacThreading.h"
+#include "AsyncLoadingMac.h"
+#else
+#error Please define your platform.
+#endif
 
-#define KEEP_ALLOCATION_BACKTRACE	0
-
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
+#endif

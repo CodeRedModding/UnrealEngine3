@@ -1,0 +1,38 @@
+﻿@{
+    ViewBag.Title = "Build System";
+    ViewBag.Description = "UE4 Build Times";
+}
+
+
+<section>
+    <div class="grid6">
+        <span class="linkBack">
+            @Html.ActionLink("Build Status", "Status", "Build")
+        </span>
+
+        <span class="fr">
+            <a href="#example">Example Game Win64</a> |
+            <!--<a href="#gear">Gear Game Win64</a> |-->
+            <a href="#fortnite">Fortnite Game Win64</a> |
+            <a href="#udk">UDK Game Win64</a>
+        </span>
+    </div>
+</section>
+
+<section class="clearfix">
+    <div class="grid6">
+        <a name="example"></a><h2>Example Game Win64</h2>
+        <p>
+            Project build times over the last <strong>60</strong> days:
+            <span class="fr">[ Download as CSV - @Html.ActionLink("60 Days", "BuildTimes", "Export", new { counter = 1437, days = 60 }, null) | @Html.ActionLink("All Time", "BuildTimes", "Export", new { counter = 1437, days = 9999 }, null) ]</span>
+            <img class="chart" src="@Url.RouteUrl(new { action = "UE4BuildTimes", controller = "Chart", counter = 1437, days = 60 })" alt="Chart" />
+        </p>
+
+        <a name="udk"></a><h2>UDK Game Win64</h2>
+        <p>
+            Project build times over the last <strong>60</strong> days:
+            <span class="fr">[ Download as CSV - @Html.ActionLink("60 Days", "BuildTimes", "Export", new { counter = 1438, days = 60 }, null) | @Html.ActionLink("All Time", "BuildTimes", "Export", new { counter = 1438, days = 9999 }, null) ]</span>
+            <img class="chart" src="@Url.RouteUrl(new { action = "UE4BuildTimes", controller = "Chart", counter = 1438, days = 60 })" alt="Chart" />
+        </p>
+    </div>
+</section>

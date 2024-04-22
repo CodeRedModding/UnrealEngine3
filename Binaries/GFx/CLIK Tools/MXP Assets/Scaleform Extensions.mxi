@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<macromedia-extension
+	 name="Scaleform Extensions"
+	 version="1.0.4"
+	 type="other"
+	 requires-restart="true">
+
+	<author name="Scaleform Corp." />
+
+	<products>
+		<product name="Flash" version="9" primary="true" />
+	</products>
+
+	<description>
+	<![CDATA[
+	Scaleform Extensions: Includes Scaleform Launcher and Cut Bitmap into Scale9 Slices command.<br><br>This extension is compatible with Flash CS3 and higher.<br>
+	]]>
+	</description>
+
+	<ui-access>
+	<![CDATA[
+Scaleform Launcher<br>
+<br>
+The Scaleform Launcher will publish SWF files directly to Scaleform GFX players. Includes support for multiple players, and command-line arguments.<br>
+Window > Other Panels > Scaleform Launcher<br>
+Commands > SF - Publish in GFX Player (can be bound to shortcut)<br>
+<br>
+Cut Bitmap into Scale9 Slices Command<br>
+<br>
+The Cut Bitmap into Scale9 Slices command prepares bitmaps for use with Scale9 by slicing a target bitmap into 9 slices.  It also preserves the original bitmap in a guide layer to make it easier the adjust and reapply the command.  Please note that this command will only work in Flash CS4 and CS5.
+<br>
+	]]>
+	</ui-access>
+
+	<license-agreement>
+	<![CDATA[
+	
+	]]>
+	</license-agreement>
+
+	<files>			
+		<!-- installs commands -->
+		<file source="jsfl\SF - Publish in GFX Player.jsfl" destination="$flash/Commands" />
+		<file source="jsfl\SF - Cut Bitmap into Scale9 Slices.jsfl" destination="$flash/Commands" />
+	
+		<!-- install the locale xml files-->
+		<file name="locale\en.xml" destination="$flash/Scaleform/locale" />
+			
+		<!-- install launcher resources -->
+		<file name="jsfl\LaunchPanel.jsfl" destination="$flash/Scaleform/jsfl" />
+		<file name="jsfl\UserPreferences.jsfl" destination="$flash/Scaleform/jsfl" />
+		<file name="xml\Publish.swf" destination="$flash/Scaleform/xml" />
+		<file name="xml\publish.xml" destination="$flash/Scaleform/xml" />
+		<file name="Scaleform Launcher.swf" destination="$flash/WindowSWF" />	
+	</files>
+
+</macromedia-extension>

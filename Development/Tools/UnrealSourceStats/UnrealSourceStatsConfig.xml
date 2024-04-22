@@ -1,0 +1,120 @@
+<?xml version="1.0"?>
+<UnrealSourceStatsConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+  <CodeBases>
+
+
+    <CodeBaseConfig>
+      <ShortName>UE1</ShortName>
+      <BaseFolderName>D:\Diff\UE1</BaseFolderName>
+      <FileNamePatterns>
+        <string>*.c</string>
+        <string>*.cpp</string>
+        <string>*.asm</string>
+        <string>*.h</string>
+        <string>*.inl</string>
+        <string>*.uc</string>
+        <string>*.frm</string>
+        <string>*.bas</string>
+        <string>*.cls</string>
+        <string>*.cs</string>
+      </FileNamePatterns>
+      <SubFoldersToExclude>
+        <string>/DirectX6</string>
+        <string>/Help</string>
+        <string>/WinDrv/DirectX3</string>
+        <string>/WinDrv/DirectX5</string>
+      </SubFoldersToExclude>
+    </CodeBaseConfig>
+
+
+    <CodeBaseConfig>
+      <ShortName>UE2</ShortName>
+      <BaseFolderName>D:\Diff\UE2</BaseFolderName>
+      <FileNamePatterns>
+        <string>*.c</string>
+        <string>*.cpp</string>
+        <string>*.asm</string>
+        <string>*.h</string>
+        <string>*.inl</string>
+        <string>*.uc</string>
+        <string>*.frm</string>
+        <string>*.bas</string>
+        <string>*.cls</string>
+        <string>*.cs</string>
+      </FileNamePatterns>
+      <SubFoldersToExclude>
+        <string>/ALAudio/MP3</string>
+        <string>/CD_More</string>
+        <string>/DirectX8</string>
+        <string>/DirectX9</string>
+        <string>/DirectX9_AMD64</string>
+        <string>/DivX</string>
+        <string>/Fonts</string>
+        <string>/Help</string>
+        <string>/IFC</string>
+        <string>/ImpersonatorLib</string>
+        <string>/Karma</string>
+        <string>/KarmaData</string>
+        <string>/Manual</string>
+        <string>/metoolkit</string>
+        <string>/metoolkit_dummy</string>
+        <string>/Microsoft Platform SDK for Windows XP SP2</string>
+        <string>/MySQL</string>
+        <string>/nvDXT</string>
+        <string>/OpenAL</string>
+        <string>/Pixomatic</string>
+        <string>/SDL12</string>
+        <string>/Speech</string>
+        <string>/Speex</string>
+        <string>/Tools</string>
+        <string>/unxutils</string>
+        <string>/Vorbis</string>
+        <string>/zlib</string>
+      </SubFoldersToExclude>
+    </CodeBaseConfig>
+
+
+    <CodeBaseConfig>
+      <ShortName>UE3</ShortName>
+      <BaseFolderName>D:\Diff\UE3</BaseFolderName>
+      <FileNamePatterns>
+        <string>*.c</string>
+        <string>*.cpp</string>
+        <string>*.asm</string>
+        <string>*.h</string>
+        <string>*.inl</string>
+        <string>*.uc</string>
+        <string>*.frm</string>
+        <string>*.bas</string>
+        <string>*.cls</string>
+        <string>*.cs</string>
+      </FileNamePatterns>
+      <SubFoldersToExclude>
+        <string>/Binaries</string>
+        <string>/Development/External</string>
+        <string>/Development/Fonts</string>
+        <string>/Development/Install</string>
+        <string>/Development/Src/PS3/External</string>
+        <string>/Development/Src/Xenon/External</string>
+
+        <string>/Development/Src/GearGame</string>
+        <string>/Development/Src/GearGameContent</string>
+        <string>/Development/Src/UTGame</string>
+        <string>/Development/Src/UTGameContent</string>
+        <string>/GearGame</string>
+        <string>/UTGame</string>
+
+      </SubFoldersToExclude>
+    </CodeBaseConfig>
+
+
+  </CodeBases>
+
+  <TrimWhiteSpace>true</TrimWhiteSpace>
+  <IgnoreEmptyLines>false</IgnoreEmptyLines>
+  <IgnoreCommentLines>false</IgnoreCommentLines>
+  <IgnoreBraceLines>false</IgnoreBraceLines>
+  <IgnoreAllWhiteSpace>false</IgnoreAllWhiteSpace>
+
+</UnrealSourceStatsConfig>

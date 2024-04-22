@@ -1,0 +1,352 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+OUT_BUILTIN(vec4, gl_FragColor, COLOR0)
+
+
+////////////////////////
+// Conditions
+////////////////////////
+
+#define NEED_PIXEL_WORLD_POSITION 0
+#define NEED_MASK_TEXTURE 0
+#define NEED_EMISSIVE_TEXTURE 0
+
+
+#if (ALPHA_VALUE_SOURCE >= ALPHA_VALUE_SOURCE_MASK_RED) && (ALPHA_VALUE_SOURCE <= ALPHA_VALUE_SOURCE_MASK_BLUE)
+	#undef NEED_MASK_TEXTURE
+	#define NEED_MASK_TEXTURE 1
+#endif
+
+#if USE_HEIGHT_FOG
+	#undef NEED_PIXEL_WORLD_POSITION
+	#define NEED_PIXEL_WORLD_POSITION 1
+#endif
+
+#if USE_EMISSIVE
+	#if EMISSIVE_COLOR_SOURCE == EMISSIVE_COLOR_SOURCE_EMISSIVE_TEXTURE
+		#undef NEED_EMISSIVE_TEXTURE
+		#define NEED_EMISSIVE_TEXTURE 1
+	#endif
+
+	#if (EMISSIVE_MASK_SOURCE >= EMISSIVE_MASK_SOURCE_MASK_TEXTURE_RED) && (EMISSIVE_MASK_SOURCE <= EMISSIVE_MASK_SOURCE_MASK_TEXTURE_ALPHA)
+		#undef NEED_MASK_TEXTURE
+		#define NEED_MASK_TEXTURE 1
+	#endif
+
+	#if EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_NORMAL_TEXTURE_ALPHA
+		//#undef NEED_NORMAL_TEXTURE
+		//#define NEED_NORMAL_TEXTURE 1
+	#endif
+
+	#if (EMISSIVE_MASK_SOURCE >= EMISSIVE_MASK_SOURCE_EMISSIVE_TEXTURE_RED) && (EMISSIVE_MASK_SOURCE <= EMISSIVE_MASK_SOURCE_EMISSIVE_TEXTURE_ALPHA)
+		#undef NEED_EMISSIVE_TEXTURE
+		#define NEED_EMISSIVE_TEXTURE 1
+	#endif
+#endif
+
+#if USE_UNIFORM_COLOR_MULTIPLY
+	#if (COLOR_MULTIPLY_SOURCE >= COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_RED) && (COLOR_MULTIPLY_SOURCE <= COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_ALPHA)
+		#undef NEED_MASK_TEXTURE
+		#define NEED_MASK_TEXTURE 1
+	#endif
+#endif
+
+
+////////////////////////
+// Variables
+////////////////////////
+
+UNIFORM_SAMPLER2D(TextureBase, TEXUNIT0);
+
+UNIFORM_MEDIUM( float, MobileOpacityMultiplier);
+
+IN_VARYING_DEFAULT(vec4, Interp_TexCoord, TEXCOORD0);
+IN_VARYING_MEDIUM(vec4, Interp_Color, COLOR0 );
+
+#if SUBUV_PARTICLES
+	IN_VARYING_LOW(float, Interp_BlendAlpha, TEXCOORD1);
+#endif
+
+
+#if USE_HEIGHT_FOG
+	/** Shader parameters shared between exponential and multi-layer height fog, to reduce constant register usage. */
+	UNIFORM_HIGH(vec4,FogDistanceScale);
+	UNIFORM_HIGH(vec4,FogExtinctionDistance);
+	UNIFORM_HIGH(vec4,FogStartDistance);
+	UNIFORM_HIGH(vec4,FogMinHeight);
+	UNIFORM_HIGH(vec4,FogMaxHeight);
+	UNIFORM_HIGH(vec4,FogInScattering)[4];
+#endif
+	
+#if NEED_PIXEL_WORLD_POSITION
+    IN_VARYING_MEDIUM(vec3, VarWorldPosition, TODO);
+#endif
+
+// Embodies various global color changes (i.e. full screen effects, fog)
+IN_VARYING_LOW( vec4, GlobalEffectColorAndAmount, COLOR1 );
+
+#if USE_EMISSIVE
+	UNIFORM_LOW(vec4, ConstantEmissiveColor);
+
+	#if EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_RED || EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_GREEN || EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_BLUE || EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_ALPHA
+		IN_VARYING_LOW(float, EmissiveMask, TODO);
+	#endif
+#endif
+
+#if NEED_MASK_TEXTURE
+	IN_VARYING_HIGH(vec2, UVMask, TEXCOORD6);
+	UNIFORM_SAMPLER2D(TextureMask, TEXUNIT5);
+#endif
+
+#if NEED_EMISSIVE_TEXTURE
+	UNIFORM_SAMPLER2D(TextureEmissive, TEXUNIT6);
+#endif
+
+#if USE_UNIFORM_COLOR_MULTIPLY
+	IN_VARYING_LOW(vec4, ColorMultiply, TEXCOORD5);
+#endif
+
+
+////////////////////////
+// Implementation
+////////////////////////
+
+#if USE_HEIGHT_FOG
+	/** calculate ratio of distance between world z height and relative fog height */
+	vec4 LinePlaneIntersection (vec3 RelativeB,vec4 RelativeZ)
+	{
+		return RelativeZ / (abs(RelativeB.z) <= 0.001 ? 0.001 : RelativeB.z);
+	}
+
+	mediump vec4 CalculateHeightFog (vec3 WorldPosition)
+	{
+		vec3  WorldVector = WorldPosition.xyz;
+		float Distance = length(WorldVector);
+
+			         // maxfog - camera / z height
+		vec4         MinHeightPercent = LinePlaneIntersection(WorldVector,FogMinHeight);
+			         // minfog - camera / z height
+		vec4         MaxHeightPercent = LinePlaneIntersection(WorldVector,FogMaxHeight);
+			         // fog layer distance based on % over max/min fog heights
+		mediump vec4 LayerDistance = max(vec4(0.0,0.0,0.0,0.0),Distance - FogStartDistance) * abs(saturate(MaxHeightPercent) - saturate(MinHeightPercent));
+			         // clamp anything beyond the extinction distance to 0 scattering
+			         // scattering falloff is exponential based on normalized layer distance
+		mediump vec4 Scattering = mix(vec4(0,0,0,0),exp2(FogDistanceScale * LayerDistance),vecLessThan(LayerDistance,FogExtinctionDistance));
+			         // ratio of the inscattering color to be used
+		mediump vec4 InScattering = Scattering - 1.0;
+
+#if 0
+		mediump vec4 Fog = vec4(0,0,0,1);
+
+		for(int LayerIndex = 0;LayerIndex < 4;LayerIndex++)
+		{
+			Fog *= Scattering[LayerIndex];
+			Fog.rgb += InScattering[LayerIndex] * FogInScattering[LayerIndex].xyz;
+		}
+#else
+		// Workaround for height-fog not working or working differently on various iOS versions.
+
+		mediump vec4 Fog;
+		Fog.a = Scattering.x;
+		Fog.rgb = InScattering.x * FogInScattering[0].xyz;
+
+		Fog *= Scattering.y;
+		Fog.rgb += InScattering.y * FogInScattering[1].xyz;
+
+		Fog *= Scattering.z;
+		Fog.rgb += InScattering.z * FogInScattering[2].xyz;
+
+		Fog *= Scattering.w;
+		Fog.rgb += InScattering.w * FogInScattering[3].xyz;
+#endif
+		return Fog;
+	}
+#endif
+
+
+PIXEL_MAIN
+{
+	// Calculate color
+	#if SUBUV_PARTICLES
+		lowp vec4 BaseColor1 = texture2D(TextureBase, Interp_TexCoord.xy);
+		lowp vec4 BaseColor2 = texture2D(TextureBase, Interp_TexCoord.zw);
+		lowp vec4 BaseColor = mix(BaseColor1, BaseColor2, Interp_BlendAlpha);
+	#else
+		#if USE_BASE_TEX_COORD_XFORM
+			lowp vec4 BaseColor = texture2D(TextureBase, Interp_TexCoord.zw);
+		#else
+			lowp vec4 BaseColor = texture2D(TextureBase, Interp_TexCoord.xy);
+		#endif
+	#endif	
+
+	#if NEED_MASK_TEXTURE
+		lowp vec4 MaskTextureColor = texture2D(TextureMask, UVMask.xy);
+		lowp vec4 MaskTextureColorSRGB = HANDLE_SRGB_READ(MaskTextureColor);
+	#endif
+
+	// Select alpha source
+	lowp float AlphaVal = BaseColor.a;
+	#if ALPHA_VALUE_SOURCE == ALPHA_VALUE_SOURCE_MASK_RED
+	{
+		AlphaVal = MaskTextureColor.r;
+	}
+	#elif ALPHA_VALUE_SOURCE == ALPHA_VALUE_SOURCE_MASK_GREEN
+	{
+		AlphaVal = MaskTextureColor.g;
+	}
+	#elif ALPHA_VALUE_SOURCE == ALPHA_VALUE_SOURCE_MASK_BLUE
+	{
+		AlphaVal = MaskTextureColor.b;
+	}
+	#else
+	{
+		//AlphaVal = BaseColor.a;
+	}
+	#endif
+
+	// Alpha kill if enabled
+	ALPHAKILL(AlphaVal)
+
+	BaseColor.xyz = HANDLE_SRGB_READ( BaseColor.xyz );
+
+	lowp vec4 PolyColor = vec4(BaseColor.rgb, AlphaVal);
+
+	// Texture Samples
+	#if NEED_EMISSIVE_TEXTURE
+		lowp vec4 EmissiveTextureColor;
+
+		highp vec2 EmissiveTexCoord;
+
+		#if USE_EMISSIVE_TEX_COORD_XFORM
+			EmissiveTexCoord = Interp_TexCoord.zw;
+		#else
+			EmissiveTexCoord = Interp_TexCoord.xy;
+		#endif
+
+		EmissiveTextureColor = texture2DBias( TextureEmissive, EmissiveTexCoord, DEFAULT_LOD_BIAS );
+		EmissiveTextureColor.xyz = HANDLE_SRGB_READ( EmissiveTextureColor.xyz );
+	#endif
+
+	// Emissive masking
+	#if USE_EMISSIVE
+	{
+		lowp vec3 Emissive;
+		
+		// Grab the emissive color
+		#if EMISSIVE_COLOR_SOURCE == EMISSIVE_COLOR_SOURCE_CONSTANT
+			Emissive = ConstantEmissiveColor.rgb;
+		#else
+			#if EMISSIVE_COLOR_SOURCE == EMISSIVE_COLOR_SOURCE_EMISSIVE_TEXTURE
+				Emissive = EmissiveTextureColor.rgb;
+			#elif EMISSIVE_COLOR_SOURCE == EMISSIVE_COLOR_SOURCE_BASE_TEXTURE
+				Emissive = BaseColor.rgb;
+			#endif
+			
+			// The Constant acts as a blend color when using other sources. 
+			// Allowing the user to more easily control the final emissive color.
+			Emissive *= ConstantEmissiveColor.rgb;
+		#endif
+		
+		// The constants alpha channel acts as the emissive outputs weight
+		Emissive *= ConstantEmissiveColor.a;
+
+		// Apply emissive masking
+		#if EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_BASE_TEXTURE_RED
+			Emissive *= BaseColor.r;
+		#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_BASE_TEXTURE_GREEN
+			Emissive *= BaseColor.g;
+		#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_BASE_TEXTURE_BLUE
+			Emissive *= BaseColor.b;
+		#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_BASE_TEXTURE_ALPHA
+			Emissive *= BaseColor.a;
+		#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_MASK_TEXTURE_RED
+			Emissive *= MaskTextureColor.r;
+		#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_MASK_TEXTURE_GREEN
+			Emissive *= MaskTextureColor.g;
+		#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_MASK_TEXTURE_BLUE
+			Emissive *= MaskTextureColor.b;
+		#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_MASK_TEXTURE_ALPHA
+			Emissive *= MaskTextureColor.a;
+		#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_NORMAL_TEXTURE_ALPHA
+			Emissive *= NormalColor.a;
+		#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_RED || EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_GREEN || EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_BLUE || EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_ALPHA
+			Emissive *= EmissiveMask;
+		#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_EMISSIVE_TEXTURE_RED
+			Emissive *= EmissiveTextureColor.r;
+		#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_EMISSIVE_TEXTURE_GREEN
+			Emissive *= EmissiveTextureColor.g;
+		#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_EMISSIVE_TEXTURE_BLUE
+			Emissive *= EmissiveTextureColor.b;
+		#elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_EMISSIVE_TEXTURE_ALPHA
+			Emissive *= EmissiveTextureColor.a;
+		#endif
+
+		// Add the emissive color to our pixel's color
+		PolyColor.rgb += Emissive;
+	}
+	#endif
+
+	PolyColor *= Interp_Color;
+
+	// Color Multiply
+	#if USE_UNIFORM_COLOR_MULTIPLY
+		#if COLOR_MULTIPLY_SOURCE != COLOR_MULTIPLY_SOURCE_NONE
+		{
+			// Colour multiply source determines blend strength
+			lowp float ColorMultiplyAmount = 1.0;
+
+			#if COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_BASE_TEXTURE_RED
+				ColorMultiplyAmount = BaseColor.r;
+			#elif COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_BASE_TEXTURE_GREEN
+				ColorMultiplyAmount = BaseColor.g;
+			#elif COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_BASE_TEXTURE_BLUE
+				ColorMultiplyAmount = BaseColor.b;
+			#elif COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_BASE_TEXTURE_ALPHA
+				ColorMultiplyAmount = BaseColor.a;
+			#elif COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_RED
+				ColorMultiplyAmount = MaskTextureColorSRGB.r;
+			#elif COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_GREEN
+				ColorMultiplyAmount = MaskTextureColorSRGB.g;
+			#elif COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_BLUE
+				ColorMultiplyAmount = MaskTextureColorSRGB.b;
+			#elif COLOR_MULTIPLY_SOURCE == COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_ALPHA
+				ColorMultiplyAmount = MaskTextureColorSRGB.a;
+			#endif
+
+			PolyColor = mix(PolyColor, PolyColor * ColorMultiply, ColorMultiplyAmount);
+		}
+		#else
+			PolyColor.rgba *= ColorMultiply;
+		#endif
+	#endif
+
+	// Calculate fog
+	#if USE_HEIGHT_FOG
+	{
+		mediump vec4 HeightFog = CalculateHeightFog(VarWorldPosition);
+		PolyColor.rgb = PolyColor.rgb * HeightFog.a + HeightFog.rgb;
+	}
+	#endif
+
+	//// Final, constant color fade/blend, which is used to embody various global color changes (i.e. full screen effects, fog)
+	//// This value is calculated per-vertex in order to reduce the pixel shader math to a single MAD in all cases
+	PolyColor.xyz = (PolyColor.xyz * GlobalEffectColorAndAmount.w) + GlobalEffectColorAndAmount.xyz;
+
+	// Color grading
+	MOBILECOLORGRADE(PolyColor)
+
+	// Convert to gamma 2.2 space
+	PolyColor.xyz = HANDLE_SRGB_WRITE(PolyColor.xyz);
+
+	// Opacity multiplier
+	#if USE_PREMULTIPLIED_OPACITY
+		PolyColor.rgb *= MobileOpacityMultiplier;
+	#else
+		PolyColor.a *= MobileOpacityMultiplier;
+	#endif
+	
+
+	gl_FragColor = AlphaBlend(PolyColor);
+}

@@ -1,0 +1,38 @@
+/*=============================================================================
+	SubsurfaceScatteringCommon.usf: Common definitions for subsurface scattering.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#if SM5_PROFILE
+
+float4 EncodeSubsurfaceInscattering(float3 InscatteredLightColor)
+{
+	return float4(InscatteredLightColor,0);
+}
+
+float3 DecodeSubsurfaceInscattering(float4 EncodedInscattering)
+{
+	return EncodedInscattering.rgb;
+}
+
+float4 EncodeSubsurfaceScatteringAttenuation(float3 AbsorptionColor,float Radius)
+{
+	return float4(AbsorptionColor,sqrt(Radius / 32.0));
+}
+
+float3 DecodeSubsurfaceAbsorptionColor(float4 Attenuation)
+{
+	return Attenuation.rgb;
+}
+
+float DecodeSubsurfaceScatteringRadius(float4 Attenuation)
+{
+	return Square(Attenuation.a) * 32.0;
+}
+
+bool IsSubsurfaceScatteringExitantPixel(float4 Attenuation)
+{
+	return Attenuation.a >= 1.0 / 255.0;
+}
+
+#endif

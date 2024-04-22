@@ -1,0 +1,55 @@
+/*=============================================================================
+	HeightFogVertexShader.usf: Scene fogging vertex shader.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+/** world space min z height */
+float4 FogMinHeight;
+/** world space max z height */
+float4 FogMaxHeight;
+/** transform from [-1,1] screen space to world */
+float4x4 ScreenToWorld;
+/** To move the rasterized quad away from the camera to cull pixels that are nearer than the FogStartDistance. */
+float FogStartZ;
+
+void OneLayerMain(
+	in float2 InPosition : POSITION,
+	out float4 OutTexCoordAndHeightRelativeZ : TEXCOORD0,
+	out float4 OutScreenVector : TEXCOORD1,
+	out float4 OutPosition : POSITION
+	)
+{	
+	// screenspace position from vb
+	OutPosition = float4(InPosition, FogStartZ, 1);
+	// texture coord from vb
+	OutTexCoordAndHeightRelativeZ.xy = InPosition * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+	// z distance from fog min to camera position in z
+	// z distance from fog max to camera position in w
+	OutTexCoordAndHeightRelativeZ.zw = float2(FogMinHeight.x, FogMaxHeight.x) - CameraPositionVS.zz;
+
+	// deproject to world space
+	OutScreenVector = MulMatrix(ScreenToWorld,float4(InPosition,1,0));
+}
+
+void FourLayerMain(
+	in float2 InPosition : POSITION,
+	out float2 OutTexCoord : TEXCOORD0,
+	out float4 OutScreenVector : TEXCOORD1,
+	out float4 OutMinHeightRelativeZ : TEXCOORD2,
+	out float4 OutMaxHeightRelativeZ : TEXCOORD3,
+	out float4 OutPosition : POSITION
+	)
+{	
+	// screenspace position from vb
+	OutPosition = float4(InPosition, FogStartZ, 1);
+	// texture coord from vb
+	OutTexCoord = InPosition * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+	// deproject to world space
+	OutScreenVector = MulMatrix(ScreenToWorld,float4(InPosition,1,0));	
+	// z distance from fog min to camera position
+	OutMinHeightRelativeZ = FogMinHeight + PreViewTranslation.z - CameraPositionVS.z;
+	// z distance from fog max to camera position
+	OutMaxHeightRelativeZ = FogMaxHeight + PreViewTranslation.z - CameraPositionVS.z;
+}

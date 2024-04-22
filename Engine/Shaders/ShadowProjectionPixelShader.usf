@@ -1,0 +1,199 @@
+/*=============================================================================
+	ShadowProjectionPixelShader.usf: Pixel shader for projecting a shadow depth buffer onto the scene.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "ShadowProjectionCommon.usf"
+
+float ShadowFadeFraction;
+float4x4 ScreenToShadowMatrix;
+
+/**
+* Entry point for uniform manual PCF that supports lights using normal shadows.
+*/
+EARLYDEPTHSTENCIL
+void Main(
+	in float4 ScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	
+#if PER_FRAGMENT
+	,in uint SampleIndex : SV_SampleIndex
+#endif
+	)
+{
+#if SM5_PROFILE
+	OutColor = 1;
+
+	float2 UV = float2(ScreenPosition.xy / ScreenPosition.w * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz);
+	#if PER_FRAGMENT
+		float PixelLightingChannel = GetPerSampleLightingChannelMask(UV, SampleIndex);
+	#else
+		float PixelLightingChannel = GetPerPixelLightingChannelMask(UV);
+	#endif
+
+	BRANCH
+	// Only affect pixels specified by the lighting channel mask
+	if ((int)PixelLightingChannel & (int)(LightingChannelMask))
+#endif
+	{
+		#if PER_FRAGMENT
+			// Apply a portion of the shadow filter taps in each sample.
+			float4 SampleScreenPosition = EvaluateAttributeAtSample(ScreenPosition,SampleIndex);
+			float SceneW = PreviousDepthForShadowsMSAA(ScreenPosition,SampleIndex);
+			float4 ShadowPosition = MulMatrix(ScreenToShadowMatrix,float4(SampleScreenPosition.xy / SampleScreenPosition.w * SceneW,SceneW,1));
+		#else
+			half SceneW = PreviousDepthForShadows(ScreenPosition);
+			float4 ShadowPosition = MulMatrix(ScreenToShadowMatrix,float4(ScreenPosition.xy / ScreenPosition.w * SceneW,SceneW,1));
+		#endif
+
+		ShadowPosition.xy /= ShadowPosition.w;
+		ShadowPosition.z = min(ShadowPosition.z,0.999);
+
+		half Shadow = ManualPCF(ShadowPosition);
+
+		// 0 is shadowed, 1 is unshadowed
+		// RETURN_COLOR not needed unless writing to SceneColor;
+		half FadedShadow = lerp(1.0f, Square(Shadow), ShadowFadeFraction);
+		OutColor = EncodeLightAttenuation(FadedShadow);
+	}
+}
+
+
+/**
+* Entry point for uniform hardware PCF that supports lights using normal shadows.
+*/
+EARLYDEPTHSTENCIL
+void HardwarePCFMain(
+	in float4 ScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	half SceneW = PreviousDepthForShadows(ScreenPosition);
+
+	float4 ShadowPosition = MulMatrix(ScreenToShadowMatrix,float4(ScreenPosition.xy / ScreenPosition.w * SceneW,SceneW,1));
+	ShadowPosition.xy /= ShadowPosition.w;
+	ShadowPosition.z = min(ShadowPosition.z,0.999);
+
+	half Shadow = HardwarePCF(ShadowPosition);
+	
+	// RETURN_COLOR not needed unless writing to SceneColor;
+	half FadedShadow = lerp(1.0f, Square(Shadow), ShadowFadeFraction);
+	OutColor = EncodeLightAttenuation(FadedShadow);
+}
+
+
+/**
+* Entry point for uniform Fetch4 PCF that supports lights using normal shadows.
+*/
+EARLYDEPTHSTENCIL
+void Fetch4Main(
+	in float4 ScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	half SceneW = PreviousDepthForShadows(ScreenPosition);
+
+	float4 ShadowPosition = MulMatrix(ScreenToShadowMatrix,float4(ScreenPosition.xy / ScreenPosition.w * SceneW,SceneW,1));
+	ShadowPosition.xy /= ShadowPosition.w;
+	ShadowPosition.z = min(ShadowPosition.z,0.999);
+
+	half Shadow = Fetch4PCF(ShadowPosition);
+	
+	// RETURN_COLOR not needed unless writing to SceneColor;
+	half FadedShadow = lerp(1.0f, Square(Shadow), ShadowFadeFraction);
+	OutColor = EncodeLightAttenuation(FadedShadow);
+}
+
+#if SM5_PROFILE
+
+/** Cube map texture. */
+TextureCube ShadowDepthCubeTexture;
+
+/** Sampler state used for hardware PCF. */
+SamplerComparisonState ShadowDepthCubeComparisonSampler;
+
+SamplerState ShadowDepthCubeSampler;
+
+/** Ordinary sampler, useful for debugging without hardware PCF */
+//samplerCUBE ShadowDepthCubeTexture;
+
+float4 LightPositionAndInvRadius;
+
+/** View projection matrices that were used in the shadow depth pass for each cube face. */
+float4x4 ShadowViewProjectionMatrices[6];
+
+float ShadowmapResolution;
+
+/** Pixel shader for projecting a one pass point light shadow from a cube map. */
+void MainOnePassPointLightPS(
+	in float4 ScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+	)
+{
+	float Shadow = 1;
+
+	float SceneW = PreviousDepthForShadows(ScreenPosition);
+	float3 WorldPosition = MulMatrix(ScreenToWorldMatrix, float4(ScreenPosition.xy / ScreenPosition.w * SceneW, SceneW, 1)).xyz;
+	float3 LightVector = LightPositionAndInvRadius.xyz - WorldPosition;
+	float Distance = length(LightVector);
+
+	BRANCH
+	// Skip pixels outside of the light's influence
+	if (Distance * LightPositionAndInvRadius.w < 1.0f)
+	{
+		float3 NormalizedLightVector = LightVector / Distance;
+		float3 SideVector = normalize(cross(NormalizedLightVector, float3(0, 0, 1)));
+		float3 UpVector = cross(SideVector, NormalizedLightVector);
+
+		//@todo - expose this
+		float DepthBias = .02f * 512.0f / ShadowmapResolution;
+
+		// Figure out which cube face we're sampling from
+		int CubeFaceIndex = 0;
+		float3 AbsLightVector = abs(LightVector);
+		float MaxCoordinate = max(AbsLightVector.x, max(AbsLightVector.y, AbsLightVector.z));
+		if (MaxCoordinate == AbsLightVector.x)
+		{
+			CubeFaceIndex = AbsLightVector.x == LightVector.x ? 0 : 1;
+		}
+		else if (MaxCoordinate == AbsLightVector.y)
+		{
+			CubeFaceIndex = AbsLightVector.y == LightVector.y ? 2 : 3;
+		}
+		else
+		{
+			CubeFaceIndex = AbsLightVector.z == LightVector.z ? 4 : 5;
+		}
+
+		// Transform the position into shadow space
+		float4 ShadowPosition = MulMatrix(ShadowViewProjectionMatrices[CubeFaceIndex], float4(WorldPosition, 1));
+		// Calculate the Z buffer value that would have been stored for this position in the shadow map
+		float SceneShadowDepth = (ShadowPosition.z - DepthBias) / ShadowPosition.w;
+
+		// For debugging
+		//float ShadowDepth = texCUBE(ShadowDepthCubeTexture, LightVector).r;
+		
+		float CompareDistance = SceneShadowDepth;
+
+		// Generate 4 sample coordinates
+		float3 Sample00Coordinate = NormalizedLightVector + SideVector * -.5f / ShadowmapResolution + UpVector * -.5f / ShadowmapResolution;
+		float3 Sample01Coordinate = NormalizedLightVector + SideVector * -.5f / ShadowmapResolution + UpVector * +.5f / ShadowmapResolution;
+		float3 Sample10Coordinate = NormalizedLightVector + SideVector * +.5f / ShadowmapResolution + UpVector * -.5f / ShadowmapResolution;
+		float3 Sample11Coordinate = NormalizedLightVector + SideVector * +.5f / ShadowmapResolution + UpVector * +.5f / ShadowmapResolution;
+		
+		float4 ShadowResults;
+		// Lookup and combine 4 hardware PCF lookups
+		ShadowResults.x = ShadowDepthCubeTexture.SampleCmpLevelZero(ShadowDepthCubeComparisonSampler, Sample00Coordinate, CompareDistance);
+		ShadowResults.y = ShadowDepthCubeTexture.SampleCmpLevelZero(ShadowDepthCubeComparisonSampler, Sample01Coordinate, CompareDistance);
+		ShadowResults.z = ShadowDepthCubeTexture.SampleCmpLevelZero(ShadowDepthCubeComparisonSampler, Sample10Coordinate, CompareDistance);
+		ShadowResults.w = ShadowDepthCubeTexture.SampleCmpLevelZero(ShadowDepthCubeComparisonSampler, Sample11Coordinate, CompareDistance);
+
+		Shadow = dot(ShadowResults, .25f);
+	}
+
+	half FadedShadow = lerp(1.0f, Square(Shadow), ShadowFadeFraction);
+	OutColor = EncodeLightAttenuation(Square(FadedShadow));
+}
+
+#endif // #if SM5_PROFILE

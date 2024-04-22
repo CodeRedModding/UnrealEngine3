@@ -1,3 +1,6 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class DrawSphereComponent extends PrimitiveComponent
 	native
 	noexport
@@ -11,6 +14,7 @@ var()	float			SphereRadius;
 var()	int				SphereSides;
 var()	bool			bDrawWireSphere;
 var()	bool			bDrawLitSphere;
+var()	bool			bDrawOnlyIfSelected;
 
 defaultproperties
 {

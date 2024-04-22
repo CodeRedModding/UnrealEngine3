@@ -1,0 +1,22 @@
+#define RETURN_COLOR(Color) Color
+#if USE_GFX_GAMMA_CORRECTION
+UNIFORM( float, InverseGamma );
+#endif
+UNIFORM_SAMPLER2D( TextureBase, TEXUNIT0 );
+IN_VARYING_DEFAULT( vec2, TexCoords0, TEXCOORD0 );
+OUT_BUILTIN( vec4, gl_FragColor, COLOR )
+PIXEL_MAIN 
+{
+  lowp vec4 fcolor0;
+// S TexTG
+  fcolor0 = texture2D(TextureBase,TexCoords0);
+gl_FragColor = fcolor0;
+// E gamma
+#if USE_GFX_GAMMA_CORRECTION
+  gl_FragColor = RETURN_COLOR (vec4(pow(clamp(gl_FragColor.rgb,0.0,1.0), vec3(InverseGamma)),gl_FragColor.a));
+#else
+  gl_FragColor = RETURN_COLOR (gl_FragColor);
+#endif
+
+}
+

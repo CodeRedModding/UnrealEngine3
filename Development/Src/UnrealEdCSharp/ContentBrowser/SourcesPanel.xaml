@@ -1,0 +1,587 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+<UserControl
+	x:Name="This" 
+	x:Class="ContentBrowser.SourcesPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:cb="clr-namespace:ContentBrowser"
+	xmlns:cc="clr-namespace:CustomControls"
+	xmlns:AppCommands="clr-namespace:System.Windows.Input;assembly=PresentationCore"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
+	mc:Ignorable="d" d:DesignWidth="250" d:DesignHeight="350"
+	Background="{DynamicResource Slate_Panel_Background}" Foreground="{StaticResource Slate_Control_Foreground}">
+	<UserControl.Resources>
+
+		<BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+		
+		<!-- Uses bold if the package is writeable -->
+		<cb:SCCStateToFontWeightConverter x:Key="FontWeightStatusConverter"/>
+		
+		<!-- Changes the color of the package name text depending on the state of the package -->
+		<cb:PackageStateToFontColorConverter x:Key="FontColorStatusConverter"/>
+		
+		<!--Converts tree node state (group vs. non-group) into the appropriate icon-->
+		<cb:SCCStateToIconConverter x:Key="SCCIconConverter"/>
+
+		<!--Converts tree node SCC state into the appropriate icon-->
+		<cb:SCCStateToOverlayIconConverter x:Key="SCCOverlayIconConverter"/>
+
+		<AppCommands:ICommand x:Key="ISavePackage">ApplicationCommands.Save</AppCommands:ICommand>
+		<MenuItem x:Shared="False" x:Key="SourceControlSubmenu" Header="{DynamicResource ContentBrowser_PackageList_MenuItem_SourceControl}">
+			<MenuItem Command="{x:Static cb:SourceControlCommands.RefreshSCC}"/>
+			<Separator/>
+			<MenuItem Command="{x:Static cb:SourceControlCommands.CheckOutSCC}"/>
+			<MenuItem Command="{x:Static cb:SourceControlCommands.CheckInSCC}"/>
+			<MenuItem Command="{x:Static cb:SourceControlCommands.RevertSCC}"/>
+			<Separator/>
+			<MenuItem Command="{x:Static cb:SourceControlCommands.RevisionHistorySCC}"/>
+		</MenuItem>
+
+		<ContextMenu x:Key="PackageListContextMenu" Placement="MousePoint" HasDropShadow="True" FontWeight="Normal">
+			<MenuItem Command="{StaticResource ISavePackage}" Header="{DynamicResource ContentBrowser_PackageList_MenuItem_SavePackage}" />
+			<MenuItem Command="{x:Static cb:PackageCommands.FullyLoadPackage}" />
+			<MenuItem Command="{x:Static cb:PackageCommands.UnloadPackage}" />
+			<MenuItem Command="{x:Static cb:PackageCommands.ImportAsset}" />
+			<MenuItem Command="{x:Static cb:PackageCommands.BulkExport}" />
+			<MenuItem Command="{x:Static cb:PackageCommands.BulkImport}" />
+			<MenuItem Command="{x:Static cb:PackageCommands.LocExport}" />
+			<!--<MenuItem Command="{x:Static cb:PackageCommands.ResliceFracturedMeshes}"/>-->
+			<Separator/>
+				<StaticResource ResourceKey="SourceControlSubmenu" />
+			<Separator/>
+			<MenuItem Header="{DynamicResource ContentBrowser_PackageList_MenuItem_CheckErrors}" Command="{x:Static cb:PackageCommands.CheckErrors}"/>
+			<MenuItem Command="{x:Static cb:PackageCommands.OpenExplorer}" />
+			
+			<!--<Separator/>
+			<MenuItem Header="{DynamicResource ContentBrowser_PackageList_MenuItem_BatchProcess}">
+				<MenuItem Header="{DynamicResource ContentBrowser_PackageList_MenuItem_SoundClasses}"/>
+				<MenuItem Header="{DynamicResource ContentBrowser_PackageList_MenuItem_TextureGroups}"/>
+			</MenuItem>-->			
+		</ContextMenu>
+
+
+		<!-- Collections list context menu -->
+		<ContextMenu x:Key="CollectionsContextMenu" Placement="MousePoint" HasDropShadow="True">
+			<MenuItem Command="{x:Static cb:CollectionCommands.Rename}" />
+			<MenuItem Command="{x:Static cb:CollectionCommands.CreateSharedCopy}" />
+			<MenuItem Command="{x:Static cb:CollectionCommands.CreatePrivateCopy}" />
+			<MenuItem Command="{x:Static cb:CollectionCommands.Destroy}" />
+		</ContextMenu>
+
+        <!-- An empty context menu used as a place holder to generate context menus on the fly in code -->
+        <ContextMenu x:Name="EmptyContextMenu" x:Key="EmptyContextMenu"/>
+
+
+		<!--                                                            -->
+		<!-- CustomControls.TreeView                                    -->
+		<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  -->
+		<!-- A hollowed out TreeViewItem template in needed             -->
+		<!-- so that collapse and select visualization can be delegated -->
+		<!-- to the TreeNodeVisuals.                                    -->
+		<!--                                                            -->
+
+		<Style x:Key="TreeViewItemFocusVisual">
+			<Setter Property="Control.Template">
+				<Setter.Value>
+					<ControlTemplate>
+						<Rectangle/>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+
+		<!--<PathGeometry x:Key="TreeArrow" Figures="M0,0 L0,6 L6,0 z"/>-->
+
+		<ItemsPanelTemplate x:Key="SupportsSelectPackageFromCode">
+			<cc:CustomVirtualizingStackPanel />
+		</ItemsPanelTemplate>
+		
+		<Style x:Key="TreeViewItemContainerStyle" TargetType="{x:Type TreeViewItem}">
+			<Setter Property="Background" Value="Transparent" />
+			<!--{Binding Path=VerticalContentAlignment, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}-->
+			<Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+			<Setter Property="VerticalContentAlignment" Value="Stretch"/>
+			<Setter Property="Padding" Value="1,0,0,0"/>
+			<Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+			<Setter Property="FocusVisualStyle" Value="{StaticResource TreeViewItemFocusVisual}"/>
+			<!-- Bind the IsExpanded property of this TreeViewItem to the AbstractModelNode in the ViewModel. -->
+			<Setter Property="OverridesDefaultStyle" Value="True" />
+			<Setter Property="IsExpanded" Value="{Binding Path=IsExpanded, Mode=TwoWay}" />
+			<Setter Property="Template">
+				<Setter.Value>
+					<ControlTemplate TargetType="{x:Type TreeViewItem}">
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition MinWidth="19" Width="Auto"/>
+								<ColumnDefinition Width="Auto"/>
+								<ColumnDefinition Width="*"/>
+							</Grid.ColumnDefinitions>
+							<Grid.RowDefinitions>
+								<RowDefinition Height="Auto"/>
+								<RowDefinition/>
+							</Grid.RowDefinitions>
+
+							<!-- Remove the expander button. It's up the user to put one in and bind it to IsExpanded on the AbstractTreeNode -->
+							<!--<ToggleButton x:Name="Expander" Style="{StaticResource ExpandCollapseToggleStyle}" IsChecked="{Binding Path=IsExpanded, RelativeSource={RelativeSource TemplatedParent}}" ClickMode="Press"/>-->
+							<ContentPresenter HorizontalAlignment="Stretch"
+									                                  Grid.Column="0" Grid.ColumnSpan="3"
+									                                  x:Name="PART_Header"
+									                                  SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"
+									                                  ContentSource="Header"/>
+							<ItemsPresenter x:Name="ItemsHost" Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="1"/>
+						</Grid>
+						<ControlTemplate.Triggers>
+							<Trigger Property="IsExpanded" Value="false">
+								<Setter Property="Visibility" TargetName="ItemsHost" Value="Collapsed"/>
+							</Trigger>
+
+							<!-- We handle our own selection -->
+							<!--<Trigger Property="IsSelected" Value="true">
+							                                <Setter Property="Background" TargetName="Bd" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
+							                                <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}"/>
+						                                </Trigger>-->
+							<MultiTrigger>
+								<MultiTrigger.Conditions>
+									<Condition Property="IsSelected" Value="true"/>
+									<Condition Property="IsSelectionActive" Value="false"/>
+								</MultiTrigger.Conditions>
+								<!--<Setter Property="Background" TargetName="Bd" Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"/>-->
+								<Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+							</MultiTrigger>
+						</ControlTemplate.Triggers>
+					</ControlTemplate>
+				</Setter.Value>
+			</Setter>
+			<Setter Property="ItemsPanel">
+				<Setter.Value>
+					<ItemsPanelTemplate>
+						<cc:CustomVirtualizingStackPanel />
+					</ItemsPanelTemplate>
+				</Setter.Value>
+			</Setter>
+		</Style>
+
+
+	</UserControl.Resources>
+	
+	<UserControl.CommandBindings>
+		<CommandBinding Command="{x:Static cb:PackageCommands.FullyLoadPackage}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+		<CommandBinding Command="{x:Static cb:PackageCommands.UnloadPackage}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+		<CommandBinding Command="{x:Static cb:ObjectFactoryCommands.CreateNewAsset}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+		<CommandBinding Command="{x:Static cb:PackageCommands.ImportAsset}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+		<CommandBinding Command="{x:Static cb:PackageCommands.OpenPackage}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+		<CommandBinding Command="{x:Static cb:PackageCommands.BulkExport}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+        <CommandBinding Command="{x:Static cb:PackageCommands.BulkImport}"
+                        CanExecute="CanExecuteMenuCommand"
+                        Executed="ExecuteMenuCommand"/>
+		<CommandBinding Command="{x:Static cb:PackageCommands.LocExport}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+		<CommandBinding Command="{x:Static cb:PackageCommands.CheckErrors}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+		<CommandBinding Command="{x:Static cb:PackageCommands.OpenExplorer}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+		<!--<CommandBinding Command="{x:Static cb:PackageCommands.ResliceFracturedMeshes}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>-->
+		<CommandBinding Command="{x:Static cb:SourceControlCommands.RefreshSCC}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+		<CommandBinding Command="{x:Static cb:SourceControlCommands.CheckInSCC}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+		<CommandBinding Command="{x:Static cb:SourceControlCommands.CheckOutSCC}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+		<CommandBinding Command="{x:Static cb:SourceControlCommands.RevertSCC}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+		<CommandBinding Command="{x:Static cb:SourceControlCommands.RevisionHistorySCC}"
+						CanExecute="CanExecuteMenuCommand"
+						Executed="ExecuteMenuCommand"/>
+
+		<!-- Collections context menu commands -->
+		<CommandBinding Command="{x:Static cb:CollectionCommands.Rename}" CanExecute="CanExecuteMenuCommand" Executed="ExecuteMenuCommand" />
+		<CommandBinding Command="{x:Static cb:CollectionCommands.CreateSharedCopy}" CanExecute="CanExecuteMenuCommand" Executed="ExecuteMenuCommand" />
+		<CommandBinding Command="{x:Static cb:CollectionCommands.CreatePrivateCopy}" CanExecute="CanExecuteMenuCommand" Executed="ExecuteMenuCommand" />
+		<CommandBinding Command="{x:Static cb:CollectionCommands.Destroy}" CanExecute="CanExecuteMenuCommand" Executed="ExecuteMenuCommand" />
+
+	</UserControl.CommandBindings>
+	
+	<DockPanel>
+        <!--                 POPUPS                                          -->
+            <!-- POPUP prompt for CREATE SHARED COLLECTION -->
+            <cc:NameEntryPrompt x:Name="mAddSharedCollectionPromptPopup"
+							    PlacementTarget="{Binding ElementName=mAddSharedCollectionButton}"/>
+
+            <!-- POPUP prompt for CREATE PRIVATE COLLECTION -->
+            <cc:NameEntryPrompt x:Name="mAddPrivateCollectionPromptPopup"
+							    PlacementTarget="{Binding ElementName=mAddPrivateCollectionButton}"/>
+
+			<!-- POPUP prompt for DELETE SHARED COLLECTION -->
+			<cc:YesNoPrompt x:Name="mDestroySharedCollectionPrompt" AffirmativeIsDefault="False"
+							Placement="Right"
+							PlacementTarget="{Binding ElementName=mAddSharedCollectionButton}"
+							WarningText="{DynamicResource ContentBrowser_DestroyCollection_WarningText}"
+							AffirmativeText="{DynamicResource ContentBrowser_DestroyCollection_ConfirmDestroy}"
+							NegativeText="{DynamicResource ContentBrowser_DestroyCollection_CancelDestroy}" />
+
+            <!-- POPUP prompt for DELETE PRIVATE COLLECTION -->
+			<cc:YesNoPrompt x:Name="mDestroyPrivateCollectionPrompt" AffirmativeIsDefault="False"
+							Placement="Right"
+							PlacementTarget="{Binding ElementName=mAddPrivateCollectionButton}"
+							WarningText="{DynamicResource ContentBrowser_DestroyCollection_WarningText}"
+							AffirmativeText="{DynamicResource ContentBrowser_DestroyCollection_ConfirmDestroy}"
+							NegativeText="{DynamicResource ContentBrowser_DestroyCollection_CancelDestroy}" />
+
+            <!-- POPUP prompt for "Rename Shared Collection" -->
+            <cc:NameEntryPrompt x:Name="mRenameSharedCollectionPromptPopup"
+							    PlacementTarget="{Binding ElementName=mAddSharedCollectionButton}"/>
+
+            <!-- POPUP prompt for "Rename Private Collection" -->
+            <cc:NameEntryPrompt x:Name="mRenamePrivateCollectionPromptPopup"
+							    PlacementTarget="{Binding ElementName=mAddPrivateCollectionButton}"/>
+
+            <!-- POPUP prompt for "Create Shared -> Shared Collection Copy" -->
+            <cc:NameEntryPrompt x:Name="mCreateSharedCopyOfSharedCollectionPromptPopup"
+							    PlacementTarget="{Binding ElementName=mAddSharedCollectionButton}"/>
+
+            <!-- POPUP prompt for "Create Shared -> Private Collection Copy" -->
+            <cc:NameEntryPrompt x:Name="mCreatePrivateCopyOfSharedCollectionPromptPopup"
+							    PlacementTarget="{Binding ElementName=mAddPrivateCollectionButton}"/>
+
+            <!-- POPUP prompt for "Create Private -> Shared Collection Copy" -->
+            <cc:NameEntryPrompt x:Name="mCreateSharedCopyOfPrivateCollectionPromptPopup"
+							    PlacementTarget="{Binding ElementName=mAddSharedCollectionButton}"/>
+
+            <!-- POPUP prompt for "Create Private -> Private Collection Copy" -->
+            <cc:NameEntryPrompt x:Name="mCreatePrivateCopyOfPrivateCollectionPromptPopup"
+							    PlacementTarget="{Binding ElementName=mAddPrivateCollectionButton}"/>
+
+            <!-- POPUP prompt for "Create Local -> Shared Collection Copy" -->
+            <cc:NameEntryPrompt x:Name="mCreateSharedCopyOfLocalCollectionPromptPopup"
+							    PlacementTarget="{Binding ElementName=mAddSharedCollectionButton}"/>
+
+            <!-- POPUP prompt for "Create Local -> Private Collection Copy" -->
+            <cc:NameEntryPrompt x:Name="mCreatePrivateCopyOfLocalCollectionPromptPopup"
+                                PlacementTarget="{Binding ElementName=mAddPrivateCollectionButton}"/>
+
+        <!-- POPUP prompt for "Add many assets to collection?" -->
+			<cc:YesNoPrompt x:Name="mProceedWithAddToCollection" AffirmativeIsDefault="False"
+							Placement="Right"
+							AffirmativeText="{DynamicResource ContentBrowser_AddToCollectionPrompt_AddAssets}"
+							NegativeText="{DynamicResource ContentBrowser_AddToCollectionPrompt_Cancel}"
+							WarningText="{DynamicResource ContentBrowser_AddToCollectionPrompt_Warning}"/>
+
+			<!-- POPUP prompt for "Remove many assets from collection?" -->
+			<cc:YesNoPrompt x:Name="mProceedWithRemoveFromCollection" AffirmativeIsDefault="False"
+							Placement="Right"
+							AffirmativeText="{DynamicResource ContentBrowser_RemoveFromCollectionPrompt_RemoveAssets}"
+							NegativeText="{DynamicResource ContentBrowser_RemoveFromCollectionPrompt_Cancel}"
+							WarningText="{DynamicResource ContentBrowser_RemoveFromCollectionPrompt_Warning}"/>
+        <!--                /POPUPS                                          -->
+
+
+        <!--                CONTENT LAYOUT                                   -->
+        <Grid DockPanel.Dock="Bottom" VerticalAlignment="Stretch" Margin="2.5">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="1*" />
+				<ColumnDefinition Width="1*" />
+				<ColumnDefinition Width="Auto"/>
+			</Grid.ColumnDefinitions>
+			<Button Grid.Column="0" Margin="2.5" Padding="4,4,5,5" Content="{StaticResource ContentBrowser_SourcesPanel_New}" ToolTip="{StaticResource ContentBrowser_SourcesPanel_New[ToolTip]}" x:Name="btnNewAsset" Command="{x:Static cb:ObjectFactoryCommands.CreateNewAsset}" />
+			<Button Grid.Column="1" Margin="2.5" Padding="4,4,5,5" Content="{StaticResource ContentBrowser_SourcesPanel_Import}" ToolTip="{StaticResource ContentBrowser_SourcesPanel_Import[ToolTip]}" x:Name="btnImportAsset" Command="{x:Static cb:PackageCommands.ImportAsset}" />
+			<Button Grid.Column="2" Margin="2.5" Padding="4,4,5,5" ToolTip="{StaticResource ContentBrowser_SourcesPanel_Open[ToolTip]}" x:Name="btnOpenPackage" Command="{x:Static cb:PackageCommands.OpenPackage}" HorizontalAlignment="Right" Width="30" >
+				<Image Visibility="Visible" Source="{DynamicResource imgFolderOpen}" SnapsToDevicePixels="True" />
+			</Button>
+		</Grid>
+		<!-- All assets List and Item -->
+		<ListView DockPanel.Dock="Top" Grid.Row="0" x:Name="m_SpecialCollectionsList" VerticalAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+			<!-- Style the "all assets" item w ith some really fancy artwork -->
+			<ListView.ItemContainerStyle>
+				<Style TargetType="{x:Type ListViewItem}">
+					<Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisualStyle}" />
+					<Setter Property="BorderThickness" Value="0,0,0,1" />
+					<Setter Property="BorderBrush" Value="{StaticResource Slate_ListItem_Separator}" />
+					<Setter Property="Background" Value="Transparent" />
+					<Setter Property="Padding" Value="0" />
+					<Setter Property="VerticalContentAlignment" Value="Center" />
+					<Setter Property="Template">
+						<Setter.Value>
+							<ControlTemplate TargetType="{x:Type ListViewItem}">
+								<Border SnapsToDevicePixels="true" x:Name="Bd" Background="Transparent" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+									<!--<ContentPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>-->
+									<Grid HorizontalAlignment="Center">										
+										<Image Source="pack://application:,,,/UnrealEdCSharp;Component/images/CB_Deco.png" HorizontalAlignment="Center" IsHitTestVisible="False" Width="246" Height="150" />
+										<Grid x:Name="ButtonArea" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,115,0,0" >
+											<!--Margin="61,115,0,0"-->
+											<Image x:Name="Button" Visibility="Visible" Source="pack://application:,,,/UnrealEdCSharp;Component/images/CB_FancyButton.png"
+												   HorizontalAlignment="Center" Width="120" Height="34" />
+											<Image x:Name="HoverButton" Visibility="Hidden" Source="pack://application:,,,/UnrealEdCSharp;Component/images/CB_FancyButton_Hover.png"
+												   HorizontalAlignment="Center" Width="120" Height="34" />
+											<Image x:Name="PressedButton" Visibility="Hidden" Source="pack://application:,,,/UnrealEdCSharp;Component/images/CB_FancyButton_Pressed.png"
+												   HorizontalAlignment="Center" Width="120" Height="34" />
+											<TextBlock x:Name="TextWidget" Text="{TemplateBinding Content}"
+													   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="-6,-6,0,0"
+													   FontSize="12" FontWeight="Bold" />
+											<!--Effect="{StaticResource Slate_SubpanelTitleShadow}"-->
+										</Grid>										
+									</Grid>
+								</Border>
+								<ControlTemplate.Triggers>
+									<Trigger Property="IsSelected" Value="true">
+										<Setter Property="Foreground" Value="Black" />
+										<Setter Property="Effect" Value="{x:Null}" TargetName="TextWidget" />
+									</Trigger>										
+									<Trigger Property="IsMouseOver" SourceName="ButtonArea" Value="True">
+										<Setter Property="Visibility" TargetName="Button" Value="Hidden" />
+										<Setter Property="Visibility" TargetName="HoverButton" Value="Visible" />
+										<Setter Property="Visibility" TargetName="PressedButton" Value="Hidden" />
+										<Setter Property="Foreground" Value="White" />
+										<!--<Setter Property="Effect" Value="{StaticResource Slate_SubpanelTitleShadow}" TargetName="TextWidget" />-->
+									</Trigger>
+									<Trigger Property="IsSelected" Value="true">
+										<Setter Property="Visibility" TargetName="Button" Value="Hidden" />
+										<Setter Property="Visibility" TargetName="HoverButton" Value="Hidden" />
+										<Setter Property="Visibility" TargetName="PressedButton" Value="Visible" />
+										<Setter Property="Margin" TargetName="TextWidget" Value="-2,-2,0,0" />
+									</Trigger>
+								</ControlTemplate.Triggers>
+							</ControlTemplate>
+						</Setter.Value>
+					</Setter>
+				</Style>
+			</ListView.ItemContainerStyle>
+			<!--All Assets-->
+			<ListViewItem x:Name="mAllAssetsItem" Content="{DynamicResource ContentBrowser_SourcesPanel_AllAssetsItem}" />
+        </ListView>
+
+        <cc:ExpandoPanel x:Name="mExpandoPanel"  DockPanel.Dock="Top"  Margin="3,0,0,0">
+		    <!-- 'SHARED' COLLECTIONS -->
+            <cc:ExpandoSubpanel Background="{DynamicResource Slate_List_Background}" x:Name="mSharedCollectionsSizer" ResizeDirection="South" GripSize="5">
+		        <cc:ExpandoSubpanel.Header>
+			        <DockPanel LastChildFill="True">
+				        <Button DockPanel.Dock="Right"
+						        Style="{DynamicResource ManageCollectionsButton}"
+						        x:Name="mAddSharedCollectionButton"
+								IsEnabled ="False"
+						        Width="12" Height="12" Margin="4,0,0,0" VerticalAlignment="Center" ToolTip="{StaticResource ContentBrowser_SourcesPanel_CreateSharedCollection[ToolTip]}">
+					        <Image Visibility="Visible" Source="{DynamicResource imgPlus}" SnapsToDevicePixels="True" />
+				        </Button>
+				        <Button DockPanel.Dock="Right"
+						        IsEnabled="False"
+						        Style="{DynamicResource ManageCollectionsButton}"
+						        x:Name="mRemoveSharedCollectionButton"
+						        Width="12" Height="12" Margin="4,0,0,0" VerticalAlignment="Center" ToolTip="{StaticResource ContentBrowser_SourcesPanel_RemoveSharedCollection[ToolTip]}">
+					        <Image Visibility="Visible" Source="{DynamicResource imgMinus}" SnapsToDevicePixels="True" />
+				        </Button>
+                        <Image Width="13" Source="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type cc:ExpandoSubpanel}},
+                                Path=IsCollapsed, Converter={x:Static cb:SourcesPanel.CollapsedToIconConverter}, ConverterParameter={x:Static cb:SourcesPanel.CollapserArrowImages}}" />
+                        <Label DockPanel.Dock="Left" Content="{DynamicResource ContentBrowser_SharedCollectionsViewLabel}" Target="{Binding ElementName=mSharedCollectionsList}" Style="{DynamicResource Slate_SubpanelTitle}" VerticalAlignment="Center" FontSize="16"/>
+			        </DockPanel>
+		        </cc:ExpandoSubpanel.Header>												                   
+                <DockPanel LastChildFill="True">
+	                <DockPanel DockPanel.Dock="Top">
+
+                    </DockPanel>
+					<ListView DockPanel.Dock="Top"
+		                      x:Name="mSharedCollectionsList"
+		                      VerticalAlignment="Stretch"
+		                      HorizontalContentAlignment="Stretch">
+	                    <ListView.Resources>
+		                    <DataTemplate DataType="{x:Type cb:Collection}">
+                                <cc:CollectionVisual AssetCollection="{Binding}" Icon="{StaticResource imgFolderClosed}" AllowDrop="True" Drop="SharedCollection_Drop" CanAddToCollection="{Binding ElementName=This, Path=AreItemsSelected}" AddToCollectionClicked="CollectionVisual_AddToSharedCollectionClicked" ContextMenu="{StaticResource CollectionsContextMenu}" />
+		                    </DataTemplate>
+							<!-- Collection view source to display the shared collections sorted alphabetically -->
+							<CollectionViewSource x:Key="mSortedSharedCollectionsList" Source="{Binding Path=SharedCollections}">
+								<CollectionViewSource.SortDescriptions>
+									<scm:SortDescription PropertyName="DisplayName"/>
+								</CollectionViewSource.SortDescriptions>
+							</CollectionViewSource>
+						</ListView.Resources>
+	                    <ListView.ItemContainerStyle>
+		                    <StaticResource ResourceKey="SourcesListItem"/>
+	                    </ListView.ItemContainerStyle>
+						<ListView.ItemsSource>
+							<Binding Source="{StaticResource mSortedSharedCollectionsList}"/>
+						</ListView.ItemsSource>
+					</ListView>
+                </DockPanel>
+            </cc:ExpandoSubpanel>
+            
+            <!-- 'PRIVATE' COLLECTIONS -->
+            <cc:ExpandoSubpanel Background="{DynamicResource Slate_List_Background}" x:Name="mPrivateCollectionsSizer" ResizeDirection="South" GripSize="5">
+                <cc:ExpandoSubpanel.Header>
+                    <DockPanel LastChildFill="True">
+                        <Button DockPanel.Dock="Right"
+						        Style="{DynamicResource ManageCollectionsButton}"
+						        x:Name="mAddPrivateCollectionButton"
+						        Width="12" Height="12" Margin="4,0,0,0" VerticalAlignment="Center" ToolTip="{StaticResource ContentBrowser_SourcesPanel_CreatePrivateCollection[ToolTip]}">
+                            <Image Visibility="Visible" Source="{DynamicResource imgPlus}" SnapsToDevicePixels="True" />
+                        </Button>
+                        <Button DockPanel.Dock="Right"
+						        IsEnabled="False"
+						        Style="{DynamicResource ManageCollectionsButton}"
+						        x:Name="mRemovePrivateCollectionButton"
+						        Width="12" Height="12" Margin="4,0,0,0" VerticalAlignment="Center" ToolTip="{StaticResource ContentBrowser_SourcesPanel_RemovePrivateCollection[ToolTip]}">
+                            <Image Visibility="Visible" Source="{DynamicResource imgMinus}" SnapsToDevicePixels="True" />
+                        </Button>
+                        <Image Width="13" Source="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type cc:ExpandoSubpanel}},
+                            Path=IsCollapsed, Converter={x:Static cb:SourcesPanel.CollapsedToIconConverter}, ConverterParameter={x:Static cb:SourcesPanel.CollapserArrowImages}}" />
+                        <Label Content="{DynamicResource ContentBrowser_PrivateCollectionsViewLabel}" Target="{Binding ElementName=mPrivateCollectionsList}" Style="{DynamicResource Slate_SubpanelTitle}" VerticalAlignment="Center" FontSize="16"/>
+                    </DockPanel>
+                </cc:ExpandoSubpanel.Header>                        
+                <DockPanel LastChildFill="True">
+                    <DockPanel DockPanel.Dock="Top">
+
+                    </DockPanel>
+                    <ListView DockPanel.Dock="Top"
+				              x:Name="mPrivateCollectionsList"
+				              VerticalAlignment="Stretch"
+				              HorizontalContentAlignment="Stretch">
+                        <ListView.Resources>
+                            <DataTemplate DataType="{x:Type cb:Collection}">
+                                <cc:CollectionVisual AssetCollection="{Binding}" Icon="{StaticResource imgFolderClosed}" AllowDrop="True" Drop="PrivateCollection_Drop" CanAddToCollection="{Binding ElementName=This, Path=AreItemsSelected}" AddToCollectionClicked="CollectionVisual_AddToPrivateCollectionClicked" ContextMenu="{StaticResource CollectionsContextMenu}" />
+                            </DataTemplate>
+							<!-- Collection view source to display the private collections sorted alphabetically -->
+							<CollectionViewSource x:Key="mSortedPrivateCollectionsList" Source="{Binding Path=PrivateCollections}">
+								<CollectionViewSource.SortDescriptions>
+									<scm:SortDescription PropertyName="DisplayName"/>
+								</CollectionViewSource.SortDescriptions>
+							</CollectionViewSource>
+						</ListView.Resources>
+                        <ListView.ItemContainerStyle>
+                            <StaticResource ResourceKey="SourcesListItem"/>
+                        </ListView.ItemContainerStyle>
+						<ListView.ItemsSource>
+							<Binding Source="{StaticResource mSortedPrivateCollectionsList}"/>
+						</ListView.ItemsSource>
+                    </ListView>
+                </DockPanel>
+            </cc:ExpandoSubpanel>
+            
+		    <!-- PACKAGES -->
+            <cc:ExpandoSubpanel Background="{DynamicResource Slate_List_Background}" x:Name="mPackagesSizer" ResizeDirection="South" GripSize="5">
+                <cc:ExpandoSubpanel.Header>
+                    <DockPanel LastChildFill="False">
+                        <Image Width="13" Source="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type cc:ExpandoSubpanel}},
+                                Path=IsCollapsed, Converter={x:Static cb:SourcesPanel.CollapsedToIconConverter}, ConverterParameter={x:Static cb:SourcesPanel.CollapserArrowImages}}" />
+                        <Label Content="{DynamicResource ContentBrowser_PackagesViewLabel}" Target="{Binding ElementName=mPackagesView}" Style="{DynamicResource Slate_SubpanelTitle}" FontSize="16"/>
+						<cc:SlateBorder DockPanel.Dock="Right" BorderThickness="1" BorderBrush="{StaticResource Slate_Panel_Shadow}" VerticalAlignment="Top" SnapsToDevicePixels="True">
+							<StackPanel  Orientation="Horizontal" Margin="1">
+								<RadioButton x:Name="mPackageViewMode_Tree" Style="{StaticResource FauxTab_PackageViewMode_Tree}"><Image Source="{StaticResource imgPackageView_TreeMode}" Width="16" Height="16" /></RadioButton>
+								<RadioButton x:Name="mPackageViewMode_List" Style="{StaticResource FauxTab_PackageViewMode_Tree}"><Image Source="{StaticResource imgPackageView_ListMode}" Width="16" Height="16" /></RadioButton>
+							</StackPanel>
+						</cc:SlateBorder>
+                    </DockPanel>
+                </cc:ExpandoSubpanel.Header>
+				<cc:ExpandoSubpanel.Resources>
+					<HierarchicalDataTemplate DataType="{x:Type cb:Package}" ItemsSource="{Binding Path=Children}">
+						<cb:PackageNodeVisual DisplayLabel="{Binding Path=DisplayName}"
+											  NodeModel="{Binding}"
+											  Icon="{Binding Path=NodeIcon, Converter={StaticResource SCCIconConverter}}"
+											  OverlayIcon="{Binding Path=NodeIcon, Converter={StaticResource SCCOverlayIconConverter}}"
+											  FontWeight="{Binding Path=NodeIcon, Converter={StaticResource FontWeightStatusConverter}}"
+											  ContextMenu="{StaticResource EmptyContextMenu}"
+											  ContextMenuOpening="OnPackageTreeCMOpening"
+											  ContextMenuClosing="OnPackageTreeCMClosing">
+							<cb:PackageNodeVisual.Foreground>
+								<MultiBinding Converter="{StaticResource FontColorStatusConverter}">
+									<Binding Path="Status"/>
+									<Binding Path="IsSelected"/>
+								</MultiBinding>
+							</cb:PackageNodeVisual.Foreground>
+						</cb:PackageNodeVisual>
+					</HierarchicalDataTemplate>
+
+					<!-- Package Tree Data Templates -->
+					<HierarchicalDataTemplate DataType="{x:Type cb:Folder}" ItemsSource="{Binding Path=Children}">
+						<cc:FolderNodeVisual DisplayLabel="{Binding Path=Name}"
+												NodeModel="{Binding}"
+												ContextMenu="{StaticResource EmptyContextMenu}"
+												ContextMenuOpening="OnPackageTreeCMOpening"
+												ContextMenuClosing="OnPackageTreeCMClosing"/>
+					</HierarchicalDataTemplate>
+
+					<HierarchicalDataTemplate DataType="{x:Type cb:GroupPackage}" ItemsSource="{Binding Path=Children}">
+						<cb:GroupNodeVisual	DisplayLabel="{Binding Path=Name}"
+											NodeModel="{Binding}"
+											Icon="{Binding Path=NodeIcon, Converter={StaticResource SCCIconConverter}}"
+											FontWeight="{Binding Path=NodeIcon, Converter={StaticResource FontWeightStatusConverter}}"
+											ContextMenu="{StaticResource EmptyContextMenu}"
+											ContextMenuOpening="OnPackageTreeCMOpening"
+											ContextMenuClosing="OnPackageTreeCMClosing">
+							<cb:GroupNodeVisual.Foreground>
+								<MultiBinding Converter="{StaticResource FontColorStatusConverter}">
+									<Binding Path="Status"/>
+									<Binding Path="IsSelected"/>
+								</MultiBinding>
+							</cb:GroupNodeVisual.Foreground>
+						</cb:GroupNodeVisual>
+					</HierarchicalDataTemplate>
+
+					<!-- TreeView needs a transparent DISABLED background.
+						 We cannot edit the template for fear of disabling virtualization, so we must override the color resource. -->
+					<SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="Transparent" />
+
+				</cc:ExpandoSubpanel.Resources>
+
+				<Grid x:Name="mPackageViewGrid">
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="1*" />
+					</Grid.RowDefinitions>
+
+					<!-- Filter -->
+					<Border x:Name="mPackageFilter" Grid.Row="0" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Slate_Panel_Shadow}" >
+						<Grid Margin="3, 2, 3, 5">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="1*"/>
+								<ColumnDefinition Width="Auto"/>
+								<ColumnDefinition Width="Auto"/>
+								<ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
+							<cc:UnrealTextBox x:Name="mPackageFilterText"
+											  Grid.Column="0"
+											  VerticalContentAlignment="Center"
+											  HintText="{StaticResource ContentBrowser_SourcesPanel_PackageFilterHint}" />
+                            <ToggleButton Grid.Column="1" Focusable="False" Style="{DynamicResource ToolbarToggleButton}" x:Name="mMatchAny" Margin="4,2,2,2" ToolTip="{StaticResource ContentBrowser_SourcesPanel_PackageFilter_FilterMatchAny[ToolTip]}">
+                                <Image Source="{DynamicResource imgMatchAny}" Width="16" Height="16"/>
+                            </ToggleButton>
+                            <ToggleButton Grid.Column="2" Focusable="False" Style="{DynamicResource ToolbarToggleButton}" x:Name="mShowNonRecursive" Margin="2" ToolTip="{StaticResource ContentBrowser_SourcesPanel_PackageFilter_FilterNonRecursive[ToolTip]}">
+								<Image Source="{DynamicResource img_CB_PackageOpen}" Width="16" Height="16"/>
+							</ToggleButton>
+							<ToggleButton Grid.Column="3" Focusable="False" Style="{DynamicResource ToolbarToggleButton}" x:Name="mShowDirtyOnly" Margin="2" ToolTip="{StaticResource ContentBrowser_SourcesPanel_PackageFilter_FilterDirty[ToolTip]}">
+								<Image Source="{DynamicResource imgPackageView_FilterDirty}" Width="16" Height="16"/>
+							</ToggleButton>
+							<ToggleButton Grid.Column="4" Focusable="False" Style="{DynamicResource ToolbarToggleButton}" x:Name="mShowCheckOutOnly" Margin="2" ToolTip="{StaticResource ContentBrowser_SourcesPanel_PackageFilter_FilterCheckedOut[ToolTip]}" >
+								<Image Source="{DynamicResource imgPackageView_FilterCheckOut}" Width="16" Height="16"/>
+							</ToggleButton>
+						</Grid>
+					</Border>
+					<!-- mPackagesView We add the package view here -->
+					
+				</Grid>
+               
+            </cc:ExpandoSubpanel>
+        </cc:ExpandoPanel>
+	</DockPanel>
+
+</UserControl>

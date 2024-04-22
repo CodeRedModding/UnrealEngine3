@@ -1,0 +1,171 @@
+/*=============================================================================
+	SphericalHarmonicCommon.usf: Common functionality for SH lighting.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+//Common.usf, Material.usf and VertexFactory.usf must be included before this file
+
+#define PI 3.141592653
+
+// The SH basis parameters; these must match SHMath.h
+#define MAX_SH_ORDER	3
+#define MAX_SH_BASIS	(MAX_SH_ORDER*MAX_SH_ORDER)
+#define NUM_SH_VECTORS	((MAX_SH_BASIS - 1 + 3) / 4)
+
+/**
+ * The world-space incident lighting projected into the SH basis.
+ * The first float4 contains the RGB constant term.
+ * The next NUM_SH_VECTORS float4s contain the coefficients for the red component of the incident lighting.
+ * The next NUM_SH_VECTORS float4s contain the coefficients for the green component of the incident lighting.
+ * The next NUM_SH_VECTORS float4s contain the coefficients for the blue component of the incident lighting.
+ */
+float4 WorldIncidentLighting[NUM_SH_VECTORS*3 + 1];
+
+/** The SH coefficients for the projection of a function that maps directions to scalar values. */
+struct FSHVector
+{
+	float V0;
+	float4 V[NUM_SH_VECTORS];
+};
+
+/** The SH coefficients for the projection of a function that maps directions to RGB values. */
+struct FSHVectorRGB
+{
+	FSHVector R;
+	FSHVector G;
+	FSHVector B;
+};
+
+/**
+ * Computes the dot product of two SH projected scalar functions, giving a scalar value that is
+ * the integral over all directions of the product of the functions.
+ */
+half DotSH(FSHVector A,FSHVector B)
+{
+	half Result = A.V0 * B.V0;
+	Result += dot(A.V[0], B.V[0]);
+	Result += dot(A.V[1], B.V[1]);
+	/*
+	UNROLL for(int VectorIndex = 0;VectorIndex < NUM_SH_VECTORS;VectorIndex++)
+	{
+		Result += dot(A.V[VectorIndex],B.V[VectorIndex]);
+	}*/
+	return Result;
+}
+
+/**
+ * Computes the dot product of a SH projected RGB function and a SH projected scalar function,
+ * giving a RGB value that is the integral over all directions of the product of the functions.
+ */
+half3 DotSH(FSHVectorRGB A,FSHVector B)
+{
+	half3 Result = 0;
+	Result.r = DotSH(A.R,B);
+	Result.g = DotSH(A.G,B);
+	Result.b = DotSH(A.B,B);
+	return Result;
+}
+
+/** Computes the value of the SH basis functions for a given direction. */
+FSHVector SHBasisFunction(half3 InputVector)
+{
+	half3 VectorSquared = InputVector * InputVector;
+	FSHVector Result;
+	// These are derived from simplifying SHBasisFunction
+	Result.V0 = 0.282095f; 
+	Result.V[0].x = -0.488603f * InputVector.y;
+	Result.V[0].y = 0.488603f * InputVector.z;
+	Result.V[0].z = -0.488603f * InputVector.x;
+	Result.V[0].w = 1.092548f * InputVector.x * InputVector.y;
+	Result.V[1].x = -1.092548f * InputVector.y * InputVector.z;
+	Result.V[1].y = 0.315392f * (3.0f * VectorSquared.z - 1.0f);
+	Result.V[1].z = -1.092548f * InputVector.x * InputVector.z;
+	Result.V[1].w = 0.546274f * (VectorSquared.x - VectorSquared.y);
+	return Result;
+}
+
+/**
+ * Computes the diffuse transfer function for a surface with the given normal and DiffusePower,
+ * and projects it into the SH basis.
+ */
+FSHVector CalcDiffuseTransferSH(half3 Normal,half Exponent)
+{
+	FSHVector Result = SHBasisFunction(Normal);
+
+	// These formula are scaling factors for each SH band that convolve a SH with the circularly symmetric function
+	// max(0,cos(theta))^Exponent
+	half L0 =					2 * PI / (1 + 1 * Exponent							);
+	half L1 =					2 * PI / (2 + 1 * Exponent							);
+	half L2 = Exponent *		2 * PI / (3 + 4 * Exponent + Exponent * Exponent	);
+	half L3 = (Exponent - 1) *	2 * PI / (8 + 6 * Exponent + Exponent * Exponent	);
+
+	// Multiply the coefficients in each band with the appropriate band scaling factor.
+	Result.V0.x *= L0;
+	Result.V[0].xyz *= L1;
+	Result.V[0].w *= L2;
+	Result.V[1].xyzw *= L2;
+
+	return Result;
+}
+
+/**
+ * Computes the transmission transfer function and projects it into the SH basis.
+ */
+FSHVector CalcTransmissionTransferSH()
+{
+	// The transmission transfer function is independent of direction, so all but the constant band coefficients are zero.
+	FSHVector Result;
+	UNROLL for(int VectorIndex = 0;VectorIndex < NUM_SH_VECTORS;VectorIndex++)
+	{
+		Result.V[VectorIndex] = 0;
+	}
+
+	// The constant basis coefficient is the transmitted light fraction divided by the integral of the constant basis.
+	// The incident lighting is implicitly scaled by PI, so the transfer function includes a PI factor to give an unscaled irradiance.
+	Result.V0 = PI / (2.0 * sqrt(PI));
+
+	return Result;
+}
+
+half3 ComputeSHLighting(float3 DiffuseColor, float3 CustomLightingDiffuse, float3 WorldNormal, FMaterialPixelParameters MaterialParameters)
+{
+	// Read the incident lighting out of the constant parameter into a SHRGB struct.
+	FSHVectorRGB WorldIncidentLightingSH;
+	WorldIncidentLightingSH.R.V0 = WorldIncidentLighting[0].r;
+	WorldIncidentLightingSH.G.V0 = WorldIncidentLighting[0].g;
+	WorldIncidentLightingSH.B.V0 = WorldIncidentLighting[0].b;
+	UNROLL for(int VectorIndex = 0;VectorIndex < NUM_SH_VECTORS;VectorIndex++)
+	{
+		WorldIncidentLightingSH.R.V[VectorIndex] = WorldIncidentLighting[NUM_SH_VECTORS * 0 + VectorIndex + 1];
+		WorldIncidentLightingSH.G.V[VectorIndex] = WorldIncidentLighting[NUM_SH_VECTORS * 1 + VectorIndex + 1];
+		WorldIncidentLightingSH.B.V[VectorIndex] = WorldIncidentLighting[NUM_SH_VECTORS * 2 + VectorIndex + 1];
+	}
+
+	// Compute the pixel's transfer function.
+	FSHVector DiffuseTransferSH = CalcDiffuseTransferSH(WorldNormal,max(0,GetMaterialDiffusePower(MaterialParameters)));
+	FSHVector TransmissionTransferSH = CalcTransmissionTransferSH();
+
+	// Compute the transmission mask from the lighting model and transmission mask/color.
+	#if MATERIAL_LIGHTINGMODEL_NONDIRECTIONAL
+		half3 TransmissionMask = 1;
+	#else
+		half3 TransmissionMask = GetMaterialTwoSidedLightingMask(MaterialParameters);
+	#endif
+
+	// Compute the transmission color and diffuse color based on the transmission mask.
+	#if MATERIAL_LIGHTINGMODEL_CUSTOM
+		half3 DiffuseCoefficient = CustomLightingDiffuse;
+		half3 DiffuseColorNormalized = DiffuseCoefficient * (1 - TransmissionMask);
+		half3 TransmissionColor = DiffuseCoefficient * TransmissionMask;	
+	#else		
+	half3 DiffuseColorNormalized = GetMaterialDiffuseColorNormalized(DiffuseColor, MaterialParameters) * (1 - TransmissionMask);
+	half3 TransmissionColor = DiffuseColor * TransmissionMask;
+	#endif
+
+	// Compute the irradiance: the integral of the product of the transfer functions with the incident lighting.
+	half3 DiffuseIrradiance = max(half3(0,0,0),DotSH(WorldIncidentLightingSH,DiffuseTransferSH));
+	half3 TransmissionIrradiance = max(half3(0,0,0),DotSH(WorldIncidentLightingSH,TransmissionTransferSH));
+
+	// Compute the pixel's exitant radiance.
+	return DiffuseColorNormalized * DiffuseIrradiance + TransmissionColor * TransmissionIrradiance;
+}

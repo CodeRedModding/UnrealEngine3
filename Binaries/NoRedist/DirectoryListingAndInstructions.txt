@@ -1,0 +1,33 @@
+
+This file maintains a directory listing of the NoRedist folder which contains
+utilities and tools that are generally free for anyone to download and use,
+but are not redistributable by Epic. Also included are instructions for
+acquiring these tools yourself.
+
+NoRedist\Compressonator\TheCompressonator.exe
+
+	This tool can be acquired from AMD:
+	http://developer.amd.com/gpu/compressonator/pages/default.aspx
+	
+	After full installing TheCompressonator (to Program Files, by default), copy all the files into the NoRedist\Compressenator
+	directory, so you will have a few .exes, a few .dlls, and a Plugins directory.
+	
+	Note that this is only used for compressing textures for ATI-powered Android devices.
+
+NoRedist\Flash\PNG2ATF.exe and PVRTexLib.dll
+
+	These are no longer available.
+
+NoRedist\MSEnc\msenc.exe
+
+	This is a fixed version of msenc.exe from Sony that does not crash on certain files. It has never been released as part of their tools.
+
+NoRedist\ImgTec\PVRUniSCo.exe
+
+	This tool can be acquired from Imagination Technologies 
+	http://www.imgtec.com/powervr/insider/powervr-pvrunisco.asp
+
+	From the installation, copy the PVRUniSCo.exe binary into the NoRedist\ImgTec directory.
+	
+	Note that this is only used for profiling GLES2 shaders and is disabled by default via a .ini file setting.
+	

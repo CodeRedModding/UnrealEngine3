@@ -1,0 +1,88 @@
+/*=============================================================================
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// struct FVertexFactoryInput
+
+#define NUM_INPUT_TEXCOORDS_SPEEDTREE 1
+
+struct FVertexFactoryInput
+{
+	float4	Position	: POSITION;
+	half3	TangentX	: TANGENT;
+	half3	TangentY	: BINORMAL;
+	half3	TangentZ	: NORMAL;
+	float4	WindInfo	: BLENDINDICES;
+	
+#if NUM_INPUT_TEXCOORDS_SPEEDTREE
+	float2	TexCoords[NUM_INPUT_TEXCOORDS_SPEEDTREE] : TEXCOORD0;
+#endif
+
+	float4	LODHint		: TEXCOORD1; // xyz = lod, w = wind scalar
+	float3	CardOffset	: TEXCOORD2;
+	
+#if NEEDS_VERTEX_LIGHTMAP
+	float4 LightMapA : TEXCOORD5;
+	float4 LightMapB : TEXCOORD6;
+#elif NEEDS_SIMPLE_VERTEX_LIGHTMAP
+	float4 LightMapA : TEXCOORD5;
+#endif
+};
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Includes
+
+#include "SpeedTreeVertexFactoryBase.usf"
+
+
+///////////////////////////////////////////////////////////////////////  
+//  Leaf card specific global variables
+
+float4x4    CameraAlignMatrix;
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CalcWorldPosition
+
+float4 CalcWorldPosition(float4x4 Transform, FVertexFactoryInput Input)
+{
+	const float3 Offset = Input.CardOffset * lerp(Input.LODHint.x, Input.LODHint.y, LODData.x);
+	float3 Corner = MulMatrix((float3x3)CameraAlignMatrix, Offset);
+	
+	const float3 RotatedNormal = MulMatrix((float3x3)RotationOnlyMatrix, TangentBias(Input.TangentZ.xyz));
+	// Isolate instructions used for speedtree wind on xbox 360, 
+	// As these cause the optimizer to generate different position calculating instructions in each pass, resulting in self-z-fighting.
+	float4 OffsetPosition;
+	ISOLATE
+	{
+		Corner = LeafWindMotion(Corner, RotatedNormal, Input.LODHint.w);
+		Corner += CommonWindMotion(Input.Position.xyz, Input.WindInfo).xyz;
+	}
+	
+	return MulMatrix(Transform, float4(Corner, 1));
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// GetWorldTangentBasis
+
+half3x3 GetWorldTangentBasis(FVertexFactoryInput Input)
+{
+	return MulMatrix(half3x3(TangentBias(Input.TangentX.xyz),
+							TangentBias(Input.TangentY.xyz),
+							TangentBias(Input.TangentZ.xyz)),
+					(half3x3)RotationOnlyMatrix);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ModifyInterpolants
+
+void ModifyInterpolants(FVertexFactoryInput Input, inout FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+}
+
+

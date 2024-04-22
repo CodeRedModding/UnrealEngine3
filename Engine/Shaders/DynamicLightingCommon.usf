@@ -1,0 +1,80 @@
+/*=============================================================================
+	DynamicLightingCommon.usf: Contains functions shared by dynamic light shaders.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+half4 LightColorAndFalloffExponent;
+
+// Unpack the light color and falloff exponent.
+static half3 LightColor = LightColorAndFalloffExponent.xyz;
+static half FalloffExponent = LightColorAndFalloffExponent.w;
+
+/** Distance field shadow parameters: bias to transform distance into the penumbra in x, scale in y, exponent in z. */
+float3 DistanceFieldParameters;
+/** Static texture shadow map that contains a [0,1] shadow factor or distance in the case of distance field shadows. */
+sampler2D ShadowTexture;
+
+sampler2D ShadowDepthTexture;
+float4x4 ScreenToShadowMatrix;
+/** Shadow buffer size in xy, texel size in zw. */
+float4 ShadowBufferAndTexelSize;
+
+float ShadowOverrideFactor;
+
+bool bReceiveDynamicShadows;
+
+/** Calculates shadowing from a single shadow buffer for a screenspace position. */
+float CalculateForwardDynamicShadowing(float4 ScreenPosition)
+{
+	float4 ShadowPosition = MulMatrix(ScreenToShadowMatrix,ScreenPosition);
+	ShadowPosition.xy /= ShadowPosition.w;
+
+	float4 ShadowDepths;
+	ShadowDepths.x = texDepth2D(ShadowDepthTexture, ShadowPosition.xy).x;
+	ShadowDepths.y = texDepth2D(ShadowDepthTexture, ShadowPosition.xy + float2(0, ShadowBufferAndTexelSize.w)).x;
+	ShadowDepths.z = texDepth2D(ShadowDepthTexture, ShadowPosition.xy + float2(ShadowBufferAndTexelSize.z, 0)).x;
+	ShadowDepths.w = texDepth2D(ShadowDepthTexture, ShadowPosition.xy + ShadowBufferAndTexelSize.zw).x;
+
+	float4 ShadowFactors = ShadowPosition.zzzz < ShadowDepths;
+	// Use one PCF calculation
+	float2 Fraction = frac(ShadowPosition.xy * ShadowBufferAndTexelSize.xy);
+	float2 VerticalLerp = lerp(ShadowFactors.xy, ShadowFactors.zw, Fraction.xx);
+	return lerp(VerticalLerp.x, VerticalLerp.y, Fraction.y) * ShadowOverrideFactor;
+}
+
+/** If enabled, whole scene dynamic shadows from the dominant light will replace precomputed shadows based on distance. */
+bool bEnableDistanceShadowFading;
+
+/** Near fade distance in X, 1 / (Far - Near) in Y. */
+float2 DistanceFadeParameters;
+
+/** Returns 0 for positions further than the fade far distance from the camera, and 1 for positions closer than the fade near distance. */
+float DistanceFromCameraFade(float3 WorldPosition, float3 CameraPosition)
+{
+	half Fade = saturate((DistanceFadeParameters.x - length(WorldPosition - CameraPosition)) * DistanceFadeParameters.y);
+	return Fade * Fade;
+}
+
+/** 
+ * Returns a radial attenuation factor for a point light.  
+ * WorldLightVector is the vector from the position being shaded to the light, divided by the radius of the light. 
+ */
+float RadialAttenuation(float3 WorldLightVector, half FalloffExponent)
+{
+	return pow(
+		1.0f - saturate(dot(WorldLightVector, WorldLightVector)),
+		FalloffExponent
+		);
+}
+
+/** 
+ * Calculates attenuation for a spot light.
+ * WorldLightVector is the vector from the position being shaded to the light, divided by the radius of the light. 
+ * SpotDirection is the direction of the spot light.
+ * SpotAngles.x is CosOuterCone, SpotAngles.y is InvCosConeDifference. 
+ */
+float SpotAttenuation(float3 WorldLightVector, float3 SpotDirection, float2 SpotAngles)
+{
+	float ConeAngleFalloff = Square(saturate((dot(normalize(WorldLightVector), -SpotDirection) - SpotAngles.x) * SpotAngles.y));
+	return ConeAngleFalloff;
+}

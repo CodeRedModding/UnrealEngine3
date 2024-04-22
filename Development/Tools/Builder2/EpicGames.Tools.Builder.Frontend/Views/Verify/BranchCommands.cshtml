@@ -1,0 +1,38 @@
+﻿@model IEnumerable<EpicGames.Tools.Builder.Frontend.Database.SP_GetVerificationBranchCommandsResult>
+
+@{
+    Layout = null;
+}
+
+
+<div class="grid6">
+    <table class="detail">
+        <tr class="p">
+            <td colspan="5">
+                <a name="verifications"></a><h2>Verifications</h2>
+            </td>
+        </tr>
+
+        @if (Model.Count() > 0)
+        {
+            <tr>
+                <th>Description</th>
+                <th class="enum">Platform</th>
+                <th class="enum">Last Attempted</th>
+                <th class="enum">Last Good</th>
+                <th></th>
+            </tr>
+
+            foreach (var m in Model)
+            {
+                @Html.Partial("_BranchCommand", m);
+            }
+        }
+        else
+        {
+            <tr class="p"><td>This branch does not have any builds that can be promoted at this time.</td></tr>
+        }
+    </table>
+</div>
+
+<div class="grid6 r"><a class="linkUp" href="#top">Back to top</a></div>

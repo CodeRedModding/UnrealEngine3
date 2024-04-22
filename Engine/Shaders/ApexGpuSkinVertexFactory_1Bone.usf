@@ -1,0 +1,5 @@
+#define WITH_APEX_1BONE 1
+#define WITH_APEX 0
+#define WITH_APEX_NORMALIZE 1
+#define WITH_APEX_NO_LOCALTOWORLD 1
+#include "GpuSkinVertexFactory.usf"

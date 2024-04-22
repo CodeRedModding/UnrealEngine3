@@ -1,0 +1,52 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+<UserControl
+	x:Class="ContentBrowser.AssetCanvas"
+	x:Name="This"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:cc="clr-namespace:CustomControls"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d" d:DesignHeight="400" d:DesignWidth="600">
+    <UserControl.Resources>
+
+		<!-- The default thumbnail for assets -->
+		<BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/DefaultThumbnail.png" x:Key="imgDefaultThumbnail"/>
+		
+		<!-- Textured tiled brush for the asset canvas background -->
+		<ImageBrush x:Key="BackgroundBrush" ImageSource="pack://application:,,,/UnrealEdCSharp;Component/images/AssetCanvasBackground.png" Stretch="Fill" ViewportUnits="Absolute" Viewport="0,0,1024,1024" TileMode="Tile" />
+
+		<!-- Stroke pattern for showing selection that is being used by the editor vs. that being remembered for user's convenience -->
+		<DoubleCollection x:Key="AuthoritativeDashPattern"></DoubleCollection>
+		<DoubleCollection x:Key="NonAuthoritativeDashPattern">4</DoubleCollection>
+
+	</UserControl.Resources>
+
+	
+	
+
+	<Grid>
+		<ScrollViewer
+			x:Name="m_AssetCanvasScrollViewer"
+			HorizontalScrollBarVisibility="Visible"
+			VerticalScrollBarVisibility="Visible"
+			Style="{StaticResource Slate_ShadowedScrollViewer}"
+		>
+		<Canvas
+			x:Name="m_ItemCanvas"
+			HorizontalAlignment="Left"
+			VerticalAlignment="Top" Width="1024" Height="1024"  >
+
+			<!-- Background rectangle used for canvas background hit-testing and such.  Dimensions are managed by C# code -->
+			<Rectangle Fill="{DynamicResource BackgroundBrush}" x:Name="m_BackgroundRectangle" Panel.ZIndex="-100" Width="1024" Height="1024"/>
+
+			<!-- Background transparent deco image, automatically positioned by C# code -->
+			<Image Source="pack://application:,,,/UnrealEdCSharp;Component/images/AssetCanvasBackgroundDeco.png" Panel.ZIndex="-90" Stretch="Fill" IsHitTestVisible="False" x:Name="m_BackgroundDecoImage" Width="200" Height="200" />
+			
+		</Canvas>
+		</ScrollViewer>
+
+	</Grid>
+
+
+</UserControl>

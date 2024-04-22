@@ -1,0 +1,74 @@
+/*=============================================================================
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// struct FVertexFactoryInput
+
+#define NUM_INPUT_TEXCOORDS_SPEEDTREE 1
+
+struct FVertexFactoryInput
+{
+	float4	Position	: POSITION;
+	half3	TangentX	: TANGENT;
+	half3	TangentY	: BINORMAL;
+	half3	TangentZ	: NORMAL;
+	float4	WindInfo	: BLENDINDICES;
+	
+#if NUM_INPUT_TEXCOORDS_SPEEDTREE
+	float2	TexCoords[NUM_INPUT_TEXCOORDS_SPEEDTREE] : TEXCOORD0;
+#endif
+
+	float4	LODHint		: TEXCOORD1;
+
+#if NEEDS_VERTEX_LIGHTMAP
+	float4 LightMapA : TEXCOORD5;
+	float4 LightMapB : TEXCOORD6;
+#elif NEEDS_SIMPLE_VERTEX_LIGHTMAP
+	float4 LightMapA : TEXCOORD5;
+#endif
+};
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Includes
+
+#include "SpeedTreeVertexFactoryBase.usf"
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CalcWorldPosition
+
+float4 CalcWorldPosition(float4x4 Transform, FVertexFactoryInput Input)
+{
+	const float3 LODPosition = lerp(Input.Position.xyz, Input.LODHint.xyz, LODData.x);
+	// Isolate instructions used for speedtree wind on xbox 360, 
+	// As these cause the optimizer to generate different position calculating instructions in each pass, resulting in self-z-fighting.
+	float4 OffsetPosition;
+	ISOLATE
+	{
+		OffsetPosition = CommonWindMotion(LODPosition, Input.WindInfo);
+	}
+	return MulMatrix(Transform, OffsetPosition);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// GetWorldTangentBasis
+
+half3x3 GetWorldTangentBasis(FVertexFactoryInput Input)
+{		
+	return MulMatrix(half3x3(TangentBias(Input.TangentX.xyz),
+							TangentBias(Input.TangentY.xyz),
+							TangentBias(Input.TangentZ.xyz)),
+					(half3x3)RotationOnlyMatrix);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ModifyInterpolants
+
+void ModifyInterpolants(FVertexFactoryInput Input, inout FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+}

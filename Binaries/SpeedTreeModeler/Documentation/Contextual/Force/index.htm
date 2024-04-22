@@ -1,0 +1,497 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" property="text/html; charset=utf-8" />
+<title>Force Object</title>
+<link href="../contextual.css" rel="stylesheet" type="text/css" media="screen">
+<script src="../contextual.js" type="text/javascript"></script>
+</head>
+<body scroll="auto" class="container" id="container" topmargin="0" marginheight="0" leftmargin="0" bottommargin="0" rightmargin="0" marginwidth="0">
+<div class="object_label" id="object_label">
+	<div class="btn_house">
+		<a name="reserved.this">
+			<b class="button-next"></b>
+			<b class="button-auto" title="resize"></b>
+			<b class="button-fixed" title="resize"></b>
+		&nbsp;</a>
+	</div>
+	<h5>Force Object</h5>
+	<div class="object_desc">
+		<div class="object-force"></div>
+		<p>Force objects are powerful modeling tools that can manipulate spine growth in ways that would be impossible with property value changes alone.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Force</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="force.enabled">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Enabled</h2>
+	</div>
+	<div class="property">
+		<p>Whether this force is turned on or off.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="force.type">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Type</h2>
+	</div>
+	<div class="property">
+		<div class="force-direction"></div>
+		<h3>Direction</h3>
+		<p>Spines grow in the direction that the arrow points.</p>
+		<div class="force-magnet"></div>
+		<h3>Magnet</h3>
+		<p>Spines converge on a point.</p>
+		<div class="force-gnarl"></div>
+		<h3>Gnarl </h3>
+		<p>Spines twist around a world-space vector.</p>
+		<div class="force-twist"></div>
+		<h3>Twist </h3>
+		<p>Spines twist along their local up vector.</p>
+		<div class="force-curl"></div>
+		<h3>Curl </h3>
+		<p>Spines curl inward on themselves.</p>
+		<div class="force-planar"></div>
+		<h3>Planar</h3>
+		<p> Spines grow along a 2D plane.</p>
+		<div class="force-mesh"></div>
+		<h3>Mesh </h3>
+		<p>Spines grow toward or around an arbitrary mesh object.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="force.strength">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Strength</h2>
+	</div>
+	<div class="property">
+		<p>The initial strength of the force.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="force.color">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>RGBA</span> Color</h2>
+	</div>
+	<div class="property">
+		<p>The color of the force indicator in the Tree Window and in Generator: Forces property groups.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="force.indicator_scale">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Indicator Scale</h2>
+	</div>
+	<div class="property">
+		<p>Size of the force's 3D icon.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Mesh</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.mesh">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Mesh</h2>
+	</div>
+	<div class="property">
+		<h3>None</h3>
+		<p>No mesh has been assigned to this force.</p>
+		<h3>Named mesh</h3>
+		<p>A named mesh from the mesh bank will be used for this force.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.force_action">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Force Action</h2>
+	</div>
+	<div class="property">
+		<h3>Avoid</h3>
+		<p>Spines are repelled by the closest vertices of the mesh.</p>
+		<h3>Attract</h3>
+		<p>Spines are pulled towards the closest vertices of the mesh.</p>
+		<h3>None</h3>
+		<p>No action is applied to the mesh force.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.collide_action">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Collide Action</h2>
+	</div>
+	<div class="property">
+		<h3>None</h3>
+		<p>No action is taken once a spine collides with the mesh.</p>
+		<h3>Obstruct</h3>
+		<p>Spines avoid the bounds of the mesh and &quot;crawl&quot; over it, eventually returning to their intended direction once able.</p>
+		<h3>Prune</h3>
+		<p>Spines are broken when they collide with the mesh.</p>
+		<h3>Stop</h3>
+		<p>Spines are shortened to the point where the collision occurs.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.keep_action">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Keep Action</h2>
+	</div>
+	<div class="property">
+		<h3>All</h3>
+		<p>All nodes will be kept regardless of whether they collide with a mesh force or not.</p>
+		<h3>Hits</h3>
+		<p>Only nodes that collide with this mesh force will be kept (if this force is enabled on the generator). All others will be destroyed.</p>
+		<h3>Misses</h3>
+		<p>Only nodes that DO NOT collide with this mesh force will be kept (if this force is enabled on the generator). All others will be destroyed.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.max_iterations">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer</span> Max Iterations</h2>
+	</div>
+	<div class="property">
+		<p>The maximum number of iterations in calculating collision.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.max_angle">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Max Angle</h2>
+	</div>
+	<div class="property">
+		<p>The maximum angle to bend to in order to collide with the mesh.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.give_up_action">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Give Up Action</h2>
+	</div>
+	<div class="property">
+		<h3>None</h3>
+		<p>No give up action used.</p>
+		<h3>Prune</h3>
+		<p>A branch that cannot collide will be cut off at the collision.</p>
+		<h3>Destroy</h3>
+		<p>A branch that cannot collide be removed.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.include_in_model">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Include In Model</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, the <a href="#mesh.mesh">assigned mesh</a> (and material) will be stored in and exported with the tree model.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.material.material">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Material</h2>
+	</div>
+	<div class="property">
+		<h3>None</h3>
+		<p>No material will appear on the mesh, instead a <a href="#mesh.material.color">color-only material</a> is used and drawn with edges.</p>
+		<h3>Named material</h3>
+		<p>A named material from the material bank will be used with this mesh.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.material.color">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>RGBA</span> Material: Color</h2>
+	</div>
+	<div class="property">
+		<p>The color used for the mesh object material.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.material.ambient_occlusion.offset">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> A. Occlusion: Offset</h2>
+	</div>
+	<div class="property">
+		<p>An offset for the calculated amount of ambient occlusion. Increasing this value lessens the affect of ambient occlusion.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.material.ambient_occlusion.contrast">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> A. Occlusion: Contrast</h2>
+	</div>
+	<div class="property">
+		<p>The difference in brightness from the heaviest ambient occlusion to no ambient occlusion.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.material.ambient_occlusion.min">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> A. Occlusion: Min</h2>
+	</div>
+	<div class="property">
+		<p>This value clamps the least amount of ambient occlusion allowed.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="mesh.material.ambient_occlusion.max">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> A. Occlusion: Max</h2>
+	</div>
+	<div class="property">
+		<p>This value clamps the most that ambient occlusion can ever darken.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Attenuation</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="attenuation.type">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Type</h2>
+	</div>
+	<div class="property">
+		<h3>None</h3>
+		<p>The force has an equal effect on the entire tree regardless of of its location in the scene.</p>
+		<h3>Linear</h3>
+		<p>The force effect is limited to a sphere of <a href="#attenuation.distance">Distance</a> radius, where the <a href="#attenuation.falloff_distance">Falloff Distance</a> represents a zone of linear  decay from full strength to zero.</p>
+		<h3>Quadratic</h3>
+		<p>The force effect is limited to a sphere of <a href="#attenuation.distance">Distance</a> radius, where the <a href="#attenuation.falloff_distance">Falloff Distance</a> represents a zone of near exponential  decay from full strength to zero.</p>
+		<h3>Hard</h3>
+		<p>The force effect is limited to a sphere of <a href="#attenuation.distance">Distance</a> radius, with no falloff.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="attenuation.distance">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Distance</h2>
+	</div>
+	<div class="property">
+		<p>The radius of effect around the force.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="attenuation.falloff_distance">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Falloff Distance</h2>
+	</div>
+	<div class="property">
+		<p>The distance from the outside of the sphere where decay begins.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="attenuation.indicator">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span> enumeration</span> Indicator</h2>
+	</div>
+	<div class="property">
+		<h3>Selected</h3>
+		<p>Attenuation is visualized only when the force is selected.</p>
+		<h3>Always</h3>
+		<p>Attenuation is always visualized.</p>
+		<h3>Never</h3>
+		<p>Attenuation is never visualized.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Transform</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="transform.translation.y"></a><a name="transform.translation.z"></a>
+			<a name="transform.translation.x">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Translation: X, Y, &amp; Z</h2>
+	</div>
+	<div class="property">
+		<p>The position of the force along each axis.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="transform.rotation.axis_y"></a><a name="transform.rotation.axis_z"></a>
+			<a name="transform.rotation.axis_x">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Rotation: Axis: X, Y, &amp; Z</h2>
+	</div>
+	<div class="property">
+		<p>The X,Y, and Z components of the <a href="#transform.rotation.angle">Rotation: Angle</a>.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="transform.rotation.angle">
+				<b class="button-prev"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>degrees</span> Rotation: Angle</h2>
+	</div>
+	<div class="property">
+		<p>The amount of rotation around the rotation angle.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="transform.scale.x"></a><a name="transform.scale.y"></a>
+			<a name="transform.scale.z">
+				<b class="button-prev"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Scale: X, Y, &amp; Z</h2>
+	</div>
+	<div class="property">
+		<p>Scales the mesh force in any of the three axes.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="transform.scale.uniform">
+				<b class="button-prev"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Scale: Uniform</h2>
+	</div>
+	<div class="property">
+		<p>Scales all three axes of the mesh simultaneously, maintaining its aspect ratio.</p>
+	</div>
+</div>
+</body>
+</html>

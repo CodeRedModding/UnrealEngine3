@@ -1,0 +1,74 @@
+/*=============================================================================
+	TemporalAAMaskShader.usf
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+void VertexMain(
+	FVertexFactoryInput Input,
+	out FVertexFactoryInterpolantsVSToPS OutFactoryInterpolants,
+	out float4 OutPixelPosition : TEXCOORD4,
+	out float4 OutPosition : POSITION
+	)
+{
+	FVertexFactoryIntermediates VFIntermediates = GetVertexFactoryIntermediates(Input);
+	float4 WorldPos = VertexFactoryGetWorldPosition(Input, VFIntermediates);
+
+	float3x3 TangentBasis = VertexFactoryGetTangentBasis(Input, VFIntermediates);
+	FMaterialVertexParameters VertexParameters = GetMaterialVertexParameters(Input, VFIntermediates, WorldPos.xyz, TangentBasis);
+
+	ISOLATE
+	{
+		WorldPos.xyz += GetMaterialWorldPositionOffset(VertexParameters);
+	}
+
+	ISOLATE
+	{
+		OutPosition = MulMatrix(ViewProjectionMatrix,WorldPos);
+		OutPosition = ApplyTemporalAAJitter(OutPosition);
+	}
+
+	OutFactoryInterpolants = VertexFactoryGetInterpolantsVSToPS(Input, VFIntermediates);
+
+	#if WORLD_POS
+		OutPixelPosition = WorldPos;
+	#else
+		OutPixelPosition = OutPosition;
+	#endif
+}
+
+/*
+ * Attempts to do depth testing manually, by clipping based on depth.  
+ * This has lots of limitations and is not performant, but is necessary when the depth buffer cannot be used.
+ */
+void ManualDepthTest(float CurrentDepth, float ExistingDepth)
+{
+	float Slope = min(max(abs(ddx(CurrentDepth)), abs(ddy(CurrentDepth))), 10.0f);
+	clip(ExistingDepth - CurrentDepth + 1 + Slope * 2.0f);
+}
+
+static const float2 TexelSizes = float2(1.0f / 1280, 1.0f / 1024);
+
+void PixelMain(
+	FVertexFactoryInterpolantsVSToPS FactoryInterpolants,
+	float4 PixelPosition : TEXCOORD4,
+	out float4 OutColor : COLOR0
+	)
+{
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(FactoryInterpolants);
+	CalcMaterialParameters(MaterialParameters, 1, float4(0,0,1,0), PixelPosition);
+
+	float Unused;
+	GetMaterialCoverageAndClipping(MaterialParameters,float2(0,0),0,Unused);
+
+	float SceneDepth = PreviousDepth(MaterialParameters.ScreenPosition);
+
+	// Do depth testing manually
+	ManualDepthTest(MaterialParameters.ScreenPosition.w, SceneDepth);
+
+	// Write 0 to the alpha channel to indicate no temporal AA smoothing should be applied to this pixel
+	OutColor = 0;
+}

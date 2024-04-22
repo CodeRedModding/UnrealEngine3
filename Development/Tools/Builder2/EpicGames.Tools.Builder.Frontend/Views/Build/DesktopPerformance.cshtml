@@ -1,0 +1,28 @@
+﻿@{
+    ViewBag.Title = "Build System";
+    ViewBag.Description = "UE4 Build Times";
+}
+
+
+<section>
+    <div class="grid6">
+        <span class="linkBack">
+            @Html.ActionLink("Build Status", "Status", "Build")
+        </span>
+
+        <span class="fr">
+            <a href="#performance">Performance</a>
+        </span>
+    </div>
+</section>
+
+<section class="clearfix">
+    <div class="grid6">
+        <a name="performance"></a><h2>Performance</h2>
+        
+        <p>
+            Desktop performance of selected builds since <strong>8/3/2012</strong>:
+            <img id="desktopPerformanceChart" class="chart" src="@Url.RouteUrl(new { action = "DesktopPerformance", controller = "Chart" })" alt="Chart" />
+        </p>
+    </div>
+</section>

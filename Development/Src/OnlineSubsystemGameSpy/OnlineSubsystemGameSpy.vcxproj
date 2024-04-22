@@ -1,0 +1,189 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="BuiltWithUnrealBuildTool|Win32">
+      <Configuration>BuiltWithUnrealBuildTool</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{53A475EA-5DF1-4ECB-A8F2-15AEDA42C74A}</ProjectGuid>
+    <RootNamespace>OnlineSubsystemGameSpy</RootNamespace>
+    <SccProjectName>
+    </SccProjectName>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+    <Keyword>MakeFileProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</IntDir>
+    <NMakeBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeReBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeCleanCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeOutput Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="Classes\OnlineGameInterfaceGameSpy.uc" />
+    <None Include="Classes\OnlineSubsystemGameSpy.uc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Inc\OnlineSubsystemGameSpy.h" />
+    <ClInclude Include="Inc\OnlineSubsystemGameSpyClasses.h" />
+    <ClInclude Include="Inc\OnlineSubsystemGameSpyNames.h" />
+    <ClInclude Include="Inc\UOnlineGameInterfaceGameSpy.h" />
+    <ClInclude Include="Inc\UOnlineSubsystemGameSpy.h" />
+    <ClInclude Include="..\PS3\External\GameSpy\OnlineSubsystemGameSpyPS3.h" />
+    <ClInclude Include="..\PS3\External\GameSpy\OnlineSubsystemGameSpyPS3AsyncTasks.h" />
+    <ClInclude Include="PS3_Stubs\OnlineSubsystemGameSpyPS3.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\OnlineSubsystemGameSpy.cpp" />
+    <ClCompile Include="Src\OnlineSubsystemGameSpyPackage.cpp" />
+    <ClCompile Include="Src\UOnlineGameInterfaceGameSpy.cpp" />
+    <ClCompile Include="Src\VoiceInterfaceGameSpy.cpp" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_AuthService.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_bits.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_cb_search.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_darray.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_exc_10_16_table.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_exc_10_32_table.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_exc_20_32_table.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_exc_5_256_table.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_exc_5_64_table.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_exc_8_128_table.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_filters.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gain_table.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gain_table_lbr.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gcdkeyc.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gcdkeys.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_ghttpBuffer.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_ghttpCallbacks.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_ghttpCommon.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_ghttpConnection.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_ghttpEncryption.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_ghttpMain.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_ghttpPost.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_ghttpProcess.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gp.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpi.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiBuddy.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiBuffer.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiCallback.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiConnect.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiInfo.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiKeys.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiOperation.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiPeer.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiProfile.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiPS3.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiSearch.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiTransfer.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiUnique.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gpiUtility.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsAssert.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsAvailable.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsCore.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsCrypt.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsDebug.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsLargeInt.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsMemory.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsPlatform.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsPlatformSocket.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsPlatformThread.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsPlatformUtil.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsRC4.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsSHA1.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsSoap.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsSSL.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsStringUtil.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsUdpEngine.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gsXML.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gt2Auth.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gt2Buffer.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gt2Callback.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gt2Connection.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gt2Encode.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gt2Filter.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gt2Main.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gt2Message.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gt2Socket.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gt2Utility.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gvCodec.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gvCustomDevice.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gvDevice.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gvDirectSound.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gvFrame.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gvMain.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gvPS3Audio.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gvPS3Headset.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gvSource.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gvSpeex.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_gvUtil.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_hashtable.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_hexc_10_32_table.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_hexc_table.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_high_lsp_tables.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_lpc.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_lsp.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_lsp_tables_nb.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_ltp.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_math_approx.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_md5c.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_misc.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_modes.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_NATify.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_natneg.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_nb_celp.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_ptMain.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_qr2.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_qr2regkeys.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_quant_lsp.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sakeMain.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sakeRequest.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sakeRequestMisc.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sakeRequestModify.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sakeRequestRead.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sb_celp.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sb_crypt.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sb_queryengine.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sb_server.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sb_serverbrowsing.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sb_serverlist.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sciInterface.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sciMain.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sciReport.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sciSerialize.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_sciWebServices.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_speex_callbacks.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_speex_header.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_stereo.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_vbr.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_vq.c" />
+    <ClCompile Include="GameSpy_C_Stubs\_stub_Win32Common.c" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

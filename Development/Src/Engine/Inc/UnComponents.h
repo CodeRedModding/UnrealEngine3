@@ -1,9 +1,6 @@
 /*=============================================================================
 	UnComponents.h: Forward declarations of object components of actors
-	Copyright 2001 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Steven Polge
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 class APlayerController;

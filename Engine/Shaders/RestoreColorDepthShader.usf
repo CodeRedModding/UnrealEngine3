@@ -1,0 +1,77 @@
+/*=============================================================================
+	RestoreColorDepthShader.usf: Shader for restoring the color and depth buffers.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+#include "Common.usf"
+
+/**
+ *	Vertex shader code
+ */
+float4 MainVertexShader(float4 Pos : POSITION0, out float2 OutTex : TEXCOORD0) : POSITION
+{
+	OutTex = Pos.xy;
+	return float4(2.0f * Pos.x - 1.0f, 1.0f - 2.0 * Pos.y, 0.0f, 1.0f);
+}
+
+/**
+ *	Pixel shader code
+ */
+sampler DepthTex : register(s0);
+sampler ColorTex : register(s1);
+float4 ColorBias : register(c0);
+
+/** DepthOnly pixel shader */
+float MainPixelShaderDepthOnly(float2 Tex : TEXCOORD, out float4 Dummy : COLOR0) : DEPTH0
+{
+	Dummy = 0;
+	return tex2D(DepthTex, Tex.xy).x-0.000001;
+}
+
+/** ColorAndDepth pixel shader */
+float MainPixelShaderColorAndDepth(float2 Tex : TEXCOORD, out float4 Dummy : COLOR0) : DEPTH0
+{
+	Dummy = tex2D(ColorTex, Tex.xy);
+	Dummy *= ColorBias.x;
+	return tex2D(DepthTex, Tex.xy).x-0.000001;
+}
+
+/** Downsampling DepthOnly pixel shader */
+float MainPixelShaderDownsamplingDepthOnly(float2 UV : TEXCOORD, out float4 Dummy : COLOR0) : DEPTH0
+{
+	float4 Depth1;
+	float4 Depth2;
+	float4 Depth3;
+	float4 Depth4;
+	asm
+	{
+		tfetch2D Depth1, UV, DepthTex, OffsetX=0, OffsetY=0
+		tfetch2D Depth2, UV, DepthTex, OffsetX=1, OffsetY=0
+		tfetch2D Depth3, UV, DepthTex, OffsetX=0, OffsetY=1
+		tfetch2D Depth4, UV, DepthTex, OffsetX=1, OffsetY=1
+	};
+	
+	float FurthestDepth = min(Depth1.x, min(Depth2.x, min(Depth3.x, Depth4.x)));
+	Dummy = 0;
+	return FurthestDepth-0.000001;
+}
+
+/** Downsampling ColorAndDepth pixel shader */
+float MainPixelShaderDownsamplingColorAndDepth(float2 UV : TEXCOORD, out float4 Dummy : COLOR0) : DEPTH0
+{
+	float4 Depth1;
+	float4 Depth2;
+	float4 Depth3;
+	float4 Depth4;
+	asm
+	{
+		tfetch2D Depth1, UV, DepthTex, OffsetX=0, OffsetY=0
+		tfetch2D Depth2, UV, DepthTex, OffsetX=1, OffsetY=0
+		tfetch2D Depth3, UV, DepthTex, OffsetX=0, OffsetY=1
+		tfetch2D Depth4, UV, DepthTex, OffsetX=1, OffsetY=1
+	};
+	
+	float FurthestDepth = min(Depth1.x, min(Depth2.x, min(Depth3.x, Depth4.x)));
+	Dummy = tex2D(ColorTex, UV.xy);
+	Dummy *= ColorBias.x;
+	return FurthestDepth-0.000001;
+}

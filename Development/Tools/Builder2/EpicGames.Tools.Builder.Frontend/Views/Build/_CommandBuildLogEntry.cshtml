@@ -1,0 +1,76 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Database.SP_GetCommandBuildLogsResult
+
+@{
+    Layout = null;
+}
+
+@{
+    string img;
+    string title;
+
+    if (Model.CurrentStatus == "Succeeded")
+    {
+        img = "tick.png";
+        title = "Command Succeeded";
+    }
+    else if (Model.CurrentStatus == "Failed")
+    {
+        img = "cross.png";
+        title = "Command Failed";
+    }
+    else if ((DateTime.UtcNow - Model.BuildStarted.Value) < TimeSpan.FromHours(6))
+    {
+        img = "spinner.gif";
+        title = "Command in Progress since " + Model.BuildStarted.Value.ToLocalTime().ToString();
+        
+        if (!string.IsNullOrEmpty(Model.CurrentStatus))
+        {
+            title += " (" + Model.CurrentStatus + ")";
+        }
+    }
+    else
+    {
+        img = "skull.png";
+        title = "Server died or command was killed";
+    }
+                            
+    <tr class="@((Model.CurrentStatus == "Failed") ? "bad" : "good")" title="@title">
+        <td class="string">
+            <img src="~/Content/Themes/Base/Images/@img" alt="State" />
+
+            @if ((Model.ChangeList != null) && (Model.ChangeList.Value != 0))
+            {
+                <text>@Html.ActionLink(Model.ChangeList.ToString(), "Changelist", "Build", new { id = Model.ChangeList }, null)</text>
+            }
+            else
+            {
+                <text>n/a</text>
+            }
+        </td>
+        <td class="string">@Html.ActionLink(@Model.Machine, "Machine", "Build", new { id = Model.Machine }, null)</td>
+        <td class="enum">@Model.BuildStarted.Value.ToLocalTime().ToString()</td>
+        <td class="enum">
+            @if (Model.BuildEnded.HasValue)
+            {
+                if ((Model.CurrentStatus == "Succeeded") || (Model.CurrentStatus == "Failed"))
+                {
+                    <text>@((Model.BuildEnded.Value - Model.BuildStarted.Value).ToString("hh\\:mm\\:ss"))</text>
+                }
+                else
+                {
+                    <text>@((DateTime.UtcNow - Model.BuildStarted.Value).ToString("hh\\:mm\\:ss"))</text>
+                }
+            }
+            else
+            {
+                <text>In Progress</text>
+            }
+        </td>
+        <td class="enum">
+            @if (!string.IsNullOrEmpty(Model.DetailedLogPath))
+            {
+                <a href="file://epicgames.net/Root/UE3/Builder/BuilderFailedLogs/@ViewBag.Branch/@Model.DetailedLogPath" onclick="javascript: popupPage('@Url.RouteUrl(new { action= "LogFile", controller = "Build", id = ViewBag.Branch, param = Model.DetailedLogPath })'); return false;"><img src="~/Content/Themes/Base/Images/doc.png" alt="Log file" /></a>
+            }
+        </td>
+    </tr>
+}

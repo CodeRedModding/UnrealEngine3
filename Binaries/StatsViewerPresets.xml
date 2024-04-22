@@ -1,0 +1,8 @@
+<settings>
+<preset name="Memory" description="A collection of high-level memory statistics">
+<add>Virtual Memory Used,Animation Memory,Audio Memory,PixelShader Memory,VertexShader Memory</add>
+</preset>
+<preset name="FPSChart">
+<add_group>FPSChart</add_group>
+</preset>
+</settings>

@@ -1,0 +1,19 @@
+﻿<!--
+  Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+-->
+<UserControl x:Class="UnrealFrontend.PipelineView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:ufe2="clr-namespace:UnrealFrontend"
+	x:Name="This" >
+	
+	<UserControl.DataContext>
+		<Binding ElementName="This" />
+	</UserControl.DataContext>
+	
+	<StackPanel x:Name="mStepsContainer" Orientation="Horizontal">
+		<!-- PipelineSteps generated here -->
+	</StackPanel>
+
+	
+</UserControl>

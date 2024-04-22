@@ -1,0 +1,375 @@
+/*=============================================================================
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+
+///////////////////////////////////////////////////////////////////////
+// struct FVertexFactoryInterpolantsVSToPS
+
+struct FVertexFactoryInterpolantsVSToPS
+{
+#if WORLD_COORDS
+	// First row of the tangent to world matrix
+	float3	TangentToWorld0	: TANGENTTOWORLD0;
+	// Last row of the tangent to world matrix in xyz
+	float4	TangentToWorld2	: TANGENTTOWORLD2;
+#endif
+
+	float4	VertexColor : TEXCOORD0;
+
+#if NUM_MATERIAL_TEXCOORDS
+	float4	TexCoords[(NUM_MATERIAL_TEXCOORDS + 1) / 2]	: TEXCOORD1;
+#endif
+};
+
+struct FVertexFactoryIntermediates
+{
+	float Dummy;
+};
+
+///////////////////////////////////////////////////////////////////////
+// Shader constants
+
+float4x4	PreviousLocalToWorld;
+float3x3	WorldToLocal;
+float3x3	RotationOnlyMatrix;
+float2		LODData;			// x = lod scalar, y = alpha adjustment
+
+float3		WindDir;			// xyz = dir
+float4		WindTimes;			// x = primary, y = secondary, z = frond, w = leaves
+float4		WindDistances;		// x = primary osc, y = secondary osc, z = wind height, w = height exponent
+float3		WindGust;			// x = gust amount, y = primary distance, z = gust scale
+float3		WindGustHints;		// x = vertical offset %, wind dir adjustment, unison
+float3		WindLeaves;			// x = distance, y = leaves lighting change, z = leaves windward scalar
+
+
+///////////////////////////////////////////////////////////////////////
+// Forward declarations.
+
+half3x3 GetWorldTangentBasis(FVertexFactoryInput Input);
+float4	CalcWorldPosition(float4x4 Transform, FVertexFactoryInput Input);
+void	ModifyInterpolants(FVertexFactoryInput Input, inout FVertexFactoryInterpolantsVSToPS Interpolants);
+
+
+///////////////////////////////////////////////////////////////////////
+// GetMaterialParameters
+
+/** Converts from vertex factory specific interpolants to a FMaterialPixelParameters, which is used by material inputs. */
+FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	FMaterialPixelParameters	Result;
+	
+#if NUM_MATERIAL_TEXCOORDS
+	UNROLL
+	for(int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS; CoordinateIndex += 2)
+	{
+		Result.TexCoords[CoordinateIndex] = Interpolants.TexCoords[CoordinateIndex / 2].xy;
+		UNROLL
+		for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+		{
+			Result.SampleTexCoords[SampleIndex][CoordinateIndex] = EvaluateAttributeAtSample(Interpolants.TexCoords[CoordinateIndex / 2].xy,SampleIndex);
+		}
+		if (CoordinateIndex + 1 < NUM_MATERIAL_TEXCOORDS)
+		{
+			Result.TexCoords[CoordinateIndex + 1] = Interpolants.TexCoords[CoordinateIndex / 2].wz;
+			UNROLL
+			for(uint SampleIndex = 0;SampleIndex < NUM_TEXCOORD_SAMPLES;++SampleIndex)
+			{
+				Result.SampleTexCoords[SampleIndex][CoordinateIndex + 1] = EvaluateAttributeAtSample(Interpolants.TexCoords[CoordinateIndex / 2].wz,SampleIndex);
+			}
+		}
+	}
+#endif
+
+	Result.VertexColor = Interpolants.VertexColor;
+	Result.TangentNormal = 0;
+	Result.TangentCameraVector = 0;
+	Result.TangentReflectionVector = 0;
+	Result.ScreenPosition = 0;
+	Result.TangentLightVector = 0;
+
+#if WORLD_COORDS
+	half3 TangentToWorld0 = UnpackColor3( Interpolants.TangentToWorld0.xyz );
+	half4 TangentToWorld2 = UnpackColor4( Interpolants.TangentToWorld2 );
+	Result.TangentToWorld = CalcTangentToWorld( TangentToWorld0, TangentToWorld2 );
+	Result.UnMirrored = 1;
+#endif
+#if MATERIAL_DECAL
+	Result.DecalAttenuation = 1;
+	Result.DecalPlaneDistance = 0;
+#endif
+
+#if LIGHTMAP_UV_ACCESS
+	Result.LightmapUVs = float2(0, 0);
+#endif
+
+	Result.TwoSidedSign = 1;
+	return Result;
+}
+
+float4 VertexFactoryGetVertexColor(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return float4(1,1,1,LODData.y);
+}
+
+/** Converts from vertex factory specific input to a FMaterialVertexParameters, which is used by vertex shader material inputs. */
+FMaterialVertexParameters GetMaterialVertexParameters( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentBasis )
+{
+	FMaterialVertexParameters Result;
+	Result.WorldPosition = WorldPosition - PreViewTranslation.xyz;
+	Result.VertexColor = VertexFactoryGetVertexColor(Input, Intermediates);
+
+	float3x3 TangentToLocal = transpose(TangentBasis);
+
+	#if ROW_MAJOR
+		// does not handle instancing!
+		float3x3 TangentToWorld = mul((float3x3)LocalToWorld, TangentToLocal); 
+	#else
+		float3x3 TangentToWorld = mul(transpose((float3x3)LocalToWorld), TangentToLocal); 
+	#endif
+
+	Result.TangentToWorld = TangentToWorld;
+	return Result;
+}
+
+#if NEEDS_SHADOWMAP_COORDINATE
+float2 GetShadowMapCoordinate(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	return 0;
+}
+#endif
+
+///////////////////////////////////////////////////////////////////////
+// VertexFactoryGetWorldPositionBase
+
+void VertexFactoryGetWorldPositionBase(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, out FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+#if NUM_MATERIAL_TEXCOORDS
+	// Ensure the unused components of the last packed texture coordinate are initialized.
+	Interpolants.TexCoords[(NUM_MATERIAL_TEXCOORDS + 1) / 2 - 1] = 0;
+
+	UNROLL
+	for(int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS; CoordinateIndex += 2)
+	{
+		if( CoordinateIndex < NUM_INPUT_TEXCOORDS_SPEEDTREE )
+		{
+			Interpolants.TexCoords[CoordinateIndex / 2].xy = Input.TexCoords[CoordinateIndex];
+		}
+		else
+		{
+			Interpolants.TexCoords[CoordinateIndex / 2].xy = 0;
+		}
+		if(CoordinateIndex + 1 < NUM_INPUT_TEXCOORDS_SPEEDTREE)
+		{
+			Interpolants.TexCoords[CoordinateIndex / 2].wz = Input.TexCoords[CoordinateIndex + 1];
+		}
+		else
+		{
+			Interpolants.TexCoords[CoordinateIndex / 2].wz = 0;
+		}
+	}
+#endif
+
+#if WORLD_COORDS
+	float3x3 LocalToTangent = GetWorldTangentBasis(Input);
+	float3x3 TangentToLocal = transpose(LocalToTangent);
+
+	// Calculate the transform from tangent to world space
+	#if ROW_MAJOR
+		float3x3 TangentToWorld = mul((float3x3)LocalToWorld, TangentToLocal); 
+	#else
+		float3x3 TangentToWorld = mul(transpose((float3x3)LocalToWorld), TangentToLocal); 
+	#endif
+
+	Interpolants.TangentToWorld0 = TangentToWorld[0];
+	Interpolants.TangentToWorld2 = float4(TangentToWorld[2], sign(determinant(LocalToTangent)));
+
+	Interpolants.TangentToWorld0 = PackColor3( Interpolants.TangentToWorld0.xyz );
+	Interpolants.TangentToWorld2 = PackColor4( Interpolants.TangentToWorld2 );
+#endif
+	
+	Interpolants.VertexColor = VertexFactoryGetVertexColor(Input, Intermediates);
+	
+	ModifyInterpolants(Input, Interpolants);
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// GetLightMapCoordinate
+
+#if NEEDS_LIGHTMAP_COORDINATE
+float2 GetLightMapCoordinate(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	return 0;
+}
+#endif
+
+
+///////////////////////////////////////////////////////////////////////
+// VertexFactoryGetVertexLightMap / VertexFactoryGetSimpleVertexLightMap
+
+#if NEEDS_VERTEX_LIGHTMAP
+void VertexFactoryGetVertexLightMap(FVertexFactoryInput Input,out float4 LightMapA,out float4 LightMapB)
+{
+	LightMapA = Input.LightMapA;
+	LightMapB = Input.LightMapB;
+}
+#elif NEEDS_SIMPLE_VERTEX_LIGHTMAP
+void VertexFactoryGetSimpleVertexLightMap(FVertexFactoryInput Input,out float4 LightMapA)
+{
+	LightMapA = Input.LightMapA;
+}
+#endif
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// VertexFactoryGetWorldPosition
+
+float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return CalcWorldPosition(LocalToWorld, Input);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// VertexFactoryGetInterpolantsVSToPS
+
+FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	FVertexFactoryInterpolantsVSToPS Interpolants;
+	VertexFactoryGetWorldPositionBase(Input, Intermediates, Interpolants);
+	return Interpolants;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// VertexFactoryGetPreviousWorldPosition
+
+float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return CalcWorldPosition(PreviousLocalToWorld, Input);
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// VertexFactoryGetWorldNormal
+
+half3 VertexFactoryGetWorldNormal(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return GetWorldTangentBasis(Input)[2];
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// VertexFactoryGetTangentBasis
+
+float3x3 VertexFactoryGetTangentBasis( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates )
+{
+	return GetWorldTangentBasis(Input);
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// VertexFactoryWorldToTangentSpace
+
+float3 VertexFactoryWorldToTangentSpace( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3x3 TangentBasis, float3 WorldVector )
+{
+	// we use a straight mul here because we are generating the matrix, so we don't worry about column major vs row major (which is what MulMatrix manages per-platform)	
+	return mul(
+		TangentBasis,
+		WorldVector
+		);
+}
+
+FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
+{
+	FVertexFactoryIntermediates Intermediates;
+	return Intermediates;
+}
+
+///////////////////////////////////////////////////////////////////////
+// CommonWindMotion
+
+float4 CommonWindMotion(float3 vPos, float4 vWindInfo)
+{
+	// rotate tree before wind
+	vPos = MulMatrix(vPos, RotationOnlyMatrix);
+	vWindInfo.xyz = MulMatrix(vWindInfo.xyz, RotationOnlyMatrix);
+
+	// get the oscillation times (they changed independently to allow smooth frequency changes in multiple components)
+#if PS3 
+	float fPrimaryTime = WindTimes.x + LocalToWorld[3][0] - PreViewTranslation.x; 
+	float fSecondaryTime = WindTimes.y + LocalToWorld[3][1] - PreViewTranslation.y;
+#else 
+	float fPrimaryTime = WindTimes.x + LocalToWorld[0][3] - PreViewTranslation.x; 
+	float fSecondaryTime = WindTimes.y + LocalToWorld[1][3] - PreViewTranslation.y; 
+#endif
+
+	float3 vOrigPos = vPos.xyz;
+
+	// compute how much the height contributes
+	float fAdjust = max(vPos.z * WindDistances.z, 0.0f);
+	fAdjust = pow(fAdjust, WindDistances.w);
+
+	// move a bare minimum due to gusting/strength
+	float fMoveAmount = WindGust.y;
+
+	// primary oscillation
+	fMoveAmount += WindDistances.x * sin(fPrimaryTime * 0.3f) * cos(fPrimaryTime * 0.95f);
+	fMoveAmount *= fAdjust;
+
+	// xy component
+	vPos.xy += WindDir.xy * fMoveAmount;
+
+	// move down a little to hide the sliding effect
+	vPos.z -= fMoveAmount * WindGustHints.x;
+
+	// secondary oscillation
+	float fOsc = sin((fSecondaryTime + vWindInfo.w) * 0.3f) * cos((fSecondaryTime + vWindInfo.w) * 0.95f);
+
+	// reported wind direction (this vector is not normalized and shouldn't be!)
+	float3 vDir = vWindInfo.xyz;
+
+	float3 vNewWindDir = WindDir;
+
+	// adjust based on artist's tuning
+	vNewWindDir.z += WindGustHints.y;
+	vNewWindDir = normalize(vNewWindDir);
+
+	// how long is it?  this length controls how much it should oscillate
+	float fLength = length(vDir);
+
+	// make it oscillate as much as it would have if it wasn't going with the wind
+	vNewWindDir *= fLength;
+
+	// add the normal term and the 'with the wind term'
+ 	float fDirectionality = WindGust.x * WindGustHints.z;
+	vPos.xyz += (1.0f - fDirectionality) * vDir.xyz * fOsc * WindDistances.y;
+ 	vPos.xyz += fDirectionality * vNewWindDir.xyz * lerp(fOsc, 1.0f, WindGustHints.z) * WindDistances.y * WindGust.z;
+
+	return float4(vPos, 1);
+}
+
+
+///////////////////////////////////////////////////////////////////////  
+// LeafWindMotion
+
+float3 LeafWindMotion(float3 vPos, float3 vDirection, float fScale)
+{
+	float2 vDir = -normalize(vPos.xy);
+	float fDot = saturate(dot(vDir.xy, WindDir.xy));
+
+	float fDirContribution = 0.5f + fDot * 2.0f;
+	fDirContribution *= WindLeaves.z;
+
+	float fLeavesTime = WindTimes.w;
+
+	float fMoveAmount = (WindLeaves.x + fDirContribution * WindLeaves.x) * sin(fLeavesTime + vDirection.y * 1000.0f);
+	vPos.xyz += vDirection.xyz * fMoveAmount * fScale;
+
+	//vDirection += float3(0.0f, 0.0f, saturate(fScale * fMoveAmount * WindLeaves.y));
+	//vDirection = normalize(vDirection);
+
+	return vPos;
+}
+
+

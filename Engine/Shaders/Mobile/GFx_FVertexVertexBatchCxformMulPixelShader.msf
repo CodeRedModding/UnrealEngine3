@@ -1,0 +1,26 @@
+#define RETURN_COLOR(Color) Color
+#if USE_GFX_GAMMA_CORRECTION
+UNIFORM( float, InverseGamma );
+#endif
+IN_VARYING_LOW( vec4, color, COLOR0 );
+IN_VARYING_DEFAULT( vec4, fucxadd, TEXCOORD3 );
+IN_VARYING_DEFAULT( vec4, fucxmul, TEXCOORD4 );
+OUT_BUILTIN( vec4, gl_FragColor, COLOR )
+PIXEL_MAIN 
+{
+  lowp vec4 fcolor0;
+// S Vertex
+  gl_FragColor = color;
+// E Cxform
+  gl_FragColor = gl_FragColor * fucxmul + fucxadd;
+// E Mul
+  gl_FragColor = mix(vec4(1.0), gl_FragColor, vec4(gl_FragColor.a));
+// E gamma
+#if USE_GFX_GAMMA_CORRECTION
+  gl_FragColor = RETURN_COLOR (vec4(pow(clamp(gl_FragColor.rgb,0.0,1.0), vec3(InverseGamma)),gl_FragColor.a));
+#else
+  gl_FragColor = RETURN_COLOR (gl_FragColor);
+#endif
+
+}
+

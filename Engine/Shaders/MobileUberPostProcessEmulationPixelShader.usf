@@ -1,0 +1,138 @@
+/*=============================================================================
+	MobileUberPostProcessEmulationPixelShader.usf: Applies the mobile uber post-process
+	in editor or simmobile
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+
+float4 TiltShiftParameters;
+
+/**
+ * x: FocusDistance - The distance which is 100% focused
+ * y: InverseFocusRadius - The focus falloff exponent
+ * z: One over the minimum distance from the focal which is 0% focused
+ * w: MinBlurAmount - clamp for min blur amount
+ */
+float4 DOFPackedParameters;
+
+/**
+ * Max blur factor for the far geometry
+ */
+float DOFFactor;
+
+/**
+ * Color grading parameters
+ */
+float MobileColorGradingBlend;
+float MobileColorGradingDesaturation;
+float4 MobileColorGradingHighlightsMinusShadows;
+float4 MobileColorGradingMidTones;
+float4 MobileColorGradingShadows;
+
+/**
+ * Parameters for the bloom effect
+ *
+ * rgb: BloomColorScale: RGB scale for the bloomed color (BloomTint*BloomScale)
+ * a:   BloomThreshold - 
+ */
+float4 BloomScaleAndThreshold;
+
+sampler2D InputTexture;
+
+half3 ApplyTiltShift( half3 SceneColor, half3 SourceTextureColor, half Position )
+{
+	half TiltShiftPosition = TiltShiftParameters.x;
+	half TiltShiftMinRadius = TiltShiftParameters.y;
+	half TiltShiftMaxRadius = TiltShiftParameters.z;
+	half TiltShiftTransitionWidth = TiltShiftParameters.w;
+
+ 	half BlendFactor = (clamp(abs(Position - TiltShiftPosition), TiltShiftMinRadius, TiltShiftMaxRadius) - TiltShiftMinRadius) / TiltShiftTransitionWidth;
+ 	half3 BlendedColor = lerp( SceneColor, SourceTextureColor, BlendFactor );
+	return BlendedColor;
+}
+
+/** Returns 0-1 blur factor based on DOF. 0 = no blur, 1 = full blur. */
+float CalcDOFFactor(float SceneDepth)
+{
+	float FocusDistance			= DOFPackedParameters.x;
+	float FocusMinRadius			= DOFPackedParameters.y;
+	float FocusMaxRadius			= DOFPackedParameters.z;
+	float InverseTransitionRange	= DOFPackedParameters.w;
+
+	float Distance = SceneDepth - FocusDistance;	
+	float DOFScale = saturate((Distance - FocusMinRadius) * InverseTransitionRange);
+	return DOFFactor * DOFScale;
+}
+
+half3 ApplyBloomAndDOF( half3 SceneColor, half4 SourceTextureColor, float SceneDepth )
+{
+	// Recalculate DOF factor for the SceneColor (unblurred)
+	half FocusedWeight = 1.0 - CalcDOFFactor( SceneDepth );
+
+	// Blurred DOF factor (from the quarter-resolution SceneColor)
+	half BlurredWeight = SourceTextureColor.a;
+
+	// Note that SourceTextureColor.rgb is premultiplied with the DOF factor
+	half WeightSum = FocusedWeight + BlurredWeight;
+	half3 BlendedColor = (SceneColor * FocusedWeight + SourceTextureColor.rgb) / WeightSum;
+
+	return BlendedColor;
+}
+
+half3 ApplyColorGrade( half3 Color )
+{
+	float DesaturationConstant = (Color.r + Color.g + Color.b) * MobileColorGradingDesaturation;
+	half3 Desaturation = Color * MobileColorGradingBlend.rrr + DesaturationConstant.rrr;
+	half3 ColorGrading = MobileColorGradingShadows.rgb + Desaturation * MobileColorGradingHighlightsMinusShadows.rgb + (Desaturation * (float3(1.0, 1.0, 1.0) - Desaturation)) * MobileColorGradingMidTones.rgb;
+	 
+	return ColorGrading.rgb;
+}
+
+float4 CalcBloomColorAndFactor(float3 SceneColor)
+{
+	float3 BloomColorScale	= BloomScaleAndThreshold.rgb;
+	float BloomThreshold	= BloomScaleAndThreshold.a;
+
+	// RGB scale factor to calculated pixel luminance using a weight average
+	float3 LuminanceFactor	= float3( 0.3, 0.59, 0.11 );
+	float Luminance			= dot( LuminanceFactor, SceneColor );
+	float BloomFactor		= saturate(Luminance - BloomThreshold);
+	float3 BloomedColor		= SceneColor * BloomFactor * BloomColorScale;
+
+	return half4( BloomedColor, BloomFactor );
+}
+
+float4 Main( in float2 SceneColorUV : TEXCOORD0, in float2 SourceTextureUV : TEXCOORD1) : COLOR
+{
+	half3 SceneColor = CalcSceneColor(SceneColorUV).rgb;
+#if INVERT_GAMMA_CORRECTION == 1
+	SceneColor = pow(SceneColor, 1.0/2.2);
+#endif	
+	half4 SourceTextureColor = tex2D(InputTexture, SourceTextureUV);
+
+	float SceneDepth = CalcSceneDepth(SceneColorUV);
+	half3 BlendedColor = ApplyBloomAndDOF(SceneColor, SourceTextureColor, SceneDepth);
+ 
+	BlendedColor = ApplyColorGrade( BlendedColor );
+
+ 	return float4( BlendedColor, 1.0 );	
+}
+
+float4 GatherMobileDOF(in float2 SceneColorUV : TEXCOORD0) : COLOR
+{
+	float3 SceneColor = tex2D(InputTexture, SceneColorUV).rgb;
+#if INVERT_GAMMA_CORRECTION == 1
+	SceneColor = pow(SceneColor, 1.0/2.2);
+#endif		
+	float4 BloomColorAndFactor = CalcBloomColorAndFactor(SceneColor);
+	float3 BlurryColor = SceneColor + BloomColorAndFactor.rgb;
+
+	float SceneDepth = CalcSceneDepth(SceneColorUV);
+	float DOFFactor = CalcDOFFactor(SceneDepth);
+
+	float BlurFactor = saturate(DOFFactor + BloomColorAndFactor.a);
+	
+	return float4(BlurryColor * BlurFactor, BlurFactor);
+}
+

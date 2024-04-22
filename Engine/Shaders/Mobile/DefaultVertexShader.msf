@@ -1,0 +1,1379 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+
+////////////////////////
+// Conditions
+////////////////////////
+
+#define NEED_VERTEX_TEXCOORDS0 0
+#define NEED_VERTEX_TEXCOORDS1 0
+#define NEED_VERTEX_TEXCOORDS2 0
+#define NEED_VERTEX_TEXCOORDS3 0
+#define NEED_NORMAL 0
+#define NEED_WORLD_NORMAL 0
+#define NEED_WORLD_TANGENT 0
+#define NEED_LIGHTING_COLOR 0
+#define NEED_TANGENT_SPACE 0
+#define NEED_TANGENT_TO_WORLD 0
+#define NEED_PIXEL_WORLD_POSITION 0
+#define NEED_PIXEL_TANGENT_TO_WORLD 0
+#define NEED_PIXEL_TANGENT_HALF_VECTOR 0
+#define NEED_PIXEL_TANGENT_LIGHT_DIRECTION 0
+#define NEED_PIXEL_TANGENT_UP_VECTOR 0
+#define NEED_PIXEL_TANGENT_CAMERA_VECTOR 0
+#define NEED_MASK_TEXTURE 0
+#define NEED_EXTRA_COLOR_TEXTURE 0
+#define NEED_VERTEX_COLOR 0
+#define NEED_RIM_LIGHTING_COLOR_VARYING 0
+#define NEED_DIRECTIONAL_LIGHT_UNIFORMS 0
+#define NEED_PER_VERTEX_RIM_TERM 0
+#define NEED_INTERMEDIATE_WORLD_POSITION 0
+
+
+#if SHADOW_PROJECTION
+	#undef NEED_PIXEL_WORLD_POSITION 
+	#define NEED_PIXEL_WORLD_POSITION 1
+#endif
+
+#if SHADOW_DEPTH_ONLY
+	#undef NEED_INTERMEDIATE_WORLD_POSITION
+	#define NEED_INTERMEDIATE_WORLD_POSITION 1
+#endif
+
+#if USE_GRADIENT_FOG
+	#undef NEED_INTERMEDIATE_WORLD_POSITION
+	#define NEED_INTERMEDIATE_WORLD_POSITION 1
+#endif
+
+#if USE_HEIGHT_FOG
+	#undef NEED_PIXEL_WORLD_POSITION
+	#define NEED_PIXEL_WORLD_POSITION 1
+#endif
+
+#if USE_VERTEX_MOVEMENT
+    #undef NEED_VERTEX_COLOR
+    #define NEED_VERTEX_COLOR 1
+    
+    #undef NEED_INTERMEDIATE_WORLD_POSITION
+    #define NEED_INTERMEDIATE_WORLD_POSITION 1
+#endif
+
+#if NEED_ONE_DETAIL_TEXTURES
+    #if TEXTURE_BLEND_FACTOR_SOURCE == TEXTURE_BLEND_FACTOR_SOURCE_VERTEX_COLOR
+        #undef NEED_VERTEX_COLOR
+        #define NEED_VERTEX_COLOR 1
+    #endif
+
+    #undef NEED_EXTRA_COLOR_TEXTURE
+    #define NEED_EXTRA_COLOR_TEXTURE 1
+
+    #if TEXTURE_BLEND_FACTOR_SOURCE == TEXTURE_BLEND_FACTOR_SOURCE_MASK_TEXTURE
+        #undef NEED_MASK_TEXTURE
+        #define NEED_MASK_TEXTURE 1
+    #endif
+#endif
+
+#if USE_SPECULAR
+	#if (SPECULAR_MASK >= SPECMASK_MASK_TEXTURE_RGB) && (SPECULAR_MASK <= SPECMASK_MASK_TEXTURE_ALPHA)
+	    #undef NEED_MASK_TEXTURE
+	    #define NEED_MASK_TEXTURE 1
+	#endif
+#endif
+
+#if (ALPHA_VALUE_SOURCE >= ALPHA_VALUE_SOURCE_MASK_RED) && (ALPHA_VALUE_SOURCE <= ALPHA_VALUE_SOURCE_MASK_BLUE)
+	#undef NEED_MASK_TEXTURE
+	#define NEED_MASK_TEXTURE 1
+#endif
+
+#if USE_AMBIENT_OCCLUSION
+    #undef NEED_VERTEX_COLOR
+    #define NEED_VERTEX_COLOR 1
+#endif
+
+#if USE_ENVIRONMENT_MAPPING
+    #if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_ENVIRONMENT_MAPPING
+        #if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+            #undef NEED_PIXEL_TANGENT_CAMERA_VECTOR
+            #define NEED_PIXEL_TANGENT_CAMERA_VECTOR 1
+        #else
+            #undef NEED_PIXEL_WORLD_POSITION 
+            #define NEED_PIXEL_WORLD_POSITION 1
+        #endif
+
+        #if ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_RED || ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_GREEN || ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_BLUE || ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_ALPHA
+			#undef NEED_VERTEX_COLOR
+			#define NEED_VERTEX_COLOR 1
+        #endif
+    #else
+        #undef NEED_PER_VERTEX_RIM_TERM
+        #define NEED_PER_VERTEX_RIM_TERM 1
+    #endif
+
+    #if (ENVIRONMENT_MASK_SOURCE >= ENVIRONMENT_MASK_SOURCE_MASK_TEXTURE_RED) && (ENVIRONMENT_MASK_SOURCE <= ENVIRONMENT_MASK_SOURCE_MASK_TEXTURE_ALPHA)
+        #undef NEED_MASK_TEXTURE
+        #define NEED_MASK_TEXTURE 1
+	#endif
+
+	#if (ENVIRONMENT_MASK_SOURCE >= ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_RED) && (ENVIRONMENT_MASK_SOURCE <= ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_ALPHA)
+		#undef NEED_VERTEX_COLOR
+		#define NEED_VERTEX_COLOR 1
+    #endif
+#endif
+
+#if USE_EMISSIVE
+	#if (EMISSIVE_MASK_SOURCE >= EMISSIVE_MASK_SOURCE_VERTEX_COLOR_RED) && (EMISSIVE_MASK_SOURCE <= EMISSIVE_MASK_SOURCE_VERTEX_COLOR_ALPHA)
+		#undef NEED_VERTEX_COLOR
+		#define NEED_VERTEX_COLOR 1
+	#endif
+
+	#if (EMISSIVE_MASK_SOURCE >= EMISSIVE_MASK_SOURCE_MASK_TEXTURE_RED) && (EMISSIVE_MASK_SOURCE <= EMISSIVE_MASK_SOURCE_MASK_TEXTURE_ALPHA)
+		#undef NEED_MASK_TEXTURE
+		#define NEED_MASK_TEXTURE 1
+	#endif
+#endif
+
+#if USE_RIM_LIGHTING
+    #if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_RIM_LIGHTING
+        #if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+            #undef NEED_PIXEL_TANGENT_CAMERA_VECTOR
+            #define NEED_PIXEL_TANGENT_CAMERA_VECTOR 1
+        #else
+            #undef NEED_PIXEL_WORLD_POSITION 
+            #define NEED_PIXEL_WORLD_POSITION 1
+        #endif
+    #else
+        #undef NEED_PER_VERTEX_RIM_TERM
+        #define NEED_PER_VERTEX_RIM_TERM 1
+        
+        #if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_CONSTANT || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_RED || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_GREEN || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_BLUE || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_ALPHA
+            #undef NEED_LIGHTING_COLOR
+            #define NEED_LIGHTING_COLOR 1
+        #endif
+    #endif
+    
+    #if (RIM_LIGHTING_MASK_SOURCE >= RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_RED) && (RIM_LIGHTING_MASK_SOURCE <= RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_ALPHA)
+        #undef NEED_VERTEX_COLOR
+        #define NEED_VERTEX_COLOR 1
+    #endif
+    
+    #if (RIM_LIGHTING_MASK_SOURCE >= RIM_LIGHTING_MASK_SOURCE_MASK_TEXTURE_RED) && (RIM_LIGHTING_MASK_SOURCE <= RIM_LIGHTING_MASK_SOURCE_MASK_TEXTURE_ALPHA)
+        #undef NEED_MASK_TEXTURE
+        #define NEED_MASK_TEXTURE 1
+    #endif
+#endif
+
+#if USE_BUMP_OFFSET
+    #undef NEED_PIXEL_TANGENT_CAMERA_VECTOR
+    #define NEED_PIXEL_TANGENT_CAMERA_VECTOR 1
+
+    #undef NEED_MASK_TEXTURE
+    #define NEED_MASK_TEXTURE 1
+#endif
+
+#if USE_UNIFORM_COLOR_MULTIPLY || USE_VERTEX_COLOR_MULTIPLY
+	#if (COLOR_MULTIPLY_SOURCE >= COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_RED)&& (COLOR_MULTIPLY_SOURCE <= COLOR_MULTIPLY_SOURCE_MASK_TEXTURE_ALPHA)
+		#undef NEED_MASK_TEXTURE
+		#define NEED_MASK_TEXTURE 1
+	#endif
+#endif
+
+#if !DEPTH_ONLY && !SHADOW_DEPTH_ONLY && !SHADOW_PROJECTION
+    #if BASE_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS0
+        #undef NEED_VERTEX_TEXCOORDS0
+        #define NEED_VERTEX_TEXCOORDS0 1
+    #elif BASE_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS1
+        #undef NEED_VERTEX_TEXCOORDS1
+        #define NEED_VERTEX_TEXCOORDS1 1
+    #elif BASE_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS2
+        #undef NEED_VERTEX_TEXCOORDS2
+        #define NEED_VERTEX_TEXCOORDS2 1
+    #elif BASE_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS3
+        #undef NEED_VERTEX_TEXCOORDS3
+        #define NEED_VERTEX_TEXCOORDS3 1
+    #endif
+#endif
+
+#if NEED_EXTRA_COLOR_TEXTURE
+    #if DETAIL_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS0
+        #undef NEED_VERTEX_TEXCOORDS0
+        #define NEED_VERTEX_TEXCOORDS0 1
+    #elif DETAIL_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS1
+        #undef NEED_VERTEX_TEXCOORDS1
+        #define NEED_VERTEX_TEXCOORDS1 1
+    #elif DETAIL_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS2
+        #undef NEED_VERTEX_TEXCOORDS2
+        #define NEED_VERTEX_TEXCOORDS2 1
+    #elif DETAIL_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS3
+        #undef NEED_VERTEX_TEXCOORDS3
+        #define NEED_VERTEX_TEXCOORDS3 1
+    #endif
+#endif
+
+#if NEED_MASK_TEXTURE
+    #if MASK_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS0
+        #undef NEED_VERTEX_TEXCOORDS0
+        #define NEED_VERTEX_TEXCOORDS0 1
+    #elif MASK_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS1
+        #undef NEED_VERTEX_TEXCOORDS1
+        #define NEED_VERTEX_TEXCOORDS1 1
+    #elif MASK_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS2
+        #undef NEED_VERTEX_TEXCOORDS2
+        #define NEED_VERTEX_TEXCOORDS2 1
+    #elif MASK_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS3
+        #undef NEED_VERTEX_TEXCOORDS3
+        #define NEED_VERTEX_TEXCOORDS3 1
+    #endif
+#endif
+
+#if USE_VERTEX_SPECULAR
+    #undef NEED_WORLD_NORMAL
+    #define NEED_WORLD_NORMAL 1
+
+    #undef NEED_DIRECTIONAL_LIGHT_UNIFORMS
+    #define NEED_DIRECTIONAL_LIGHT_UNIFORMS 1
+    
+    #undef NEED_INTERMEDIATE_WORLD_POSITION
+    #define NEED_INTERMEDIATE_WORLD_POSITION 1
+#endif
+
+#if USE_NORMAL_MAPPING
+    #if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+        #undef NEED_TANGENT_TO_WORLD
+        #define NEED_TANGENT_TO_WORLD 1
+    #else
+        #undef NEED_PIXEL_TANGENT_TO_WORLD
+        #define NEED_PIXEL_TANGENT_TO_WORLD 1
+    #endif
+#endif
+
+#if USE_PIXEL_SPECULAR
+    #if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+        #undef NEED_PIXEL_TANGENT_HALF_VECTOR
+        #define NEED_PIXEL_TANGENT_HALF_VECTOR 1
+
+        #undef NEED_PIXEL_TANGENT_LIGHT_DIRECTION
+        #define NEED_PIXEL_TANGENT_LIGHT_DIRECTION 1
+        
+        #undef NEED_DIRECTIONAL_LIGHT_UNIFORMS
+        #define NEED_DIRECTIONAL_LIGHT_UNIFORMS 1
+    #else
+        #undef NEED_PIXEL_TANGENT_TO_WORLD
+        #define NEED_PIXEL_TANGENT_TO_WORLD 1
+        
+        #undef NEED_PIXEL_WORLD_POSITION 
+        #define NEED_PIXEL_WORLD_POSITION 1
+    #endif
+    
+    #undef NEED_INTERMEDIATE_WORLD_POSITION
+    #define NEED_INTERMEDIATE_WORLD_POSITION 1
+#endif
+
+#if USE_LIGHTMAP_SPECULAR
+	#undef NEED_PIXEL_TANGENT_CAMERA_VECTOR
+	#define NEED_PIXEL_TANGENT_CAMERA_VECTOR 1
+#endif
+
+#if USE_DYNAMIC_DIRECTIONAL_LIGHT
+    #if USE_NORMAL_MAPPING
+        #if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+            #undef NEED_PIXEL_TANGENT_LIGHT_DIRECTION
+            #define NEED_PIXEL_TANGENT_LIGHT_DIRECTION 1
+        #endif
+    #else
+        #undef NEED_LIGHTING_COLOR
+        #define NEED_LIGHTING_COLOR 1
+    #endif
+
+    #undef NEED_DIRECTIONAL_LIGHT_UNIFORMS
+    #define NEED_DIRECTIONAL_LIGHT_UNIFORMS 1
+
+    #undef NEED_WORLD_NORMAL
+    #define NEED_WORLD_NORMAL 1
+#endif
+
+#if USE_DYNAMIC_SKY_LIGHT
+    #if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_DYNAMIC_SKY_LIGHT
+        #if PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+            #undef NEED_PIXEL_TANGENT_UP_VECTOR
+            #define NEED_PIXEL_TANGENT_UP_VECTOR 1
+        #endif
+    #else
+        #undef NEED_LIGHTING_COLOR
+        #define NEED_LIGHTING_COLOR 1
+    #endif
+    
+    #undef NEED_WORLD_NORMAL
+    #define NEED_WORLD_NORMAL 1
+#endif
+
+#if USE_VERTEX_COLOR_MULTIPLY
+    #undef NEED_VERTEX_COLOR
+    #define NEED_VERTEX_COLOR 1
+#endif
+
+#if NEED_PIXEL_TANGENT_CAMERA_VECTOR
+    #undef NEED_TANGENT_TO_WORLD
+    #define NEED_TANGENT_TO_WORLD 1
+    
+    #undef NEED_INTERMEDIATE_WORLD_POSITION
+    #define NEED_INTERMEDIATE_WORLD_POSITION 1
+#endif
+
+#if NEED_PIXEL_WORLD_POSITION
+    #undef NEED_INTERMEDIATE_WORLD_POSITION
+    #define NEED_INTERMEDIATE_WORLD_POSITION 1
+#endif
+
+#if NEED_PIXEL_TANGENT_HALF_VECTOR
+    #undef NEED_TANGENT_TO_WORLD
+    #define NEED_TANGENT_TO_WORLD 1
+#endif
+
+#if NEED_PIXEL_TANGENT_LIGHT_DIRECTION
+    #undef NEED_TANGENT_TO_WORLD
+    #define NEED_TANGENT_TO_WORLD 1
+#endif
+
+#if NEED_TANGENT_TO_WORLD
+    #undef NEED_TANGENT_SPACE
+    #define NEED_TANGENT_SPACE 1
+    
+    #undef NEED_WORLD_NORMAL
+    #define NEED_WORLD_NORMAL 1
+    
+    #undef NEED_WORLD_TANGENT
+    #define NEED_WORLD_TANGENT 1
+#endif
+
+#if NEED_PER_VERTEX_RIM_TERM
+    #if USE_REFLECTION_BASED_ENVIRONMENT_MAPS
+        #undef NEED_WORLD_NORMAL
+        #define NEED_WORLD_NORMAL 1
+    #endif
+    
+    #undef NEED_INTERMEDIATE_WORLD_POSITION
+    #define NEED_INTERMEDIATE_WORLD_POSITION 1
+#endif
+
+#if NEED_TANGENT_SPACE
+    #undef NEED_NORMAL
+    #define NEED_NORMAL 1
+#endif
+
+#if NEED_WORLD_NORMAL
+    #undef NEED_NORMAL
+    #define NEED_NORMAL 1
+#endif
+
+
+////////////////////////
+// Variables
+////////////////////////
+
+UNIFORM(mat4, LocalToWorld);
+UNIFORM(mat3, LocalToWorldRotation);
+UNIFORM(mat4, ViewProjection);
+UNIFORM(mat4, LocalToProjection);
+UNIFORM(vec4, FadeColorAndAmount);
+
+OUT_VARYING_LOW( vec4, GlobalEffectColorAndAmount, COLOR1 );
+
+ATTRIBUTE(vec4, Position, POSITION);
+#if IS_LANDSCAPE
+// TangentX really contains NextMipPosition
+ATTRIBUTE(vec4, TangentX, TANGENT);
+#endif
+
+#if !DEPTH_ONLY && !SHADOW_DEPTH_ONLY && !SHADOW_PROJECTION
+    OUT_VARYING_HIGH( vec4, UVBase, TEXCOORD0 );
+#endif
+
+#if USE_GPU_SKINNING
+    UNIFORM(vec4, BoneMatrices[MAX_BONES * 3]);
+    
+    // Depth only rendering forces one bone skinning
+    #if !DEPTH_ONLY && !SHADOW_PROJECTION
+		ATTRIBUTE(vec4, BlendWeight, BLENDWEIGHT);
+	#endif
+
+    ATTRIBUTE(vec4, BlendIndices, BLENDINDICES);
+#endif
+
+#if USE_VERTEX_MOVEMENT
+	//time for tangent sine wave, max amplitude of the movement, time for vertical sine wave
+	UNIFORM(vec3, VertexMovementConstants);
+	// Sway transform matrix
+	UNIFORM(mat4, VertexSwayMatrix);
+#endif
+
+#if USE_LIGHTMAP
+    UNIFORM(vec4, LightmapCoordinateScaleBias);
+
+	#if !IS_LANDSCAPE
+	ATTRIBUTE(vec2, LightMapCoordinate, COLOR0);
+	#endif
+
+	OUT_VARYING_HIGH( vec2, UVLightmap, TEXCOORD1 );
+#endif
+
+#if USE_VERTEX_LIGHTMAP
+    #if !USE_LIGHTMAP_FIXED_SCALE
+        UNIFORM(vec4, LightMapScale);
+    #endif
+
+    ATTRIBUTE(vec4, LightMapA, TEXCOORD5);
+    OUT_VARYING_LOW( vec3, PrelitColor, COLOR0 );
+#endif
+
+
+#if IS_DECAL
+	// Transform local/world point to projected space for decal
+	UNIFORM(mat4, DecalMatrix);
+
+	// Local/world position of the decal
+	UNIFORM(vec3, DecalLocation);
+
+	// Offset of decal in texture space
+	UNIFORM(vec2, DecalOffset);
+#endif
+
+// This is currently only used for rendering shadow depth (linear depth).
+#if SHADOW_DEPTH_ONLY
+	/** ViewProjection matrix for a shadow buffer (from the light's viewpoint) */
+	UNIFORM(mat4, ProjectionMatrix);
+
+	/** Used to normalize the outputted depth */
+	UNIFORM(float, InvMaxSubjectDepth);
+
+	/** Tweakable depth bias */
+	UNIFORM(float, DepthBias);
+#endif
+
+#if USE_GRADIENT_FOG
+	UNIFORM(float, FogOneOverSquaredRange);
+	UNIFORM(float, FogStartSquared);
+	UNIFORM(vec4, FogColor);
+#endif
+	
+#if NEED_ONE_DETAIL_TEXTURES
+    #if TEXTURE_BLEND_FACTOR_SOURCE == TEXTURE_BLEND_FACTOR_SOURCE_VERTEX_COLOR
+        OUT_VARYING_LOW( float4, TextureBlendFactor, TEXCOORD9 );
+    #endif
+#endif
+
+#if USE_AMBIENT_OCCLUSION
+    OUT_VARYING_LOW( float, AmbientOcclusion, TODO );
+#endif
+
+#if USE_ENVIRONMENT_MAPPING
+    #if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_ENVIRONMENT_MAPPING
+        #if ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_RED || ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_GREEN || ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_BLUE || ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_ALPHA
+            OUT_VARYING_LOW( float, EnvironmentMask, TODO );
+        #endif
+    #else
+        UNIFORM(vec3, EnvironmentParameters);
+        OUT_VARYING_MEDIUM( vec4, EnvironmentVectorAndAmount, TODO );
+    #endif
+#endif
+
+#if USE_EMISSIVE
+	#if (EMISSIVE_MASK_SOURCE >= EMISSIVE_MASK_SOURCE_VERTEX_COLOR_RED) && (EMISSIVE_MASK_SOURCE <= EMISSIVE_MASK_SOURCE_VERTEX_COLOR_ALPHA)
+		OUT_VARYING_LOW( float, EmissiveMask, TODO );
+	#endif
+#endif
+
+#if USE_RIM_LIGHTING
+    #if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_RIM_LIGHTING
+        #if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_RED || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_GREEN || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_BLUE || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_ALPHA
+            OUT_VARYING_LOW( float, RimLightingMask, TODO );
+        #endif
+    #else
+        UNIFORM(vec4, RimLightingColorAndExponent);
+
+        #if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_CONSTANT || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_RED || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_GREEN || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_BLUE || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_ALPHA
+        #else    
+            OUT_VARYING_LOW( vec3, MaskableRimLighting, TODO );
+        #endif
+    #endif
+#endif
+
+#if NEED_EXTRA_COLOR_TEXTURE
+    // @todo: We could opt to only include this when UVTransform features are enabled (UVs are actually different)
+    OUT_VARYING_HIGH( vec2, UVDetail, TEXCOORD2 );
+#endif
+
+#if USE_VERTEX_SPECULAR
+    UNIFORM(float, SpecularPower);
+    UNIFORM(vec3, LightColorTimesSpecularColor);
+
+    OUT_VARYING_LOW( vec3, Specular, TEXCOORD3 );
+#endif
+
+#if USE_DYNAMIC_DIRECTIONAL_LIGHT
+    #if !USE_NORMAL_MAPPING
+        UNIFORM(vec4, DirectionalLightColor);
+    #endif
+#endif
+
+#if USE_DYNAMIC_SKY_LIGHT
+    #if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_DYNAMIC_SKY_LIGHT
+    #else
+        // @todo: Currently these parameters will only be set for actors with light environments!!
+        UNIFORM(vec4, LowerSkyColor);
+        UNIFORM(vec4, UpperSkyColor);
+    #endif
+#endif
+
+#if NEED_LIGHTING_COLOR
+    OUT_VARYING_LOW( vec3, LightingColor, TEXCOORD4 );
+#endif
+
+#if NEED_DIRECTIONAL_LIGHT_UNIFORMS
+    // @todo: This is a little weird because for actors with light environments, this direction will be
+    //   driven by the light environment direction, otherwise we use the brightest directional light
+    //   in the scene.  However, for specular the color always comes from the brightest directional light.
+    UNIFORM(vec4, LightDirectionAndbDirectional);
+#endif
+
+#if NEED_PIXEL_TANGENT_CAMERA_VECTOR
+    OUT_VARYING_LOW( vec3, VarTangentCameraVector, TODO );
+#endif
+
+#if NEED_PIXEL_TANGENT_TO_WORLD
+    #undef NEED_TANGENT_TO_WORLD
+    #define NEED_TANGENT_TO_WORLD 1
+
+    OUT_VARYING_LOW( vec3, VarWorldNormal, TODO );
+    OUT_VARYING_LOW( vec3, VarWorldTangent, TODO );
+    #if !COMPUTE_BINORMAL_IN_PIXEL_SHADER
+        OUT_VARYING_LOW( vec3, VarWorldBinormal, TODO );
+    #endif
+#endif
+
+#if NEED_PIXEL_WORLD_POSITION
+    OUT_VARYING_MEDIUM( vec3, VarWorldPosition, TODO );
+#endif
+
+#if NEED_PIXEL_TANGENT_HALF_VECTOR
+    OUT_VARYING_LOW( vec3, VarTangentHalfVector, TEXCOORD8 );
+#endif
+
+#if NEED_PIXEL_TANGENT_LIGHT_DIRECTION
+    OUT_VARYING_LOW( vec3, VarTangentLightDirection, TEXCOORD7 );
+#endif
+
+#if NEED_PIXEL_TANGENT_UP_VECTOR
+    OUT_VARYING_LOW( vec3, VarTangentUpVector, TODO );
+#endif
+
+// Decals always auto-generate texture coordinates, so we don't declare attributes in that case
+#if !IS_DECAL && !IS_LANDSCAPE
+	#if NEED_VERTEX_TEXCOORDS0
+		ATTRIBUTE(vec2, TexCoords0, TEXCOORD0);
+	#endif
+
+	#if NEED_VERTEX_TEXCOORDS1
+		ATTRIBUTE(vec2, TexCoords1, TEXCOORD1);
+	#endif
+
+	#if NEED_VERTEX_TEXCOORDS2
+		ATTRIBUTE(vec2, TexCoords2, TEXCOORD2);
+	#endif
+
+	#if NEED_VERTEX_TEXCOORDS3
+		ATTRIBUTE(vec2, TexCoords3, TEXCOORD3);
+	#endif
+#endif
+
+#if NEED_VERTEX_COLOR
+	#if USE_FALLBACK_STREAM_COLOR || IS_LANDSCAPE
+		// A default color that will replace the missing attribute stream
+		vec4 VertexColor = vec4(1, 1, 1, 1);
+	#else
+		// Note: Red and Blue are reversed here due to platform-specific byte order
+		ATTRIBUTE(vec4, VertexColor, COLOR1);
+	#endif
+#endif
+
+#if USE_UNIFORM_COLOR_MULTIPLY
+	UNIFORM(vec4, UniformMultiplyColor);
+#endif
+
+//whether to bring in per vertex and/or uniform color
+#if USE_UNIFORM_COLOR_MULTIPLY || USE_VERTEX_COLOR_MULTIPLY
+	OUT_VARYING_HIGH( vec4, ColorMultiply, TEXCOORD5 );
+#endif
+
+#if NEED_MASK_TEXTURE || IS_LANDSCAPE
+    OUT_VARYING_HIGH( vec2, UVMask, TEXCOORD6 );
+#endif
+
+#if NEED_TANGENT_SPACE && !IS_LANDSCAPE
+    ATTRIBUTE(vec3, TangentX, TANGENT);
+#endif
+
+#if NEED_NORMAL
+    // TangentZ.w contains sign of tangent basis determinant
+    ATTRIBUTE(vec4, TangentZ, NORMAL);
+#endif
+
+#if IS_LANDSCAPE
+	UNIFORM(vec4, LightmapScaleBias);
+	UNIFORM(vec4, LayerUVScaleBias);
+	UNIFORM(vec4, LodValues);
+	UNIFORM(vec4, LodDistancesValues);
+
+	// Landscape always needs TexCoords 1 for the weightmap
+    #undef NEED_VERTEX_TEXCOORDS1
+    #define NEED_VERTEX_TEXCOORDS1 1
+#endif
+
+////////////////////////
+// Implementation
+////////////////////////
+
+// polynomial approximation of a sin wave like function
+// f(x) = ax^3 + bax^2 + cx + d;
+// f(0) = 0, f(1) = 0, f(-1) = 0
+// 6 instructions (frac,+,*)
+// sin(w) ~= CheapWave(r / PIMul2) * 20.72f
+float CheapWave(float r)
+{
+	float x = frac(r);
+
+	return x * (x - 0.5) * (x - 1.0);
+}
+
+
+void main()
+{
+	vec4 InputPosition;
+	
+	#if NEED_INTERMEDIATE_WORLD_POSITION
+		// If an error occurs due to this being undefined, make sure NEED_INTERMEDIATE_WORLD_POSITION is set properly
+		vec4 WorldPosition;
+	#endif
+
+	#if IS_LANDSCAPE
+		// Decode position
+		vec4 InputPositionLod0 = vec4( Position.xy * LodValues.x, ((Position.z + 256.0 * Position.w) - 32768.0) * (1.0/128.0), 1.0 );
+		// TangentX contains NextMipPosition
+		vec4 InputPositionLod1 = vec4( TangentX.xy * LodValues.y, ((TangentX.z + 256.0 * TangentX.w) - 32768.0) * (1.0/128.0), 1.0 );
+
+		// calculate amount of morphing based on LOD.
+		float LodDistance = length(LodDistancesValues.xy - InputPositionLod0.xy);
+		float MorphAlpha = clamp( (LodDistance - LodDistancesValues.z) * LodDistancesValues.w, 0.0, 1.0 );
+
+		InputPosition = lerp( InputPositionLod0, InputPositionLod1, MorphAlpha * LodValues.z );
+	#else
+		InputPosition = Position; 
+	#endif
+		
+	#if NEED_NORMAL 
+		// Grab unit vertex normal by applying tangent bias
+		vec3 Normal = TangentBias3( TangentZ.xyz );
+
+		#if NEED_WORLD_NORMAL
+			vec3 WorldNormal;
+		#endif
+	#endif
+
+
+	#if NEED_TANGENT_SPACE
+		#if IS_LANDSCAPE
+			// Project normal onto landscape to get Tangent
+			vec3 Tangent = normalize( vec3(TangentZ.z, 0, -TangentZ.x) );
+		#else	
+			// Grab unit vertex tangent by applying tangent bias
+			vec3 Tangent = TangentBias3( TangentX );
+
+		#endif
+
+		// Compute the vertex binormal using the normal and tangent vectors
+		vec3 Binormal = cross( Normal, Tangent ) * TangentBias1( TangentZ.w );
+    
+		#if NEED_WORLD_TANGENT
+			vec3 WorldTangent;
+		#endif
+	#endif
+
+    #if NEED_VERTEX_COLOR
+        // Swap vertex color Red and Blue channel (reversed due to platform-specific byte order)
+        vec4 VertexColorRGBA = VertexColor.bgra;
+    #endif
+
+    #if NEED_DIRECTIONAL_LIGHT_UNIFORMS
+        vec3 WorldLightDirection = LightDirectionAndbDirectional.xyz;
+    #endif
+
+
+    #if USE_GPU_SKINNING
+    {
+ 		#if DEPTH_ONLY || SHADOW_PROJECTION
+ 			// Use one bone skinning when rendering depth only as it is significantly faster
+ 			vec4 BlendWeight = vec4(1, 0, 0, 0);
+ 		#endif
+		
+        // Apply matrix palette skinning
+        ivec4 BlendIndicesInt = ivec4(BlendIndices);
+        vec4 BoneMatR0 = BoneMatrices[BlendIndicesInt.x * 3 + 0] * BlendWeight.x;
+        vec4 BoneMatR1 = BoneMatrices[BlendIndicesInt.x * 3 + 1] * BlendWeight.x;
+        vec4 BoneMatR2 = BoneMatrices[BlendIndicesInt.x * 3 + 2] * BlendWeight.x;
+
+        #if MAX_BONE_WEIGHTS > 1
+            BoneMatR0 += BoneMatrices[BlendIndicesInt.y * 3 + 0] * BlendWeight.y;
+            BoneMatR1 += BoneMatrices[BlendIndicesInt.y * 3 + 1] * BlendWeight.y;
+            BoneMatR2 += BoneMatrices[BlendIndicesInt.y * 3 + 2] * BlendWeight.y;
+        #endif
+
+        #if MAX_BONE_WEIGHTS > 2
+            BoneMatR0 += BoneMatrices[BlendIndicesInt.z * 3 + 0] * BlendWeight.z;
+            BoneMatR1 += BoneMatrices[BlendIndicesInt.z * 3 + 1] * BlendWeight.z;
+            BoneMatR2 += BoneMatrices[BlendIndicesInt.z * 3 + 2] * BlendWeight.z;
+        #endif
+
+        #if MAX_BONE_WEIGHTS > 3
+            BoneMatR0 += BoneMatrices[BlendIndicesInt.w * 3 + 0] * BlendWeight.w;
+            BoneMatR1 += BoneMatrices[BlendIndicesInt.w * 3 + 1] * BlendWeight.w;
+            BoneMatR2 += BoneMatrices[BlendIndicesInt.w * 3 + 2] * BlendWeight.w;
+        #endif
+	    
+        // Compute transposed bone matrix (which was flipped for mat4x3 action)
+        mat4 BoneToLocal = mat4(
+	        BoneMatR0[0], BoneMatR1[0], BoneMatR2[0], 0.0,
+	        BoneMatR0[1], BoneMatR1[1], BoneMatR2[1], 0.0,
+	        BoneMatR0[2], BoneMatR1[2], BoneMatR2[2], 0.0,
+	        BoneMatR0[3], BoneMatR1[3], BoneMatR2[3], 1.0
+	    );
+
+        // Compute the bone to world matrix
+        mat3 BoneToLocalRotation = mat3(BoneToLocal[0].xyz, BoneToLocal[1].xyz, BoneToLocal[2].xyz);
+        InputPosition = MulMatrix( BoneToLocal, InputPosition );
+
+		#if NEED_INTERMEDIATE_WORLD_POSITION
+			// Transform vertex to world space
+			WorldPosition = MulMatrix( LocalToWorld, InputPosition );
+		#endif
+
+        #if NEED_WORLD_NORMAL
+            // Rotate the vertex normal to world space using just the rotation part of the transform
+            vec3 LocalNormal = MulMatrix( BoneToLocalRotation, Normal );
+            WorldNormal = MulMatrix( LocalToWorldRotation, LocalNormal );
+        #endif
+
+        #if NEED_NORMAL
+        {
+            // Rotate the bone-space tangent to local space using the bone matrix
+            // @todo: Currently relying on the compiler to optimize this out if not used
+            Normal = MulMatrix( BoneToLocalRotation, Normal );
+        }
+        #endif
+
+        #if NEED_TANGENT_SPACE
+        {
+            #if NEED_WORLD_TANGENT
+                // Rotate the tangent to world space using just the rotation part of the transform
+                vec3 LocalTangent = MulMatrix( BoneToLocalRotation, Tangent );
+                WorldTangent = MulMatrix( LocalToWorldRotation, LocalTangent );
+            #endif
+
+            // Rotate the bone-space tangent to local space using the bone matrix
+            Tangent = MulMatrix( BoneToLocalRotation, Tangent );
+            
+            // Re-compute the vertex binormal using the normal and tangent vectors, now that they have been converted from bone to local
+            Binormal = cross( Normal, Tangent ) * TangentBias1( TangentZ.w );
+        }
+        #endif
+    }
+    #else // No skinning
+    {
+        // Transform vertex to world space
+        #if NEED_INTERMEDIATE_WORLD_POSITION
+            WorldPosition = MulMatrix( LocalToWorld, InputPosition );
+        #endif
+        
+        #if NEED_WORLD_NORMAL
+            // Rotate the vertex normal to world space using just the rotation part of the world transform
+            WorldNormal = MulMatrix( LocalToWorldRotation, Normal );
+        #endif
+
+        #if NEED_WORLD_TANGENT
+            // Rotate the vertex tangent to world space using just the rotation part of the world transform
+            WorldTangent = MulMatrix( LocalToWorldRotation, Tangent );
+        #endif
+    }    
+    #endif
+
+
+    #if NEED_TANGENT_SPACE
+        mat3 TangentToLocal = mat3( Tangent, Binormal, Normal );
+    #endif
+
+
+    #if NEED_TANGENT_TO_WORLD
+		vec3 WorldBinormal;
+		mat3 TangentToWorld;
+
+        // Compute the vertex binormal using the normal and tangent vectors
+        WorldBinormal = MulMatrix( LocalToWorldRotation, Binormal );
+        TangentToWorld = mat3( WorldTangent, WorldBinormal, WorldNormal );
+    #endif
+
+
+    #if NEED_PIXEL_TANGENT_TO_WORLD
+        VarWorldNormal = WorldNormal;
+        VarWorldTangent = WorldTangent;
+
+        #if !COMPUTE_BINORMAL_IN_PIXEL_SHADER
+            VarWorldBinormal = WorldBinormal;
+        #endif
+    #endif
+
+	#if SHADOW_PROJECTION
+		// Small bias to world position to prevent z-fighting during the shadow projection pass
+		WorldPosition.xyz += vec3(.1, .1, .1);
+	#endif
+
+    #if NEED_PIXEL_WORLD_POSITION
+        VarWorldPosition = WorldPosition.xyz;
+    #endif
+    
+    
+	// Compute texture coordinates for decal if needed
+	#if IS_DECAL
+		vec2 DecalTexCoords;
+
+		// @todo: For faster shading performance we could simple pass decal texture coordinates down in the vertex stream
+		vec4 LocalDecalLocation = InputPosition - vec4( DecalLocation, 1.0 );
+		vec2 DecalSpacePosition = ( MulMatrix( DecalMatrix, LocalDecalLocation ) ).xy;
+		DecalTexCoords = -DecalSpacePosition + vec2( 0.5, 0.5 ) + DecalOffset;
+	#endif
+
+
+	// For decals, we only have one set of texture coordinates to pull data from (the autogenerated coords)
+	#if IS_DECAL
+		#if NEED_VERTEX_TEXCOORDS0
+			vec2 TexCoords0 = DecalTexCoords;
+		#endif
+
+		#if NEED_VERTEX_TEXCOORDS1
+			vec2 TexCoords1 = DecalTexCoords;
+		#endif
+
+		#if NEED_VERTEX_TEXCOORDS2
+			vec2 TexCoords2 = DecalTexCoords;
+		#endif
+
+		#if NEED_VERTEX_TEXCOORDS3
+			vec2 TexCoords3 = DecalTexCoords;
+		#endif
+	#endif
+
+   	// Generate landscape texture coords
+	#if IS_LANDSCAPE
+		#if USE_LIGHTMAP
+			vec2 LightMapCoordinate = InputPosition.xy * LightmapScaleBias.xy + LightmapScaleBias.zw;
+		#endif
+
+		#if NEED_VERTEX_TEXCOORDS0
+			vec2 TexCoords0 = InputPosition.xy + LayerUVScaleBias.xy;
+		#endif
+
+		#if NEED_VERTEX_TEXCOORDS1
+			vec2 TexCoords1 = InputPosition.xy * LayerUVScaleBias.zw;
+		#endif
+
+		#if NEED_VERTEX_TEXCOORDS2
+			vec2 TexCoords2 = InputPosition.xy + LayerUVScaleBias.xy;
+		#endif
+
+		#if NEED_VERTEX_TEXCOORDS3
+			vec2 TexCoords3 = InputPosition.xy + LayerUVScaleBias.xy;
+		#endif
+
+		// Set UV mask for weightmap blending
+		UVMask = MASK_TEX_COORD_XFORM(TexCoords1);
+	#endif
+
+    #if USE_VERTEX_MOVEMENT
+    {
+	    //find the center of the object
+	    vec3 WorldCenter = (MulMatrix( LocalToWorld, vec4(0.0, 0.0, 0.0, 1.0) )).xyz;
+    	
+	    //find the direction from the center of the object to the vertex position
+	    vec3 WorldDirectionFromCenter = WorldPosition.xyz - WorldCenter;
+    	
+	    //Get a tangent vector by crossing the vector with vertical and normalize
+	    vec3 VertexMovementTangentVector = cross(WorldDirectionFromCenter, vec3(0.0, 0.0, 1.0));
+	    //stops errors with the cross having 0 length
+	    VertexMovementTangentVector.x += .0001;
+	    VertexMovementTangentVector = normalize(VertexMovementTangentVector );
+
+	    //find max amplitude and offset based on and world offset
+	    float VertexMovementFrequencyOffset = (VertexMovementTangentVector.x + VertexMovementTangentVector.y);
+	    //take into account attenuation of vertex color
+	    float MaximumMovementAmplitude = VertexMovementConstants.y*VertexColorRGBA.r;
+	    /**Where on the sine wave * Max intensity * how much it's being used */
+		const float PIMul2 = 1.0 / (3.14159265 * 2.0);
+		float VertexMovementFrequencyOffsetForCheapWave = VertexMovementFrequencyOffset * PIMul2;
+	    float VertexTangentMovementAmplitude = CheapWave(VertexMovementConstants.x + VertexMovementFrequencyOffsetForCheapWave)*MaximumMovementAmplitude;
+	    float VertexVerticalMovementAmplitude = CheapWave(VertexMovementConstants.z + VertexMovementFrequencyOffsetForCheapWave)*MaximumMovementAmplitude;
+     	
+	    //apply the vertex offset
+	    WorldPosition.xyz += VertexMovementTangentVector*VertexTangentMovementAmplitude;
+	    WorldPosition.xyz += vec3(0.0, 0.0, 1.0)*VertexVerticalMovementAmplitude;
+    	
+	    //SWAY - move to origin
+	    WorldPosition.xyz -= WorldCenter;
+	    //rotate by specified matrix
+	    vec3 SwayedPosition = MulMatrix( mat3(VertexSwayMatrix[0].xyz, VertexSwayMatrix[1].xyz, VertexSwayMatrix[2].xyz), WorldPosition.xyz );
+	    //green channel of vertex color controls interpolation
+	    WorldPosition.xyz = mix(WorldPosition.xyz, SwayedPosition, VertexColorRGBA.g);
+	    //SWAY - move back to propert location
+	    WorldPosition.xyz += WorldCenter;
+
+	    gl_Position = MulMatrix( ViewProjection, WorldPosition );
+	}
+	#elif SHADOW_DEPTH_ONLY
+	{
+		// Output linear, normalized depth for shadow depth
+		vec4 ProjectedPosition = MulMatrix( ProjectionMatrix, WorldPosition );
+		float ShadowDepth = (ProjectedPosition.z * InvMaxSubjectDepth + DepthBias);
+		ProjectedPosition.z = ShadowDepth * ProjectedPosition.w;
+		gl_Position = ProjectedPosition;
+	}
+	#else
+	{
+		// In all other cases, simply transform the position directly to the screen
+		gl_Position = MulMatrix( InputPosition, LocalToProjection );
+	}
+	#endif
+
+    // Setup base texture UVs
+    #if !DEPTH_ONLY && !SHADOW_DEPTH_ONLY && !SHADOW_PROJECTION
+    {
+        vec2 BaseTexCoords;
+		#if IS_DECAL
+		{
+			BaseTexCoords = DecalTexCoords;
+		}
+		#else
+		{
+			#if BASE_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS0
+				BaseTexCoords = TexCoords0;
+			#elif BASE_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS1
+				BaseTexCoords = TexCoords1;
+			#elif BASE_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS2
+				BaseTexCoords = TexCoords2;
+			#else
+				#if BASE_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS3
+					BaseTexCoords = TexCoords3;
+				#endif
+			#endif
+		}
+		#endif
+
+        // Transform texture coordinates for sampling base texture
+        UVBase.xy = BaseTexCoords;
+		#if USE_BASE_TEX_COORD_XFORM || USE_NORMAL_TEX_COORD_XFORM || USE_EMISSIVE_TEX_COORD_XFORM
+	        UVBase.zw = XFORM_TEX_COORD(BaseTexCoords);
+		#else
+			UVBase.zw = BaseTexCoords;
+		#endif
+    }
+    #endif
+    
+    #if USE_LIGHTMAP
+    {
+        UVLightmap = LightMapCoordinate * LightmapCoordinateScaleBias.xy + LightmapCoordinateScaleBias.wz;
+    }
+    #endif
+    
+
+    // Ambient occlusion from vertex    
+    #if USE_AMBIENT_OCCLUSION
+        float AmbientOcclusionAmount;
+        
+        #if AMBIENT_OCCLUSION_SOURCE == AOSOURCE_VERTEX_COLOR_RED
+            AmbientOcclusionAmount = VertexColorRGBA.r;
+        #elif AMBIENT_OCCLUSION_SOURCE == AOSOURCE_VERTEX_COLOR_GREEN
+            AmbientOcclusionAmount = VertexColorRGBA.g;
+        #elif AMBIENT_OCCLUSION_SOURCE == AOSOURCE_VERTEX_COLOR_BLUE
+            AmbientOcclusionAmount = VertexColorRGBA.b;
+        #else
+			#if AMBIENT_OCCLUSION_SOURCE == AOSOURCE_VERTEX_COLOR_ALPHA
+				AmbientOcclusionAmount = VertexColorRGBA.a;
+			#endif
+        #endif
+        
+        AmbientOcclusion = AmbientOcclusionAmount;
+    #endif
+    
+
+	 // Setup mask offset UVs
+    // @todo: Ideally we should not use a separate interpolator unless the UVs are actually going to be different from UVBase (e.g. tex coord transform turned on or different UV source)
+    #if NEED_MASK_TEXTURE && !IS_LANDSCAPE
+    {
+        vec2 MaskTexCoords;
+
+        #if MASK_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS0
+            MaskTexCoords = TexCoords0;
+        #elif MASK_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS1
+            MaskTexCoords = TexCoords1;
+        #elif MASK_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS2
+            MaskTexCoords = TexCoords2;
+        #else
+			#if MASK_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS3
+				MaskTexCoords = TexCoords3;
+			#endif
+        #endif
+
+        // Store the mask offset UVs.  Note that we do not transform these UVs.
+        UVMask = MASK_TEX_COORD_XFORM(MaskTexCoords);
+    }
+    #endif
+
+
+    #if NEED_EXTRA_COLOR_TEXTURE
+	{
+		// Setup detail texture UVs
+        vec2 DetailTexCoords;
+
+        #if DETAIL_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS0
+            DetailTexCoords = TexCoords0;
+        #elif DETAIL_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS1
+            DetailTexCoords = TexCoords1;
+        #elif DETAIL_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS2
+            DetailTexCoords = TexCoords2;
+        #else
+			#if DETAIL_TEXTURE_TEXCOORDS_SOURCE == TEXCOORD_SOURCE_TEXCOORDS3
+				DetailTexCoords = TexCoords3;
+			#endif
+        #endif
+
+        // Transform texture coordinates for sampling detail texture
+        UVDetail = DETAIL_TEX_COORD_XFORM( DetailTexCoords );
+	}
+    #endif
+
+    #if NEED_INTERMEDIATE_WORLD_POSITION
+        // NOTE: We're relying on the compiler to optimize these away if they're not needed
+        vec3 EyeToVertexVector = CameraWorldPosition - WorldPosition.xyz;
+        vec3 EyeToVertexDirection = normalize( EyeToVertexVector );
+    #endif
+
+    #if NEED_PIXEL_TANGENT_CAMERA_VECTOR
+    {
+        // Rotate camera vector to tangent space
+        VarTangentCameraVector = MulMatrix( EyeToVertexDirection, TangentToWorld );
+    }
+    #endif
+
+
+    #if USE_VERTEX_LIGHTMAP
+    {
+        #if USE_LIGHTMAP_FIXED_SCALE
+            PrelitColor = LightMapA.zyx * 2.0;
+        #else
+            PrelitColor = LightMapA.zyx * LightMapScale.xyz;
+        #endif
+    }
+    #endif
+
+	// Color multiply
+	#if USE_UNIFORM_COLOR_MULTIPLY && USE_VERTEX_COLOR_MULTIPLY
+		ColorMultiply = VertexColorRGBA * UniformMultiplyColor;
+	
+		#if USE_PREMULTIPLIED_OPACITY
+			ColorMultiply.rgb *= VertexColorRGBA.a * UniformMultiplyColor.a;
+			ColorMultiply.w = 1.0;
+		#endif
+	#elif USE_UNIFORM_COLOR_MULTIPLY
+		ColorMultiply = UniformMultiplyColor;
+
+		#if USE_PREMULTIPLIED_OPACITY
+			ColorMultiply.rgb *= UniformMultiplyColor.a;
+			ColorMultiply.w = 1.0;
+		#endif
+	#elif USE_VERTEX_COLOR_MULTIPLY
+		ColorMultiply = VertexColorRGBA;
+	
+		#if USE_PREMULTIPLIED_OPACITY
+			ColorMultiply.rgb *= VertexColorRGBA.a;
+			ColorMultiply.w = 1.0;
+		#endif
+	#endif
+
+
+	#if NEED_LIGHTING_COLOR
+		// If a lightmap is bound we'll start off at 100% intensity so that static lighting is retained even
+		// if rim lighting is enabled on the material
+		#if USE_LIGHTMAP
+			LightingColor = vec3( 1.0, 1.0, 1.0 );
+		#else
+			LightingColor = vec3( 0.0, 0.0, 0.0 );
+		#endif
+	#endif
+
+    #if NEED_PIXEL_TANGENT_LIGHT_DIRECTION
+    {
+        VarTangentLightDirection = MulMatrix( WorldLightDirection, TangentToWorld );
+    }
+    #endif
+
+    
+    #if NEED_PIXEL_TANGENT_UP_VECTOR
+    {
+        VarTangentUpVector = MulMatrix( vec3( 0.0, 0.0, 1.0 ), TangentToWorld );
+    }
+    #endif
+
+
+    #if USE_DYNAMIC_DIRECTIONAL_LIGHT && !USE_NORMAL_MAPPING
+    {
+        vec3 LightColor = DirectionalLightColor.xyz * max(0.0, dot(WorldLightDirection, WorldNormal));
+
+        LightingColor += LightColor;
+    }   
+    #endif
+    
+
+    // Per-vertex environment reflection vector and rim term/fresnel
+    #if NEED_PER_VERTEX_RIM_TERM
+		float PerVertexRimTerm;
+		vec3 PerVertexEnvironmentVector;
+
+		// Compute environment reflection per vertex
+		#if USE_REFLECTION_BASED_ENVIRONMENT_MAPS
+			// Reflection-based
+			PerVertexEnvironmentVector = reflect( EyeToVertexDirection, WorldNormal );
+		#else
+			// View direction-based
+			PerVertexEnvironmentVector = EyeToVertexDirection;
+		#endif
+        
+       
+		// NOTE: We're relying on the compiler's dead code removal to eliminate this when not needed
+		float NDotE = dot( EyeToVertexDirection, WorldNormal );
+		PerVertexRimTerm = max( 0.01, 1.0 - abs( NDotE ) );
+    #endif
+
+
+
+    #if USE_RIM_LIGHTING
+    {    
+        #if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_RIM_LIGHTING
+            #if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_RED
+                RimLightingMask = VertexColorRGBA.r;
+            #elif RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_GREEN
+                RimLightingMask = VertexColorRGBA.g;
+            #elif RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_BLUE
+                RimLightingMask = VertexColorRGBA.b;
+            #else
+				#if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_ALPHA
+					RimLightingMask = VertexColorRGBA.a;
+				#endif
+            #endif            
+        #else
+        {
+			vec3 RimLighting;
+
+            // Note: The 'strength' of the rim light is pre-multiplied with the color
+            vec3 RimLightingColor = RimLightingColorAndExponent.xyz;
+            float RimLightingExponent = RimLightingColorAndExponent.w;
+	        
+  	        RimLighting = RimLightingColor * pow( PerVertexRimTerm, RimLightingExponent );
+
+            #if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_CONSTANT || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_RED || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_GREEN || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_BLUE || RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_ALPHA
+                // Unmasked or vertex-color masked, so just combine rim lighting with the other lighting from vertex shader
+                #if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_RED
+                    RimLighting *= VertexColorRGBA.r;
+                #elif RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_GREEN
+                    RimLighting *= VertexColorRGBA.g;
+                #elif RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_BLUE
+                    RimLighting *= VertexColorRGBA.b;
+                #else
+					#if RIM_LIGHTING_MASK_SOURCE == RIM_LIGHTING_MASK_SOURCE_VERTEX_COLOR_ALPHA
+						RimLighting *= VertexColorRGBA.a;
+					#endif
+                #endif            
+                
+			    LightingColor += RimLighting;
+            #else
+                MaskableRimLighting = RimLighting;
+            #endif
+        }
+        #endif
+     }
+    #endif
+
+
+    #if USE_DYNAMIC_SKY_LIGHT && !( USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_DYNAMIC_SKY_LIGHT )
+    {
+        // calculate how much of the sky colors to use (normal.z, -1 = all lower, 1 = all upper, 0 = 50/50)
+		float NormalContribution = WorldNormal.z * 0.5 + 0.5;
+
+		#if USE_FASTER_SKY_LIGHT
+			vec3 SkyColor = mix( LowerSkyColor.xyz, UpperSkyColor.xyz, NormalContribution );
+		#else
+			// Apply square sky light intensity falloff based on surface angle relative to either hemisphere
+			vec2 ContributionWeightsSqrt = vec2(0.5, 0.5) + vec2(0.5, -0.5) * NormalContribution;
+			vec2 ContributionWeights = ContributionWeightsSqrt * ContributionWeightsSqrt;
+			vec3 UpperLighting = UpperSkyColor.rgb * ContributionWeights.x;
+			vec3 LowerLighting = LowerSkyColor.rgb * ContributionWeights.y;
+			vec3 SkyColor = UpperLighting + LowerLighting;
+		#endif
+
+        #if USE_AMBIENT_OCCLUSION
+            // Also apply AO from the vertex color to the sky light
+            SkyColor *= AmbientOcclusionAmount;
+        #endif
+        
+        LightingColor += SkyColor;
+    }   
+    #endif
+
+
+    // Color texture blending
+    #if NEED_ONE_DETAIL_TEXTURES
+		#if TEXTURE_BLEND_FACTOR_SOURCE == TEXTURE_BLEND_FACTOR_SOURCE_VERTEX_COLOR
+   			TextureBlendFactor = VertexColorRGBA.rgba;
+		#endif
+    #endif
+    
+    
+    // Per-vertex environment mapping
+    #if USE_ENVIRONMENT_MAPPING
+    {
+        #if USE_NORMAL_MAPPING && ALLOW_PER_PIXEL_ENVIRONMENT_MAPPING 
+            #if ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_RED
+                EnvironmentMask = VertexColorRGBA.r;
+            #elif ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_GREEN
+                EnvironmentMask = VertexColorRGBA.g;
+            #elif ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_BLUE
+                EnvironmentMask = VertexColorRGBA.b;
+            #else
+				#if ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_ALPHA
+					EnvironmentMask = VertexColorRGBA.a;
+				#endif
+            #endif            
+        #else
+        {
+	        float EnvironmentAmount = EnvironmentParameters.x;
+        
+			// Apply fresnel
+			#if USE_ENVIRONMENT_FRESNEL
+				float FresnelAmount = EnvironmentParameters.y;
+				float FresnelExponent = EnvironmentParameters.z;
+            
+				float FresnelTerm = pow( PerVertexRimTerm, FresnelExponent );
+				float ScaledFresnelTerm = ( 1.0 - FresnelAmount ) + FresnelAmount * FresnelTerm;
+            
+				EnvironmentAmount *= ScaledFresnelTerm;
+			#endif
+        
+            #if ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_RED || ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_GREEN || ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_BLUE || ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_ALPHA
+                #if ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_RED
+                    EnvironmentAmount *= VertexColorRGBA.r;
+                #elif ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_GREEN
+                    EnvironmentAmount *= VertexColorRGBA.g;
+                #elif ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_BLUE
+                    EnvironmentAmount *= VertexColorRGBA.b;
+                #else
+					#if ENVIRONMENT_MASK_SOURCE == ENVIRONMENT_MASK_SOURCE_VERTEX_COLOR_ALPHA
+						EnvironmentAmount *= VertexColorRGBA.a;
+					#endif
+                #endif            
+            #endif
+            
+            EnvironmentVectorAndAmount.xyz = PerVertexEnvironmentVector;
+            EnvironmentVectorAndAmount.w = EnvironmentAmount;
+        }
+        #endif
+    }
+    #endif
+    
+    
+    #if USE_EMISSIVE
+        #if EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_RED
+            EmissiveMask = VertexColorRGBA.r;
+        #elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_GREEN
+            EmissiveMask = VertexColorRGBA.g;
+        #elif EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_BLUE
+            EmissiveMask = VertexColorRGBA.b;
+        #else
+			#if EMISSIVE_MASK_SOURCE == EMISSIVE_MASK_SOURCE_VERTEX_COLOR_ALPHA
+				EmissiveMask = VertexColorRGBA.a;
+			#endif
+        #endif            
+    #endif
+
+
+    // Per-vertex specular
+    #if USE_VERTEX_SPECULAR
+    {
+        #if USE_HALF_VECTOR_SPECULAR_MODEL
+            // Half-vector specular (faster, big highlight, less realistic)
+            vec3 WorldHalfVector = normalize( WorldLightDirection + EyeToVertexDirection );
+            float BaseSpec = max( 0.0, dot( WorldNormal, WorldHalfVector ) );  // NDotH
+        #elif 1
+            // Reflection-based specular (slower, higher quality)
+            vec3 WorldReflectionVector = reflect( WorldLightDirection, WorldNormal );
+            float BaseSpec = max( 0.0, dot( EyeToVertexDirection, WorldReflectionVector ) );   // VDotR
+        #else
+            // Diffuse lighting (for debugging only)
+            float BaseSpec = max( 0.0, dot( WorldLightDirection, WorldNormal ) );  // NDotL
+        #endif
+
+        #if USE_VERTEX_FIXED_SPECULAR_POWER_APPROXIMATION
+            // Fast specular approximation (http://www.gamasutra.com/view/feature/2972/a_noninteger_power_function_on_.php)
+            // Basically pow( N, P ) can be approximated by pow( max( A * N + B ), M )
+            //      - A and B are constants that must be tweaked to get artifact-free results
+            //      - M can be really small in practice (2 looks good, can be replaced by single multiply)
+            // This should result in a mad_sat instruction plus one multiply (2 instructions total!)
+
+            #define SpecApproxA 6.645
+            #define SpecApproxB -5.645   
+            float SpecularAmount = clamp( SpecApproxA * BaseSpec + SpecApproxB, 0.0, 1.0 );
+            SpecularAmount *= SpecularAmount;   // M = 2
+        #else
+            // Power function for specular curve
+            float SpecularAmount = pow( BaseSpec, SpecularPower );
+        #endif        
+
+        #if 0
+            // Apply specular shadowing by multiplying with diffuse coefficient
+            float ShadowTerm = max( 0.0, dot( WorldLightDirection, WorldNormal ) );
+            SpecularAmount *= ShadowTerm;
+        #endif
+       
+        Specular = SpecularAmount * LightColorTimesSpecularColor;
+    }
+    #elif USE_PIXEL_SPECULAR && PER_PIXEL_LIGHTING_IN_TANGENT_SPACE
+            // Half-vector specular (faster, big highlight, less realistic)
+            vec3 WorldHalfVector = WorldLightDirection + EyeToVertexDirection ;
+            VarTangentHalfVector = normalize( MulMatrix( WorldHalfVector, TangentToWorld ) );
+    #endif
+    
+    #if !USE_HEIGHT_FOG && USE_GRADIENT_FOG
+        // Compute the fog factor (a lerped value between 0 and 1) for each vertex
+
+        // We determine the fog factor by getting the vertex distance and then interpolating
+        // that between the start and end ranges for fog.
+        float VertDistSquared = dot(WorldPosition.xyz, WorldPosition.xyz);
+        float FogColorAmount = FogColor.w * clamp( ( VertDistSquared - FogStartSquared ) * FogOneOverSquaredRange, 0.0, 1.0);
+
+        // Finally, fold in the fade color here to avoid the additional mix in the pixel shader
+        GlobalEffectColorAndAmount.xyz = mix(FogColor.xyz * FogColorAmount, FadeColorAndAmount.xyz, FadeColorAndAmount.w);
+        GlobalEffectColorAndAmount.w = 1.0 - (FogColorAmount + FadeColorAndAmount.w - (FogColorAmount * FadeColorAndAmount.w));
+    #else
+        // If we're not in the gadient fog case, the fade color and any potentially fully saturated fog color have
+        // already been folded into the FadeColorAndAmount uniform, so pre-multiply and pass that through 
+        GlobalEffectColorAndAmount.xyz = FadeColorAndAmount.xyz * FadeColorAndAmount.w;
+        GlobalEffectColorAndAmount.w = 1.0 - FadeColorAndAmount.w;
+    #endif
+}

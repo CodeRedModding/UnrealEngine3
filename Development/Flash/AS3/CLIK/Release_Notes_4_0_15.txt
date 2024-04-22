@@ -1,0 +1,145 @@
+-----------------------------------------------------
+Autodesk Scaleform CLIK AS3 4.0.15 Release Notes
+
+New Features:
+Added Extensions.isGFxPlayer and Extensions.isScaleform.
+ButtonEvent and ListEvent now support a buttonIndex (eg. mouse button 2 [right click]).
+Added support in PopUpManager to automatically clear modal backgrounds, as well as clear an existing modal popup.
+
+Class / API Changes:
+enableInitCallback is now an inspectable of UIComponent. 
+initCallbacks are now queued until the end of the frame and then fired in reverse order rather than fired immediately, effectively mimicing CLIK AS2's behavior. This is easier to work with in C++ since, by default in AS3, ADDED_TO_STAGE is fired for DisplayObjects for children before parents. Original AS3 initCallback order can be restored by using CLIK.enableImmediateCallbacks = true;.
+Moved _owner and get/set owner from ListItemRenderer to Button so that Button can use them for ButtonBar.
+Removed ListItemRenderer's override for .set selected. Logic is now integrated into Button.set selected.
+Added Button.checkOwnerFocused(), which checks whether the Button's owner is focused.
+Changed Label.set text and Label.set htmlText to accept null parameter. Converts null parameter into empty string.
+Renamed ButtonGroup.setSelectedButton -> updateSelectedButton and made the function protected. 
+Added public ButtonGroup.setSelectedButtonByIndex function that can be used to set the selected button of the Button Group.
+
+Bug Fixes:
+Fixed unsetting bit flag in InputDelegate that prevented input from being properly represented in InputDelegate.
+Fixed a bug in TextInput that prevented keyboard input from being finalized under certain circumstances.
+Fixed a bug where DropdownMenu did not properly dispatch a ListEvent when it's selectedIndex was changed.
+Fixed a bug where Button's state transitions were incorrect if it was part of a ButtonBar.
+Fixed a minor bug in Layout that could occur if the Layout was on the Stage with tiedToStageSize == false and the Stage was resized.
+Fixed a bug in Button related to .selected+focusIndicators and ListItemRenderers/ButtonBars that prevented the proper state from occuring. Fixed a minor bug that was introduced due to an optimization in get toggle().
+Fixed a typo in TileList where the default inspectable property for "wrapping" was set to "none" rather than "normal."
+Changed ButtonGroup and FocusHandler to use weak-reference Dictionaries rather than Array to ensure safe unloading.
+
+
+-----------------------------------------------------
+Autodesk Scaleform CLIK AS3 4.0.14 Release Notes
+
+New Features:
+Added CLIK AS3 User Guide.
+Added TileList component. See scaleform.clik.controls.TileList. More detailed information can be found in the CLIK AS3 User Guide.
+Added TextArea component. See scaleform.clik.controls.TextArea. More detailed information can be found in the CLIK AS3 User Guide.
+Added basic Layout framework to CLIK. See scaleform.clik.layout.Layout and scaleform.clik.layout.LayoutData. More detailed information can be found in the CLIK AS3 User Guide.
+Added CLIK.disableDynamicTextFieldFocus. If set to true, all dynamic TextFields will no longer receive focus. Note that this does not discern between selectable and non-selectable dynamic TextFields.
+Added "defaultText" support for TextInput and TextArea.
+Added WRAPPING_MODE as an inspectable to Scrolling List and DropDown.
+Added scaleform.clik.constants.DirectionMode for HORIZONTAL and VERTICAL definitions.
+Added an optional "OK" Button (instance name okBtn) to Window for users that would like to quickly use the Window class for a dialog.
+Added new TextArea, TileList, and Layout demos to the CLIK Component Browser.
+Added a new 'CLIK_Components_AS3.fla' file that contains all of the components with embedded fonts and without runtime sharing. This .FLA is designed to make it easier for users to copy/duplicate/prototype with the existing component set more rapidly.
+
+Class / API Changes:
+UIComponent now uses both Event.ENTER_FRAME -and- Event.RENDER for component invalidation to address an outstanding behavior where stage.invalidate() may not fire a Event.RENDER event if multiple stage.invalidate() calls are made in the same frame. Before, the work around was to use .validateNow() to ensure validateNow() was called immediately, but this was inefficient for many cases. This change will theoretically remove the need for the required validateNow() call, though validateNow() should still be used for immediate validation needs.
+ListEvent now includes the controllerIndex of the controller that generated the event as well as the data assocaited with the relevant renderer.
+DropdownMenu's ListEvent.INDEX_CHANGE now includes the a reference to the ListItemRenderer that was clicked.
+ScrollingList and TileList now have their _margin property set to 0 by default.
+Window now dispatches a ResizeEvent when it is resized.
+StatusIndicator can no longer be focused by default.
+CoreList.getRendererAt() is now a public function.
+Changed CoreList's default ListItemRenderer from CLIKListItemRenderer to DefaultListItemRenderer to match new CLIK_Components_AS3.fla.
+Updated CoreList's protected variables to be properly prefixed by _. May require Find and Replace changes to custom sub-classes.
+Cleaned up logic in CoreList.configUI() that ensures "set itemRendererName" has been called.
+Deleted managers/FocusMode.as (was previously moved to constants/ in 4.0.13 and old file was accidently left in tree).
+
+Bug Fixes:
+Fixed a bug where a horizontal ScrollIndicator or ScrollBar (rotation != 0) would behave unexpectedly due to Constraints.
+Fixed a bug where Button responded to mouse clicks from any button (left mouse, middle mouse, right mouse).
+Fixed a bug with Tween where looping Tweens were behaving extremely unexpectedly due to the way they were restarted.
+Fixed a bug in ScrollingList where availableHeight sometimes returned a NaN value if the thumb was not fully initialized.
+Fixed a bug in ScrollingList where ScrollBar was not properly setting the .scrollBar property of UIComponent's it was attached to in set scrollTarget()
+Fixed a bug in ScrollingList where the track was required to be a UIComponent.
+Fixed a bug in ScrollingList where the thumb's y position could be set to NaN in some cases.
+Fixed an issue with Slider where it was not updating to the latest value during doDrag().
+PopUpManager initialization now checks whether an instance already exists before recreating it.
+
+
+----------------------------------------------------
+Autodesk Scaleform CLIK AS3 4.0.13 Release Notes
+
+New Features:
+Added Constraints.removeAllElements().
+
+Class / API Changes:
+FocusHandler now prevents focus transfer behavior when focus is moving to a UIComponent. This resolves a number of unexpected focus-related behaviors from 4.0.12.
+Previously, if a TextField inside UIComponent received input, an InputEvent would be fired from the UIComponent. This was to ensure that TextArea and TextInput dispatched InputEvents rather than their TextField children while avoiding explicitly checking against (is TextInput) or (is TextArea) in FocusHandler. That logic has been revised: TextArea and TextInput now ensure that stage.focus = textField; and FocusHandler.focus = TextInput. This means that TextFields that are not children of UIComponents that implement similar logic (see TextInput.as for details) will now properly dispatch InputEvents as will TextInputs/TextAreas.
+NumericStepper and OptionStepper now automatically update the mouseEnabled / tabEnabled settings for their default children (textField and container) in updateAfterStateChange(). 
+Tween now checks to see whether the target is null (in the case that it was removed or went out of scope) and, if so, shuts down the tween gracefully.
+
+Bug Fixes:
+Fixed a bug where Buttons with focusIndicators did not properly use all their kb_ states.
+Fixed a bug where NumericStepper and OptionStepper did not receive focus via Mouse.
+Fixed a bug related to ListItemRenderer states when the owner ScrollingList is Scrolled.
+Fixed a bug in Tween where > 4 concurrent tweens caused the list of active tweens to behavior unexpectedly. 
+Fixed a typo where Slider LiveDragging was set to true by inspectables, false by constructor. 
+Fixed a bug in Button where focusIndicators were not properly displayed when _displayFocus was used.
+Fixed a bug in Button where dragging over Buttons would lock them in their OVER state.
+Fixed a bug where if Button.tabEnabled was set before configUI() was called (first validation), tabEnabled would be reset. 
+Fixed a bug where doubleClicking a doubleClickEnabled Button caused it to enter the wrong state.
+Fixed a bug where DragManager was not properly tracking DragData after DragStart began.
+
+
+-----------------------------------------------------
+Autodesk Scaleform CLIK AS3 4.0.12 Release Notes
+
+New Features:
+Added CLIK.disableNullFocusMoves. Prevents focus from being set to null or the Stage. 
+Added support in for String literals arrays for ButtonBar dataProvider. 
+Added minThumbSize inspectable to ScrollIndicator. 
+Added "isRepeat" property to ButtonEvent. True if the ButtonEvent.CLICK event is being repeated, false if not. 
+InputDetails now tracks CTRL, ALT, and Shift keys. 
+
+Class / API Changes:
+UIComponent.enabled no longer updates mouseChildren; sub-classes must override the method appropriately. 
+Button uses "up" instead of "over" if "toggle" state isn't found. 
+Button no longer fires a ButtonEvent.CLICK event if it was autoRepeating before handleRelease() is called. 
+Moved allowDeselect from RadioButton to Button. 
+ButtonBar now creates renderers based on its own size and uses ButtonGroup more effectively. 
+FocusHandler.setFocus() no longer checks whether newFocus == oldFocus to avoid some conflicts where _stage.focus can change but CLIK's focus wasn't being properly updated. 
+FocusHandler now ignores subsequent stage.focus changes after setting stage.focus in the same frame. 
+FocusHandler now properly handles stage.focus = null; calls. 
+TextInput with editable == false can no longer be focused. 
+TextInput now sets focus to its TextField whenever it is clicked (regardless of whether the textField inside is clicked). 
+TextInput no longer assigns a mouse listener to itself it it is not editable. 
+TextInput now listens both KEY_DOWN and KEY_UP to update its internal _text property. 
+Overrode TextInput.tabEnabled and TextInput.tabIndex to interact with TextInput's textField rather than modify the TextInput itself (which always be tabEnabled == false to properly function). 
+ListItemRenderer now overrides set focusable() to do nothing and sets it's own _focusable to false in configUI(). 
+Changed ScrollBar to reset thumb position before reflowing. This avoids a bad state where the height of the scrollbar was changed in error thus causing constraints to behave erractically. 
+Slider now dispatches a SliderEvent.VALUE_CHANGE rather than a Event.CHANGE when the value changes. 
+
+Bug Fixes:
+Fixed a number of bugs related to FocusHandler. 
+Fixed a bug where Shift-Tab was not being properly processed by FocusHandler. 
+Fixed an issue with Button where it was not using the "release" and "kb_release" states appropriately in certain cases. 
+Fixed a bug where Button was not using the proper states for DRAG_OUT, DRAG_OVER, and RELEASE_OUTSIDE. 
+Fixed a bug where Button.tabEnabled could be true even if enabled == false. 
+Fixed a bug where a Button set to autoRepeat never dispatched a standard CLICK event after repeating. 
+Fixed a bug where resizing a Button via Constraints did not properly respect autoSize. 
+Fixed a bug in Button where null "stage" reference might be used after a Button was removed from display list. 
+Fixed a bug where changing the length of the dataProvider for a ButtonBar caused an error. 
+Fixed a bug where ButtonBar did not update its selectedIndex when the dataProvider changed. 
+Fixed a bug where ButtonBar did not update the .selected property of the selectedIndex when the dataProvider changed. 
+Fixed a bug where ButtonBar.DIRECTION_VERTICAL was misspelled, causing handleInput() to fail for vertical ButtonBars. 
+Fixed a bug where ButtonGroup did not properly clean up references to its children under certain circumstances. 
+Fixed autoRepeat for ScrollBar's sub-components. 
+Fixed a bug where ScrollBar's subcomponents were causing two scroll events to be fired when only one was desired. 
+Fixed a bug in ScrollBar and ScrollIndicator where they were inappropriately sized in certain cases. 
+Fixed a bug where ScrollIndicator did not properly hide its thumb when no thumb was needed. 
+Fixed a bug in ScrollIndicator where a resized horizontal ScrollIndicator's track did not resize until the next Stage.invalidate(). 
+Fixed a bug where clicking on the track of a scaled Slider did not move the thumb to the proper position 
+Fixed a bug where Slider.tabEnabled was false by default. 
+Fixed a bug in Slider where the thumb was being focused accidentally.

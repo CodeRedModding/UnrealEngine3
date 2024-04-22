@@ -1,0 +1,49 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.BuildCommandLogModel
+
+@{
+    Layout = null;
+
+    // log files are currently saved in branch specific folders
+    ViewBag.Branch = @Model.Details.Branch;
+}
+
+
+<div class="grid6">
+    <a name="buildlog"></a><h2>Build Log</h2>
+
+    @if (Model.BuildLogs != null)
+    {
+        if (Model.BuildLogs.Count() > 0)
+        {
+            <p>This command has recently processed the following changelists:</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th class="string">Changelist</th>
+                        <th class="string">Machine</th>
+                        <th class="enum">Started</th>
+                        <th class="enum">Duration</th>
+                        <th class="enum">Log</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in Model.BuildLogs)
+                    {
+                        @Html.Partial("_CommandBuildLogEntry", e)
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>This command has not been built yet.</p>
+        }
+    }
+    else
+    {
+        <p>No build logs were found in the database.</p>
+    }
+
+    <a class="linkUp" href="#top">Back to top</a>
+</div>

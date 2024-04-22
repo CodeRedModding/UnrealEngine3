@@ -1,0 +1,14 @@
+<BuildSet FormatVersion="1">
+  <Environments>
+    <Environment Name="Default">
+      <Tools>
+        <Tool Name="Tool0" AllowRemote="True" AllowRestartOnLocal="True" GroupPrefix="Compiling Shaders" Params="%s 0 0 $(SourceFileName) $(OutputFileName)" Path="%s" OutputFileMasks="*.out" />
+      </Tools>
+    </Environment>
+  </Environments>
+  <Project Name="Default" Env="Default">
+    <TaskGroup Tool="Tool0" WorkingDir="%s">
+%s
+    </TaskGroup>
+  </Project>
+</BuildSet>

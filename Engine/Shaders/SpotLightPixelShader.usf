@@ -1,0 +1,117 @@
+/*=============================================================================
+	SpotLightPixelShader.hlsl: Spot light pixel shader.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#define NEEDS_LIGHTMAP_COORDINATE STATICLIGHTING_TEXTUREMASK
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+#include "DynamicLightingCommon.usf"
+#include "SubsurfaceScatteringCommon.usf"
+
+float3	SpotDirection;
+float2	SpotAngles;
+ 
+void Main(
+	in FVertexFactoryInterpolantsVSToPS FactoryInterpolants,
+	in float3 TangentLightVector : TEXCOORD4,
+	in float4 WorldLightVector : TEXCOORD5, 
+	in float4 CameraVectorOrVertexColor : TEXCOORD6,
+	in float4 PixelPosition : TEXCOORD7,
+	OPTIONAL_PixelShaderScreenPosition
+	OPTIONAL_FacingSign
+	OPTIONAL_PixelShaderCoverageInputOutput
+	out float4 OutColor : COLOR0
+#if SM5_PROFILE && MATERIAL_ENABLE_SUBSURFACE_SCATTERING
+	,out float4 OutSubsurfaceInscattering : COLOR1
+#endif
+	)
+{
+#if PER_PIXEL_TANGENT_BASIS
+	float3x3 TangentBasis = VertexFactoryGetPerPixelTangentBasis(FactoryInterpolants);
+	TangentLightVector = mul(TangentBasis, normalize(TangentLightVector));
+#if !PER_PIXEL_CAMERA_VECTOR
+	CameraVectorOrVertexColor.xyz = mul(TangentBasis, normalize(CameraVectorOrVertexColor.xyz));
+#endif
+#endif
+
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(FactoryInterpolants);
+	CalcMaterialParameters(MaterialParameters,FacingSign,CameraVectorOrVertexColor,PixelPosition,TangentLightVector);
+
+	GetMaterialCoverageAndClipping(MaterialParameters,PixelShaderScreenPosition.xy,InCoverage,OutCoverage);
+
+#if STATICLIGHTING_TEXTUREMASK
+	#if STATICLIGHTING_SIGNEDDISTANCEFIELD
+		half TransitionDistance = tex2D(ShadowTexture,GetLightMapCoordinate(FactoryInterpolants)).x;
+		half ShadowFactor = (TransitionDistance + DistanceFieldParameters.x) * DistanceFieldParameters.y;
+		half LightMask = pow(saturate(ShadowFactor), DistanceFieldParameters.z); 
+	#else
+		half LightMask = tex2D(ShadowTexture,GetLightMapCoordinate(FactoryInterpolants)).r; 
+	#endif
+#elif STATICLIGHTING_VERTEXMASK
+	half	LightMask = WorldLightVector.w;
+#else
+	half	LightMask = 1;
+#endif
+
+	float ConeAngleFalloff = SpotAttenuation(WorldLightVector.xyz, SpotDirection, SpotAngles);
+
+	// clip and early out if outside of the light radius, masked, or outside of the cone angle
+	OutColor = float4(0,0,0,0);
+	float LightDist = dot(WorldLightVector.xyz,WorldLightVector.xyz);	
+	float LightAmount = (1 - LightDist) * LightMask * ConeAngleFalloff;	
+	clip(LightAmount);
+
+#if !PS3 && !SM5_PROFILE
+	// only emit the branch attribute on xbox, D3D platforms have too many restrictions. (tex2D can't be used inside the if)
+	BRANCH_XBOX
+	if( LightAmount > 0 )
+#endif
+	{
+		half3 CombinedShadowFactor = LightMask.xxx;
+		if (bReceiveDynamicShadows)
+		{
+			#if MATERIALBLENDING_SOLID || MATERIALBLENDING_MASKED || TRANSLUCENCY_INHERIT_DOMINANT_SHADOWS_FROM_OPAQUE
+				CombinedShadowFactor *= GetLightAttenuation(MaterialParameters.ScreenPosition).rgb;
+			#elif TRANSLUCENCY_RECEIVE_DYNAMIC_SHADOWS_FROM_STATIC
+				float DynamicShadowFactor = CalculateForwardDynamicShadowing(MaterialParameters.ScreenPosition);
+				CombinedShadowFactor *= DynamicShadowFactor;
+			#endif
+		}
+
+		half3 SpecularColor = GetMaterialSpecularColor(MaterialParameters);
+
+		float DistanceAttenuation = RadialAttenuation(WorldLightVector.xyz, FalloffExponent);
+
+		OutColor.rgb =
+			GetMaterialPointLightTransfer(GetMaterialDiffuseColor(MaterialParameters),SpecularColor,MaterialParameters,FalloffExponent,CombinedShadowFactor)
+			* LightColor
+			* DistanceAttenuation
+			* ConeAngleFalloff;
+
+		half Opacity = GetMaterialOpacity(MaterialParameters);
+
+#if MATERIALBLENDING_TRANSLUCENT
+		OutColor.a = Opacity;
+#elif MATERIALBLENDING_ADDITIVE || MATERIALBLENDING_SOFTMASKED
+		OutColor.rgb = OutColor.rgb * Opacity;
+		OutColor.a = 0.0f;
+#else
+		OutColor.a = 0.0f;
+#endif
+
+#if SM5_PROFILE && MATERIAL_ENABLE_SUBSURFACE_SCATTERING
+	half3 IncidentLighting =
+		  LightColor
+		* ConeAngleFalloff
+		* CombinedShadowFactor
+		* DistanceAttenuation
+		* saturate(dot(MaterialParameters.TangentLightVector,MaterialParameters.TangentNormal));
+
+	OutSubsurfaceInscattering = EncodeSubsurfaceInscattering(IncidentLighting * GetMaterialSubsurfaceInscatteringColor(MaterialParameters));
+#endif
+	}		
+	OutColor = RETURN_COLOR(OutColor);
+}

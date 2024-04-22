@@ -1,14 +1,28 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class RB_ConstraintDrawComponent extends PrimitiveComponent
 	native(Physics);
 
 cpptext
 {
 	// Primitive Component interface
-	virtual void Render(const FSceneContext& Context, struct FPrimitiveRenderInterface* PRI);
-	virtual UBOOL Visible(FSceneView* View);
+	virtual FPrimitiveSceneProxy* CreateSceneProxy();
+	
+	/**
+	 * Update the bounds of the component.
+	 */
+	virtual void UpdateBounds(); 
+
+	/** 
+	 * Retrieves the materials used in this component 
+	 * 
+	 * @param OutMaterials	The list of used materials.
+	 */
+	virtual void GetUsedMaterials( TArray<UMaterialInterface*>& OutMaterials ) const; 
 }
 
-var()	MaterialInstance	LimitMaterial;
+var()	MaterialInterface	LimitMaterial;
 
 defaultproperties
 {

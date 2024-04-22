@@ -1,0 +1,140 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" property="text/html; charset=utf-8" />
+<title>Light Object</title>
+<link href="../contextual.css" rel="stylesheet" type="text/css" media="screen">
+<script src="../contextual.js" type="text/javascript"></script>
+</head>
+<body scroll="auto" class="container" id="container" topmargin="0" marginheight="0" leftmargin="0" bottommargin="0" rightmargin="0" marginwidth="0">
+<div class="object_label" id="object_label">
+	<div class="btn_house">
+		<a name="reserved.this">
+			<b class="button-next"></b>
+			<b class="button-auto" title="resize"></b>
+			<b class="button-fixed" title="resize"></b>
+		&nbsp;</a>
+	</div>
+	<h5>Light Object</h5>
+	<div class="object_desc">
+		<div class="object-light"></div>
+		<p>The light object indicates the light color and direction. The light is a screen-space object that rotates with the camera.</p>
+		<p class="note"><b class="icon"></b>Hold the 'V' key and move the mouse to rotate the light.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Light</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="light.enabled">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Enabled</h2>
+	</div>
+	<div class="property">
+		<p>Whether the scene light is turned on or off.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Color</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="color.diffuse">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>RGBA</span> Diffuse</h2>
+	</div>
+	<div class="property">
+		<p>The diffuse color of the scene light.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="color.ambient">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>RGBA</span> Ambient</h2>
+	</div>
+	<div class="property">
+		<p>The ambient color of the scene light.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="color.specular">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>RGBA</span> Specular</h2>
+	</div>
+	<div class="property">
+		<p>The specular color of the scene light.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="color.scalar">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Scalar</h2>
+	</div>
+	<div class="property">
+		<p>Scale the light brightness to simulate outdoor lighting.</p>
+		<p class="note"><b class="icon"></b>Match scene light scalars from the SpeedTree Reference App by altering this value</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Transform</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="transform.rotation.axis_y"></a><a name="transform.rotation.axis_z"></a>
+			<a name="transform.rotation.axis_x">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Rotation: Axis: X, Y, &amp; Z</h2>
+	</div>
+	<div class="property">
+		<p>The X,Y, and Z components of the <a href="#transform.rotation.angle">Rotation: Angle</a>.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="transform.rotation.angle">
+				<b class="button-prev"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>degrees</span> Rotation: Angle</h2>
+	</div>
+	<div class="property">
+		<p>The amount of rotation around the rotation angle.</p>
+	</div>
+</div>
+</body>
+</html>

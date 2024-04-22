@@ -1,9 +1,6 @@
 /*=============================================================================
 	LaunchApp.h: Unreal wxApp
-	Copyright 1997-2004 Epic Games, Inc. All Rights Reserved.
-
-Revision history:
-	* Created by Daniel Vogel
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #ifndef __HEADER_LAUNCHAPP_H
@@ -18,19 +15,24 @@ public:
 	/**
 	 * Gets called on initialization from within wxEntry.	
 	 */
-	virtual bool OnInit();
+	virtual bool	OnInit();
 	/** 
 	 * Gets called after leaving main loop before wxWindows is shut down.
 	 */
-	virtual int OnExit();
+	virtual int		OnExit();
+
 	/**
-	 * Mix of wxWindows and our main loop so we can share messages.
+	 * Callback from wxWindows' main loop to signal that we should tick the engine.
 	 */
-	virtual int MainLoop();
+	virtual void	TickUnreal();
+
+	/**
+	 * Performs any required cleanup in the case of a fatal error.
+	 */
+	virtual void	ShutdownAfterError();
+
+protected:
 };
 
 #endif
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/

@@ -1,0 +1,617 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" property="text/html; charset=utf-8" />
+<title>Tree Window</title>
+<link href="../contextual.css" rel="stylesheet" type="text/css" media="screen">
+<script src="../contextual.js" type="text/javascript"></script>
+</head>
+<body scroll="auto" class="container" id="container" topmargin="0" marginheight="0" leftmargin="0" bottommargin="0" rightmargin="0" marginwidth="0">
+<div class="object_label" id="object_label">
+	<div class="btn_house">
+		<a name="reserved.this">
+			<b class="button-next"></b>
+			<b class="button-auto" title="resize"></b>
+			<b class="button-fixed" title="resize"></b>
+		&nbsp;</a>
+	</div>
+	<h5>Tree Window</h5>
+	<div class="object_desc">
+		<p>The Tree Window property bar controls various rendering and viewport states.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>General Rendering</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="general_rendering.transparency">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Transparency</h2>
+	</div>
+	<div class="property">
+		<h3>Best available (A2C if possible)</h3>
+		<p>If your graphics card capabilities and settings are such that alpha to coverage and multisampling are available, alpha to coverage will be used for transparency (see Edit-&gt;Preferences-&gt;Rendering to enable multisampling). Otherwise, alpha testing is used.</p>
+		<h3>Alpha test only</h3>
+		<p>Alpha testing is used for transparency.</p>
+		<h3>Blending only</h3>
+		<p>Blending is used for transparency. The geometry is not sorted so this setting will typically result in many value errors related to alpha blending and the depth buffer.</p>
+		<h3>Alpha test and blending</h3>
+		<p>Both alpha testing and blending are used. This reduces the errors from &quot;blending only&quot; but does not eliminate them.</p>
+		<h3>None</h3>
+		<p>All geometry is opaque.</p>
+  </div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="general_rendering.alpha_test_value">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Alpha Test Value</h2>
+	</div>
+	<div class="property">
+		<p>Only geometry with alpha values greater than this number will be rendered when alpha testing is enabled.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="general_rendering.anisotropic_filtering">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Anisotropic Filtering</h2>
+	</div>
+	<div class="property">
+		<p>The amount of oversampling used for anisotropic filtering.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="general_rendering.conserve_graphics_card_memory">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Conserve Graphics...</h2>
+	</div>
+	<div class="property">
+		<p>Enabling this option causes tree rendering to be slower, but use far less memory on the graphics card.  This option should only be used on high polygon tree models or when the SpeedTree Modeler is used concurrently with other graphics applications.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="general_rendering.3d_icon_scale">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> 3D Icon Scale</h2>
+	</div>
+	<div class="property">
+		<p>Controls how large force icons appear in the Tree Window.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Hand Drawing</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="hand_drawing.spacing_style">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Spacing Style</h2>
+	</div>
+	<div class="property">
+		<p>Units used for the minimum allowed distance between control points.</p>
+		<h3>Relative</h3>
+		<p>Space between control points is a percentage of the parent branch's length set with the <a href="#hand_drawing.relative_spacing">Relative Spacing</a> property value.</p>
+		<h3>Absolute</h3>
+		<p>Space between control points is a real-world unit size set with the <a href="#hand_drawing.absolute_spacing">Absolute Spacing</a> property value.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="hand_drawing.relative_spacing">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Relative Spacing</h2>
+	</div>
+	<div class="property">
+		<p>The minimum distance (relative to the parent branch's length) allowed between control points.</p>
+		<p class="note"><b class="icon"></b> equires a <a href="#hand_drawing.spacing_style">Spacing Style</a> of 'Relative'.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="hand_drawing.absolute_spacing">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Absolute Spacing</h2>
+	</div>
+	<div class="property">
+		<p>The minimum distance (as a real-world unit) allowed between control points.</p>
+		<p class="note"><b class="icon"></b> Requires a <a href="#hand_drawing.spacing_style">Spacing Style</a> of 'Absolute'.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="hand_drawing.curve_fit">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Curve Fit</h2>
+	</div>
+	<div class="property">
+		<p>The accuracy of the bezier spline that is created after hand drawing. Higher values result in the creation of more control points.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="hand_drawing.control_point_style">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Control Point Style</h2>
+	</div>
+	<div class="property">
+		<p>The types of control points that are used to form the bezier spline.</p>
+		<h3>Corner</h3>
+		<p>Control point handles are independently rotated and scaled to best fit the hand drawing.</p>
+		<h3>Linear</h3>
+		<p>Control point handles are rotated in unison (per control point) but are scaled independently, creating linear tangents.</p>
+		<h3>Smooth</h3>
+		<p>Control point handles are rotated and scaled in unison, creating symmetrical tangents.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Shadow Mapping</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="shadow_mapping.resolution">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer</span> Resolution</h2>
+	</div>
+	<div class="property">
+		<p>The width and height (in pixels) of the depth shadow.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="shadow_mapping.bias">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Bias</h2>
+	</div>
+	<div class="property">
+		<p>How far geometry is offset from itself when rendering into the depth shadow (increase this value to reduce shadow acne at the expense of shadows separating from their casters).</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="shadow_mapping.show_on_grid">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Show On Grid</h2>
+	</div>
+	<div class="property">
+		<p>Display a shadow on the ground plane.</p>
+	</div>
+	</div>
+<div class="group_label">
+	<h1>Manipulator</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="manipulator.mode">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Mode</h2>
+	</div>
+	<div class="property">
+		<h3>None</h3>
+		<p>Objects in the scene cannot be manipulated.</p>
+		<h3>Translate</h3>
+		<p>Objects in the scene can be translated by using the manipulator. This does not include any part of the tree model itself. Use node editing to move individual nodes based on their properties.</p>
+		<h3>Rotate</h3>
+		<p>Objects in the scene can be rotated by using the manipulator. This does not include any part of the tree model itself. Use node editing to move individual nodes based on their properties.</p>
+		<h3>Scale</h3>
+		<p>Objects in the scene can be scaled by using the manipulator. This does not include any part of the tree model itself. Use node editing to move individual nodes based on their properties.</p>
+  </div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="manipulator.coordinate_system">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Coordinate System</h2>
+	</div>
+	<div class="property">
+		<h3>Global</h3>
+		<p>Manipulation is relative to the world coordinate system.</p>
+		<h3>Parent</h3>
+		<p>Manipulation is relative to the parent object's coordinate system (currently the same as global).</p>
+		<h3>Local</h3>
+		<p>Manipulation is relative to the selected object's coordinate system.</p>
+  </div>
+ 	<div class="property_label">
+		<div class="btn_house">
+			<a name="manipulator.size_scale">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Size Scale</h2>
+	</div>
+	<div class="property">
+		<p>Scales the size of manipulators in the Tree Window.</p>
+  </div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="manipulator.show_node_manipulator">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Show Node Manipulator</h2>
+	</div>
+	<div class="property">
+		<p>When enabled, a manipulator object is overlayed on top of selected nodes for quick edits to common properties.</p>
+  </div>
+</div>
+<div class="group_label">
+	<h1>Frustum</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frustum.near_clipping_plane_scale">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Near Clipping Plane Scale</h2>
+	</div>
+	<div class="property">
+		<p>Near and far clipping planes are calculated based on scene extents. Use this value to scale the computed near clipping plane value.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="frustum.far_clipping_plane_scale">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Far Clipping Plane Scale</h2>
+	</div>
+	<div class="property">
+		<p>Near and far clipping planes are calculated based on scene extents. Use this value to scale the computed far clipping plane value.</p>
+  </div>
+</div>
+<div class="group_label">
+	<h1>Viewport</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="viewport.layout">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Layout</h2>
+	</div>
+	<div class="property">
+		<h3>One</h3>
+		<p>Show a single view of the scene in the Tree Window.</p>
+		<h3>Four</h3>
+		<p>Show all four views of the scene.</p>
+		<h3>Two (over under)</h3>
+		<p>Show two views of the scene, one on top of the other.</p>
+		<h3>Two (side by side)</h3>
+		<p>Show two views of the scene, one beside the other.</p>
+  </div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="viewport.active_viewport">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Active Viewport</h2>
+	</div>
+	<div class="property">
+		<p>Sets the style of projection used in the active viewport. &quot;Camera&quot; is currently unsupported.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="viewport.background_color">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>RGBA</span> Background Color</h2>
+	</div>
+	<div class="property">
+		<p>Color of the background.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="viewport.grid_lines_color">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>RGBA</span> Grid Lines Color</h2>
+	</div>
+	<div class="property">
+		<p>Color of the grid lines</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="viewport.label_color">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>RGBA</span> Label Color</h2>
+	</div>
+	<div class="property">
+		<p>Color of the projection labels.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="viewport.show_labels">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Show Labels</h2>
+	</div>
+	<div class="property">
+		<h3>Always</h3>
+		<p>Always show the projection labels (xy plane, perspecitve, etc.).</p>
+		<h3>Only when multiple viewports are visible</h3>
+		<p>Label projections when more than one is visible.</p>
+		<h3>Never</h3>
+		<p>Never show projection labels.</p>
+  </div>
+<div class="property_label">
+		<div class="btn_house">
+			<a name="viewport.show_light">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Show Light</h2>
+	</div>
+	<div class="property">
+		<p>Toggles the visibility of the light (it is always on).</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="viewport.show_overlay">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Show Overlay</h2>
+	</div>
+	<div class="property">
+		<p>Toggles the text information overlaid in the Tree Window.</p>
+  </div>
+ 	<div class="property_label">
+		<div class="btn_house">
+			<a name="viewport.report_vertices">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Report Vertices</h2>
+	</div>
+	<div class="property">
+		<p>Reports the number of vertices for each geometry type along with the triangle count in the tree window overlay</p>
+  </div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="viewport.show_grid">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Show Grid</h2>
+	</div>
+	<div class="property">
+		<p>Toggles display of the grid on the ground plane.</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="viewport.grid_spacing">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>integer</span> Grid Spacing</h2>
+	</div>
+	<div class="property">
+		<p>Sets the distance between grid lines.</p>
+	</div>
+	</div>
+<div class="group_label">
+	<h1>Miscellaneous</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="miscellaneous.check_for_opengl_errors_on_each_object">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>boolean</span> Check for OpenGL Errors...</h2>
+	</div>
+	<div class="property">
+		<p>Query and report OpenGL errors each time the scene is drawn.</p>
+	</div>
+</div>
+<div class="group_label">
+	<h1>Perspective Camera</h1>
+</div>
+<div class="group">
+	<div class="property_label">
+<div class="btn_house">
+			<a name="perspective_camera.navigation_type">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>enumeration</span> Navigation Type</h2>
+	</div>
+	<div class="property">
+	  <h3>Standard</h3>
+	  <p>Orbit the view by dragging the pointer with the left mouse button down. Pan by dragging with the middle mouse button down. Zoom using the wheel or dragging with both the left and right mouse buttons down. The up vector is always maintained in this mode.</p>
+	  <h3>Trackball</h3>
+	  <p>Same as standard, without the up vector restriction.</p>
+	  <h3>Traveller</h3>
+	  <p>Navigate the scene in a more first person style. Left button dragging equals walk forwards (up), backwards (down), and rotating (left to right). Middle button dragging equals panning. Left and middle dragging equals free look.</p>
+  </div>
+<div class="property_label">
+		<div class="btn_house">
+			<a name="perspective_camera.translation_scale">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Translation Scale</h2>
+	</div>
+	<div class="property">
+		<p>Scales all navigation movement (panning, walking, zooming).</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="perspective_camera.rotation_scale">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>percentage</span> Rotation Scale</h2>
+	</div>
+	<div class="property">
+		<p>Scales all navigation rotating (looking).</p>
+	</div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="perspective_camera.grid_size">
+				<b class="button-prev"></b>
+				<b class="button-next"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Grid Size</h2>
+	</div>
+	<div class="property">
+		<p>How many units are covered by the grid in perspective projections.</p>
+  </div>
+	<div class="property_label">
+		<div class="btn_house">
+			<a name="perspective_camera.field_of_view">
+				<b class="button-prev"></b>
+				<b class="button-auto" title="resize"></b>
+				<b class="button-fixed" title="resize"></b>
+			&nbsp;</a>
+		</div>
+		<h2><span>float</span> Field of View</h2>
+	</div>
+	<div class="property">
+		<p>The field of view of the viewer.</p>
+	</div>
+</div>
+</body>
+</html>

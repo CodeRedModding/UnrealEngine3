@@ -1,0 +1,11 @@
+/*=============================================================================
+	UE3_Prefix.pch: Precompiled header for Mac version of UE3.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#ifdef __OBJC__
+    #import <Cocoa/Cocoa.h>
+#elif __cplusplus
+	#include "CorePrivate.h"
+	#include "EnginePrivate.h"
+#endif

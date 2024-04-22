@@ -1,39 +1,67 @@
 /*=============================================================================
 	IpDrvPrivate.h: Unreal TCP/IP driver.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-Revision history:
-	* Created by Tim Sweeney.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #ifndef UNIPDRV_H
 #define UNIPDRV_H
 
+// include for all definitions
+#include "Engine.h"
+
+#if WITH_UE3_NETWORKING
+
+#ifndef ERROR_SUCCESS
+#define ERROR_SUCCESS 0
+#endif
+
 #if _MSC_VER
 	#pragma warning( disable : 4201 )
 #endif
 
-// Socket API.
+// Set the socket api name depending on platform
 #if _MSC_VER
-	#define __WINSOCK__ 1
-	#define SOCKET_API TEXT("WinSock")
+#if XBOX || WITH_PANORAMA
+	#define SOCKET_API TEXT("LiveSock")
 #else
-	#define __BSD_SOCKETS__ 1
+	#define SOCKET_API TEXT("WinSock")
+#endif
+#elif PS3
+	#define SOCKET_API TEXT("PS3Sockets")
+#elif NGP
+	#define SOCKET_API TEXT("NGPSockets")
+#elif WIIU
+	#define SOCKET_API TEXT("WiiUSockets")
+#else
 	#define SOCKET_API TEXT("Sockets")
 #endif
 
-// WinSock includes.
-#if __WINSOCK__
-#ifndef XBOX
-	#include <winsock.h>
-	#include <conio.h>
-#endif
-#endif
-
 // BSD socket includes.
-#if __BSD_SOCKETS__
+#if NGP 
+	#include <net.h>
+#elif WIIU
+	#include <cafe.h>
+	#include <cafe/network.h>
+#elif !_MSC_VER
 	#include <stdio.h>
 	#include <unistd.h>
+	#include <sys/types.h>
+#if PS3
+	#include <sdk_version.h>
+	#include <sys/ansi.h>
+	#include <sys/socket.h>
+	#include <netinet/in.h>
+	#include <arpa/inet.h>
+	#include <netdb.h>
+	#include <netex/errno.h>
+	#include <netex/net.h>
+	#include <sys/time.h>
+	#include <sys/select.h>
+	#include <cell/sysmodule.h>
+	#include <np.h>
+#else
+	#include <errno.h>
+	#include <fcntl.h>
 	#include <sys/types.h>
 	#include <sys/socket.h>
 	#include <netinet/in.h>
@@ -42,23 +70,44 @@ Revision history:
 	#include <sys/uio.h>
 	#include <sys/ioctl.h>
 	#include <sys/time.h>
-	#include <errno.h>
 	#include <pthread.h>
-	#include <fcntl.h>
-
+#endif
 	// Handle glibc < 2.1.3
 	#ifndef MSG_NOSIGNAL
 	#define MSG_NOSIGNAL 0x4000
 	#endif
-#endif
+#endif	// !_MSC_VER
+
 
 /*-----------------------------------------------------------------------------
 	Includes..
 -----------------------------------------------------------------------------*/
 
-#include "Engine.h"
 #include "UnNet.h"
+// Base socket interfaces
 #include "UnSocket.h"
+// Platform specific implementations
+#if PS3
+	#include "UnSocketPS3.h"
+#elif IPHONE || ANDROID || PLATFORM_MACOSX || FLASH
+	#include "UnSocketBSD.h"
+#elif NGP
+	#include "NGPSockets.h"
+#elif WIIU
+	#include "UnSocketWiiU.h"
+#else
+	#include "UnSocketWin.h"
+#endif
+
+// make sure each platform has defined the required SE_* codes that the engine uses
+// if you get any error here, then your platform did not define them in it's Socket header file
+checkAtCompileTime(SE_NO_ERROR != SE_NO_ERROR + 1, CompileTest1);
+checkAtCompileTime(SE_ENOTSOCK != SE_ENOTSOCK + 1, CompileTest2);
+checkAtCompileTime(SE_ECONNRESET != SE_ECONNRESET + 1, CompileTest3);
+checkAtCompileTime(SE_ENOBUFS != SE_ENOBUFS + 1, CompileTest4);
+checkAtCompileTime(SE_ETIMEDOUT != SE_ETIMEDOUT + 1, CompileTest5);
+checkAtCompileTime(SE_NO_DATA != SE_NO_DATA + 1, CompileTest6);
+checkAtCompileTime(SE_UDP_ERR_PORT_UNREACH != SE_UDP_ERR_PORT_UNREACH + 1, CompileTest7);
 
 /*-----------------------------------------------------------------------------
 	Definitions.
@@ -67,80 +116,18 @@ Revision history:
 // Globals.
 extern UBOOL GIpDrvInitialized;
 
+#if !SHIPPING_PC_GAME
+/** Network communication between UE3 executable and the "Unreal Console" tool. */
+extern class FDebugServer*				GDebugChannel;
+#endif
+
 /*-----------------------------------------------------------------------------
 	More Includes.
 -----------------------------------------------------------------------------*/
 
 #include "InternetLink.h"
-
-/*-----------------------------------------------------------------------------
-	Host resolution thread.
------------------------------------------------------------------------------*/
-
-#if __UNIX__
-void* ResolveThreadEntry( void* Arg );
-#else
-DWORD STDCALL ResolveThreadEntry( void* Arg );
-#endif
-
-//
-// Class for creating a background thread to resolve a host.
-//
-class FResolveInfo
-{
-public:
-	// Variables.
-	in_addr		Addr;
-	DWORD		ThreadId;
-	ANSICHAR	HostName[256];
-	TCHAR		Error[256];
-
-	#if __UNIX__
-	pthread_t	ResolveThread;
-	#endif
-
-	// Functions.
-	FResolveInfo( const TCHAR* InHostName )
-	{	
-		debugf( TEXT("Resolving %s..."), InHostName );
-
-		appMemcpy( HostName, TCHAR_TO_ANSI(InHostName), appStrlen(InHostName) + 1 );
-		*Error = 0;
-		ThreadId = 1;
-
-#if _MSC_VER
-		HANDLE hThread = CreateThread( NULL, 0, ResolveThreadEntry, this, 0, &ThreadId );
-		check(hThread);
-		CloseHandle( hThread );
-#else
-		pthread_attr_t ThreadAttributes;
-		pthread_attr_init( &ThreadAttributes );
-		pthread_attr_setdetachstate( &ThreadAttributes, PTHREAD_CREATE_DETACHED );
-		pthread_create( &ResolveThread, &ThreadAttributes, &ResolveThreadEntry, this );
-#endif
-
-	}
-	UBOOL Resolved()
-	{
-#if __UNIX__
-		if( ThreadId==0 )
-			pthread_join(ResolveThread, NULL);
-#endif
-		return ThreadId==0;
-	}
-	const TCHAR* GetError()
-	{
-		return *Error ? Error : NULL;
-	}
-	const in_addr GetAddr()
-	{
-		return Addr;
-	}
-	const FString GetHostName()
-	{
-		return FString(HostName);
-	}
-};
+#include "FRemotePropagator.h"
+#include "FDebugServer.h"
 
 /*-----------------------------------------------------------------------------
 	Bind to next available port.
@@ -149,111 +136,223 @@ public:
 //
 // Bind to next available port.
 //
-inline int bindnextport( SOCKET s, struct sockaddr_in* addr, int portcount, int portinc )
+inline INT bindnextport( FSocket* Socket, FInternetIpAddr& Addr, INT portcount, INT portinc )
 {
-	for( int i=0; i<portcount; i++ )
+	for( INT i=0; i<portcount; i++ )
 	{
-		if( !bind( s, (sockaddr*)addr, sizeof(sockaddr_in) ) )
+		if( Socket->Bind(Addr) == TRUE )
 		{
-			if (ntohs(addr->sin_port) != 0)
-				return ntohs(addr->sin_port);
+			if (Addr.GetPort() != 0)
+			{
+				return Addr.GetPort();
+			}
 			else
 			{
-				// 0 means allocate a port for us, so find out what that port was
-				struct sockaddr_in boundaddr;
-				SOCKLEN size = sizeof(boundaddr);
-				getsockname ( s, (sockaddr*)(&boundaddr), &size);
-				return ntohs(boundaddr.sin_port);
+				return Socket->GetPortNo();
 			}
 		}
-		if( addr->sin_port==0 )
+		if( Addr.GetPort() == 0 )
 			break;
-		addr->sin_port = htons( ntohs(addr->sin_port) + portinc );
+		Addr.SetPort(Addr.GetPort() + portinc);
 	}
 	return 0;
-}
-
-inline int getlocalhostaddr( FOutputDevice& Out, in_addr &HostAddr )
-{
-	int CanBindAll = 0;
-	IpSetInt( HostAddr, INADDR_ANY );
-#ifndef XBOX
-	TCHAR Home[256]=TEXT("");
-	TCHAR HostName[256]=TEXT("");
-	ANSICHAR AnsiHostName[256]="";
-	if( gethostname( AnsiHostName, 256 ) )
-		Out.Logf( TEXT("%s: gethostname failed (%s)"), SOCKET_API, SocketError() );
-	appStrcpy( HostName, ANSI_TO_TCHAR(AnsiHostName) );
-	if( Parse(appCmdLine(),TEXT("MULTIHOME="),Home,ARRAY_COUNT(Home)) )
-	{
-		TCHAR *A, *B, *C, *D;
-		A=Home;
-		if
-		(	(A=Home)!=NULL
-		&&	(B=appStrchr(A,'.'))!=NULL
-		&&	(C=appStrchr(B+1,'.'))!=NULL
-		&&	(D=appStrchr(C+1,'.'))!=NULL )
-		{
-			IpSetBytes( HostAddr, appAtoi(A), appAtoi(B+1), appAtoi(C+1), \
-				appAtoi(D+1) );
-		}
-		else Out.Logf( TEXT("Invalid multihome IP address %s"), Home );
-	}
-	else
-	{
-		GHostByNameCriticalSection->Lock();
-		HOSTENT* HostEnt = gethostbyname( TCHAR_TO_ANSI(HostName) );
-		if( HostEnt==NULL )
-		{
-			Out.Logf( TEXT("gethostbyname failed (%s)"), SocketError() );
-		}
-		else if( HostEnt->h_addrtype!=PF_INET )
-		{
-			Out.Logf( TEXT("gethostbyname: non-Internet address (%s)"), \
-				SocketError() );
-		}
-		else
-		{
-			HostAddr = *(in_addr*)( *HostEnt->h_addr_list );
-			if( !ParseParam(appCmdLine(),TEXT("PRIMARYNET")) )
-				CanBindAll = 1;
-			static UBOOL First=0;
-			if( !First )
-			{
-				First = 1;
-				debugf( NAME_Init, TEXT("%s: I am %s (%s)"), SOCKET_API, HostName, *IpString( HostAddr ) );
-			}
-		}
-		GHostByNameCriticalSection->Unlock();
-	}
-#endif
-	return CanBindAll;
 }
 
 //
 // Get local IP to bind to
 //
-inline in_addr getlocalbindaddr( FOutputDevice& Out )
+inline FInternetIpAddr getlocalbindaddr( FOutputDevice& Out )
 {
-	in_addr BindAddr;
-
+	FInternetIpAddr BindAddr;
 	// If we can bind to all addresses, return 0.0.0.0
-	if( getlocalhostaddr( Out, BindAddr ) )
-		IpSetInt( BindAddr, INADDR_ANY );	
+	if (GSocketSubsystem->GetLocalHostAddr(Out,BindAddr) == TRUE)
+	{
+		BindAddr.SetAnyAddress();
+	}
 	return BindAddr;
 
 }
+
+
+/*-----------------------------------------------------------------------------
+	Forward Declarations
+-----------------------------------------------------------------------------*/
+template<typename TTask> class FAsyncTask;
+class FCompressAsyncWorker;
+class FUncompressAsyncWorker;
+
 /*-----------------------------------------------------------------------------
 	Public includes.
 -----------------------------------------------------------------------------*/
 
+#include "VoiceInterface.h"
+// Common code shared across all platforms for the online subsystem
+#include "OnlineSubsystemUtilities.h"
 #include "IpDrvClasses.h"
-#include "HTTPDownload.h"
+#include "EngineUserInterfaceClasses.h"
+#include "EngineUIPrivateClasses.h"
+#include "IpDrvUIPrivateClasses.h"
+
 #include "UnTcpNetDriver.h"
 
-#endif // UNIPDRV_H
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
+// Per platform driver/connection implementations
+#if PS3
+#endif
+
+#include "UnStatsNotifyProviders_UDP.h"
+
+/** Class for compressing a buffer on another thread */
+class FCompressAsyncWorker
+{
+	/** Flags for use in compression */
+	ECompressionFlags CompressionFlags;
+	/** Buffer to to compress */
+	const BYTE* SourceBuffer;
+	/** The uncompressed size of the data */
+	INT UncompressedBufferSize;
+	/** Buffer to write the compressed data to */
+	BYTE* CompressedBuffer;
+	/** The size of the data after compression */
+	INT* CompressedBufferSize;
+
+public:
+	/**
+	 * Inits the members
+	 *
+	 * @param InBuffer the buffer being compressed
+	 * @param InUncompressedSize the size of the uncompressed data
+	 * @param InCompressedBuffer the buffer to compress the data to
+	 * @param InCompressedBufferSize the amount of space that can be written to by compression
+	 */
+	FCompressAsyncWorker(ECompressionFlags InCompressionFlags, const BYTE* InBuffer,INT InUncompressedSize,BYTE* InCompressedBuffer,INT* InCompressedBufferSize) :
+		CompressionFlags(InCompressionFlags),
+		SourceBuffer(InBuffer),
+		UncompressedBufferSize(InUncompressedSize),
+		CompressedBuffer(InCompressedBuffer),
+		CompressedBufferSize(InCompressedBufferSize)
+	{
+	}
+	/** Compress the buffer on another thread */
+	void DoWork()
+	{
+		verify(appCompressMemory(
+			CompressionFlags,
+			CompressedBuffer,
+			*CompressedBufferSize,
+			(void*)SourceBuffer,
+			UncompressedBufferSize));
+	}
+
+	/**
+	 * @return the name to display in external event viewers
+	 */
+	static const TCHAR *Name()
+	{
+		return TEXT("FCompressAsyncWorker");
+	}
+
+	/** Indicates to the thread pool that this task is not abandonable */
+	UBOOL CanAbandon()
+	{
+		return FALSE;
+	}
+
+	/** Ignored */
+	void Abandon()
+	{
+	}
+};
+
+
+/** Holds the data needed to compress and then post asynchronously */
+struct FMCPEventPoster
+{
+	/** The source array that is being compressed */
+	TArray<BYTE> SourceBuffer;
+	/** The dest array being compressed into */
+	TArray<BYTE> CompressedBuffer;
+	/** Receives the compressed size when done */
+	INT OutCompressedSize;
+	/** The URL to post with */
+	FURL Url;
+	/** The object that will post to the web service */
+	FHttpDownloadString* HttpPoster;
+	/** The compression worker that does the compression on another thread */
+	FAsyncTask<FCompressAsyncWorker>* CompressionWorker;
+
+	/** Ctor that zeros things */
+	FMCPEventPoster() :
+		HttpPoster(NULL),
+		CompressionWorker(NULL)
+	{
+	}
+};
+
+/** Class for Uncompressing a buffer on another thread */
+class FUncompressAsyncWorker
+{
+	/** Flags for use in uncompression */
+	ECompressionFlags CompressionFlags;
+	/** Buffer to to Uncompress */
+	const BYTE* SourceBuffer;
+	/** The compressed size of the data */
+	INT CompressedBufferSize;
+	/** Buffer to write the Uncompressed data to */
+	BYTE* UncompressedBuffer;
+	/** The size of the data after Uncompression */
+	INT UncompressedBufferSize;
+
+public:
+	/**
+	 * Inits the members
+	 *
+	 * @param InBuffer the buffer being compressed
+	 * @param InUncompressedSize the size of the uncompressed data
+	 * @param InCompressedBuffer the buffer to compress the data to
+	 * @param InCompressedBufferSize the amount of space that can be written to by compression
+	 */
+	FUncompressAsyncWorker(ECompressionFlags InCompressionFlags, const BYTE* InCompressedBuffer,INT InCompressedBufferSize, BYTE* InUncompressedBuffer, INT InUncompressedSize) :
+		CompressionFlags(InCompressionFlags),
+		SourceBuffer(InCompressedBuffer),
+		CompressedBufferSize(InCompressedBufferSize),
+		UncompressedBuffer(InUncompressedBuffer),
+		UncompressedBufferSize(InUncompressedSize)
+	{
+	}
+	/** Uncompress the buffer on another thread */
+	void DoWork()
+	{
+		verify(appUncompressMemory(
+			CompressionFlags,
+			UncompressedBuffer,
+			UncompressedBufferSize,
+			(void*)SourceBuffer,
+			CompressedBufferSize));
+	}
+
+	/**
+	 * @return the name to display in external event viewers
+	 */
+	static const TCHAR *Name()
+	{
+		return TEXT("FUncompressAsyncWorker");
+	}
+
+	/** Indicates to the thread pool that this task is not abandonable */
+	UBOOL CanAbandon()
+	{
+		return FALSE;
+	}
+
+	/** Ignored */
+	void Abandon()
+	{
+	}
+};
+
+
+#endif	//#if WITH_UE3_NETWORKING
+
+#endif // UNIPDRV_H
 

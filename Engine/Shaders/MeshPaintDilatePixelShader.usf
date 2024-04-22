@@ -1,0 +1,72 @@
+/*================================================================================
+	MeshPaintBlendPixelShader.usf: Mesh texture paint pixel shader
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+================================================================================*/
+
+#include "Common.usf"
+
+/** BrushRenderTargetTexture - Texture that has our accumulated paint data */
+sampler2D s_Texture0;
+
+/** SeamMaskRenderTargetTexture - Texture that stores the UV seam mask */
+sampler2D s_Texture1;
+
+/** BrushMaskRenderTargetTexture - Texture that stores info about the area we incrementally painted */
+sampler2D s_Texture2;
+
+float c_WidthPixelOffset;
+float c_HeightPixelOffset;
+
+float c_Gamma;
+
+
+void Main(
+	in float2 InTextureCoordinates : TEXCOORD0,
+	out float4 OutColor : COLOR0 
+	)
+{
+
+	// Texture0 will be the brush texture
+	// Texture1 will be the seam mask
+	// Texture2 will be the brush mask
+
+	// First sample the source values from brush texture and seam mask
+	float4 OldColor0 = tex2D( s_Texture0, InTextureCoordinates );
+	float4 OldColor1 = tex2D( s_Texture1, InTextureCoordinates );
+
+	float4 CenterColor = OldColor0;
+
+	float2 OffsetConst = float2( c_WidthPixelOffset, c_HeightPixelOffset );
+
+	float2 OffsetIdx;
+
+	// Arbitrary large number that we will compare to against the squared sample distance.
+	//   The largest we will hit in 25 samples should be 8 (distance squared = x*x+y*y)
+	int LastValidDistance = 10;
+
+	// Sample pixel data from a 5x5 grid around our current pixel
+	for( OffsetIdx.y = 2; OffsetIdx.y >= -2; OffsetIdx.y-- )
+	{
+		for( OffsetIdx.x = -2; OffsetIdx.x <= 2; OffsetIdx.x++)
+		{
+			// Compute offset coordinates for the pixel and sample the color
+			float2 Coord = InTextureCoordinates + (OffsetIdx * OffsetConst);
+			float4 SampleColor = tex2D( s_Texture0, Coord );
+
+			// A sample is only valid when it falls in the white area of the brush mask and the current
+			//   pixel we are processing falls within the white area of the texture seam mask.
+			bool IsValid = all( tex2D( s_Texture2, Coord ).rgb ) && all( OldColor1.rgb );
+
+			// Calculate the squared sample distance from the center
+			int SampleDist = OffsetIdx.x * OffsetIdx.x + OffsetIdx.y * OffsetIdx.y;
+
+			// @todo MeshPaint:If needed, we can improve this by averaging the pixel colors at the same distance
+			if( IsValid && SampleDist < LastValidDistance)
+			{
+				CenterColor = SampleColor;
+				LastValidDistance = SampleDist;
+			}
+		}
+	} 
+	OutColor = CenterColor;
+}

@@ -1,6 +1,6 @@
 /*=============================================================================
 	UnMsg.h: Just a place to dump all user defined messages
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
 #ifndef HEADER_UNMSG_H
@@ -60,8 +60,4 @@
 #define WM_MC_HIDE								(WM_APP + 54)
 
 #endif
-
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
 

@@ -1,0 +1,85 @@
+﻿@model CISStatus.Models.GeneralViewModel
+
+@section ScriptContent
+{
+<script type="text/javascript">
+
+    var CurrentBranchName = "";
+
+    function GetBuildStatuses() {
+        return ($.ajax(
+        {
+            url: "/BuildStatus/GetBuildStatuses",
+            data: "CurrentBranchName=" + CurrentBranchName,
+            async: false
+        }));
+    }
+
+    function UpdateBuildStatusView() {
+        var BuildStatuses = GetBuildStatuses();
+
+        $('#BuildsTable').html(BuildStatuses.responseText);
+    }
+
+    $.ajaxSetup({
+        // Disable caching of AJAX responses
+        cache: false
+    });
+
+    $(document).ready(function () {
+        // Set the initial branch name passed in on the URL
+        CurrentBranchName = $('#BranchName').val();
+
+        // Mark the current branch as selected
+        $('#' + CurrentBranchName).addClass('selected');
+
+        // If tab is clicked, update the page
+        $('li').click(function () {
+            $('li').removeClass('selected');
+
+            CurrentBranchName = $(this).attr('id');
+            $(this).addClass('selected');
+            $('#BuildsTable').html(GetBuildStatuses().responseText);
+        });
+
+        UpdateBuildStatusView();
+
+        $('li').mouseenter(function () {
+            $(this).addClass('hover');
+        });
+
+        $('li').mouseleave(function () {
+            $(this).removeClass('hover');
+        });
+
+        $(':checkbox').live( "change", function () {
+            $.ajax(
+            {
+                url: "/BuildStatus/CheckBoxClicked",
+                data: "Name=" + $(this).attr('Name') + "&Checked=" + $(this).attr('checked'),
+                async: false
+            });
+        });
+    });
+
+</script>
+}
+
+<div id="tabs">
+<b>
+   @foreach( CISStatus.Controllers.BranchInfo Branch in Model.Branches )
+   {
+      <li id="@Branch.Name" class="unselected">@Branch.Name</li>
+   }
+</b>
+</div>
+
+<div id="BuildsTable">
+    
+</div>
+
+<div id="Status">
+    
+</div>
+
+<input type="hidden" id="BranchName" value="@Model.CurrentBranchInfo.Name" \>

@@ -1,0 +1,43 @@
+/*=============================================================================
+	ShadowDepthCommon.usf: Shared functionality for shadow depth rendering.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#ifndef OUTPUT_DEPTH_TO_COLOR
+#define OUTPUT_DEPTH_TO_COLOR 0
+#endif
+
+#ifndef PERSPECTIVE_CORRECT_DEPTH
+#define PERSPECTIVE_CORRECT_DEPTH 0
+#endif
+
+// PS3 uses depth textures for projected shadows
+#if PS3
+	#undef SUPPORTS_DEPTH_TEXTURES
+	#define SUPPORTS_DEPTH_TEXTURES 1
+#endif
+
+/** Used to normalize the outputted depth */
+float InvMaxSubjectDepth;
+
+/** Tweakable depth bias */
+float DepthBias;
+
+/** Data passed from the vertex shader to the pixel shader for the shadow depth pass. */
+struct FShadowDepthVSToPS
+{
+#if !MATERIALBLENDING_SOLID
+	FVertexFactoryInterpolantsVSToPS FactoryInterpolants;
+#endif
+
+#if ONEPASS_POINTLIGHT_SHADOW
+	float4 GSPosition : TEXCOORD4;
+
+#elif PERSPECTIVE_CORRECT_DEPTH || !SUPPORTS_DEPTH_TEXTURES
+	float ShadowDepth : TEXCOORD4;
+
+#elif !COMPILER_SUPPORTS_EMPTY_STRUCTS
+	float Dummy : TEXCOORD4;
+
+#endif
+};

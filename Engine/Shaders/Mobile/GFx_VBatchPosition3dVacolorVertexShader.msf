@@ -1,0 +1,15 @@
+UNIFORM( mat4, BatchMatrix[15] );
+ATTRIBUTE( vec4, Position, POSITION );
+ATTRIBUTE( vec4, Color, COLOR0 );
+ATTRIBUTE( float, vbatch, BLENDINDICES0 );
+OUT_VARYING_LOW( vec4, color, COLOR0 );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// E Position3d
+
+  gl_Position = MulMatrix(Position, BatchMatrix[int(0.1+1.0*vbatch)]);
+// E Vacolor
+  color = Color;
+
+}
+

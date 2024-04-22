@@ -1,20 +1,26 @@
+/**
+ * Event which is triggered by the AI code when an NPC sees an enemy pawn.
+ * Originator: the pawn associated with the NPC
+ * Insigator: the enemy PC that has been spotted.
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class SeqEvent_AISeeEnemy extends SequenceEvent
 	native(Sequence);
 
 cpptext
 {
-	UBOOL CheckActivate(AActor *inOriginator, AActor *inInstigator, UBOOL bTest = 0)
+	virtual UBOOL CheckActivate(AActor *InOriginator, AActor *InInstigator, UBOOL bTest=FALSE, TArray<INT>* ActivateIndices = NULL, UBOOL bPushTop = FALSE)
 	{
-		if (inOriginator != NULL &&
-			inInstigator != NULL &&
+		if (InOriginator != NULL &&
+			InInstigator != NULL &&
 			(MaxSightDistance <= 0.f ||
-			 (inOriginator->Location-inInstigator->Location).Size() <= MaxSightDistance))
+			 (InOriginator->Location-InInstigator->Location).Size() <= MaxSightDistance))
 		{
-			return Super::CheckActivate(inOriginator,inInstigator,bTest);
+			return Super::CheckActivate(InOriginator,InInstigator,bTest,ActivateIndices, bPushTop);
 		}
 		else
 		{
-			return 0;
+			return FALSE;
 		}
 	}
 };
@@ -24,6 +30,7 @@ var() float MaxSightDistance;
 
 defaultproperties
 {
-	ObjName="AI: See Enemy"
-	MaxSightDistance=256.f
+	ObjName="See Enemy"
+	ObjCategory="AI"
+	MaxSightDistance=0.f
 }

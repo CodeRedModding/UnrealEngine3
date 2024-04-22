@@ -1,0 +1,185 @@
+/*=============================================================================
+	SubsurfaceScatteringPixelShader.usf: Pixel shader for subsurface scattering
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "SubsurfaceScatteringCommon.usf"
+
+/** The render target texture containing the sub-surface inscattering color. */
+sampler2D SubsurfaceInscatteringTexture;
+
+/** The render target surface containing the SSS attenuation parameters. */
+Texture2DMS<float4> SubsurfaceScatteringAttenuationSurface;
+
+/** The render target texture containing the SSS attenuation parameters. */
+sampler2D SubsurfaceScatteringAttenuationTexture;
+
+/** The delta UVs for the samples. */
+float4 SampleDeltaUVs[NUM_SAMPLE_PAIRS];
+
+/** The scale that transforms XY from clip-space to view-space. */
+float2 ClipToViewScaleXY;
+
+/** The scale that transforms XY from view-space to clip-space. */
+float2 ViewToClipScaleXY;
+
+/** RGBA8 linear texture containing random normals */
+sampler2D RandomAngleTexture;
+
+/** Buffer size / RandomAngleTexture size */
+float4 NoiseScaleAndOffset;
+
+float4 ScatteringAttenuation(float BaseToSampleDistance,float Radius,float3 LogSubsurfaceAbsorptionColorPerDistance)
+{
+	// Compute the cumulative absorption color for the sample.
+	float3 CumulativeAbsorptionColor = exp2(LogSubsurfaceAbsorptionColorPerDistance * BaseToSampleDistance);
+
+	// Compute the distance attenuation for the sample.
+	float DistanceFactor = saturate(1 / BaseToSampleDistance - 1 / Radius);
+
+	return float4(
+		DistanceFactor * CumulativeAbsorptionColor,
+		DistanceFactor
+		);
+}
+
+float4 ComputeInscatteringSample(
+	float3 BasePosition,
+	float3 LogSubsurfaceAbsorptionColorPerDistance,
+	float WorldFilterRadius,
+	float2 SampleDeltaUV,
+	float2 SampleReflectionNormal
+	)
+{
+	// Reflect the sample over a random normal.
+	SampleDeltaUV = SampleDeltaUV - SampleReflectionNormal * dot(SampleDeltaUV,SampleReflectionNormal) * 2;
+
+	// Add the sample offset to the current pixel's clip-space position, scaled by the world-space radius.
+	// These coordinates are in clip-space, so the divide below will scale the world-space radius to the appropriate size on the screen.
+	float3 SamplePosition = BasePosition + float3(SampleDeltaUV * ViewToClipScaleXY,0) * WorldFilterRadius;
+
+	// Read the subsurface scattered light from the sample position.
+	float3 SampleSubsurfaceInscattering = DecodeSubsurfaceInscattering(tex2Dlod(
+		SubsurfaceInscatteringTexture,
+		float4(SamplePosition.xy / SamplePosition.z * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz,0,0)
+		));
+
+	// Derive the view-space vector from the output pixel to the sample pixel.
+	float SampleW = PreviousDepthForShadows(float4(SamplePosition.xy,0,SamplePosition.z));
+	float3 BaseToSampleClipVector = float3(SamplePosition.xy / SamplePosition.z * SampleW,SampleW) - BasePosition;
+	float3 BaseToSampleViewVector = float3(BaseToSampleClipVector.xy * ClipToViewScaleXY,BaseToSampleClipVector.z);
+
+	// Debug code to show the sampling pattern.
+#if 0
+	if(length(SamplePosition.xy / SamplePosition.z) >= (4 / 1000.0))
+	{
+		SampleSubsurfaceInscattering *= 0.1;
+	}
+	else
+	{
+		SampleSubsurfaceInscattering *= 100;
+	}
+#endif
+
+	// Attenuate and return this sample's contribution to the subsurface scattering.
+	float BaseToSampleDistance = length(BaseToSampleViewVector);
+	float4 Attenuation = ScatteringAttenuation(
+		BaseToSampleDistance,
+		WorldFilterRadius,
+		LogSubsurfaceAbsorptionColorPerDistance
+		);
+	return float4(SampleSubsurfaceInscattering * Attenuation.rgb,Attenuation.a);
+}
+
+/** output distortion offsets as color so they can be accumulated (via blending) */
+#if PER_FRAGMENT
+	EARLYDEPTHSTENCIL
+#endif
+void Main(
+	float4 ScreenPosition : TEXCOORD0,
+	out float4 OutColor : COLOR0
+
+	#if PER_FRAGMENT
+		,in uint SampleIndex : SV_SampleIndex
+	#endif
+	)
+{
+	float2 SurfaceDimensions;
+	int NumSurfaceSamples;
+	SubsurfaceScatteringAttenuationSurface.GetDimensions(SurfaceDimensions.x,SurfaceDimensions.y,NumSurfaceSamples);
+	
+	float2 ScreenBufferUVs = ScreenPosition.xy * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+	int2 IntScreenBufferUVs = trunc(ScreenBufferUVs * SurfaceDimensions);
+
+	// Test whether this pixel needs per-fragment shading.
+	// There aren't many noticeable artifacts from depth discontinuities, so we just try to detect when the pixel has some samples that don't use the same radius.
+	// This prevents things like dithered translucent materials being overwritten by subsurface scattering.
+	#if !PER_FRAGMENT && MSAA_ENABLED
+		float MinRadius = 1000000;
+		float MaxRadius = 0;
+		for(uint SampleIndex = 0;SampleIndex < NumMSAASamples;++SampleIndex)
+		{
+			float Radius = SubsurfaceScatteringAttenuationSurface.Load(IntScreenBufferUVs,SampleIndex).w;
+			MinRadius = min(MinRadius,Radius);
+			MaxRadius = max(MaxRadius,Radius);
+		}
+		if((MaxRadius - MinRadius) > 0.1)
+		{
+			discard;
+		}
+	#endif
+
+	// Read the subsurface scattering attenuation parameters for this pixel.
+	#if PER_FRAGMENT
+		float4 SubsurfaceScatteringAttenuation = SubsurfaceScatteringAttenuationSurface.Load(IntScreenBufferUVs,SampleIndex);
+	#else
+		float4 SubsurfaceScatteringAttenuation = tex2Dlod(SubsurfaceScatteringAttenuationTexture,float4(ScreenBufferUVs,0,0));
+	#endif
+	float WorldFilterRadius = DecodeSubsurfaceScatteringRadius(SubsurfaceScatteringAttenuation);
+	float3 LogSubsurfaceAbsorptionColorPerDistance = log2(DecodeSubsurfaceAbsorptionColor(SubsurfaceScatteringAttenuation)) / WorldFilterRadius;
+
+	// If the subsurface scattering radius is 0, then don't compute subsurface scattering for this pixel.
+	float3 SubsurfaceOutscattering = 0;
+	BRANCH
+	if(IsSubsurfaceScatteringExitantPixel(SubsurfaceScatteringAttenuation))
+	{
+		// Compute the real screen position from the quad's screen position and the stored depth at that position.
+		#if PER_FRAGMENT
+			float RealScreenW = PreviousDepthForShadowsMSAA(float4(ScreenPosition.xy,0,1),SampleIndex);
+		#else
+			float RealScreenW = PreviousDepthForShadows(float4(ScreenPosition.xy,0,1));
+		#endif
+		float3 RealScreenPosition = float3(
+			ScreenPosition.xy * RealScreenW,
+			RealScreenW
+			);
+
+		// Look up a random normal to use to reflect the sample delta UVs.
+		float2 SampleReflectionNormal = tex2Dlod(RandomAngleTexture, float4(ScreenBufferUVs * NoiseScaleAndOffset.xy + NoiseScaleAndOffset.wz,0,0)).xy * 2 - 1;
+
+		// Sample the subsurface scattering.
+		float4 SubsurfaceOutscatteringNumeratorAndDenominator = 0;
+		LOOP
+		for(int SamplePairIndex = 0;SamplePairIndex < NUM_SAMPLE_PAIRS;++SamplePairIndex)
+		{
+			SubsurfaceOutscatteringNumeratorAndDenominator += ComputeInscatteringSample(
+				RealScreenPosition,
+				LogSubsurfaceAbsorptionColorPerDistance,
+				WorldFilterRadius,
+				SampleDeltaUVs[SamplePairIndex].xy,
+				SampleReflectionNormal
+				);
+			SubsurfaceOutscatteringNumeratorAndDenominator += ComputeInscatteringSample(
+				RealScreenPosition,
+				LogSubsurfaceAbsorptionColorPerDistance,
+				WorldFilterRadius,
+				SampleDeltaUVs[SamplePairIndex].zw,
+				SampleReflectionNormal
+				);
+		}
+		SubsurfaceOutscattering = SubsurfaceOutscatteringNumeratorAndDenominator.rgb / max(0.0001f,SubsurfaceOutscatteringNumeratorAndDenominator.a);
+	}
+
+	OutColor = RETURN_COLOR(float4(SubsurfaceOutscattering,0));
+}

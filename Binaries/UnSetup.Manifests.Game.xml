@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<ManifestOptions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <bManifestCreated>false</bManifestCreated>
+  <RootName>%GAMENAME%</RootName>
+  <FullName>Unreal Development Kit</FullName>
+  <AppToLaunch>Win32\%GAMENAME%Game.exe</AppToLaunch>
+  <ShowEmailSubscription>false</ShowEmailSubscription>
+  <LinkShortcuts>
+    <DisplayPath>Documentation\Support Forums.lnk</DisplayPath>
+    <UrlFilePath>%GAMENAME%Game\Splash\PC\Forums.url</UrlFilePath>
+    <Name>Support Forums</Name>
+  </LinkShortcuts>
+  <LinkShortcuts>
+    <DisplayPath>Documentation\Unreal Developer Network.lnk</DisplayPath>
+    <UrlFilePath>%GAMENAME%Game\Splash\PC\UDN.url</UrlFilePath>
+    <Name>UDN</Name>
+  </LinkShortcuts>
+  <GameInfo>
+    <AppToCreateInis>Win32\%GAMENAME%.exe</AppToCreateInis>
+    <AppToElevate>%GAMENAME%Lift.exe</AppToElevate>
+    <AppCommandLine>editor</AppCommandLine>
+    <Name>%GAMENAME%</Name>
+  </GameInfo>
+  <MainFilesToExclude>
+  </MainFilesToExclude>
+  <GameFilesToExclude>
+    <string>Binaries</string>
+    <string>Development</string>
+    <string>Engine</string>
+    <string>^(.*)Game</string>
+  </GameFilesToExclude>
+  <RequiredFolders>
+		<string>%GAMENAME%Game/Cooked%PLATFORM%</string>
+  </RequiredFolders>
+  <GameFilesToInclude>
+		<string>Binaries/InstallData/(.*)</string>
+		<string>Binaries/Redist/UE3Redist.exe</string>
+		<string>Binaries/Win32/(.*).dll$</string>
+		<string>Binaries/Win32/%GAMENAME%Game.exe</string>		
+		<string>Binaries/UnSetup.Game.xml</string>
+		<string>Binaries/UnSetup.Manifests.xml</string>
+		<string>Binaries/build.properties</string>
+		<string>Binaries/UnrealEdCSharp.dll</string>		
+		<string>Binaries/UnSetup.exe</string>
+		<string>Binaries/UnSetup.exe.config</string>
+		<string>Engine/Config/(.*)</string>
+		<string>Engine/Localization/(.*)</string>
+		<string>Engine/Shaders/Binaries/(.*)</string>
+		<string>%GAMENAME%Game/Config/^Default(.*).ini</string>
+		<string>%GAMENAME%Game/Cooked%PLATFORM%/(.*)</string>
+		<string>%GAMENAME%Game/Localization/(.*)</string>
+		<string>%GAMENAME%Game/Movies/(.*)</string>
+		<string>%GAMENAME%Game/Splash/(.*)</string>
+		<string>%GAMENAME%Game/^PCTOC(.*)</string>
+  </GameFilesToInclude>
+</ManifestOptions>

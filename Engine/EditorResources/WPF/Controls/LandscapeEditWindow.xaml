@@ -1,0 +1,1197 @@
+﻿<Border
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:UnrealEd="clr-namespace:UnrealEd;assembly=UnrealEdCSharp"
+    xmlns:CustomControls="clr-namespace:CustomControls;assembly=UnrealEdCSharp"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d"
+	xmlns:Custom="http://schemas.microsoft.com/wpf/2008/toolkit"
+	xmlns:Landscape="clr-namespace:WPF_Landscape;assembly=UnrealEdCSharp"
+	x:Name="EventBorder"
+	BorderBrush="Black"
+	BorderThickness="1"
+	CornerRadius="0,0,0,0"
+	Background="#444" Width="284.727"
+	>
+  <Border.Resources>
+
+    <!-- Dedicated style for the close button -->
+    <Style x:Key="CloseButtonStyle" TargetType="{x:Type Button}">
+      <Setter Property="MinWidth" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="Width" Value="Auto"/>
+      <Setter Property="Height" Value="Auto"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="Foreground" Value="{DynamicResource Slate_Control_Foreground}" />
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="SnapsToDevicePixels" Value="True" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type Button}">
+            <Border x:Name="Border" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+              <Grid>
+                <Path x:Name="PressedCross" Data="M1,1 L9,9 M1,9 L9,1" StrokeThickness="1" Stroke="{TemplateBinding Foreground}" Margin="5" />
+                <Path x:Name="Cross" Visibility="Visible" Data="M0,0 L10,10 M0,10 L10,0" StrokeThickness="1" Stroke="{TemplateBinding Foreground}" Margin="5" />
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Visibility" TargetName="Cross" Value="Hidden" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <MultiTrigger>
+          <MultiTrigger.Conditions>
+            <Condition Property="IsMouseOver" Value="True"/>
+            <Condition Property="IsEnabled" Value="True"/>
+          </MultiTrigger.Conditions>
+          <Setter Property="Foreground" Value="{DynamicResource Slate_Control_Foreground_Hover}" />
+        </MultiTrigger>
+        <Trigger Property="IsEnabled" Value="false">
+          <Setter Property="Foreground" Value="{DynamicResource Slate_Control_Foreground_Disabled}"/>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="ExpanderRightHeaderStyle" TargetType="{x:Type ToggleButton}">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type ToggleButton}">
+            <Border Padding="{TemplateBinding Padding}">
+              <Grid SnapsToDevicePixels="False" Background="Transparent">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="19"/>
+                  <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid>
+                  <Grid.LayoutTransform>
+                    <TransformGroup>
+                      <TransformGroup.Children>
+                        <TransformCollection>
+                          <RotateTransform Angle="-90"/>
+                        </TransformCollection>
+                      </TransformGroup.Children>
+                    </TransformGroup>
+                  </Grid.LayoutTransform>
+                  <Ellipse x:Name="circle" Stroke="DarkGray" HorizontalAlignment="Center" VerticalAlignment="Center" Width="19" Height="19"/>
+                  <Path x:Name="arrow" Stroke="#666" StrokeThickness="2" HorizontalAlignment="Center" VerticalAlignment="Center" SnapsToDevicePixels="false" Data="M 1,1.5 L 4.5,5 L 8,1.5"/>
+                </Grid>
+                <ContentPresenter HorizontalAlignment="Center" Margin="0,4,0,0" VerticalAlignment="Top" SnapsToDevicePixels="True" RecognizesAccessKey="True" Grid.Row="1"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="true">
+                <Setter Property="Data" TargetName="arrow" Value="M 1,4.5  L 4.5,1  L 8,4.5"/>
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="true">
+                <Setter Property="Stroke" TargetName="circle" Value="#FF3C7FB1"/>
+                <Setter Property="Stroke" TargetName="arrow" Value="#222"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="true">
+                <Setter Property="Stroke" TargetName="circle" Value="#FF526C7B"/>
+                <Setter Property="StrokeThickness" TargetName="circle" Value="1.5"/>
+                <Setter Property="Stroke" TargetName="arrow" Value="#FF003366"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="ExpanderUpHeaderStyle" TargetType="{x:Type ToggleButton}">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type ToggleButton}">
+            <Border Padding="{TemplateBinding Padding}">
+              <Grid SnapsToDevicePixels="False" Background="Transparent">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="19"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid>
+                  <Grid.LayoutTransform>
+                    <TransformGroup>
+                      <TransformGroup.Children>
+                        <TransformCollection>
+                          <RotateTransform Angle="180"/>
+                        </TransformCollection>
+                      </TransformGroup.Children>
+                    </TransformGroup>
+                  </Grid.LayoutTransform>
+                  <Ellipse x:Name="circle" Stroke="DarkGray" HorizontalAlignment="Center" VerticalAlignment="Center" Width="19" Height="19"/>
+                  <Path x:Name="arrow" Stroke="#666" StrokeThickness="2" HorizontalAlignment="Center" VerticalAlignment="Center" SnapsToDevicePixels="false" Data="M 1,1.5 L 4.5,5 L 8,1.5"/>
+                </Grid>
+                <ContentPresenter HorizontalAlignment="Left" Margin="4,0,0,0" VerticalAlignment="Center" SnapsToDevicePixels="True" RecognizesAccessKey="True" Grid.Column="1"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="true">
+                <Setter Property="Data" TargetName="arrow" Value="M 1,4.5  L 4.5,1  L 8,4.5"/>
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="true">
+                <Setter Property="Stroke" TargetName="circle" Value="#FF3C7FB1"/>
+                <Setter Property="Stroke" TargetName="arrow" Value="#222"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="true">
+                <Setter Property="Stroke" TargetName="circle" Value="#FF526C7B"/>
+                <Setter Property="StrokeThickness" TargetName="circle" Value="1.5"/>
+                <Setter Property="Stroke" TargetName="arrow" Value="#FF003366"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="ExpanderLeftHeaderStyle" TargetType="{x:Type ToggleButton}">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type ToggleButton}">
+            <Border Padding="{TemplateBinding Padding}">
+              <Grid SnapsToDevicePixels="False" Background="Transparent">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="19"/>
+                  <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid>
+                  <Grid.LayoutTransform>
+                    <TransformGroup>
+                      <TransformGroup.Children>
+                        <TransformCollection>
+                          <RotateTransform Angle="90"/>
+                        </TransformCollection>
+                      </TransformGroup.Children>
+                    </TransformGroup>
+                  </Grid.LayoutTransform>
+                  <Ellipse x:Name="circle" Stroke="DarkGray" HorizontalAlignment="Center" VerticalAlignment="Center" Width="19" Height="19"/>
+                  <Path x:Name="arrow" Stroke="#666" StrokeThickness="2" HorizontalAlignment="Center" VerticalAlignment="Center" SnapsToDevicePixels="false" Data="M 1,1.5 L 4.5,5 L 8,1.5"/>
+                </Grid>
+                <ContentPresenter HorizontalAlignment="Center" Margin="0,4,0,0" VerticalAlignment="Top" SnapsToDevicePixels="True" RecognizesAccessKey="True" Grid.Row="1"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="true">
+                <Setter Property="Data" TargetName="arrow" Value="M 1,4.5  L 4.5,1  L 8,4.5"/>
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="true">
+                <Setter Property="Stroke" TargetName="circle" Value="#FF3C7FB1"/>
+                <Setter Property="Stroke" TargetName="arrow" Value="#222"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="true">
+                <Setter Property="Stroke" TargetName="circle" Value="#FF526C7B"/>
+                <Setter Property="StrokeThickness" TargetName="circle" Value="1.5"/>
+                <Setter Property="Stroke" TargetName="arrow" Value="#FF003366"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="ExpanderDownHeaderStyle2" TargetType="{x:Type ToggleButton}">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type ToggleButton}">
+            <Border Padding="{TemplateBinding Padding}">
+              <Grid SnapsToDevicePixels="False" Background="{x:Null}">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="19"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Ellipse x:Name="circle" Stroke="DarkGray" HorizontalAlignment="Center" VerticalAlignment="Center" Width="19" Height="19"/>
+                <Path x:Name="arrow" Stroke="#666" StrokeThickness="2" HorizontalAlignment="Center" VerticalAlignment="Center" SnapsToDevicePixels="false" Data="M 1,1.5 L 4.5,5 L 8,1.5"/>
+                <ContentPresenter HorizontalAlignment="Left" Margin="90.972,0,0,2.516" VerticalAlignment="Bottom" SnapsToDevicePixels="True" RecognizesAccessKey="True" Grid.Column="1" OpacityMask="{x:Null}"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="true">
+                <Setter Property="Data" TargetName="arrow" Value="M 1,4.5  L 4.5,1  L 8,4.5"/>
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="true">
+                <Setter Property="Stroke" TargetName="circle" Value="#FF3C7FB1"/>
+                <Setter Property="Stroke" TargetName="arrow" Value="#222"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="true">
+                <Setter Property="Stroke" TargetName="circle" Value="#FF526C7B"/>
+                <Setter Property="StrokeThickness" TargetName="circle" Value="1.5"/>
+                <Setter Property="Stroke" TargetName="arrow" Value="#FF003366"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="ExpanderStyle1" TargetType="{x:Type Expander}">
+      <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type Expander}">
+            <Border SnapsToDevicePixels="true" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
+              <DockPanel>
+                <ToggleButton x:Name="HeaderSite" FocusVisualStyle="{StaticResource ExpanderHeaderFocusVisual}" Margin="1" MinHeight="0" MinWidth="0" Style="{StaticResource ExpanderDownHeaderStyle2}" Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}" ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}" FontFamily="{TemplateBinding FontFamily}" FontSize="{TemplateBinding FontSize}" FontStretch="{TemplateBinding FontStretch}" FontStyle="{TemplateBinding FontStyle}" FontWeight="{TemplateBinding FontWeight}" Foreground="{TemplateBinding Foreground}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" Padding="{TemplateBinding Padding}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" DockPanel.Dock="Top"/>
+                <ContentPresenter x:Name="ExpandSite" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" Focusable="false" Visibility="Collapsed" DockPanel.Dock="Bottom"/>
+              </DockPanel>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsExpanded" Value="true">
+                <Setter Property="Visibility" TargetName="ExpandSite" Value="Visible"/>
+              </Trigger>
+              <Trigger Property="ExpandDirection" Value="Right">
+                <Setter Property="DockPanel.Dock" TargetName="ExpandSite" Value="Right"/>
+                <Setter Property="DockPanel.Dock" TargetName="HeaderSite" Value="Left"/>
+                <Setter Property="Style" TargetName="HeaderSite" Value="{StaticResource ExpanderRightHeaderStyle}"/>
+              </Trigger>
+              <Trigger Property="ExpandDirection" Value="Up">
+                <Setter Property="DockPanel.Dock" TargetName="ExpandSite" Value="Top"/>
+                <Setter Property="DockPanel.Dock" TargetName="HeaderSite" Value="Bottom"/>
+                <Setter Property="Style" TargetName="HeaderSite" Value="{StaticResource ExpanderUpHeaderStyle}"/>
+              </Trigger>
+              <Trigger Property="ExpandDirection" Value="Left">
+                <Setter Property="DockPanel.Dock" TargetName="ExpandSite" Value="Left"/>
+                <Setter Property="DockPanel.Dock" TargetName="HeaderSite" Value="Right"/>
+                <Setter Property="Style" TargetName="HeaderSite" Value="{StaticResource ExpanderLeftHeaderStyle}"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="false">
+                <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Landscape:LandscapeImportLayers x:Key="LandscapeImportLayersPreview"/>
+
+    <BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/Landscape_Gizmo_Delete.png" x:Key="GizmoDeleteImage"/>
+    <BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/Landscape_Gizmo_MoveTo.png" x:Key="GizmoMoveToImage"/>
+    <BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/Landscape_Gizmo_Pin.png" x:Key="GizmoPinImage"/>
+    <BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/Foliage_ReplaceMesh.png" x:Key="UseContentBrowserSelectedImage"/>
+
+    <BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/Landscape_Reimport.png" x:Key="ReimportImage"/>
+    <BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/Landscape_FilePath.png" x:Key="FilePath"/>
+    <BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/Foliage_SyncCB.png" x:Key="SyncContentBrowserImage"/>
+    <BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/Foliage_DeleteMesh.png" x:Key="DeleteMeshImage"/>
+    <BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/Landscape_ImportAlphaTexture_R.png" x:Key="ImportAlphaTextureR"/>
+    <BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/Landscape_ImportAlphaTexture_G.png" x:Key="ImportAlphaTextureG"/>
+    <BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/Landscape_ImportAlphaTexture_B.png" x:Key="ImportAlphaTextureB"/>
+    <BitmapImage UriSource="pack://application:,,,/UnrealEdCSharp;Component/images/Landscape_ImportAlphaTexture_A.png" x:Key="ImportAlphaTextureA"/>
+    <RoutedCommand x:Key="LandscapeTargetLayerRemoveCommand"/>
+    <RoutedCommand x:Key="LandscapeTargetLayerSyncCommand"/>
+    <RoutedCommand x:Key="LandscapeTargetReimportCommand"/>
+    <RoutedCommand x:Key="LandscapeTargetSetPhysMaterialCommand"/>
+    <RoutedCommand x:Key="LandscapeTargetSetFilePathCommand"/>
+    <RoutedCommand x:Key="LandscapeImportLayersFilenameCommand"/>
+    <RoutedCommand x:Key="LandscapeImportLayersRemoveCommand"/>
+    <RoutedCommand x:Key="LandscapeEditTargetLayerCommand"/>
+    <RoutedCommand x:Key="LandscapeEditGizmoCommand"/>
+    <RoutedCommand x:Key="LandscapeGizmoPinCommand"/>
+    <RoutedCommand x:Key="LandscapeGizmoDeleteCommand"/>
+    <RoutedCommand x:Key="LandscapeGizmoMoveToCommand"/>
+
+    <RoutedCommand x:Key="LandscapeGizmoImportLayersFilenameCommand"/>
+    <RoutedCommand x:Key="LandscapeGizmoImportLayersRemoveCommand"/>
+
+    <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    <CustomControls:MultiBooleanConverter x:Key="MultiBool"/>
+    <CustomControls:NegatedBooleanConverter x:Key="NotBool"/>
+    <CustomControls:NegatedBooleanToVisibilityConverter x:Key="NotBoolToVis"/>
+    <CustomControls:IntEqualsParamToVisibilityConverter x:Key="IntEqualsParamToVis"/>
+    <CustomControls:IntGreaterOrEqualParamConverter x:Key="IntGTEBool"/>
+    <CustomControls:IntNotEqualsParamToVisibilityConverter x:Key="IntNotEqualsParamToVis"/>
+    <CustomControls:MultiVisibilityConverter x:Key="MultiVis"/>
+    <CustomControls:MultiBoolToVisibilityConverter x:Key="MultiBoolToVis"/>
+    <CustomControls:NotNullToVisibilityConverter x:Key="NotNullToVis"/>
+
+  </Border.Resources>
+
+  <Grid x:Name="LayoutRoot">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="4" />
+    </Grid.RowDefinitions>
+    
+    <Border x:Name="WindowFrameHeader" BorderBrush="#FF7A7A7A" BorderThickness="0,1,0,0" CornerRadius="0,0,0,0" Grid.Row="0">
+      <Border.Background>
+        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+          <GradientStop Color="#FF444444" Offset="0.466"/>
+          <GradientStop Color="#FF595959"/>
+        </LinearGradientBrush>
+      </Border.Background>
+      <Border x:Name="WindowFrameHeaderShadow" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Slate_Panel_Shadow}">
+        <DockPanel x:Name="TitlePanel" VerticalAlignment="Top">
+          <Button Style="{StaticResource CloseButtonStyle}" x:Name="TitleBarCloseButton" HorizontalAlignment="Right" DockPanel.Dock="Right" />
+          <Label x:Name="TitleLabel" Content="Landscape Edit" HorizontalContentAlignment="Center" VerticalAlignment="Top" FontWeight="Bold" Width="205.117">
+            <Label.Effect>
+              <DropShadowEffect ShadowDepth="0" BlurRadius="10" Opacity="0.35"/>
+            </Label.Effect>
+          </Label>
+        </DockPanel>
+      </Border>
+    </Border>
+
+    <ScrollViewer Grid.Row="1">
+      <StackPanel>
+        <StackPanel Visibility="{Binding Path=SelectedValue, ElementName=LandscapeCombo, Converter={StaticResource NotNullToVis}}">
+          <ComboBox x:Name="LandscapeCombo" SelectedValuePath="LandscapeGuid" DisplayMemberPath="LandscapeName" Visibility="{Binding Path=Items.Count, ElementName=LandscapeCombo, Converter={StaticResource IntNotEqualsParamToVis}, ConverterParameter=1}"/>
+        </StackPanel>
+        <Expander Header="{DynamicResource LandscapeEdit_Editing}" IsExpanded="True" Visibility="{Binding Path=SelectedValue, ElementName=LandscapeCombo, Converter={StaticResource NotNullToVis}}">
+          <StackPanel>
+            <GroupBox Header="{DynamicResource LandscapeEdit_Tools}">
+              <StackPanel>
+                <Expander Header="{DynamicResource LandscapeEdit_PaintTools}" IsExpanded="True">
+                  <UniformGrid x:Name="PaintToolGrid" Columns="4">
+                    <!-- Tool buttons -->
+                    <CustomControls:ImageRadioButton x:Name="ToolSet_Paint" GroupName="ToolSet" />
+                    <CustomControls:ImageRadioButton x:Name="ToolSet_Smooth" GroupName="ToolSet"/>
+                    <CustomControls:ImageRadioButton x:Name="ToolSet_Flatten" GroupName="ToolSet"/>
+                    <CustomControls:ImageRadioButton x:Name="ToolSet_Erosion" GroupName="ToolSet"/>
+                    <CustomControls:ImageRadioButton x:Name="ToolSet_HydraErosion" GroupName="ToolSet"/>
+                    <CustomControls:ImageRadioButton x:Name="ToolSet_Noise" GroupName="ToolSet"/>
+                  </UniformGrid>
+                </Expander>
+                <Expander Header="{DynamicResource LandscapeEdit_ComponentTools}" IsExpanded="True">
+                  <UniformGrid x:Name="ComponentToolGrid" Columns="4">
+                    <CustomControls:ImageRadioButton x:Name="ToolSet_Select" GroupName="ToolSet"/>
+                    <CustomControls:ImageRadioButton x:Name="ToolSet_AddComponent" GroupName="ToolSet"/>
+                    <CustomControls:ImageRadioButton x:Name="ToolSet_DeleteComponent" GroupName="ToolSet"/>
+                    <CustomControls:ImageRadioButton x:Name="ToolSet_MoveToLevel" GroupName="ToolSet"/>
+                  </UniformGrid>
+                </Expander>
+                <Expander Header="{DynamicResource LandscapeEdit_RegionTools}" IsExpanded="True">
+                  <UniformGrid x:Name="RegionToolGrid" Columns="4">
+                    <CustomControls:ImageRadioButton x:Name="ToolSet_Mask" GroupName="ToolSet"/>
+                    <CustomControls:ImageRadioButton x:Name="ToolSet_CopyPaste" GroupName="ToolSet"/>
+                    <CustomControls:ImageRadioButton x:Name="ToolSet_Visibility" GroupName="ToolSet"/>
+                  </UniformGrid>
+                </Expander>
+                <StackPanel>
+                  <!-- Tool settings -->
+                  <DockPanel Height="24" x:Name="ToolStrengthPanel">
+                    <Label Content="{DynamicResource LandscapeEdit_ToolStrength}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                    <CustomControls:DragSlider x:Name="ToolStrengthSlider" Maximum="10.0" SliderMax="1.0" Minimum="0.0" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="0.05" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                  </DockPanel>
+                  <ContentControl>
+                    <ContentControl.IsEnabled>
+                      <Binding Path="SelectedIndex" ElementName="TargetListBox" Converter="{StaticResource IntGTEBool}" ConverterParameter="1"/>
+                    </ContentControl.IsEnabled>
+                    <StackPanel>
+                      <StackPanel.Visibility>
+                        <MultiBinding Converter="{StaticResource MultiBoolToVis}">
+                          <Binding Path="IsChecked" ElementName="ToolSet_Paint"/>
+                          <Binding Path="IsChecked" ElementName="ToolSet_Noise"/>
+                        </MultiBinding>
+                      </StackPanel.Visibility>
+                      <DockPanel Height="24">
+                        <Label Content="{DynamicResource LandscapeEdit_UseWeightTargetValueScale}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                        <CheckBox x:Name="UseWeightTargetValueCheckBox" HorizontalAlignment="Left" VerticalAlignment="Center" Height="24"/>
+                      </DockPanel>
+                      <DockPanel Height="24" Visibility="{Binding Path=IsChecked, ElementName=UseWeightTargetValueCheckBox, Converter={StaticResource BoolToVis}}">
+                        <Label Content="{DynamicResource LandscapeEdit_ToolWeightTargetValueScale}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                        <CustomControls:DragSlider x:Name="ToolWeightTargetValueSlider" Maximum="10.0" SliderMax="1.0" Minimum="0.0" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="0.05" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                      </DockPanel>
+                    </StackPanel>
+                  </ContentControl>
+                  <StackPanel x:Name="FlattenPanel" Visibility="{Binding Path=IsChecked, ElementName=ToolSet_Flatten, Converter={StaticResource BoolToVis}}">
+                    <DockPanel Height="32">
+                      <Label Content="{DynamicResource LandscapeEdit_FlattenTools}" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="85" FontSize="10" FontWeight="Bold"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="FlattenModeBoth" Content="{DynamicResource LandscapeEdit_FlattenBothMode}" GroupName="FlattenMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="FlattenModeAdd" Content="{DynamicResource LandscapeEdit_FlattenAddMode}" GroupName="FlattenMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="FlattenModeSub" Content="{DynamicResource LandscapeEdit_FlattenSubMode}" GroupName="FlattenMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <CheckBox x:Name="UseSlopeCheckBox" HorizontalAlignment="Left" VerticalAlignment="Bottom" Height="24" Content="{DynamicResource LandscapeEdit_UseSlopeFlatten}" Width="120"/>
+                      <CheckBox x:Name="PickValuePerApplyCheckBox" HorizontalAlignment="Right" VerticalAlignment="Bottom" Height="24" Content="{DynamicResource LandscapeEdit_PickValuePerApply}" Width="120"/>
+                    </DockPanel>
+                  </StackPanel>
+                  <StackPanel x:Name="ErosionPanel" Visibility="{Binding Path=IsChecked, ElementName=ToolSet_Erosion, Converter={StaticResource BoolToVis}}">
+                    <DockPanel Height="32">
+                      <Label Content="{DynamicResource LandscapeEdit_ErosionTools}" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="85" FontSize="10" FontWeight="Bold"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Label Content="{DynamicResource LandscapeEdit_ErosionThreshold}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="ErodeThreshSlider" Maximum="256" SliderMax="128" Minimum="0" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="5" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Label Content="{DynamicResource LandscapeEdit_ErosionSurfaceThick}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="ErodeSurfaceThicknessSlider" Maximum="1024" SliderMax="512" Minimum="128" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="15" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Label Content="{DynamicResource LandscapeEdit_ErosionIterNum}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="ErodeIterationNumSlider" Maximum="300" SliderMax="150" Minimum="1" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="15" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ErosionNoiseModeSub" Content="{DynamicResource LandscapeEdit_NoiseSubMode}" GroupName="ErosionNoiseMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ErosionNoiseModeBoth" Content="{DynamicResource LandscapeEdit_NoiseBothMode}" GroupName="ErosionNoiseMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ErosionNoiseModeAdd" Content="{DynamicResource LandscapeEdit_NoiseAddMode}" GroupName="ErosionNoiseMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Label Content="{DynamicResource LandscapeEdit_NoiseScale}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="ErosionNoiseScaleSlider" Maximum="512" SliderMax="256" Minimum="1" SliderMin="1.1" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="5" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                  </StackPanel>
+                  <StackPanel x:Name="HydraulicErosionPanel" Visibility="{Binding Path=IsChecked, ElementName=ToolSet_HydraErosion, Converter={StaticResource BoolToVis}}">
+                    <DockPanel Height="32">
+                      <Label Content="{DynamicResource LandscapeEdit_HErosionTools}" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="170" FontSize="10" FontWeight="Bold"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Label Content="{DynamicResource LandscapeEdit_RainAmount}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="RainAmountSlider" Maximum="512" SliderMax="256" SliderMin="1" Minimum="1" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="5" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Label Content="{DynamicResource LandscapeEdit_SedimentCapacity}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="SedimentCapacitySlider" Maximum="1.0" SliderMax="1.0" SliderMin="0.1" Minimum="0.1" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="0.05" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Label Content="{DynamicResource LandscapeEdit_ErosionIterNum}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="HErodeIterationNumSlider" Maximum="300" SliderMax="150" Minimum="1" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="15" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Label Content="{DynamicResource LandscapeEdit_InitRainDist}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="170" FontSize="10"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="RainDistModeBoth" Content="{DynamicResource LandscapeEdit_RainBothMode}" GroupName="HErosionNoiseMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="RainDistModeAdd" Content="{DynamicResource LandscapeEdit_RainAddMode}" GroupName="HErosionNoiseMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Label Content="{DynamicResource LandscapeEdit_RainScale}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="RainDistScaleSlider" Maximum="512" SliderMax="256" Minimum="1" SliderMin="1.1" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="5" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                    <CheckBox x:Name="HErosoinDetailSmoothCheckBox" HorizontalAlignment="Right" VerticalAlignment="Bottom" Height="24" Content="{DynamicResource LandscapeEdit_DetailSmooth}" Width="90"/>
+                    <StackPanel Visibility="{Binding Path=IsChecked, ElementName=HErosoinDetailSmoothCheckBox, Converter={StaticResource BoolToVis}}">
+                      <DockPanel Height="24">
+                        <Label Content="{DynamicResource LandscapeEdit_DetailSmoothTools}" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="170" FontSize="10" FontWeight="Bold"/>
+                      </DockPanel>
+                      <DockPanel Height="24">
+                        <Label Content="{DynamicResource LandscapeEdit_DetailSmooth}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                        <CustomControls:DragSlider x:Name="HErosionDetailScaleSlider" Maximum="0.99" SliderMax="0.99" Minimum="0.0" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="15" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                      </DockPanel>
+                    </StackPanel>
+                  </StackPanel>
+                  <StackPanel x:Name="SmoothOptionPanel" Visibility="{Binding Path=IsChecked, ElementName=ToolSet_Smooth, Converter={StaticResource BoolToVis}}">
+                    <CheckBox x:Name="DetailSmoothCheckBox" HorizontalAlignment="Right" VerticalAlignment="Bottom" Height="24" Content="{DynamicResource LandscapeEdit_DetailSmooth}" Width="90"/>
+                    <StackPanel Visibility="{Binding Path=IsChecked, ElementName=DetailSmoothCheckBox, Converter={StaticResource BoolToVis}}">
+                      <DockPanel Height="24">
+                        <Label Content="{DynamicResource LandscapeEdit_DetailSmoothTools}" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="170" FontSize="10" FontWeight="Bold"/>
+                      </DockPanel>
+                      <DockPanel Height="24">
+                        <Label Content="{DynamicResource LandscapeEdit_DetailSmooth}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                        <CustomControls:DragSlider x:Name="DetailScaleSlider" Maximum="0.99" SliderMax="0.99" Minimum="0.0" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="15" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                      </DockPanel>
+                    </StackPanel>
+                  </StackPanel>
+                  <StackPanel x:Name="NoisePanel" Visibility="{Binding Path=IsChecked, ElementName=ToolSet_Noise, Converter={StaticResource BoolToVis}}">
+                    <DockPanel Height="32">
+                      <Label Content="{DynamicResource LandscapeEdit_NoiseTools}" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="85" FontSize="10" FontWeight="Bold"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="NoiseModeBoth" Content="{DynamicResource LandscapeEdit_NoiseBothMode}" GroupName="NoiseMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="NoiseModeAdd" Content="{DynamicResource LandscapeEdit_NoiseAddMode}" GroupName="NoiseMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="NoiseModeSub" Content="{DynamicResource LandscapeEdit_NoiseSubMode}" GroupName="NoiseMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Label Content="{DynamicResource LandscapeEdit_NoiseScale}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="NoiseScaleSlider" Maximum="512" SliderMax="256" Minimum="1" SliderMin="1.1" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="5" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                  </StackPanel>
+                  <StackPanel x:Name="SelectPanel" Visibility="{Binding Path=IsChecked, ElementName=BrushSet_Component, Converter={StaticResource BoolToVis}}">
+                    <DockPanel Height="32">
+                      <Label Content="{DynamicResource LandscapeEdit_SelectTools}" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="85" FontSize="10" FontWeight="Bold"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Button x:Name="ClearSelectionButton" Content="{DynamicResource LandscapeEdit_ClearSelect}" VerticalAlignment="Top"/>
+                    </DockPanel>
+                  </StackPanel>
+                  <StackPanel x:Name="GizmoTargetPanel">
+                    <StackPanel.Visibility>
+                      <MultiBinding Converter="{StaticResource MultiBoolToVis}">
+                        <Binding Path="IsChecked" ElementName="ToolSet_CopyPaste"/>
+                        <Binding Path="IsChecked" ElementName="ToolSet_Mask"/>
+                      </MultiBinding>
+                    </StackPanel.Visibility>
+                    <DockPanel Height="32">
+                      <CheckBox x:Name="ApplyAllCheckBox" Content="{DynamicResource LandscapeEdit_ApplyToAllTargets}" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                    </DockPanel>
+                  </StackPanel>
+                  <StackPanel Height="24" Visibility="Collapsed">
+                    <CheckBox x:Name="MaskEnabled"/>
+                  </StackPanel>
+                  <StackPanel x:Name="MaskPanel">
+                    <StackPanel.Visibility>
+                      <MultiBinding Converter="{StaticResource MultiBoolToVis}">
+                        <Binding Path="IsChecked" ElementName="ToolSet_Mask"/>
+                        <Binding Path="IsChecked" ElementName="MaskEnabled"/>
+                      </MultiBinding>
+                    </StackPanel.Visibility>
+                    <DockPanel Height="32">
+                      <Label Content="{DynamicResource LandscapeEdit_SelectTools}" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="85" FontSize="10" FontWeight="Bold"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Button x:Name="ClearMaskButton" Content="{DynamicResource LandscapeEdit_ClearMask}" VerticalAlignment="Top"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <CheckBox x:Name="UseMaskCheckbox" Height="24" Width="120" Content="{DynamicResource LandscapeEdit_UseSelectedRegion}"/>
+                      <CheckBox x:Name="UseInvertMaskCheckbox" Height="24" Width="85" Content="{DynamicResource LandscapeEdit_InvertSelectedRegion}">
+                        <CheckBox.IsEnabled>
+                          <MultiBinding Converter="{StaticResource MultiBool}" ConverterParameter="And">
+                            <Binding Path="IsChecked" ElementName="UseMaskCheckbox"/>
+                            <Binding Path="IsChecked" ElementName="MaskEnabled"/>
+                          </MultiBinding>
+                        </CheckBox.IsEnabled>
+                      </CheckBox>
+                    </DockPanel>
+                  </StackPanel>
+                  <StackPanel x:Name="CopyPastePanel" Visibility="{Binding Path=IsChecked, ElementName=ToolSet_CopyPaste, Converter={StaticResource BoolToVis}}">
+                    <DockPanel Height="32">
+                      <Label Content="{DynamicResource LandscapeEdit_RegionCopyPaste}" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="120" FontSize="10" FontWeight="Bold"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Button x:Name="CopyToGizmoButton" Content="{DynamicResource LandscapeEdit_CopyToGizmo}" VerticalAlignment="Top"/>
+                    </DockPanel>
+                  </StackPanel>
+                  <StackPanel x:Name="GizmoPanel">
+                    <StackPanel.Visibility>
+                      <MultiBinding Converter="{StaticResource MultiBoolToVis}">
+                        <Binding Path="IsChecked" ElementName="ToolSet_CopyPaste"/>
+                      </MultiBinding>
+                    </StackPanel.Visibility>
+                    <DockPanel Height="32">
+                      <Label Content="{DynamicResource LandscapeEdit_GizmoTools}" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="85" FontSize="10" FontWeight="Bold"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="PasteModeBoth" Content="{DynamicResource LandscapeEdit_PasteBothMode}" GroupName="PasteMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="PasteModeAdd" Content="{DynamicResource LandscapeEdit_PasteAddMode}" GroupName="PasteMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="PasteModeSub" Content="{DynamicResource LandscapeEdit_PasteSubMode}" GroupName="PasteMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                    </DockPanel>
+                    <DockPanel Height="24" x:Name="GizmoBrushPanel" >
+                      <!--DockPanel.Visibility>
+                        <Binding Path="IsChecked" ElementName="BrushSet_Gizmo" Converter="{StaticResource BoolToVis}" />
+                      </DockPanel.Visibility-->
+                      <CheckBox x:Name="SmoothGizmoBrushCheckBox" HorizontalAlignment="Right" VerticalAlignment="Bottom" Height="24" Content="{DynamicResource LandscapeEdit_SmoothGizmo}"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Button x:Name="FitToSelectionButton" Content="{DynamicResource LandscapeEdit_FitToSelection}" VerticalAlignment="Top"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Button x:Name="FitToGizmoButton" Content="{DynamicResource LandscapeEdit_FitToGizmoHeight}" VerticalAlignment="Top"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Button x:Name="ClearGizmoDataButton" Content="{DynamicResource LandscapeEdit_ClearGizmoData}" VerticalAlignment="Top"/>
+                    </DockPanel>
+                    <Expander Header="{DynamicResource LandscapeEdit_ImportExportToGizmo}" IsExpanded="True" Visibility="{Binding Path=IsChecked, ElementName=ToolSet_CopyPaste, Converter={StaticResource BoolToVis}}">
+                      <StackPanel>
+                        <GroupBox Header="{DynamicResource LandscapeEdit_ImportGizmoHeightmap}">
+                          <StackPanel>
+                            <DockPanel>
+                              <Label Content="{DynamicResource LandscapeEdit_Import_Heightmap}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                              <CustomControls:EnterUpdateTextBox x:Name="GizmoHeightmapFileNameTextBox" BorderBrush="Black" Background="#FF3D3D3D" Foreground="#FFAAAAAA" TextWrapping="NoWrap" Width="120" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                              <Button x:Name="GizmoHeightmapFileButton" HorizontalAlignment="Right" Width="24" Content="..."/>
+                            </DockPanel>
+                            <DockPanel Height="26">
+                              <Label Content="{DynamicResource LandscapeEdit_Import_SizeVertices}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                              <CustomControls:EnterUpdateTextBox x:Name="GizmoWidthTextBox" VerticalAlignment="Center" HorizontalAlignment="Left" TextWrapping="NoWrap" Width="50" Height="22" Background="#FF3D3D3D" Foreground="#FFAAAAAA" BorderBrush="Black"/>
+                              <Label Content="{DynamicResource LandscapeEdit_Import_X}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="20" FontSize="10"/>
+                              <CustomControls:EnterUpdateTextBox x:Name="GizmoHeightTextBox" VerticalAlignment="Center" HorizontalAlignment="Left" TextWrapping="NoWrap" Width="50" Height="22" Background="#FF3D3D3D" Foreground="#FFAAAAAA" BorderBrush="Black"/>
+                            </DockPanel>
+                          </StackPanel>
+                        </GroupBox>
+                        <GroupBox Header="{DynamicResource LandscapeEdit_ImportGizmoLayer}">
+                          <StackPanel>
+                            <ItemsControl Margin="0" x:Name="GizmoImportLayersItemsControl">
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                  <StackPanel>
+                                    <DockPanel Height="26">
+                                      <Label Content="{DynamicResource LandscapeEdit_Import_ImportLayer}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                                      <CustomControls:EnterUpdateTextBox x:Name="GizmoLayerFileNameTextBox" Text="{Binding Path=LayerFilename}" BorderBrush="Black" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="22" Background="#FF3D3D3D" Foreground="#FFAAAAAA" TextWrapping="NoWrap"/>
+                                      <Button x:Name="GizmoLayerFileButton" HorizontalAlignment="Right" VerticalAlignment="Center" Width="24" Height="22" Content="..." Command="{StaticResource LandscapeGizmoImportLayersFilenameCommand}" CommandParameter="{Binding}"/>
+                                    </DockPanel>
+                                    <DockPanel Height="26">
+                                      <Label Content="{DynamicResource LandscapeEdit_Import_LayerName}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                                      <CustomControls:EnterUpdateTextBox x:Name="GizmoLayerNameTextBox" Text="{Binding Path=LayerName}" BorderBrush="Black" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="22" Background="#FF3D3D3D" Foreground="#FFAAAAAA" TextWrapping="NoWrap"/>
+                                      <Button x:Name="GizmoRemoveLayerButton" HorizontalAlignment="Right" VerticalAlignment="Center" Width="24" Height="22" Content="x" Command="{StaticResource LandscapeGizmoImportLayersRemoveCommand}" CommandParameter="{Binding}"/>
+                                    </DockPanel>
+                                    <DockPanel Height="26">
+                                      <CheckBox x:Name="NoImportCheckBox" IsChecked="{Binding Path=NoImport}" HorizontalAlignment="Right" VerticalAlignment="Center" Height="22"  Content="{DynamicResource LandscapeEdit_NoImport}"/>
+                                    </DockPanel>
+                                  </StackPanel>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <DockPanel>
+                              <Button x:Name="GizmoLayerAddButton" Content="+" VerticalAlignment="Top" HorizontalAlignment="Left" Width="27" Height="22" IsEnabled="True"/>
+                              <Button x:Name="GizmoLayerRemoveButton" Content="-" VerticalAlignment="Top" HorizontalAlignment="Right" Width="27" Height="22" IsEnabled="True"/>
+                            </DockPanel>
+                          </StackPanel>
+                        </GroupBox>
+                        <GroupBox Header="{DynamicResource LandscapeEdit_ImportExportToGizmo}">
+                          <StackPanel>
+                            <DockPanel Height="26">
+                              <Button x:Name="GizmoImportButton" Content="{DynamicResource LandscapeEdit_ImportToGizmo}" VerticalAlignment="Top" IsEnabled="False"/>
+                            </DockPanel>
+                            <Button x:Name="ExportGizmoButton" Content="{DynamicResource LandscapeEdit_ExportGizmo}" VerticalAlignment="Top"/>
+                          </StackPanel>
+                        </GroupBox>
+                      </StackPanel>
+                    </Expander>
+                  </StackPanel>
+                </StackPanel>
+              </StackPanel>
+            </GroupBox>
+            <GroupBox Header="{DynamicResource LandscapeEdit_Brushes}">
+              <StackPanel>
+                <UniformGrid x:Name="BrushGrid" Columns="4">
+                  <!-- Brush buttons -->
+                  <CustomControls:ToolDropdownRadioButton x:Name="BrushSet_Circle">
+                    <CustomControls:ToolDropdownRadioButton.IsEnabled>
+                      <MultiBinding Converter="{StaticResource MultiBool}" ConverterParameter="Nand">
+                        <Binding Path="IsChecked" ElementName="ToolSet_MoveToLevel"/>
+                        <Binding Path="IsChecked" ElementName="ToolSet_AddComponent"/>
+                        <Binding Path="IsChecked" ElementName="ToolSet_DeleteComponent"/>
+                        <Binding Path="IsChecked" ElementName="ToolSet_Select"/>
+                      </MultiBinding>
+                    </CustomControls:ToolDropdownRadioButton.IsEnabled>
+                  </CustomControls:ToolDropdownRadioButton>
+                  <CustomControls:ToolDropdownRadioButton x:Name="BrushSet_Alpha">
+                    <CustomControls:ToolDropdownRadioButton.IsEnabled>
+                      <MultiBinding Converter="{StaticResource MultiBool}" ConverterParameter="Nand">
+                        <Binding Path="IsChecked" ElementName="ToolSet_MoveToLevel"/>
+                        <Binding Path="IsChecked" ElementName="ToolSet_AddComponent"/>
+                        <Binding Path="IsChecked" ElementName="ToolSet_DeleteComponent"/>
+                        <Binding Path="IsChecked" ElementName="ToolSet_Select"/>
+                      </MultiBinding>
+                    </CustomControls:ToolDropdownRadioButton.IsEnabled>
+                  </CustomControls:ToolDropdownRadioButton>
+                  <CustomControls:ToolDropdownRadioButton x:Name="BrushSet_Component">
+                    <CustomControls:ToolDropdownRadioButton.IsEnabled>
+                      <MultiBinding Converter="{StaticResource MultiBool}">
+                        <Binding Path="IsChecked" ElementName="ToolSet_Paint"/>
+                        <Binding Path="IsChecked" ElementName="ToolSet_Select"/>
+                        <Binding Path="IsChecked" ElementName="ToolSet_MoveToLevel"/>
+                        <Binding Path="IsChecked" ElementName="ToolSet_AddComponent"/>
+                        <Binding Path="IsChecked" ElementName="ToolSet_DeleteComponent"/>
+                      </MultiBinding>
+                    </CustomControls:ToolDropdownRadioButton.IsEnabled>
+                  </CustomControls:ToolDropdownRadioButton>
+                  <CustomControls:ToolDropdownRadioButton x:Name="BrushSet_Gizmo">
+                    <CustomControls:ToolDropdownRadioButton.IsEnabled>
+                      <MultiBinding Converter="{StaticResource MultiBool}">
+                        <Binding Path="IsChecked" ElementName="ToolSet_CopyPaste"/>
+                      </MultiBinding>
+                    </CustomControls:ToolDropdownRadioButton.IsEnabled>
+                  </CustomControls:ToolDropdownRadioButton>
+                </UniformGrid>
+                <StackPanel>
+                  <!-- Brush settings -->
+                  <StackPanel x:Name="BrushSizeFalloffPanel">
+                    <StackPanel.Visibility>
+                      <Binding Path="IsChecked" ElementName="BrushSet_Component" Converter="{StaticResource NotBoolToVis}" />
+                    </StackPanel.Visibility>
+                    <DockPanel Height="24" x:Name="BrushSizePanel">
+                      <DockPanel.Visibility>
+                        <MultiBinding Converter="{StaticResource MultiBoolToVis}" ConverterParameter="Nand">
+                          <Binding Path="IsChecked" ElementName="BrushSet_Component"/>
+                          <Binding Path="IsChecked" ElementName="BrushSet_Gizmo"/>
+                        </MultiBinding>
+                      </DockPanel.Visibility>
+                      <Label Content="{DynamicResource LandscapeEdit_BrushSize}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="BrushRadiusSlider" Maximum="65536.0" SliderMax="8192.0" Minimum="0.0" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ProgressRectExponent="3.0" ValuesPerMouseWheelScroll="32" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                    <DockPanel Height="24" x:Name="BrushFalloffPanel" >
+                      <DockPanel.Visibility>
+                        <MultiBinding Converter="{StaticResource MultiVis}">
+                          <Binding Path="IsChecked" ElementName="BrushSet_Alpha" Converter="{StaticResource NotBoolToVis}" />
+                          <Binding Path="SelectedIndex" ElementName="BrushSet_Alpha" Converter="{StaticResource IntNotEqualsParamToVis}" ConverterParameter="1"/>
+                        </MultiBinding>
+                      </DockPanel.Visibility>
+                      <Label Content="{DynamicResource LandscapeEdit_BrushFalloff}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="BrushFalloffSlider" Maximum="1.0" Minimum="0.0" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="0.05" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                    <StackPanel x:Name="ClayBrushPanel">
+                      <StackPanel.Visibility>
+                        <MultiBinding Converter="{StaticResource MultiVis}" ConverterParameter="And">
+                          <Binding Path="IsChecked" ElementName="ToolSet_Paint" Converter="{StaticResource BoolToVis}"/>
+                          <Binding Path="SelectedIndex" ElementName="TargetListBox" Converter="{StaticResource IntEqualsParamToVis}" ConverterParameter="0"/>
+                        </MultiBinding>
+                      </StackPanel.Visibility>
+                      <DockPanel Height="24">
+                        <DockPanel.Visibility>
+                          <MultiBinding Converter="{StaticResource MultiBoolToVis}" ConverterParameter="Or">
+                            <Binding Path="IsChecked" ElementName="BrushSet_Circle"/>
+                            <Binding Path="IsChecked" ElementName="BrushSet_Alpha"/>
+                          </MultiBinding>
+                        </DockPanel.Visibility>
+                        <Label Content="{DynamicResource LandscapeEdit_ClayBrush}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                        <CheckBox x:Name="UseClayBrushCheckbox" HorizontalAlignment="Left" VerticalAlignment="Center" Height="22"/>
+                      </DockPanel>
+                    </StackPanel>
+                  </StackPanel>
+                  <StackPanel x:Name="AlphaSettingsPanel" Visibility="{Binding Path=IsChecked, ElementName=BrushSet_Alpha, Converter={StaticResource BoolToVis}}">
+                    <DockPanel Height="52">
+                      <StackPanel>
+                        <DockPanel Height="24">
+                          <Label Content="{DynamicResource LandscapeEdit_AlphaBrushSettings}" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="170" FontSize="10" FontWeight="Bold"/>
+                        </DockPanel>
+                        <DockPanel Height="24" HorizontalAlignment="Left">
+                          <Label Content="{DynamicResource LandscapeEdit_AlphaTexture}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                          <Button x:Name="AlphaTextureUseRButton" ToolTip="{DynamicResource LandscapeEdit_AlphaTextureUseRTip}" HorizontalAlignment="Left" Width="24">
+                            <Image Source="{StaticResource ImportAlphaTextureR}" Width="22" Height="22"/>
+                          </Button>
+                          <Button x:Name="AlphaTextureUseGButton" ToolTip="{DynamicResource LandscapeEdit_AlphaTextureUseGTip}" HorizontalAlignment="Left" Width="24">
+                            <Image Source="{StaticResource ImportAlphaTextureG}" Width="22" Height="22"/>
+                          </Button>
+                          <Button x:Name="AlphaTextureUseBButton" ToolTip="{DynamicResource LandscapeEdit_AlphaTextureUseBTip}" HorizontalAlignment="Left" Width="24">
+                            <Image Source="{StaticResource ImportAlphaTextureB}" Width="22" Height="22"/>
+                          </Button>
+                          <Button x:Name="AlphaTextureUseAButton" ToolTip="{DynamicResource LandscapeEdit_AlphaTextureUseATip}" HorizontalAlignment="Left" Width="24">
+                            <Image Source="{StaticResource ImportAlphaTextureA}" Width="22" Height="22"/>
+                          </Button>
+                        </DockPanel>
+                      </StackPanel>
+                      <Button Margin="1,1,0,0" x:Name="SyncContentBrowserButton" HorizontalAlignment="Right" VerticalAlignment="Top" Width="52" Height="52">
+                        <Image Source="{Binding Path=AlphaTexture}" Width="48" Height="48"/>
+                      </Button>
+                    </DockPanel>
+                    <StackPanel x:Name="PatternBrushSettingsPanel" Visibility="{Binding Path=SelectedIndex, ElementName=BrushSet_Alpha, Converter={StaticResource IntEqualsParamToVis}, ConverterParameter='0'}">
+                      <DockPanel Height="24">
+                        <Label Content="{DynamicResource LandscapeEdit_AlphaBrushScale}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                        <CustomControls:DragSlider x:Name="AlphaBrushScaleSlider" Maximum="5.0" Minimum="0.005" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ProgressRectExponent="3.0" ValuesPerMouseWheelScroll="0.05" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                      </DockPanel>
+                      <DockPanel Height="24">                     
+                        <Label Content="{DynamicResource LandscapeEdit_AlphaBrushRotation}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                        <CustomControls:DragSlider x:Name="AlphaBrushRotationSlider" Maximum="360" Minimum="0.0" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="5" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                      </DockPanel>
+                    <DockPanel Height="24">
+                      <Label Content="{DynamicResource LandscapeEdit_AlphaBrushPanU}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="AlphaBrushPanUSlider" Maximum="1.0" Minimum="0.0" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="0.05" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                    <DockPanel Height="24">
+                      <Label Content="{DynamicResource LandscapeEdit_AlphaBrushPanV}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="AlphaBrushPanVSlider" Maximum="1.0" Minimum="0.0" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ValuesPerMouseWheelScroll="0.05" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                    </StackPanel>
+                  </StackPanel>
+                  <StackPanel>
+                    <StackPanel.Visibility>
+                      <Binding Path="IsChecked" ElementName="BrushSet_Component" Converter="{StaticResource BoolToVis}" />
+                    </StackPanel.Visibility>
+                    <DockPanel Height="24" x:Name="BrushComponentSizePanel">
+                      <Label Content="{DynamicResource LandscapeEdit_BrushSize}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                      <CustomControls:DragSlider x:Name="BrushSizeSlider" Maximum="128" SliderMax="64" Minimum="1" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ProgressRectExponent="3.0" ValuesPerMouseWheelScroll="1" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+                    </DockPanel>
+                  </StackPanel>
+                </StackPanel>
+              </StackPanel>
+            </GroupBox>
+            <GroupBox Header="{DynamicResource LandscapeEdit_TargetLayer}">
+              <StackPanel>
+                <DockPanel>
+                  <Label Content="{DynamicResource LandscapeEdit_EditMode}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                  <UnrealEd:BindableRadioButton IsChecked="True" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="EditmodeNone" Content="{DynamicResource LandscapeEdit_EditmodeNone}" GroupName="EditMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="40" FontSize="10"/>
+                  <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="EditmodeEdit" Content="{DynamicResource LandscapeEdit_EditmodeEdit}" GroupName="EditMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="40" FontSize="10"/>
+                  <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="EditmodeDebugView" Content="{DynamicResource LandscapeEdit_EditmodeDebugView}" GroupName="EditMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                </DockPanel>
+                <DockPanel>
+                  <Label Content="" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                  <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="EditmodeLayerDensity" Content="{DynamicResource LandscapeEdit_EditmodeLayerDensity}" GroupName="EditMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="80" FontSize="10"/>
+                  <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="EditmodeLOD" Content="{DynamicResource LandscapeEdit_EditmodeLOD}" GroupName="EditMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                </DockPanel>
+                <ListBox Margin="0" x:Name="TargetListBox" KeyboardNavigation.DirectionalNavigation="Cycle" Grid.Row="0">
+                  <ListBox.ItemContainerStyle>
+                    <Style TargetType="{x:Type ListBoxItem}">
+                      <Setter Property="IsSelected" Value="{Binding Path=IsSelected, Mode=TwoWay}"/>
+                      <Style.Resources>
+                        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#ff724d0f"/>
+                        <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#ff724d0f"/>
+                      </Style.Resources>
+                    </Style>
+                  </ListBox.ItemContainerStyle>
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <DockPanel>
+                        <Grid x:Name="TargetListGrid" Width="224">
+                          <StackPanel Margin="0,0,0,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="TargetListName" FontSize="20" Text="{Binding Path=TargetName}"/>
+                            <StackPanel x:Name="TargetSettingsPanel" Visibility="{Binding Path=IsChecked, ElementName=EditmodeEdit, Converter={StaticResource BoolToVis}}">
+                              <DockPanel>
+                                <Label Content="{DynamicResource LandscapeEdit_Hardness}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="52" FontSize="10"/>
+                                <CustomControls:EnterUpdateTextBox x:Name="HardnessTextBox" Text="{Binding Path=Hardness}" BorderBrush="Black" HorizontalAlignment="Left" VerticalAlignment="Center" Width="24" Height="18" Background="#FF3D3D3D" Foreground="#FFAAAAAA" TextWrapping="NoWrap" FontSize="8"/>
+                                <CheckBox x:Name="NoBlendingCheckBox" IsEnabled="False" IsChecked="{Binding Path=IsNoWeightBlend}" HorizontalAlignment="Left" VerticalAlignment="Center" Content="{DynamicResource LandscapeEdit_NoBlend}"/>
+                              </DockPanel>
+                              <DockPanel>
+                                <Label Content="{DynamicResource LandscapeEdit_PhysMaterial}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="52" FontSize="10"/>
+                                <CustomControls:EnterUpdateTextBox Text="{Binding Path=PhysMaterial}" BorderBrush="Black" HorizontalAlignment="Left" VerticalAlignment="Center" Width="89" Height="18" Background="#FF3D3D3D" Foreground="#FFAAAAAA" TextWrapping="NoWrap" FontSize="8"/>
+                                <Button x:Name="SetPhysMaterialButton"  HorizontalAlignment="Left" VerticalAlignment="Center" Width="18" Height="18" Command="{StaticResource LandscapeTargetSetPhysMaterialCommand}" CommandParameter="{Binding}">
+                                  <Image Source="{StaticResource UseContentBrowserSelectedImage}" Width="12" Height="12"/>
+                                </Button>
+                              </DockPanel>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,0" VerticalAlignment="Center" x:Name="TargetSourceFilePathPanel" Visibility="{Binding Path=IsChecked, ElementName=EditmodeEdit, Converter={StaticResource BoolToVis}}">
+                              <DockPanel>
+                                <Label Content="{DynamicResource LandscapeEdit_SourceFilePath}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="52" FontSize="10"/>
+                                <CustomControls:EnterUpdateTextBox Text="{Binding Path=SourceFilePath}" BorderBrush="Black" HorizontalAlignment="Left" VerticalAlignment="Center" Width="71" Height="18" Background="#FF3D3D3D" Foreground="#FFAAAAAA" TextWrapping="NoWrap" FontSize="8"/>
+                                <Button x:Name="SourceFilePathButton"  HorizontalAlignment="Left" VerticalAlignment="Center" Width="18" Height="18" Command="{StaticResource LandscapeTargetSetFilePathCommand}" CommandParameter="{Binding}">
+                                  <Image Source="{StaticResource FilePath}" Width="12" Height="12"/>
+                                </Button>
+                                <Button x:Name="ReimportButton" HorizontalAlignment="Left" VerticalAlignment="Center" Width="18" Height="18" Command="{StaticResource LandscapeTargetReimportCommand}" CommandParameter="{Binding}">
+                                  <Image Source="{StaticResource ReimportImage}" Width="12" Height="12"/>
+                                </Button>
+                              </DockPanel>
+                            </StackPanel>
+                            <DockPanel x:Name="DebugViewModePanel" Visibility="{Binding Path=IsChecked, ElementName=EditmodeDebugView, Converter={StaticResource BoolToVis}}">
+                              <UnrealEd:BindableRadioButton IsChecked="{Binding Path=ViewmodeR}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ViewmodeR" Content="{DynamicResource LandscapeEdit_ViewmodeR}" GroupName="{Binding Name, RelativeSource={RelativeSource TemplatedParent}}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="25" FontSize="10"/>
+                              <UnrealEd:BindableRadioButton IsChecked="{Binding Path=ViewmodeG}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ViewmodeG" Content="{DynamicResource LandscapeEdit_ViewmodeG}" GroupName="{Binding Name, RelativeSource={RelativeSource TemplatedParent}}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="25" FontSize="10"/>
+                              <UnrealEd:BindableRadioButton IsChecked="{Binding Path=ViewmodeB}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ViewmodeB" Content="{DynamicResource LandscapeEdit_ViewmodeB}" GroupName="{Binding Name, RelativeSource={RelativeSource TemplatedParent}}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="25" FontSize="10"/>
+                              <UnrealEd:BindableRadioButton IsChecked="{Binding Path=ViewmodeNone}" Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="None" Content="{DynamicResource LandscapeEdit_ViewmodeNone}" GroupName="{Binding Name, RelativeSource={RelativeSource TemplatedParent}}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="50" FontSize="10"/>
+                            </DockPanel>
+                          </StackPanel>
+                          <Rectangle RadiusX="15" RadiusY="15" VerticalAlignment="Center" HorizontalAlignment="Right" Width="64" Height="64">
+                            <Rectangle.Fill>
+                              <ImageBrush ImageSource="{Binding Path=Bitmap}"/>
+                            </Rectangle.Fill>
+                          </Rectangle>
+                        </Grid>
+                        <StackPanel Visibility="{Binding Path=IsChecked, ElementName=EditmodeEdit, Converter={StaticResource BoolToVis}}" >
+                          <Button Margin="1,1,0,0" x:Name="RemoveTargetLayerButton" Width="18" Height="18" Command="{StaticResource LandscapeTargetLayerRemoveCommand}" CommandParameter="{Binding}">
+                            <Image Source="{StaticResource DeleteMeshImage}" Width="12" Height="12"/>
+                          </Button>
+                          <Button Margin="1,1,0,0" x:Name="SyncContentBrowserButton" Width="18" Height="18" Command="{StaticResource LandscapeTargetLayerSyncCommand}" CommandParameter="{Binding}">
+                            <Image Source="{StaticResource SyncContentBrowserImage}" Width="12" Height="12"/>
+                          </Button>
+                        </StackPanel>                        
+                      </DockPanel>
+                      <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Path=TargetName}" Value="Height map">
+                          <Setter TargetName="RemoveTargetLayerButton" Property="Visibility" Value="Collapsed"/>
+                          <Setter TargetName="SyncContentBrowserButton" Property="Visibility" Value="Collapsed"/>
+                          <Setter TargetName="TargetSettingsPanel" Property="Visibility" Value="Collapsed"/>
+                          <Setter TargetName="DebugViewModePanel" Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Path=IsChecked, ElementName=EditmodeEdit}" Value="true">
+                          <Setter TargetName="TargetListName" Property="FontSize" Value="12"/>                          
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Path=IsChecked, ElementName=EditmodeEdit}" Value="false">
+                          <Setter TargetName="TargetListName" Property="FontSize" Value="20"/>
+                        </DataTrigger>
+                      </DataTemplate.Triggers>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+                <StackPanel Visibility="{Binding Path=IsChecked, ElementName=EditmodeEdit, Converter={StaticResource BoolToVis}}">
+                  <Label Margin="-3,0,0,0" Content="{DynamicResource LandscapeEdit_Add_NewLayer}" VerticalAlignment="Center" HorizontalAlignment="Left" FontSize="12"/>
+                  <DockPanel Margin="1,0,0,0">
+                    <Label Content="{DynamicResource LandscapeEdit_Add_LayerName}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                    <CustomControls:EnterUpdateTextBox x:Name="AddLayerNameTextBox" BorderBrush="Black" HorizontalAlignment="Left" VerticalAlignment="Center" Width="140" Height="22" Background="#FF3D3D3D" Foreground="#FFAAAAAA" TextWrapping="NoWrap"/>
+                    <Button x:Name="AddLayerButton" HorizontalAlignment="Right" VerticalAlignment="Center" Width="24" Height="22" Content="+"/>
+                  </DockPanel>
+                  <DockPanel Margin="1,0,0,0">
+                    <Label Content="{DynamicResource LandscapeEdit_Hardness}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="55" FontSize="10"/>
+                    <CustomControls:EnterUpdateTextBox x:Name="AddHardnessTextBox" Text="0.5" BorderBrush="Black" HorizontalAlignment="Left" VerticalAlignment="Center" Width="30" Height="24" Background="#FF3D3D3D" Foreground="#FFAAAAAA" TextWrapping="NoWrap"/>
+                    <CheckBox x:Name="AddNoBlendingCheckBox" IsChecked="False" HorizontalAlignment="Center" VerticalAlignment="Bottom" Height="20" Content="{DynamicResource LandscapeEdit_NoBlend}" Width="80"/>
+                  </DockPanel>
+                </StackPanel>
+              </StackPanel>
+            </GroupBox>
+            <GroupBox Header="{DynamicResource LandscapeEdit_GizmoList}">
+              <GroupBox.Visibility>
+                <MultiBinding Converter="{StaticResource MultiBoolToVis}" >
+                  <Binding Path="IsChecked" ElementName="ToolSet_Mask"/>
+                  <Binding Path="IsChecked" ElementName="ToolSet_CopyPaste"/>
+                </MultiBinding>
+              </GroupBox.Visibility>
+              <StackPanel>
+                <ListBox Margin="0" x:Name="GizmoDataListBox" KeyboardNavigation.DirectionalNavigation="Cycle">
+                  <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel />
+                    </ItemsPanelTemplate>
+                  </ListBox.ItemsPanel>
+                  <ListBox.Template>
+                    <ControlTemplate>
+                      <Grid>
+                        <ScrollViewer>
+                          <ItemsPresenter />
+                        </ScrollViewer>
+                      </Grid>
+                    </ControlTemplate>
+                  </ListBox.Template>
+                  <ListBox.ItemContainerStyle>
+                    <Style TargetType="{x:Type ListBoxItem}">
+                      <Setter Property="IsSelected" Value="{Binding Path=IsSelected, Mode=TwoWay}"/>
+                      <Style.Resources>
+                        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#ff724d0f"/>
+                        <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#ff724d0f"/>
+                      </Style.Resources>
+                    </Style>
+                  </ListBox.ItemContainerStyle>
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <Rectangle RadiusX="15" RadiusY="15" VerticalAlignment="Center" HorizontalAlignment="Right" Width="48" Height="48">
+                        <Rectangle.Fill>
+                          <ImageBrush ImageSource="{Binding Path=Bitmap}"/>
+                        </Rectangle.Fill>
+                      </Rectangle>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+                <ListBox Margin="0" x:Name="GizmoListBox" KeyboardNavigation.DirectionalNavigation="Cycle">
+                  <ListBox.ItemContainerStyle>
+                    <Style TargetType="{x:Type ListBoxItem}">
+                      <Style.Resources>
+                        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#ff724d0f"/>
+                        <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#ff724d0f"/>
+                      </Style.Resources>
+                    </Style>
+                  </ListBox.ItemContainerStyle>
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <DockPanel>
+                        <Grid Height="14" Width="224">
+                          <StackPanel Margin="4,0,18,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Path=GizmoName}"/>
+                          </StackPanel>
+                        </Grid>
+                      </DockPanel>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+                <DockPanel HorizontalAlignment="Right">
+                  <Button ToolTip="{DynamicResource LandscapeEdit_GizmoPin}" Margin="1,1,0,0" x:Name="GizmoPinButton" VerticalAlignment="Top" Width="34" Height="34" Command="{StaticResource LandscapeGizmoPinCommand}" CommandParameter="{Binding}">
+                    <Image Source="{StaticResource GizmoPinImage}" Width="30" Height="30"/>
+                  </Button>
+                  <Button ToolTip="{DynamicResource LandscapeEdit_GizmoDelete}" Margin="1,1,0,0" x:Name="GizmoDeleteButton" VerticalAlignment="Top" Width="34" Height="34" Command="{StaticResource LandscapeGizmoDeleteCommand}" CommandParameter="{Binding}">
+                    <Image Source="{StaticResource GizmoDeleteImage}" Width="30" Height="30"/>
+                    <Button.IsEnabled>
+                      <Binding Path="SelectedIndex" ElementName="GizmoListBox" Converter="{StaticResource IntGTEBool}" ConverterParameter="0"/>
+                    </Button.IsEnabled>
+                  </Button>
+                  <Button ToolTip="{DynamicResource LandscapeEdit_GizmoMoveTo}" Margin="1,1,0,0" x:Name="GizmoMoveToButton" VerticalAlignment="Top" Width="34" Height="34" Command="{StaticResource LandscapeGizmoMoveToCommand}" CommandParameter="{Binding}">
+                    <Image Source="{StaticResource GizmoMoveToImage}" Width="30" Height="30"/>
+                    <Button.IsEnabled>
+                      <Binding Path="SelectedIndex" ElementName="GizmoListBox" Converter="{StaticResource IntGTEBool}" ConverterParameter="0"/>
+                    </Button.IsEnabled>
+                  </Button>
+                </DockPanel>
+              </StackPanel>
+            </GroupBox>
+          </StackPanel>
+        </Expander>
+      <Expander Header="{DynamicResource LandscapeEdit_LandscapeInfo}" IsExpanded="False" Visibility="{Binding Path=SelectedValue, ElementName=LandscapeCombo, Converter={StaticResource NotNullToVis}}">
+        <StackPanel>
+          <GroupBox Header="{DynamicResource LandscapeEdit_LandscapeSize}">
+            <StackPanel>
+              <DockPanel>
+                <DockPanel Width="108" />
+                <Label Content="{DynamicResource LandscapeEdit_CurrentInfo}" VerticalAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Right" FontSize="10" Width="60" />
+                <Label VerticalAlignment="Top" HorizontalAlignment="Center" HorizontalContentAlignment="Right" MaxWidth="65" FontSize="10">
+                  <TextBlock Text="{DynamicResource LandscapeEdit_ConvertInfo}" TextAlignment="Right" TextWrapping="0"/>
+                </Label>
+              </DockPanel>
+              <DockPanel>
+                <Label Content="{DynamicResource LandscapeEdit_QuadPerSection}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="118" FontSize="10"/>
+                <Label Content="0" x:Name="QuadPerSection" VerticalAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Right" FontSize="10" Width="50" />
+                <DockPanel Width="25" />
+                <ComboBox IsSynchronizedWithCurrentItem="True" x:Name="ConvertSectionSizeCombo" Width="56" HorizontalAlignment="Left" Height="20" VerticalAlignment="Center" HorizontalContentAlignment="Right">
+                  <ComboBoxItem Content="" IsSelected="True"/>
+                  <ComboBoxItem Content="255"/>
+                  <ComboBoxItem Content="127"/>
+                  <ComboBoxItem Content="63"/>
+                  <ComboBoxItem Content="31"/>
+                  <ComboBoxItem Content="15"/>
+                  <ComboBoxItem Content="7"/>
+                </ComboBox>
+              </DockPanel>
+              <DockPanel>
+                <Label Content="{DynamicResource LandscapeEdit_SubsectionNum}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="118" FontSize="10"/>
+                <Label Content="0" x:Name="SubsectionNum" VerticalAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Right" FontSize="10" Width="50" />
+                <DockPanel Width="25" />
+                <ComboBox IsSynchronizedWithCurrentItem="True" x:Name="ConvertNumSectionsCombo" Width="56" HorizontalAlignment="Left" Height="20" VerticalAlignment="Center" HorizontalContentAlignment="Right">
+                  <ComboBoxItem Content="" IsSelected="True"/>
+                  <ComboBoxItem Content="1" />
+                  <ComboBoxItem Content="4" />
+                </ComboBox>
+              </DockPanel>
+              <DockPanel>
+                <Label Content="{DynamicResource LandscapeEdit_CompQuadNum}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="118" FontSize="10"/>
+                <Label Content="0" x:Name="CompQuadNum" VerticalAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Right" FontSize="10" Width="50" />
+                <Label x:Name="ConvertCompQuadNumLabel" VerticalAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Right" FontSize="10" Width="65" />
+              </DockPanel>
+              <DockPanel>
+                <Label Content="{DynamicResource LandscapeEdit_LandscapeCompNum}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="118" FontSize="10"/>
+                <Label Content="0" x:Name="LandscapeCompNum" VerticalAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Right" FontSize="10" Width="50" />
+                <Label Content="0" x:Name="ConvertTotalComponentsLabel" VerticalAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Right" FontSize="10" Width="65" />
+              </DockPanel>
+              <DockPanel>
+                <Label Content="{DynamicResource LandscapeEdit_CollisionCompNum}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="118" FontSize="10"/>
+                <Label Content="0" x:Name="CollisionCompNum" VerticalAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Right" FontSize="10" Width="50" />
+                <Label Content="{Binding Path=Content, ElementName=ConvertTotalComponentsLabel}" VerticalAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Right" FontSize="10" Width="65" />
+              </DockPanel>
+              <DockPanel>
+                <Label Content="{DynamicResource LandscapeEdit_TotalSize}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="98" FontSize="10"/>
+                <Label VerticalAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Right" FontSize="10" Width="70">
+                  <DockPanel>
+                    <TextBlock x:Name="WidthTextBlock" TextWrapping="NoWrap" />
+                    <TextBlock Text=" x " />
+                    <TextBlock x:Name="HeightTextBlock" TextWrapping="NoWrap" />
+                  </DockPanel>
+                </Label>
+
+                <Label VerticalAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Right" FontSize="10" Width="65">
+                  <DockPanel>
+                    <TextBlock x:Name="ConvertWidthTextBlock" TextWrapping="NoWrap" />
+                    <TextBlock Text=" x " />
+                    <TextBlock x:Name="ConvertHeightTextBlock" TextWrapping="NoWrap" />
+                  </DockPanel>
+                </Label>
+              </DockPanel>
+              <DockPanel Height="20" >
+                <Label Content="{DynamicResource LandscapeEdit_ConvertMode}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="120" FontSize="10"/>
+                <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ConvertModeExpand" IsChecked="True" Content="{DynamicResource LandscapeEdit_Change_ComponentExpand}" GroupName="ConvertMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="ConvertModeClip"  Content="{DynamicResource LandscapeEdit_Change_ComponentClip}" GroupName="ConvertMode" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+              </DockPanel>
+              <DockPanel Height="24">
+                <Button x:Name="ChangeComponentSizeButton" Content="{DynamicResource LandscapeEdit_Change_ComponentSize}" VerticalAlignment="Top" IsEnabled="False"/>
+              </DockPanel>
+            </StackPanel>
+          </GroupBox>
+          <GroupBox Header="{DynamicResource LandscapeEdit_LandscapeLODBias}">
+            <StackPanel>
+              <DockPanel Height="24">
+                <Label Content="{DynamicResource LandscapeEdit_LODBiasThreshold}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                <CustomControls:DragSlider x:Name="LODBiasThresholdSlider" Maximum="512.0" SliderMax="3.0" Minimum="0.0" Width="170" HorizontalAlignment="Right" Height="18" AbsoluteDrag="True" ProgressRectExponent="3.0" ValuesPerMouseWheelScroll="0.1" Foreground="{DynamicResource Slate_Control_Foreground}"/>
+              </DockPanel>
+              <DockPanel Height="24">
+                <Button x:Name="UpdateLODBiasButton" Content="{DynamicResource LandscapeEdit_UpdateLODBias}" VerticalAlignment="Top" IsEnabled="False"/>
+              </DockPanel>
+            </StackPanel>
+          </GroupBox>
+        </StackPanel>
+      </Expander>
+      <Expander Header="{DynamicResource LandscapeEdit_Import_CreateNew}" IsExpanded="True">
+          <StackPanel>
+            <GroupBox Header="{DynamicResource LandscapeEdit_Import_HeightmapImport}">
+              <StackPanel>
+                <DockPanel>
+                  <Label Content="{DynamicResource LandscapeEdit_Import_Heightmap}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                  <CustomControls:EnterUpdateTextBox x:Name="HeightmapFileNameTextBox" BorderBrush="Black" Background="#FF3D3D3D" Foreground="#FFAAAAAA" TextWrapping="NoWrap" Width="140" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                  <Button x:Name="HeightmapFileButton" HorizontalAlignment="Right" Width="24" Content="..."/>
+                </DockPanel>
+                <DockPanel>
+                  <Label Content="{DynamicResource LandscapeEdit_Import_Format}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                  <StackPanel>
+                    <DockPanel Height="20">
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="Format_Unsigned" Content="{DynamicResource LandscapeEdit_Import_unsigned}" GroupName="Format" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="Format_Signed"  Content="{DynamicResource LandscapeEdit_Import_signed}" GroupName="Format" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                    </DockPanel>
+                    <DockPanel Height="20">
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="Format_PC" GroupName="FormatPlatform" Content="{DynamicResource LandscapeEdit_Import_PC}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                      <UnrealEd:BindableRadioButton Foreground="{DynamicResource Slate_Control_Foreground}" x:Name="Format_Mac" GroupName="FormatPlatform" Content="{DynamicResource LandscapeEdit_Import_Mac}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="70" FontSize="10"/>
+                    </DockPanel>
+                  </StackPanel>
+                </DockPanel>
+              </StackPanel>
+            </GroupBox>
+            <GroupBox Header="{DynamicResource LandscapeEdit_Import_HeightmapSize}">
+              <StackPanel>
+                <DockPanel Height="26">
+                  <Label Content="{DynamicResource LandscapeEdit_Import_SizeVertices}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                  <CustomControls:EnterUpdateTextBox x:Name="WidthTextBox" VerticalAlignment="Center" HorizontalAlignment="Left" TextWrapping="NoWrap" Width="50" Height="22" Background="#FF3D3D3D" Foreground="#FFAAAAAA" BorderBrush="Black"/>
+                  <Label Content="{DynamicResource LandscapeEdit_Import_X}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="20" FontSize="10"/>
+                  <CustomControls:EnterUpdateTextBox x:Name="HeightTextBox" VerticalAlignment="Center" HorizontalAlignment="Left" TextWrapping="NoWrap" Width="50" Height="22" Background="#FF3D3D3D" Foreground="#FFAAAAAA" BorderBrush="Black"/>
+                </DockPanel>
+                <DockPanel Height="26">
+                  <Label Content="{DynamicResource LandscapeEdit_Import_ComponentSize}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                  <ComboBox IsSynchronizedWithCurrentItem="True" x:Name="SectionSizeCombo" Width="70" HorizontalAlignment="Left" Height="20" VerticalAlignment="Center">
+                    <ComboBoxItem Content="" IsSelected="True"/>
+                    <ComboBoxItem Content="{DynamicResource LandscapeEdit_Import_QuadsPerSection255}"/>
+                    <ComboBoxItem Content="{DynamicResource LandscapeEdit_Import_QuadsPerSection127}"/>
+                    <ComboBoxItem Content="{DynamicResource LandscapeEdit_Import_QuadsPerSection63}"/>
+                    <ComboBoxItem Content="{DynamicResource LandscapeEdit_Import_QuadsPerSection31}"/>
+                    <ComboBoxItem Content="{DynamicResource LandscapeEdit_Import_QuadsPerSection15}"/>
+                    <ComboBoxItem Content="{DynamicResource LandscapeEdit_Import_QuadsPerSection7}"/>
+                  </ComboBox>
+                  <ComboBox IsSynchronizedWithCurrentItem="True" x:Name="NumSectionsCombo" Width="97" HorizontalAlignment="Left" Height="20" VerticalAlignment="Center">
+                    <ComboBoxItem Content="" IsSelected="True"/>
+                    <ComboBoxItem Content="{DynamicResource LandscapeEdit_Import_SectionPerComponent1}"/>
+                    <ComboBoxItem Content="{DynamicResource LandscapeEdit_Import_SectionsPerComponent4}"/>
+                  </ComboBox>
+                </DockPanel>
+                <DockPanel Height="24">
+                  <Label Content="{DynamicResource LandscapeEdit_Import_Total}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                  <TextBlock Text="0" x:Name="TotalComponentsLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center" FontSize="10" Width="30"/>
+                  <TextBlock Text="{DynamicResource LandscapeEdit_Import_Components}" x:Name="ComponentsLabel" Foreground="{DynamicResource Slate_Control_Foreground}" VerticalAlignment="Center" HorizontalAlignment="Left" FontSize="10"/>
+                </DockPanel>
+              </StackPanel>
+            </GroupBox>
+            <GroupBox Header="{DynamicResource LandscapeEdit_Import_Layers}">
+              <StackPanel>
+                <ItemsControl Margin="0" x:Name="ImportLayersItemsControl" ItemsSource="{Binding Source={StaticResource LandscapeImportLayersPreview}}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <StackPanel>
+                        <DockPanel Height="26">
+                          <Label Content="{DynamicResource LandscapeEdit_Import_ImportLayer}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                          <CustomControls:EnterUpdateTextBox x:Name="LayerFileNameTextBox" Text="{Binding Path=LayerFilename}" BorderBrush="Black" HorizontalAlignment="Left" VerticalAlignment="Center" Width="140" Height="22" Background="#FF3D3D3D" Foreground="#FFAAAAAA" TextWrapping="NoWrap"/>
+                          <Button x:Name="LayerFileButton" HorizontalAlignment="Right" VerticalAlignment="Center" Width="24" Height="22" Content="..." Command="{StaticResource LandscapeImportLayersFilenameCommand}" CommandParameter="{Binding}"/>
+                        </DockPanel>
+                        <DockPanel Height="26">
+                          <Label Content="{DynamicResource LandscapeEdit_Import_LayerName}" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                          <CustomControls:EnterUpdateTextBox x:Name="LayerNameTextBox" Text="{Binding Path=LayerName}" BorderBrush="Black" HorizontalAlignment="Left" VerticalAlignment="Center" Width="140" Height="22" Background="#FF3D3D3D" Foreground="#FFAAAAAA" TextWrapping="NoWrap"/>
+                          <Button x:Name="RemoveLayerButton" HorizontalAlignment="Right" VerticalAlignment="Center" Width="24" Height="22" Content="x" Command="{StaticResource LandscapeImportLayersRemoveCommand}" CommandParameter="{Binding}"/>
+                        </DockPanel>
+                        <DockPanel Height="26">
+                          <Label Content="Hardness" VerticalAlignment="Center" HorizontalAlignment="Left" Width="85" FontSize="10"/>
+                          <CustomControls:EnterUpdateTextBox x:Name="HardnessTextBox" Text="{Binding Path=Hardness}" BorderBrush="Black" HorizontalAlignment="Left" VerticalAlignment="Center" Width="60" Height="22" Background="#FF3D3D3D" Foreground="#FFAAAAAA" TextWrapping="NoWrap"/>
+                          <CheckBox x:Name="NoBlendingCheckBox" IsChecked="{Binding Path=NoBlending}" HorizontalAlignment="Right" VerticalAlignment="Center" Height="22"  Content="{DynamicResource LandscapeEdit_NoBlend}"/>
+                        </DockPanel>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </GroupBox>
+            <GroupBox Header="{DynamicResource LandscapeEdit_Import_Create}">
+              <Button x:Name="ImportButton" Content="{DynamicResource LandscapeEdit_Import_CreateLandscape}" VerticalAlignment="Top" IsEnabled="False"/>
+            </GroupBox>
+          </StackPanel>
+        </Expander>
+
+      <Expander Header="{DynamicResource LandscapeEdit_Export}" BorderBrush="#006A3D3D" Visibility="{Binding Path=SelectedValue, ElementName=LandscapeCombo, Converter={StaticResource NotNullToVis}}">
+          <Expander.Background>
+            <SolidColorBrush/>
+          </Expander.Background>
+          <StackPanel>
+            <GroupBox Header="{DynamicResource LandscapeEdit_Export}">
+              <StackPanel>
+                <Button x:Name="ExportButton" Content="{DynamicResource LandscapeEdit_Export}" VerticalAlignment="Top"/>
+                <CheckBox x:Name="ExportLayersCheckbox" Height="25" Content="{DynamicResource LandscapeEdit_ExportLayers}"/>
+              </StackPanel>
+            </GroupBox>
+          </StackPanel>
+        </Expander>
+
+        <Expander Header="{DynamicResource LandscapeEdit_More}" BorderBrush="#006A3D3D">
+          <Expander.Background>
+            <SolidColorBrush/>
+          </Expander.Background>
+          <UniformGrid x:Name="GridMore" Columns="1">
+            <Button x:Name="ConvertTerrainButton" Content="{DynamicResource LandscapeEdit_More_ConvertTerrainActors}" Margin="25,0" FontSize="10"/>
+          </UniformGrid>
+        </Expander>
+      </StackPanel>     
+    </ScrollViewer>
+
+    <Rectangle Fill="{DynamicResource Slate_Panel_Shadow}" Stroke="{DynamicResource Slate_Panel_Highlight}" Margin="120,0,120,0" x:Name="ResizeHandle" Height="3" Grid.Row="2"/>
+
+  </Grid>
+
+</Border>

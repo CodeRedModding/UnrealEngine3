@@ -1,0 +1,16 @@
+/*=============================================================================
+	MobileUberPostProcessEmulationVertexShader.usf: Applies the mobile 
+	uber post-process in editor or simmobile
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+void Main(	float4 Position : POSITION,
+	float2 TexCoords0 : TEXCOORD0,
+	out float2 SceneColorUV : TEXCOORD0,
+	out float2 SourceTextureUV : TEXCOORD1,
+	out float4 OutPosition : POSITION)
+{	
+	SceneColorUV = TexCoords0;
+	SourceTextureUV = TexCoords0;
+	OutPosition = float4(Position.xy, 0.0, 1.0);
+}

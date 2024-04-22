@@ -1,0 +1,46 @@
+﻿<!-- Copyright 1998-2013 Epic Games, Inc. All Rights Reserved. -->
+<UserControl
+	x:Class="CustomControls.NameEntryPrompt"
+	x:Name="This" 
+	xmlns:cc="clr-namespace:CustomControls"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	<UserControl.Resources>
+		<BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+	</UserControl.Resources>
+
+	<!-- POPUP prompt for Name Entry -->
+	<Popup x:Name="mPopup"
+		   MinWidth="250"
+		   Placement="{Binding ElementName=This, Path=Placement}"
+		   StaysOpen="False"
+		   PlacementTarget="{Binding ElementName=This, Path=PlacementTarget}"
+		   AllowsTransparency="True"
+		   PopupAnimation="Fade">
+		<!-- @todo hardcoded style need to go --> 
+		<Border Background="{StaticResource Slate_PopupTrim_Background}" CornerRadius="5" >
+			<DockPanel KeyboardNavigation.IsTabStop="false" LastChildFill="False" Margin="10" Background="{StaticResource Slate_List_Background}">
+				<DockPanel.Effect>
+					<StaticResource ResourceKey="Slate_PopupTrim_Shadow" />
+				</DockPanel.Effect>
+				<DockPanel DockPanel.Dock="Top" SnapsToDevicePixels="True" Background="{StaticResource Slate_PromptTitleBackground}">
+					<Button DockPanel.Dock="Right" Margin="3" x:Name="mCloseButton" Style="{StaticResource XButton}" />
+					<TextBlock FontSize="12" FontWeight="Bold" Margin="3" Foreground="{DynamicResource Slate_Control_Foreground}" HorizontalAlignment="Center" Text="{Binding ElementName=This, Path=Message}" />
+				</DockPanel>
+				<DockPanel DockPanel.Dock="Top" Visibility="{Binding ElementName=This, Path=SupportsGroupName, Converter={StaticResource BoolToVisConverter}}" >
+					<Label KeyboardNavigation.IsTabStop="false" DockPanel.Dock="Left" FontSize="14" Foreground="{DynamicResource Slate_Control_Foreground}" Content="{DynamicResource ContentBrowser_NameEntryPrompt_GroupLabel}" VerticalAlignment="Center" Target="{Binding ElementName=mGroupComboBox}"/>
+					<ComboBox TabIndex="0" IsEditable="True" DockPanel.Dock="Left" FontSize="14" x:Name="mGroupComboBox" Margin="10, 10, 5, 10" Text="{Binding ElementName=This, Path=ComboBoxText}" />
+				</DockPanel>
+				<DockPanel DockPanel.Dock="Top" >
+					<Button TabIndex="2" DockPanel.Dock="Right" x:Name="mOkButton" Padding="5" Margin="0,10,10,10" Content="{Binding ElementName=This, Path=AcceptButtonLabel}"/>
+					<Label KeyboardNavigation.IsTabStop="false" DockPanel.Dock="Left" Foreground="{DynamicResource Slate_Control_Foreground}" FontSize="14" Content="{DynamicResource ContentBrowser_NameEntryPrompt_NameLabel}" VerticalAlignment="Center" Target="{Binding ElementName=mNameTextBox}"/>
+					<cc:UnrealTextBox TabIndex="1" DockPanel.Dock="Left" ShowClearButton="False"  MaxLength="512" FontSize="14" x:Name="mNameTextBox" Margin="10, 10, 5, 10"/>					
+				</DockPanel>
+				<Border DockPanel.Dock="Top" Background="{StaticResource Slate_Error_Background}">
+					<TextBlock Foreground="{StaticResource Slate_Error_Foreground}" x:Name="mErrorLabel" Margin="3"/>
+				</Border>
+			</DockPanel>
+		</Border>
+	</Popup>
+	
+</UserControl>

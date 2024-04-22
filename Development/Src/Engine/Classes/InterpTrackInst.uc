@@ -1,12 +1,8 @@
 class InterpTrackInst extends Object
 	native(Interpolation);
 
-/** 
- * InterpTrackInst
- *
- * Created by:	James Golding
- * Copyright:	(c) 2004
- * Company:		Epic Games, Inc.
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
  *
  * 
  * The Outer of an InterpTrackInst is the InterpGroupInst.
@@ -21,15 +17,15 @@ cpptext
 	AActor* GetGroupActor();
 
 	/** Called before Interp editing to put object back to its original state. */
-	virtual void SaveActorState() {}
+	virtual void SaveActorState(UInterpTrack* Track) {}
 
 	/** Restore the saved state of this Actor. */
-	virtual void RestoreActorState() {}
+	virtual void RestoreActorState(UInterpTrack* Track) {}
 
 	/** Initialise this Track instance. Called in-game before doing any interpolation. */
-	virtual void InitTrackInst(UInterpTrack* Track) {}
+	virtual void InitTrackInst(UInterpTrack* Track);
 
 	/** Called when interpolation is done. Should not do anything else with this TrackInst after this. */
-	virtual void TermTrackInst() {}
+	virtual void TermTrackInst(UInterpTrack* Track) {}
 }
 

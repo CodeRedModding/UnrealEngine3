@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	
+	<string name="Error">Erreur</string>
+	<string name="Init_Failed">initialisation de l\'application a échoué. L\'application se terminera.</string>
+	<string name="OpenGL_Failed">Initialisation OpenGL échoué, votre appareil ne risque pas en charge le Shader Model ES2.0, une exigence pour les défenseurs des Dungeon.</string>
+	<string name="NotEnoughSpace">Non Assez SDCard espace pour l\'installation</string>
+	<string name="NoSDCard">Aucun SDCard retrouvée montée</string>
+	<string name="DownloadManualURL">Erreur lors du téléchargement du contenu de jeux. S\'il vous plaît essayer de nouveau, ou visitez http://dungeondefenders.com/androidmobile pour obtenir des instructions pour effectuer une installation manuelle.</string>
+	
+	<string name="MemNotEnough">Avertissement: Cet appareil Android ne répond pas à l\'exigence minimale de 512 Mo de RAM. Défenseurs Dungeon: First Wave peut ne pas fonctionner correctement.</string>
+	
+	<string name="CheckLicense">Licence Validation en cours...</string>
+	<string name="NoLicense">Impossible d\'obtenir une licence!</string>
+	
+	<string name="Download_Failed">Téléchargement du fichier a échoué</string>
+	<string name="Checksum_Failed">Checksum Failed Comparer</string>
+	<string name="SyncFile_Failed">Échec Fichier Sync Génération</string>
+	<string name="Composite_Failed">Checksum Échec sur les fichiers de Split Composited</string>	
+	
+	<string name="NoNetwork_Failed">Pas de connexion réseau détecté.</string>	
+	<string name="CouldntConnect_Failed">Impossible de se connecter à l\'hôte de fichiers distants.</string>	
+	<string name="UnknownError_Failed">Erreur inconnue.</string>	
+	
+	<string name="Downloading">Téléchargement</string>
+	<string name="UpdateMessageBox">Mise à jour de découvert, vous souhaitez mettre à jour?</string>
+	<string name="Yes">Oui</string>
+	<string name="No">No</string>
+	
+	<string name="WifiMessageBox">Pas trouvé Wifi, Que voulez-vous faire?</string>	
+	<string name="Retry">Réessayer</string>
+	<string name="Exit">Exit</string>
+	<string name="BinaryUpdateMessage">Nouvelle mise à jour du marché constaté, souhaitez-vous pour le télécharger?</string>
+	
+	<string name="WifiSettings">Paramètres Wifi</string>
+	
+	<string name="File">Fichier</string>	
+	<string name="SplitFile">Split Fichier</string>	
+	<string name="Downloaded">Téléchargé</string>	
+	<string name="InstallDirectory">Vérification / Installation Directory</string>	
+	
+</resources>

@@ -1,59 +1,20 @@
-//=============================================================================
-// ZoneInfo, the built-in Unreal class for defining properties
-// of zones.  If you place one ZoneInfo actor in a
-// zone you have partioned, the ZoneInfo defines the
-// properties of the zone.
-// This is a built-in Unreal class and it shouldn't be modified.
-//=============================================================================
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class ZoneInfo extends Info
-	native
-	placeable;
-
-//-----------------------------------------------------------------------------
-// Zone properties.
-
-var() name ZoneTag;
-var() localized String LocationName;
+	native;
 
 var() float KillZ;		// any actor falling below this level gets destroyed
-var() float SoftKill;
-var() class<KillZDamageType> KillZDamageType;
-var() bool bSoftKillZ;	// SoftKill units of grace unless land
-
-/** A list of zones which shouldn't be rendered when the view point is in this zone. */
-var() array<name> ForceCullZones;
-
-/** A name for this zone which can be used to reference it from another zone's ForceCullZones. */
-var() name CullTag;
-
-//=============================================================================
-// Iterator functions.
-
-// Iterate through all actors in this zone.
-native(308) final iterator function ZoneActors( class<actor> BaseClass, out actor Actor );
-
-//=============================================================================
-// Engine notification functions.
-
-// When an actor enters this zone.
-event ActorEntered( actor Other );
-
-// When an actor leaves this zone.
-event ActorLeaving( actor Other );
-
-simulated function string GetLocationStringFor(PlayerReplicationInfo PRI)
-{
-	return LocationName;
-}
+var() float SoftKill;   // units of grace until land
+var() class<KillZDamageType> KillZDamageType<AllowAbstract>;    // damage type for KillZ
+var() bool bSoftKillZ;	// enable SoftKill
 
 defaultproperties
 {
-	Begin Object NAME=Sprite LegacyClassName=ZoneInfo_ZoneInfoSprite_Class
-		Sprite=Texture2D'EngineResources.S_ZoneInfo'
-	End Object
-
-	KillZ=-1000000.0
+	KillZ=-262143.0  // this is HALF_WORLD_MAX1
 	SoftKill=2500.0
 	bStatic=true
 	bNoDelete=true
+	bGameRelevant=true
+	KillZDamageType=class'KillZDamageType'
 }

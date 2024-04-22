@@ -1,0 +1,102 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.PromoteStatusModel
+
+@{
+    ViewBag.Title = "Build Promotion";
+    ViewBag.Description = "Current Promotion Status for all Branches";
+}
+
+
+<section>
+    <div class="grid6">
+        <span class="linkBack">
+            @Html.ActionLink("Dashboard", "Dashboard", "Home")
+        </span>
+
+        <span class="fr">
+            <a href="#changes">Send QA Build Changes</a> |
+            <a href="#qa">QA Approved Builds</a> |
+            <a href="#games">Promotable Games</a>
+        </span>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <table class="detail">
+            <tr class="p"><td colspan="3"><a name="changes"></a><h2>Send QA Build Changes</h2></td></tr>
+
+            @if (Model.PromotionCommands.Count(c => (c.Type == 4)) > 0)
+            {
+                <tr>
+                    <th class="string">Description</th>
+                    <th class="numeric" colspan="2">Action</th>
+                </tr>
+
+                foreach (var c in Model.PromotionCommands)
+                {
+                    if (c.Type == 4)
+                    {
+                        @Html.Partial("_StatusCommand", c);
+                    }
+                }
+            }
+            else
+            {
+                <tr class="p"><td colspan="4">No changes can be sent at this time.</td></tr>        
+            }
+
+            <tr class="p"><td colspan="3"><a name="qa"></a><h2>QA Approved Builds</h2></td></tr>
+
+            @if (Model.PromotionCommands.Count(c => (c.Type == 7)) > 0)
+            {
+                <tr>
+                    <th class="string">Description</th>
+                    <th class="string">Current Label</th>
+                    <th class="enum">Changelist</th>
+                </tr>
+
+                foreach (var c in Model.PromotionCommands)
+                {
+                    if (c.Type == 7)
+                    {
+                        @Html.Partial("_StatusCommand", c);
+                    }
+                }
+            }
+            else
+            {
+                <tr class="p"><td colspan="3">There are no QA approved builds at this time.</td></tr>        
+            }
+
+            <tr class="p"><td colspan="3"><a name="games"></a><h2>Promotable Games</h2></td></tr>
+
+            @if (Model.PromotionCommands.Count(c => (c.Type == 3)) > 0)
+            {
+                string branch = "";
+
+                foreach (var c in Model.PromotionCommands)
+                {
+                    if (c.Type == 3)
+                    {
+                        if (c.Branch != branch)
+                        {
+                            <tr>
+                                <th class="string">Branch: @c.Branch</th>
+                                <th class="string">Current Label</th>
+                                <th class="enum">Changelist</th>
+                            </tr>
+                
+                            branch = c.Branch;
+                        }
+                    
+                        @Html.Partial("_StatusCommand", c);
+                    }
+                }
+            }
+            else
+            {
+                <tr class="p"><td colspan="3">There are no promotable game builds at this time.</td></tr>        
+            }
+        </table>
+    </div>
+</section>

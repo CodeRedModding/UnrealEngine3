@@ -1,0 +1,50 @@
+/*=============================================================================
+	GPUSkinHitMaskVertexShader.usf: This is used for skeletalmesh to render hit mask texture
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "Material.usf"
+#include "VertexFactory.usf"
+
+/*=============================================================================
+ * Vertex Shader
+ *============================================================================*/
+
+/* Adjusted pixel center offset for the size of render target */
+float2 PixelCenterOffset;
+
+// need PixelPosition to be WorldPos
+// OutPosition to be TexCoords
+void Main(
+	FVertexFactoryInput Input,
+	out FVertexFactoryInterpolantsVSToPS FactoryInterpolants,
+	out float4 WorldPosition	: TEXCOORD5,
+	out float3 WorldNormal		: TEXCOORD6,
+	out float2  TexCoords		: TEXCOORD7,
+	out float4 OutPosition		: POSITION
+	)
+{
+	FVertexFactoryIntermediates VFIntermediates = GetVertexFactoryIntermediates(Input);
+	WorldPosition = VertexFactoryGetWorldPosition(Input, VFIntermediates);
+	float3x3 TangentBasis = VertexFactoryGetTangentBasis(Input, VFIntermediates);
+
+	FMaterialVertexParameters VertexParameters = GetMaterialVertexParameters(Input, VFIntermediates, WorldPosition.xyz, TangentBasis);
+	WorldPosition.xyz += GetMaterialWorldPositionOffset(VertexParameters);
+
+	FactoryInterpolants = VertexFactoryGetInterpolantsVSToPS(Input, VFIntermediates);
+	WorldNormal = VertexFactoryGetWorldNormal(Input, VFIntermediates);
+
+#if NUM_MATERIAL_TEXCOORDS
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(FactoryInterpolants);
+	// convert Tex Coords to use unmirroring if mirrored
+	TexCoords = UnMirrorU(MaterialParameters.TexCoords[0], MaterialParameters);		
+	OutPosition = float4(TexCoords.x*2.f-1.f, clamp(1.f-TexCoords.y, 0.f, 1.f)*2.f-1.f, 1.0f, 1.0f);
+	// Need to add offset for pixel shader to get correct tex2D value
+	// otherwise, the value gets interpolated and becomes very noisy.
+	TexCoords += PixelCenterOffset;
+ #else
+	OutPosition = float4(0, 0, 0.1f, 1.f);
+	TexCoords = float2(0, 0);   
+ #endif  
+}

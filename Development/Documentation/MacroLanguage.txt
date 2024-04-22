@@ -1,0 +1,140 @@
+Macros: UnrealScript Preprocessor (UPP)
+
+@todo: convert this document into HTML
+
+
+Macro processing happens _before_ UnrealScript compilation. Since it
+is a separate phase it is not connected to the lexical conventions of
+UnrealScript.
+
+A macro is invited using the ` (backtick character) before the name of
+the macro. So, to expand the "hello" macro with no parameters, the
+following line would work:
+
+`hello
+
+Equivalently, the name of the macro can be enclosed in { } after the
+tick as in 
+
+`{hello}
+
+This makes it possible to "insert" the expansion of a macro into the
+middle of text that does not have conveniently placed whitespace:
+
+hippo`{hello}potamus
+
+
+
+But how does the "hello" macro get defined? The built-in macro 'define'
+works very similar to a C++ define:
+1.	the `define keyword, followed by at least one whitespace character
+2.	the name of the new macro (and optionally a function parameter list),
+	followed by at least one whitespace character
+
+3.	the definition of the body of the macro
+
+So "hello" is defined with:
+
+`define	hello	"Hello, World!"
+
+Thereafter, `hello is replaced with "Hello, World!" (complete with
+quotes). All results of macro expansion are, again, scanned for
+opportunities to expand macros. Macro expansions can include macros
+that will, in turn, be expanded; also means that "infinitely
+recursive" macros can be written.
+
+
+MACRO PARAMETERS
+
+Macro parameters are passed positionally, in a comma separated list
+between parentheses right after the name of the macro. The opening
+parenthesis of this list MUST come immediately after the macro name
+in order to be recognized as part of the macro call.
+See the notes below regarding the build-in macro "`define" for more details
+about macro parameters.
+
+
+
+BUILT-IN MACROS
+
+===================================
+`define <macroname>[<(paramA[,paramB...])>] [<macrodefinition>]
+Defines the named macro to expand to the given definition. If no
+definition is provided, the macro is defined but expands to the empty
+string.
+
+Parameters for the macro are specified in a typeless function parameter
+list immediately after the name of the macro.  In the macro definition, 
+the parameters are referenced by name.
+
+The special macro `# repesents the number of parameters specified and can
+be referenced only within the macro definition.
+
+
+===================================
+`if(<string>)
+`else
+`endif
+These three macros together support conditional compilation. The
+<string> parameter to the if macro is evaluated and if it is the empty
+string then it is considered false; if it is any other string it is
+considered true.
+
+The text between `if and either `else (if present) or `endif are
+emitted into the processed output if the condition is true; if the
+condition is not true, only the end-of-line characters are emitted so
+that the line numbers in the processed text match up with those in the
+original text. 
+
+The text between the (optional) `else and `endif are emitted if the
+original condition is false. 
+
+Note that macros in non-emitted code are not evaluated (except for `if
+groupings which are processed only for nesting purposes). 
+
+
+===================================
+`include(<fname>)
+Includes the text of the file <fname> at the current location. By default,
+<fname> is relative to the directory specified by the EditPackagesInPath of
+the Editor.EditorEngine section of your game's .ini file.  If you specify only
+the filename (i.e. no directory), it will search for the include file in the
+classes directory for the package currently being compiled.
+
+===================================
+`isdefined(<macroname>)
+`notdefined(<macroname>)
+Evaluate to the string "1" if the macro is (is not) defined,
+regardless of the definition. Useful with conditional compilation
+
+===================================
+`undefine(<macroname>)
+Remove the current definition of <macroname>. Will not work for macro
+parameter names (`0, `1, `#, etc).
+
+
+
+
+
+COMMAND-LINE INTERACTIONS
+
+UPP uses the -debug flag to determine whether or not the `debug macro
+is defined. UPP also adds two new command-line parameters:
+-nopreprocess and -intermediate.
+
+-nopreprocess
+    Turns off all macro and comment preprocessing, passing
+ the exact text from the input file to the class factory. This is
+ primarily for timing and speed testing but if some required text file
+ contains the macro invitation character outside macros, it is
+ possible to use this to compile that file. 
+
+-intermediate 
+    Tells UPP to save the processed versions of the files
+ it compiles. This can be time and space consuming for the entire
+ source tree but it can be invaluable when tracking down macro
+ errors. The files are stored in
+ appGameDir()/PreprocessedFiles/<package>/<class>.UC (UC so syntax highlighting and file associateioyn still work)
+ 
+-FINAL_RELEASE
+    Turns off all logging.  NOTE:  The log() function will still be called so you will probably want to have all of your logs use the UPP macro system so you do not incurr the function call overhead.

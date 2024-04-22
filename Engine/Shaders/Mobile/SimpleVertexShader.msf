@@ -1,0 +1,31 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
+
+OUT_BUILTIN(vec4, gl_Position, POSITION)
+
+UNIFORM(mat4, Transform);
+
+ATTRIBUTE(vec4, Position, POSITION);
+ATTRIBUTE(vec2, TexCoords0, TEXCOORD0);
+ATTRIBUTE(vec4, Color, COLOR);
+
+OUT_VARYING_DEFAULT( vec2, UVBase, TEXCOORD0 );
+OUT_VARYING_LOW( vec4, PrimColor, COLOR0 );
+
+//Distance field fonts only
+#if USE_DISTANCE_FIELD_FONTS
+	OUT_VARYING_DEFAULT( vec2, ShadowTexCoord, TEXCOORD1 );
+	UNIFORM(vec2, ShadowOffset);
+#endif
+
+
+void main()
+{
+	gl_Position = MulMatrix( Transform, Position );
+	UVBase = BASE_TEX_COORD_XFORM(TexCoords0);
+	PrimColor = Color;
+#if USE_DISTANCE_FIELD_FONTS
+	ShadowTexCoord = UVBase + ShadowOffset;
+#endif
+}

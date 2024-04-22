@@ -1,0 +1,17 @@
+UNIFORM( vec4, BatchFloat[45] );
+ATTRIBUTE( vec4, Position, POSITION );
+ATTRIBUTE( float, vbatch, BLENDINDICES0 );
+OUT_VARYING_DEFAULT( vec4, fucxmul, TEXCOORD4 );
+OUT_BUILTIN( vec4, gl_Position, POSITION )
+void main() {
+// E position
+
+
+  gl_Position = Position;
+  gl_Position.x = dot(Position, BatchFloat[int(0.1+3.0*vbatch+1.0+(0.0))]);
+  gl_Position.y = dot(Position, BatchFloat[int(0.1+3.0*vbatch+1.0+(1.0))]);  
+// E 
+  fucxmul = BatchFloat[int(0.1+3.0*vbatch)];
+
+}
+

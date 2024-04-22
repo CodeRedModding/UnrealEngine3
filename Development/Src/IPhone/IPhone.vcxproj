@@ -1,0 +1,141 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="BuiltWithUnrealBuildTool|Win32">
+      <Configuration>BuiltWithUnrealBuildTool</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{5B3358F7-AD22-4C7C-AC02-157C874541C1}</ProjectGuid>
+    <RootNamespace>IPhone</RootNamespace>
+    <SccProjectName>
+    </SccProjectName>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccProvider>
+    </SccProvider>
+    <Keyword>MakeFileProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">..\..\Intermediate\Unused\</IntDir>
+    <NMakeBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeReBuildCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeCleanCommandLine Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakeOutput Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'" />
+    <NMakePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedIncludes)</NMakeForcedIncludes>
+    <NMakeAssemblySearchPath Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeAssemblySearchPath)</NMakeAssemblySearchPath>
+    <NMakeForcedUsingAssemblies Condition="'$(Configuration)|$(Platform)'=='BuiltWithUnrealBuildTool|Win32'">$(NMakeForcedUsingAssemblies)</NMakeForcedUsingAssemblies>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="External\Tapjoy\TapjoyConnect.h" />
+    <ClInclude Include="External\Tapjoy\TapjoyConnectConstants.h" />
+    <ClInclude Include="Inc\AppNotificationsIPhone.h" />
+    <ClInclude Include="Inc\AsyncLoadingIPhone.h" />
+    <ClInclude Include="Inc\AudioDeviceIPhone.h" />
+    <ClInclude Include="Inc\EAGLView.h" />
+    <ClInclude Include="Inc\FFileManagerIPhone.h" />
+    <ClInclude Include="Inc\FMallocIPhone.h" />
+    <ClInclude Include="Inc\FullScreenMovieIPhone.h" />
+    <ClInclude Include="Inc\IPhone.h" />
+    <ClInclude Include="Inc\IPhoneAppDelegate.h" />
+    <ClInclude Include="Inc\IPhoneAsyncTask.h" />
+    <ClInclude Include="Inc\IPhoneClient.h" />
+    <ClInclude Include="Inc\IPhoneCrashDefines.h" />
+    <ClInclude Include="Inc\IPhoneDrv.h" />
+    <ClInclude Include="Inc\IPhoneHome.h" />
+    <ClInclude Include="Inc\IPhoneInput.h" />
+    <ClInclude Include="Inc\IPhoneObjCWrapper.h" />
+    <ClInclude Include="Inc\IPhoneThreading.h" />
+    <ClInclude Include="Inc\IPhoneViewport.h" />
+    <ClInclude Include="Inc\LaunchPrivate.h" />
+    <ClInclude Include="Inc\NSStringExtensions.h" />
+    <ClInclude Include="Inc\UnMathNeon.h" />
+    <ClInclude Include="Inc\UnSocketBSD.h" />
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\Facebook.h" />
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\FBConnect.h" />
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\FBDialog.h" />
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\FBLoginDialog.h" />
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\FBRequest.h" />
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\JSON.h" />
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\NSObject+SBJSON.h" />
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\NSString+SBJSON.h" />
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\SBJSON.h" />
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\SBJsonBase.h" />
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\SBJsonParser.h" />
+    <ClInclude Include="..\..\External\Facebook\IPhone\src\JSON\SBJsonWriter.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="External\Tapjoy\TapjoyConnect.m" />
+    <None Include="Inc\IPhone_Prefix.pch" />
+    <None Include="Inc\UnMallocDLIPhone.inl" />
+    <None Include="Src\AppNotificationsIPhone.mm" />
+    <None Include="Src\ApsalarAnalyticsIPhone.mm" />
+    <None Include="Src\AudioDeviceIPhone.mm" />
+    <None Include="Src\CloudStorageIPhone.mm" />
+    <None Include="Src\EAGLView.mm" />
+    <None Include="Src\FacebookIPhone.mm" />
+    <None Include="Src\FullScreenMovieIPhone.mm" />
+    <None Include="Src\InAppMessageIPhone.mm" />
+    <None Include="Src\IPhoneAppDelegate.mm" />
+    <None Include="Src\IPhoneAsyncTask.mm" />
+    <None Include="Src\IPhoneClient.mm" />
+    <None Include="Src\IPhoneHome.mm" />
+    <None Include="Src\IPhoneInput.mm" />
+    <None Include="Src\IPhoneObjCWrapper.mm" />
+    <None Include="Src\main.mm" />
+    <None Include="Resources\IPhone-Info.plist" />
+    <None Include="Resources\ResourceRules.plist" />
+    <None Include="..\..\..\Binaries\IPhone\Targets.txt" />
+    <None Include="..\..\..\Engine\Config\IPhone\IPhoneEngine.ini" />
+    <None Include="..\..\..\Engine\Config\IPhone\IPhoneGame.ini" />
+    <None Include="..\..\..\Engine\Config\IPhone\IPhoneInput.ini" />
+    <None Include="..\..\..\Engine\Config\IPhone\IPhoneUI.ini" />
+    <None Include="..\..\External\Facebook\IPhone\src\Facebook.m" />
+    <None Include="..\..\External\Facebook\IPhone\src\facebook_ios_sdk_Prefix.pch" />
+    <None Include="..\..\External\Facebook\IPhone\src\FBDialog.m" />
+    <None Include="..\..\External\Facebook\IPhone\src\FBLoginDialog.m" />
+    <None Include="..\..\External\Facebook\IPhone\src\FBRequest.m" />
+    <None Include="..\..\External\Facebook\IPhone\src\JSON\NSObject+SBJSON.m" />
+    <None Include="..\..\External\Facebook\IPhone\src\JSON\NSString+SBJSON.m" />
+    <None Include="..\..\External\Facebook\IPhone\src\JSON\SBJSON.m" />
+    <None Include="..\..\External\Facebook\IPhone\src\JSON\SBJsonBase.m" />
+    <None Include="..\..\External\Facebook\IPhone\src\JSON\SBJsonParser.m" />
+    <None Include="..\..\External\Facebook\IPhone\src\JSON\SBJsonWriter.m" />
+    <None Include="Src\MicroTransactionIPhone.mm" />
+    <None Include="Src\NSStringExtensions.mm" />
+    <None Include="Src\SwrveAnalyticsProviderIPhone.mm" />
+    <None Include="Src\TwitterIntegrationIPhone.mm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\AsyncLoadingIPhone.cpp" />
+    <ClCompile Include="Src\FFileManagerIPhone.cpp" />
+    <ClCompile Include="Src\FMallocIPhone.cpp" />
+    <ClCompile Include="Src\HttpRequestIPhone.mm" />
+    <ClCompile Include="Src\IPhone.cpp" />
+    <ClCompile Include="Src\IPhoneThreading.cpp" />
+    <ClCompile Include="Src\IPhoneViewport.cpp" />
+    <ClCompile Include="Src\SwrveIntegrationIPhone.c" />
+    <ClCompile Include="Src\UnSocketBSD.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

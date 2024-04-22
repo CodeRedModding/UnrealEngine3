@@ -1,0 +1,62 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.BuildFailuresModel
+
+@{
+    ViewBag.Title = "Build System";
+    ViewBag.Description = "Current Status";
+}
+
+<section>
+    <div class="grid6">
+        <span class="linkBack">
+            @Html.ActionLink("Build Status", "Status", "Build")
+        </span>
+
+        <span class="fr">
+            <a href="#failing">All Failing Builds</a>
+        </span>
+    </div>
+</section>
+
+<section>
+    <div class="grid6">
+        <a name="failing"></a>
+
+        <h2>All Failing Builds</h2>
+
+        @if (Model.FailedCommands.Count() > 0)
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Branch</th>
+                        <th>Days Broken</th>
+                        <th>Last Attempted</th>
+                        <th class="highlight">Last Good</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.FailedCommands)
+                    {
+                        <tr class="bad">
+                            <td>
+                                <img src="~/Content/Themes/Base/Images/cross.png" alt="Bad" />
+                                @c.Description
+                            </td>
+                            <td>@Html.ActionLink(@c.Branch, "Branch", "Build", new { id = c.Branch }, new { title = "Click for branch details" })</td>
+                            <td>@c.DaysBroken</td>
+                            <td>@Html.ActionLink("CL " + c.LastAttemptedChangeList.ToString(), "Changelist", "Build", new { id = c.LastAttemptedChangeList.ToString() }, null)</td>
+                            <td class="highlight">@Html.ActionLink("CL " + c.LastGoodChangeList.ToString(), "Changelist", "Build", new { id = c.LastGoodChangeList.ToString() }, null)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div>There are no build failures at this time.</div>
+        }
+
+        <a class="linkUp" href="#top">Back to top</a>
+    </div>
+</section>

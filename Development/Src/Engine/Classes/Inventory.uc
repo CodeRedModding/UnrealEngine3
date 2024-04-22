@@ -7,6 +7,7 @@
 // PickupClass).  When tossed out (using the DropFrom() function), inventory items
 // spawn a DroppedPickup actor to hold them.
 //
+// Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 //=============================================================================
 
 class Inventory extends Actor
@@ -16,31 +17,29 @@ class Inventory extends Actor
 
 //-----------------------------------------------------------------------------
 
-var	bool				bRenderOverlays;		// If true, this inventory item will be given access to HUD Canvas. RenderOverlays() is called.
-var bool				bReceiveOwnerEvents;	// If true, receive Owner events. OwnerEvent() is called.
-
 var	Inventory			Inventory;				// Next Inventory in Linked List
 var InventoryManager	InvManager;
 var	localized string	ItemName;
 
+/** if true, this inventory item should be dropped if the owner dies */
+var bool bDropOnDeath;
+
 //-----------------------------------------------------------------------------
 // Pickup related properties
-var()	float								RespawnTime;			// Respawn after this time, 0 for instant.
 var bool bDelayedSpawn;
 var		bool								bPredictRespawns;		// high skill bots may predict respawns for this item
+var()	float								RespawnTime;			// Respawn after this time, 0 for instant.
 var  float									MaxDesireability;		// Maximum desireability this item will ever have.
 var() localized string						PickupMessage;			// Human readable description when picked up.
 var() SoundCue PickupSound;
-var() string PickupForce;  
+var() string PickupForce;
 var			class<DroppedPickup>			DroppedPickupClass;
-var			TransformComponent			DroppedPickupMesh;
-var			TransformComponent			PickupFactoryMesh;
+var			PrimitiveComponent				DroppedPickupMesh;
+var			PrimitiveComponent				PickupFactoryMesh;
+var			ParticleSystemComponent			DroppedPickupParticles;
 
 cpptext
 {
-	// Constructors.
-	AInventory() {}
-
 	// AActor interface.
 	INT* GetOptimizedRepList( BYTE* InDefault, FPropertyRetirement* Retire, INT* Ptr, UPackageMap* Map, UActorChannel* Channel );
 }
@@ -49,41 +48,13 @@ cpptext
 replication
 {
 	// Things the server should send to the client.
-	unreliable if ( (Role==ROLE_Authority) && bNetDirty && bNetOwner )
-		Inventory;
+	if ( (Role==ROLE_Authority) && bNetDirty && bNetOwner )
+		Inventory, InvManager;
 }
-
-
-/**
- * Access to HUD and Canvas. Set bRenderOverlays=true to receive event.
- * Event called every frame when the item is in the InventoryManager
- *
- * @param	HUD H
- */
-simulated function RenderOverlays( HUD H );
-
-/**
- * Access to HUD and Canvas.
- * Event always called when the InventoryManager considers this Inventory Item currently "Active"
- * (for example active weapon)
- *
- * @param	HUD H
- */
-simulated function ActiveRenderOverlays( HUD H );
 
 simulated function String GetHumanReadableName()
 {
 	return Default.ItemName;
-}
-
-
-/* TravelPreAccept:
-	Called after a travelling inventory item has been accepted into a level.
-*/
-event TravelPreAccept()
-{
-	super.TravelPreAccept();
-	GiveTo( Pawn(Owner) );
 }
 
 event Destroyed()
@@ -96,12 +67,16 @@ event Destroyed()
 }
 
 /* Inventory has an AI interface to allow AIControllers, such as bots, to assess the
- desireability of acquiring that pickup.  The BotDesireability() method returns a
- float typically between 0 and 1 describing how valuable the pickup is to the
- AIController.  This method is called when an AIController uses the
- FindPathToBestInventory() navigation intrinsic.
-*/
-static function float BotDesireability( pawn P )
+ * desireability of acquiring that pickup.  The BotDesireability() method returns a
+ * float typically between 0 and 1 describing how valuable the pickup is to the
+ * AIController.  This method is called when an AIController uses the
+ * FindPathToBestInventory() navigation intrinsic.
+ * @param PickupHolder - Actor in the world that holds the inventory item (usually DroppedPickup or PickupFactory)
+ * @param P - the Pawn the AI is evaluating this item for
+ * @param C - the Controller that is evaluating this item. Might not be P.Controller - the AI may choose to
+ * 		evaluate the usability of the item by the driver Pawn of a vehicle it is currently controlling, for example
+ */
+static function float BotDesireability(Actor PickupHolder, Pawn P, Controller C)
 {
 	local Inventory AlreadyHas;
 	local float desire;
@@ -145,15 +120,47 @@ final function GiveTo( Pawn Other )
 function AnnouncePickup(Pawn Other)
 {
 	Other.HandlePickup(self);
-	Other.PlaySound( PickupSound );
+
+	if (PickupSound != None)
+	{
+		Other.PlaySound( PickupSound );
+	}
 }
 
 /**
  * This Inventory Item has just been given to this Pawn
+ * (server only)
  *
- * @param	thisPawn	new Inventory owner
+ * @param	thisPawn			new Inventory owner
+ * @param	bDoNotActivate		If true, this item will not try to activate
  */
-function GivenTo( Pawn thisPawn );
+function GivenTo( Pawn thisPawn, optional bool bDoNotActivate )
+{
+	`LogInv(thisPawn @ "Weapon:" @ Self);
+	Instigator = ThisPawn;
+	ClientGivenTo(thisPawn, bDoNotActivate);
+}
+
+/**
+ * This Inventory Item has just been given to this Pawn
+ * (owning client only)
+ *
+ * @param	thisPawn			new Inventory owner
+ * @param	bDoNotActivate		If true, this item will not try to activate
+ */
+reliable client function ClientGivenTo(Pawn NewOwner, bool bDoNotActivate)
+{
+	// make sure Owner is set - if Inventory item fluctuates Owners there is a chance this might not get updated normally
+	SetOwner(NewOwner);
+	Instigator = NewOwner;
+
+	`LogInv(NewOwner @ "Weapon:" @ Self);
+
+	if( NewOwner != None && NewOwner.Controller != None )
+	{
+		NewOwner.Controller.NotifyAddInventory(Self);
+	}
+}
 
 /**
  * Event called when Item is removed from Inventory Manager.
@@ -162,48 +169,62 @@ function GivenTo( Pawn thisPawn );
 function ItemRemovedFromInvManager();
 
 
-/* DenyPickupQuery
+/** DenyPickupQuery
 	Function which lets existing items in a pawn's inventory
-	prevent the pawn from picking something up. Return true to abort pickup
-	or if item handles pickup.
-*/
-function bool DenyPickupQuery( class<Inventory> ItemClass )
+	prevent the pawn from picking something up.
+ * @param ItemClass Class of Inventory our Owner is trying to pick up
+ * @param Pickup the Actor containing that item (this may be a PickupFactory or it may be a DroppedPickup)
+ * @return true to abort pickup or if item handles pickup
+ */
+function bool DenyPickupQuery(class<Inventory> ItemClass, Actor Pickup)
 {
 	// By default, you can only carry a single item of a given class.
 	if ( ItemClass == class )
+	{
 		return true;
+	}
 
 	return false;
 }
 
-/* DropFrom
-	Toss this item out.
-*/
-function DropFrom( vector StartLocation, vector StartVelocity )
+
+/**
+ * Drop this item out in to the world
+ *
+ * @param	StartLocation 		- The World Location to drop this item from
+ * @param	StartVelocity		- The initial velocity for the item when dropped
+ */
+function DropFrom(vector StartLocation, vector StartVelocity)
 {
 	local DroppedPickup P;
 
-	if ( Instigator != None && Instigator.InvManager != None )
+	if( Instigator != None && Instigator.InvManager != None )
 	{
-		Instigator.InvManager.RemoveFromInventory( Self );
+		Instigator.InvManager.RemoveFromInventory(Self);
+	}
+
+	// if cannot spawn a pickup, then destroy and quit
+	if( DroppedPickupClass == None || DroppedPickupMesh == None )
+	{
+		Destroy();
+		return;
 	}
 
 	P = Spawn(DroppedPickupClass,,, StartLocation);
-	if ( P == None )
+	if( P == None )
 	{
 		Destroy();
 		return;
 	}
 
 	P.SetPhysics(PHYS_Falling);
-	P.Inventory = self;
+	P.Inventory	= self;
+	P.InventoryClass = class;
 	P.Velocity = StartVelocity;
+	P.Instigator = Instigator;
+	P.SetPickupMesh(DroppedPickupMesh);
+	P.SetPickupParticles(DroppedPickupParticles);
 
-	// set up P to render this item
-	if ( DroppedPickupMesh != None )
-	{
-		P.SetPickupMesh(DroppedPickupMesh);
-	}
 	Instigator = None;
 	GotoState('');
 }
@@ -217,25 +238,24 @@ static function string GetLocalString(
 	return Default.PickupMessage;
 }
 
-/* OwnerEvent:
-	Used to inform inventory when owner event occurs (for example jumping or weapon change)
-	set bReceiveOwnerEvents=true to receive events.
-*/
-function OwnerEvent(name EventName);
-
 defaultproperties
 {
-	CollisionComponent=None
-	Components.Remove(CollisionCylinder)
+	Begin Object Class=SpriteComponent Name=Sprite
+		Sprite=Texture2D'EditorResources.S_Actor'
+		HiddenGame=True
+		AlwaysLoadOnClient=False
+		AlwaysLoadOnServer=False
+		SpriteCategoryName="Inventory"
+	End Object
+	Components.Add(Sprite)
+
 	bOnlyDirtyReplication=true
 	bOnlyRelevantToOwner=true
-	bTravel=true
 	NetPriority=1.4
 	bHidden=true
 	Physics=PHYS_None
 	bReplicateMovement=false
 	RemoteRole=ROLE_SimulatedProxy
 	DroppedPickupClass=class'DroppedPickup'
-	PickupMessage="Snagged an item."
 	MaxDesireability=0.1000
 }

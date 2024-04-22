@@ -1,118 +1,39 @@
 /*=============================================================================
 	FFileManagerWindows.h: Unreal Windows OS based file manager.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
-
-	Revision history:
-		* Created by Tim Sweeney
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/
 
+#ifndef __FILEMANAGERWINDOWS_H__
+#define __FILEMANAGERWINDOWS_H__
+
+#include "FTableOfContents.h"
 #include "FFileManagerGeneric.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
-
 /*-----------------------------------------------------------------------------
-	File Manager.
+	FArchiveFileReaderWindows
 -----------------------------------------------------------------------------*/
 
 // File manager.
-class FArchiveFileReader : public FArchive
+class FArchiveFileReaderWindows : public FArchive
 {
 public:
-	FArchiveFileReader( HANDLE InHandle, FOutputDevice* InError, INT InSize )
-	:   Handle          ( InHandle )
-	,   Error           ( InError )
-	,   Size            ( InSize )
-	,   Pos             ( 0 )
-	,   BufferBase      ( 0 )
-	,   BufferCount     ( 0 )
-	{
-		ArIsLoading = ArIsPersistent = 1;
-	}
-	~FArchiveFileReader()
-	{
-		if( Handle )
-			Close();
-	}
-	void Precache( INT HintCount )
-	{
-		checkSlow(Pos==BufferBase+BufferCount);
-		BufferBase = Pos;
-		BufferCount = Min( Min( HintCount, (INT)(ARRAY_COUNT(Buffer) - (Pos&(ARRAY_COUNT(Buffer)-1))) ), Size-Pos );
-		INT Count=0;
-		ReadFile( Handle, Buffer, BufferCount, (DWORD*)&Count, NULL );
-		if( Count!=BufferCount )
-		{
-			ArIsError = 1;
-			Error->Logf( TEXT("ReadFile failed: Count=%i BufferCount=%i Error=%s"), Count, BufferCount, appGetSystemErrorMessage() );
-		}
-	}
-	void Seek( INT InPos )
-	{
-		check(InPos>=0);
-		check(InPos<=Size);
-		if( SetFilePointer( Handle, InPos, 0, FILE_BEGIN )==0xFFFFFFFF )
-		{
-			ArIsError = 1;
-			Error->Logf( TEXT("SetFilePointer Failed %i/%i: %i %s"), InPos, Size, Pos, appGetSystemErrorMessage() );
-		}
-		Pos         = InPos;
-		BufferBase  = Pos;
-		BufferCount = 0;
-	}
-	INT Tell()
-	{
-		return Pos;
-	}
-	INT TotalSize()
-	{
-		return Size;
-	}
-	UBOOL Close()
-	{
-		if( Handle )
-			CloseHandle( Handle );
-		Handle = NULL;
-		return !ArIsError;
-	}
-	void Serialize( void* V, INT Length )
-	{
-		while( Length>0 )
-		{
-			INT Copy = Min( Length, BufferBase+BufferCount-Pos );
-			if( Copy==0 )
-			{
-				if( Length >= ARRAY_COUNT(Buffer) )
-				{
-					INT Count=0;
-					ReadFile( Handle, V, Length, (DWORD*)&Count, NULL );
-					if( Count!=Length )
-					{
-						ArIsError = 1;
-						Error->Logf( TEXT("ReadFile failed: Count=%i Length=%i Error=%s"), Count, Length, appGetSystemErrorMessage() );
-					}
-					Pos += Length;
-					BufferBase += Length;
-					return;
-				}
-				Precache( MAXINT );
-				Copy = Min( Length, BufferBase+BufferCount-Pos );
-				if( Copy<=0 )
-				{
-					ArIsError = 1;
-					Error->Logf( TEXT("ReadFile beyond EOF %i+%i/%i"), Pos, Length, Size );
-				}
-				if( ArIsError )
-					return;
-			}
-			appMemcpy( V, Buffer+Pos-BufferBase, Copy );
-			Pos       += Copy;
-			Length    -= Copy;
-			V          = (BYTE*)V + Copy;
-		}
-	}
+	FArchiveFileReaderWindows( HANDLE InHandle, INT InStatsHandle, const TCHAR* InFilename, FOutputDevice* InError, INT InSize );
+	~FArchiveFileReaderWindows();
+
+	virtual void Seek( INT InPos );
+	virtual INT Tell();
+	virtual INT TotalSize();
+	virtual UBOOL Close();
+	virtual void Serialize( void* V, INT Length );
+
 protected:
+	UBOOL InternalPrecache( INT PrecacheOffset, INT PrecacheSize );
+
 	HANDLE          Handle;
+	/** Handle for stats tracking */
+	INT				StatsHandle;
+	/** Filename for debugging purposes. */
+	FString			Filename;
 	FOutputDevice*  Error;
 	INT             Size;
 	INT             Pos;
@@ -120,277 +41,195 @@ protected:
 	INT             BufferCount;
 	BYTE            Buffer[1024];
 };
-class FArchiveFileWriter : public FArchive
+
+
+/*-----------------------------------------------------------------------------
+	FArchiveFileWriterWindows
+-----------------------------------------------------------------------------*/
+
+class FArchiveFileWriterWindows : public FArchive
 {
 public:
-	FArchiveFileWriter( HANDLE InHandle, FOutputDevice* InError, INT InPos )
-	:   Handle      ( InHandle )
-	,   Error       ( InError )
-	,   Pos         ( InPos )
-	,   BufferCount ( 0 )
-	{
-		ArIsSaving = ArIsPersistent = 1;
-	}
-	~FArchiveFileWriter()
-	{
-		if( Handle )
-			Close();
-		Handle = NULL;
-	}
-	void Seek( INT InPos )
-	{
-		Flush();
-		if( SetFilePointer( Handle, InPos, 0, FILE_BEGIN )==0xFFFFFFFF )
-		{
-			ArIsError = 1;
-			Error->Logf( *LocalizeError("SeekFailed",TEXT("Core")) );
-		}
-		Pos = InPos;
-	}
-	INT Tell()
-	{
-		return Pos;
-	}
-	UBOOL Close()
-	{
-		Flush();
-		if( Handle && !CloseHandle(Handle) )
-		{
-			ArIsError = 1;
-			Error->Logf( *LocalizeError("WriteFailed",TEXT("Core")) );
-		}
-		Handle = NULL;
-		return !ArIsError;
-	}
-	void Serialize( void* V, INT Length )
-	{
-		Pos += Length;
-		INT Copy;
-		while( Length > (Copy=ARRAY_COUNT(Buffer)-BufferCount) )
-		{
-			appMemcpy( Buffer+BufferCount, V, Copy );
-			BufferCount += Copy;
-			Length      -= Copy;
-			V            = (BYTE*)V + Copy;
-			Flush();
-		}
-		if( Length )
-		{
-			appMemcpy( Buffer+BufferCount, V, Length );
-			BufferCount += Length;
-		}
-	}
-	void Flush()
-	{
-		if( BufferCount )
-		{
-			INT Result=0;
-			if( !WriteFile( Handle, Buffer, BufferCount, (DWORD*)&Result, NULL ) )
-			{
-				ArIsError = 1;
-				Error->Logf( *LocalizeError("WriteFailed",TEXT("Core")) );
-			}
-		}
-		BufferCount = 0;
-	}
+	FArchiveFileWriterWindows( HANDLE InHandle, INT InStatsHandle, const TCHAR* InFilename, FOutputDevice* InError, INT InPos );
+	~FArchiveFileWriterWindows();
+
+	virtual void Seek( INT InPos );
+	virtual INT Tell();
+	virtual INT TotalSize();
+	virtual UBOOL Close();
+	virtual void Serialize( void* V, INT Length );
+	virtual void Flush();
+
 protected:
 	HANDLE          Handle;
+	/** Handle for stats tracking */
+	INT				StatsHandle;
+	/** Filename for debugging purposes */
+	FString			Filename;
 	FOutputDevice*  Error;
 	INT             Pos;
 	INT             BufferCount;
 	BYTE            Buffer[4096];
 };
+
+
+/*-----------------------------------------------------------------------------
+	FFileManagerWindows
+-----------------------------------------------------------------------------*/
+
 class FFileManagerWindows : public FFileManagerGeneric
 {
 public:
-	FArchive* CreateFileReader( const TCHAR* Filename, DWORD Flags, FOutputDevice* Error )
-	{
-		DWORD  Access    = GENERIC_READ;
-		DWORD  WinFlags  = FILE_SHARE_READ;
-		DWORD  Create    = OPEN_EXISTING;
-		HANDLE Handle    = TCHAR_CALL_OS( CreateFileW( Filename, Access, WinFlags, NULL, Create, FILE_ATTRIBUTE_NORMAL, NULL ), CreateFileA( TCHAR_TO_ANSI(Filename), Access, WinFlags, NULL, Create, FILE_ATTRIBUTE_NORMAL, NULL ) );
-		if( Handle==INVALID_HANDLE_VALUE )
-		{
-			if( Flags & FILEREAD_NoFail )
-				appErrorf( TEXT("Failed to read file: %s"), Filename );
-			return NULL;
-		}
-		return new FArchiveFileReader(Handle,Error,GetFileSize(Handle,NULL));
-	}
-	FArchive* CreateFileWriter( const TCHAR* Filename, DWORD Flags, FOutputDevice* Error )
-	{
-		if( (GFileManager->FileSize (Filename) >= 0) && (Flags & FILEWRITE_EvenIfReadOnly) )
-			TCHAR_CALL_OS(SetFileAttributesW(Filename, 0),SetFileAttributesA(TCHAR_TO_ANSI(Filename), 0));
-		DWORD  Access    = GENERIC_WRITE;
-		DWORD  WinFlags  = (Flags & FILEWRITE_AllowRead) ? FILE_SHARE_READ : 0;
-		DWORD  Create    = (Flags & FILEWRITE_Append) ? OPEN_ALWAYS : (Flags & FILEWRITE_NoReplaceExisting) ? CREATE_NEW : CREATE_ALWAYS;
-		HANDLE Handle    = TCHAR_CALL_OS( CreateFileW( Filename, Access, WinFlags, NULL, Create, FILE_ATTRIBUTE_NORMAL, NULL ), CreateFileA( TCHAR_TO_ANSI(Filename), Access, WinFlags, NULL, Create, FILE_ATTRIBUTE_NORMAL, NULL ) );
-		INT    Pos       = 0;
-		if( Handle==INVALID_HANDLE_VALUE )
-		{
-			if( Flags & FILEWRITE_NoFail )
-				appErrorf( TEXT("Failed to create file: %s"), Filename );
-			return NULL;
-		}
-		if( Flags & FILEWRITE_Append )
-			Pos = SetFilePointer( Handle, 0, 0, FILE_END );
-		return new FArchiveFileWriter(Handle,Error,Pos);
-	}
-	INT FileSize( const TCHAR* Filename )
-	{
-		HANDLE Handle = TCHAR_CALL_OS( CreateFileW( Filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL ), CreateFileA( TCHAR_TO_ANSI(Filename), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL ) );
-		if( Handle==INVALID_HANDLE_VALUE )
-			return -1;
-		DWORD Result = GetFileSize( Handle, NULL );
-		CloseHandle( Handle );
-		return Result;
-	}
-	DWORD Copy( const TCHAR* DestFile, const TCHAR* SrcFile, UBOOL ReplaceExisting, UBOOL EvenIfReadOnly, UBOOL Attributes, DWORD Compress, FCopyProgress* Progress )
-	{
-		if( EvenIfReadOnly )
-			TCHAR_CALL_OS(SetFileAttributesW(DestFile, 0),SetFileAttributesA(TCHAR_TO_ANSI(DestFile), 0));
-		DWORD Result;
-		if( Progress || Compress != FILECOPY_Normal )
-			Result = FFileManagerGeneric::Copy( DestFile, SrcFile, ReplaceExisting, EvenIfReadOnly, Attributes, Compress, Progress );
-		else
-		{
-			if( TCHAR_CALL_OS(CopyFileW(SrcFile, DestFile, !ReplaceExisting),CopyFileA(TCHAR_TO_ANSI(SrcFile), TCHAR_TO_ANSI(DestFile), !ReplaceExisting)) != 0)
-				Result = COPY_OK;
-			else
-				Result = COPY_MiscFail;
-		}
-		if( Result==COPY_OK && !Attributes )
-			TCHAR_CALL_OS(SetFileAttributesW(DestFile, 0),SetFileAttributesA(TCHAR_TO_ANSI(DestFile), 0));
-		return Result;
-	}
-	UBOOL Delete( const TCHAR* Filename, UBOOL RequireExists=0, UBOOL EvenReadOnly=0 )
-	{
-		if( EvenReadOnly )
-			TCHAR_CALL_OS(SetFileAttributesW(Filename,FILE_ATTRIBUTE_NORMAL),SetFileAttributesA(TCHAR_TO_ANSI(Filename),FILE_ATTRIBUTE_NORMAL));
-		INT Result = TCHAR_CALL_OS(DeleteFile(Filename),DeleteFileA(TCHAR_TO_ANSI(Filename)))!=0 || (!RequireExists && GetLastError()==ERROR_FILE_NOT_FOUND);
-		if( !Result )
-		{
-			DWORD error = GetLastError();
-			debugf( NAME_Warning, TEXT("Error deleting file '%s' (0x%d)"), Filename, error );
-		}
-		return Result!=0;
-	}
-	UBOOL IsReadOnly( const TCHAR* Filename )
-	{
-		DWORD rc;
-		if( FileSize( Filename ) < 0 )
-			return( 0 );
-		rc = TCHAR_CALL_OS(GetFileAttributesW(Filename),GetFileAttributesA(TCHAR_TO_ANSI(Filename)));
-		if (rc != 0xFFFFFFFF)
-			return ((rc & FILE_ATTRIBUTE_READONLY) != 0);
-		else
-		{
-			debugf( NAME_Warning, TEXT("Error reading attributes for '%s'"), Filename );
-			return (0);
-		}
-	}
-	UBOOL Move( const TCHAR* Dest, const TCHAR* Src, UBOOL Replace=1, UBOOL EvenIfReadOnly=0, UBOOL Attributes=0 )
-	{
-		//warning: MoveFileEx is broken on Windows 95 (Microsoft bug).
-		Delete( Dest, 0, EvenIfReadOnly );
-		INT Result = TCHAR_CALL_OS( MoveFileW(Src,Dest), MoveFileA(TCHAR_TO_ANSI(Src),TCHAR_TO_ANSI(Dest)) );
-		if( !Result )
-		{
-			DWORD error = GetLastError();
-			debugf( NAME_Warning, TEXT("Error moving file '%s' to '%s' (%d)"), Src, Dest, error );
-		}
-		return Result!=0;
-	}
-	UBOOL MakeDirectory( const TCHAR* Path, UBOOL Tree=0 )
-	{
-		if( Tree )
-			return FFileManagerGeneric::MakeDirectory( Path, Tree );
-		return TCHAR_CALL_OS( CreateDirectoryW(Path,NULL), CreateDirectoryA(TCHAR_TO_ANSI(Path),NULL) )!=0 || GetLastError()==ERROR_ALREADY_EXISTS;
-	}
-	UBOOL DeleteDirectory( const TCHAR* Path, UBOOL RequireExists=0, UBOOL Tree=0 )
-	{
-		if( Tree )
-			return FFileManagerGeneric::DeleteDirectory( Path, RequireExists, Tree );
-		return TCHAR_CALL_OS( RemoveDirectoryW(Path), RemoveDirectoryA(TCHAR_TO_ANSI(Path)) )!=0 || (!RequireExists && GetLastError()==ERROR_FILE_NOT_FOUND);
-	}
-	void FindFiles( TArray<FString>& Result, const TCHAR* Filename, UBOOL Files, UBOOL Directories )
-	{
-		HANDLE Handle=NULL;
-#if UNICODE
-		if( GUnicodeOS )
-		{
-			WIN32_FIND_DATAW Data;
-			Handle=FindFirstFileW(Filename,&Data);
-			if( Handle!=INVALID_HANDLE_VALUE )
-				do
-					if
-					(   appStricmp(Data.cFileName,TEXT("."))
-					&&  appStricmp(Data.cFileName,TEXT(".."))
-					&&  ((Data.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)?Directories:Files) )
-						new(Result)FString(Data.cFileName);
-				while( FindNextFileW(Handle,&Data) );
-		}
-		else
-#endif
-		{
-			WIN32_FIND_DATAA Data;
-			Handle=FindFirstFileA(TCHAR_TO_ANSI(Filename),&Data);
-			if( Handle!=INVALID_HANDLE_VALUE )
-			{
-				do
-				{
-					TCHAR Name[MAX_PATH];
-					winToUNICODE( Name, Data.cFileName, Min<INT>( ARRAY_COUNT(Name), winGetSizeUNICODE(Data.cFileName) ) );              
-					if
-					(	appStricmp(Name,TEXT("."))
-					&&	appStricmp(Name,TEXT(".."))
-					&&	((Data.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)?Directories:Files) )
-						new(Result)FString(Name);
-				}
-				while( FindNextFileA(Handle,&Data) );
-			}
-		}
-		if( Handle!=INVALID_HANDLE_VALUE )
-			FindClose( Handle );
-	}
-	DOUBLE GetFileAgeSeconds( const TCHAR* Filename )
-	{
-		struct _stat FileInfo;
-		if( 0 == TCHAR_CALL_OS( _wstat( Filename, &FileInfo ), _stat( TCHAR_TO_ANSI( Filename ), &FileInfo ) ) )
-		{
-			time_t	CurrentTime,
-					FileTime;	
-			FileTime = FileInfo.st_mtime;
-			time( &CurrentTime );
+	void Init(UBOOL Startup);
 
-			return difftime( CurrentTime, FileTime );
-		}
-		return -1.0;
-	}
-	UBOOL SetDefaultDirectory()
-	{
-		return TCHAR_CALL_OS(SetCurrentDirectoryW(appBaseDir()),SetCurrentDirectoryA(TCHAR_TO_ANSI(appBaseDir())))!=0;
-	}
-	FString GetCurrentDirectory()
-	{
-#if UNICODE
-		if( GUnicodeOS )
-		{
-			TCHAR Buffer[1024]=TEXT("");
-			::GetCurrentDirectoryW(ARRAY_COUNT(Buffer),Buffer);
-			return FString(Buffer);
-		}
-		else
-#endif
-		{
-			ANSICHAR Buffer[1024]="";
-			::GetCurrentDirectoryA(ARRAY_COUNT(Buffer),Buffer);
-			return FString( Buffer );
-		}
-	}
+	UBOOL SetDefaultDirectory();
+	UBOOL SetCurDirectory(const TCHAR* Directory);
+	FString GetCurrentDirectory();
+
+	FArchive* CreateFileReader( const TCHAR* InFilename, DWORD Flags, FOutputDevice* Error );
+	FArchive* CreateFileWriter( const TCHAR* Filename, DWORD Flags, FOutputDevice* Error, INT MaxFileSize );
+	INT	UncompressedFileSize( const TCHAR* Filename );
+	DWORD Copy( const TCHAR* DestFile, const TCHAR* SrcFile, UBOOL ReplaceExisting, UBOOL EvenIfReadOnly, UBOOL Attributes, FCopyProgress* Progress );
+	UBOOL Delete( const TCHAR* Filename, UBOOL RequireExists=0, UBOOL EvenReadOnly=0 );
+	UBOOL IsReadOnly( const TCHAR* Filename );
+	UBOOL Move( const TCHAR* Dest, const TCHAR* Src, UBOOL Replace=1, UBOOL EvenIfReadOnly=0, UBOOL Attributes=0 );
+	UBOOL MakeDirectory( const TCHAR* Path, UBOOL Tree=0 );
+	UBOOL DeleteDirectory( const TCHAR* Path, UBOOL RequireExists=0, UBOOL Tree=0 );
+	void FindFiles( TArray<FString>& Result, const TCHAR* Filename, UBOOL Files, UBOOL Directories );
+	DOUBLE GetFileAgeSeconds( const TCHAR* Filename );
+	DOUBLE GetFileTimestamp( const TCHAR* Filename );
+	UBOOL GetTimestamp( const TCHAR* Filename, FTimeStamp& Timestamp );
+
+	/**
+	 * Updates the modification time of the file on disk to right now, just like the unix touch command
+	 * @param Filename Path to the file to touch
+	 * @return TRUE if successful
+	 */
+	UBOOL TouchFile(const TCHAR* Filename);
+
+	/**
+	 * Converts a path pointing into the installed directory (C:\Program Files\MyGame\ExampleGame\Config\ExampleEngine.ini)
+	 * to a path that a least-privileged user can write to (C:\<UserDir>\MyGame\ExampleGame\Config\ExampleEngine.ini)
+	 *
+	 * @param AbsolutePath Source path to convert
+	 *
+	 * @return Path to the user directory
+	 */
+	FString ConvertAbsolutePathToUserPath(const TCHAR* AbsolutePath);
+
+	/**
+	 * Converts passed in filename to use a relative path.
+	 *
+	 * @param	Filename	filename to convert to use a relative path
+	 * 
+	 * @return	filename using relative path
+	 */
+	FString FFileManagerWindows::ConvertToRelativePath( const TCHAR* Filename );
+
+	/**
+	 * Converts passed in filename to use an absolute path.
+	 *
+	 * @param	Filename	filename to convert to use an absolute path, safe to pass in already using absolute path
+	 * 
+	 * @return	filename using absolute path
+	 */
+	FString ConvertToAbsolutePath( const TCHAR* Filename );
+
+	/**
+	 *	Returns the size of a file. (Thread-safe)
+	 *
+	 *	@param Filename		Platform-independent Unreal filename.
+	 *	@return				File size in bytes or INDEX_NONE if the file didn't exist.
+	 **/
+	virtual INT FileSize( const TCHAR* Filename );
+
+	/**
+	 *	Retrieves the total size of a volume and how much free space can be allocated by the caller.
+	 *
+	 *	@param Drive				Full path for the drive that we want to check: ex. C:\
+	 *	@param FreeBytesToCaller	Receives the total number of free bytes on a disk that are available to the user who is associated with the calling thread.
+	 *	@param TotalBytes			Receives the total number of bytes on a disk that are available to the user who is associated with the calling thread.
+	 *	@param FreeBytes			Receives the total number of free bytes on a disk.
+	 *	@return						False if the operation failed to retrieve valid size info, true otherwise. 
+	 **/
+	UBOOL FFileManagerWindows::GetDiskFreeSpace(const TCHAR* Drive, QWORD& FreeBytesToCaller, QWORD& TotalBytes, QWORD& FreeBytes );
+
+protected:
+	FArchive* InternalCreateFileReader( const TCHAR* InFilename, DWORD Flags, FOutputDevice* Error );
+	FArchive* InternalCreateFileWriter( const TCHAR* Filename, DWORD Flags, FOutputDevice* Error );
+	/**
+	 *	Looks up the size of a file by opening a handle to the file.
+	 *
+	 *	@param	Filename	The path to the file.
+	 *	@return	The size of the file or -1 if it doesn't exist.
+	 */
+	virtual INT InternalFileSize( const TCHAR* Filename );
+	DWORD InternalCopy( const TCHAR* DestFile, const TCHAR* SrcFile, UBOOL ReplaceExisting, UBOOL EvenIfReadOnly, UBOOL Attributes, FCopyProgress* Progress );
+	UBOOL InternalDelete( const TCHAR* Filename, UBOOL RequireExists=0, UBOOL EvenReadOnly=0 );
+	UBOOL InternalIsReadOnly( const TCHAR* Filename );
+	UBOOL InternalMove( const TCHAR* Dest, const TCHAR* Src, UBOOL Replace=1, UBOOL EvenIfReadOnly=0, UBOOL Attributes=0 );
+	UBOOL InternalMakeDirectory( const TCHAR* Path, UBOOL Tree=0 );
+	UBOOL InternalDeleteDirectory( const TCHAR* Path, UBOOL RequireExists=0, UBOOL Tree=0 );
+	void InternalFindFiles( TArray<FString>& Result, const TCHAR* Filename, UBOOL Files, UBOOL Directories );
+	DOUBLE InternalGetFileAgeSeconds( const TCHAR* Filename );
+	DOUBLE InternalGetFileTimestamp( const TCHAR* Filename );
+	UBOOL InternalGetTimestamp( const TCHAR* Filename, FTimeStamp& Timestamp );
+
+	/**
+	 * Updates the modification time of the file on disk to right now, just like the unix touch command
+	 * @param Filename Path to the file to touch
+	 * @return TRUE if successful
+	 */
+	UBOOL InternalTouchFile(const TCHAR* Filename);
+
+	/**
+	 *	Sets the timestamp of a file.
+	 *
+	 *	@param Filename		Full path to the file.
+	 *	@param Timestamp	Timestamp to set
+	 *	@return				File size in bytes or -1 if the file didn't exist.
+	 **/
+	UBOOL InternalSetFileTimestamp( const TCHAR* Filename, DOUBLE TimeStamp );
+
+	/**
+	 *	Truncates an existing file, discarding data at the end to make it smaller. (Thread-safe)
+	 *
+	 *	@param Filename		Full path to the file.
+	 *	@param FileSize		New file size to truncate to. If this is larger than current file size, the function won't do anything.
+	 *	@return				Resulting file size or INDEX_NONE if the file didn't exist.
+	 **/
+	INT InternalFileTruncate( const TCHAR* Filename, INT FileSize );
+
+	/**
+	 *	Opens a file. (Thread-safe)
+	 *	If opened for write, it will create any necessary directory structure.
+	 *
+	 *	@param Filename		Full path to the file
+	 *	@param Flags		A combination of EFileOpenFlags, specifying read/write access.
+	 *	@return				File handle
+	 **/
+	FFileHandle InternalFileOpen( const TCHAR* Filename, DWORD Flags );
+
+	/**
+	 *	Retrieves the total size of a volume and how much free space can be allocated by the caller.
+	 *
+	 *	@param Drive				Full path for the drive that we want to check: ex. C:\
+	 *	@param FreeBytesToCaller	Receives the total number of free bytes on a disk that are available to the user who is associated with the calling thread.
+	 *	@param TotalBytes			Receives the total number of bytes on a disk that are available to the user who is associated with the calling thread.
+	 *	@param FreeBytes			Receives the total number of free bytes on a disk.
+	 *	@return						False if the operation failed to retrieve valid size info, true otherwise. 
+	 **/
+	UBOOL FFileManagerWindows::InternalGetDiskFreeSpace(const TCHAR* Drive, QWORD& FreeBytesToCaller, QWORD& TotalBytes, QWORD& FreeBytes );
+
+	/** Directory where a Standard User can write to (to save settings, etc) */
+	FString WindowsUserDir;
+
+	/** Directory where the game in installed to */
+	FString WindowsRootDir;
+
+	/** Is the game running as if installed, ie, out of a directory a Standard User can't write to? */
+	UBOOL bIsRunningInstalled;
+
 };
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
-
+#endif

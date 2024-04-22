@@ -1,0 +1,14 @@
+//
+// Prefix header for all source files of the 'Foam' target in the 'Foam' project
+//
+
+#ifdef __OBJC__
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+#include <libkern/OSAtomic.h>
+#endif
+
+#if __cplusplus
+#include "CorePrivate.h"
+#include "EnginePrivate.h"
+#endif

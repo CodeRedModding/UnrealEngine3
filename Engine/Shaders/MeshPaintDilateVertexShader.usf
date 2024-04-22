@@ -1,0 +1,21 @@
+/*================================================================================
+	MeshPaintVertexShader.usf: Mesh texture paint vertex shader
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+================================================================================*/
+
+#include "Common.usf"
+
+float4x4 c_Transform;
+
+void Main( in float4 InPosition : POSITION,
+		   in float2 InTextureCoordinates : TEXCOORD0,
+		   in float3 InWorldSpaceVertexPosition : COLOR0,
+		
+		   out float2 OutTextureCoordinates: TEXCOORD0,
+		   out float3 OutWorldSpaceVertexPosition : TEXCOORD1,
+		   out float4 OutPosition : POSITION )
+{
+	OutPosition = MulMatrix( c_Transform, InPosition );
+	OutTextureCoordinates = InTextureCoordinates;
+	OutWorldSpaceVertexPosition = InWorldSpaceVertexPosition;
+}

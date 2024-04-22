@@ -1,264 +1,233 @@
 /*=============================================================================
 	FFileManagerGeneric.h: Unreal generic file manager support code.
-	Copyright 1997-1999 Epic Games, Inc. All Rights Reserved.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 
 	This base class simplifies FFileManager implementations by providing
 	simple, unoptimized implementations of functions whose implementations
 	can be derived from other functions.
-
-	Revision history:
-		* Created by Tim Sweeney
 =============================================================================*/
 
-// for compression
-#include "../../zlib/zlib.h"
+#ifndef _INC_FILEMANAGERGENERIC
+#define _INC_FILEMANAGERGENERIC
+
+/*-----------------------------------------------------------------------------
+	File I/O tracking.
+-----------------------------------------------------------------------------*/
+
+#if !PERF_TRACK_FILEIO_STATS
+
+#define FILE_IO_STATS_GET_HANDLE(Filename) 0
+#define FILE_IO_STATS_CLOSE_HANDLE(StatsHandle)
+#define SCOPED_FILE_IO_READ_OPEN_STATS(StatsHandle)
+#define SCOPED_FILE_IO_READ_STATS(StatsHandle,Size,Offset)
+#define SCOPED_FILE_IO_ASYNC_READ_OPEN_STATS(StatsHandle)
+#define SCOPED_FILE_IO_ASYNC_READ_STATS(StatsHandle,Size,Offset)
+#define SCOPED_FILE_IO_WRITE_OPEN_STATS(StatsHandle)
+#define SCOPED_FILE_IO_WRITE_STATS(StatsHandle,Size,Offset)
+
+#else
+
+#define FILE_IO_STATS_GET_HANDLE(Filename)	GetFileIOStats()->GetHandle(Filename)
+#define FILE_IO_STATS_CLOSE_HANDLE(StatsHandle) GetFileIOStats()->MarkFileAsClosed(StatsHandle)
+#define SCOPED_FILE_IO_READ_OPEN_STATS(StatsHandle) FScopedFileIORequestStats ScopedFileIORequestStats(StatsHandle,(QWORD)-1,(QWORD)-1,FIOT_ReadOpenRequest)
+#define SCOPED_FILE_IO_READ_STATS(StatsHandle,Size,Offset) FScopedFileIORequestStats ScopedFileIORequestStats(StatsHandle,Size,Offset,FIOT_ReadRequest)
+#define SCOPED_FILE_IO_ASYNC_READ_OPEN_STATS(StatsHandle) FScopedFileIORequestStats ScopedFileIORequestStats(StatsHandle,(QWORD)-1,(QWORD)-1,FIOT_AsyncReadOpenRequest)
+#define SCOPED_FILE_IO_ASYNC_READ_STATS(StatsHandle,Size,Offset) FScopedFileIORequestStats ScopedFileIORequestStats(StatsHandle,Size,Offset,FIOT_AsyncReadRequest)
+#define SCOPED_FILE_IO_WRITE_OPEN_STATS(StatsHandle) FScopedFileIORequestStats ScopedFileIORequestStats(StatsHandle,(QWORD)-1,(QWORD)-1,FIOT_WriteOpenRequest)
+#define SCOPED_FILE_IO_WRITE_STATS(StatsHandle,Size,Offset) FScopedFileIORequestStats ScopedFileIORequestStats(StatsHandle,Size,Offset,FIOT_WriteRequest)
+
+/** Enum for I/O request classification. */
+enum EFileIOType
+{
+	FIOT_ReadOpenRequest,
+	FIOT_ReadRequest,
+	FIOT_AsyncReadOpenRequest,
+	FIOT_AsyncReadRequest,
+	FIOT_WriteOpenRequest,
+	FIOT_WriteRequest,
+};
+
+/** 
+ * File I/O stats collector object.
+ */
+struct FFileIOStats
+{
+	/**
+	 * Returns a handle associated with the passed in file if already existing, otherwise
+	 * it will create it first.
+	 *
+	 * @param	Filename	Filename to map to a handle
+	 * @return	unique handle associated with filename
+	 */
+	INT GetHandle( const TCHAR* Filename );
+
+	/**
+	 * Marks the associated file as being closed. Used to track which files are open.
+	 * 
+	 * @param	StatsHandle	Stats handle to mark associated file as closed.
+	 */
+	void MarkFileAsClosed( INT StatsHandle );
+
+	/**
+	 * Adds I/O request to the stat collection.
+	 *
+	 * @param	StatsHandle	Handle this request is for
+	 * @param	Size		Size of request
+	 * @param	Offset		Offset of request
+	 * @param	Duration	Time request took
+	 * @param	RequestType	Determines type of request
+	 */
+	void AddRequest( INT StatsHandle, QWORD Size, QWORD Offset, DOUBLE Duration, EFileIOType RequestType );
+
+	/** Dumps collected stats to log. */
+	void DumpStats();
+
+protected:
+	/** Helper struct containing all gathered information for a file. */
+	struct FFileIOSummary
+	{
+		/** Constructor, initializing all members. */
+		FFileIOSummary( const TCHAR* InFilename )
+		:	Filename			( InFilename )
+		,	bIsOpen				( TRUE )
+		,	ReadSize			( 0 )
+		,	ReadCount			( 0 )
+		,	ReadOpenTime		( 0 )
+		,	ReadTime			( 0 )
+		,	AsyncReadSize		( 0 )
+		,	AsyncReadCount		( 0 )
+		,	AsyncReadOpenTime	( 0 )
+		,	AsyncReadTime		( 0 )
+		,	WriteSize			( 0 )
+		,	WriteCount			( 0 )
+		,	WriteOpenTime		( 0 )
+		,	WriteTime			( 0 )
+		{}
+
+		FFileIOSummary& operator+=( const FFileIOSummary& Other )
+		{
+			ReadSize			+= Other.ReadSize;
+			ReadCount			+= Other.ReadCount;
+			ReadOpenTime		+= Other.ReadOpenTime;
+			ReadTime			+= Other.ReadTime;
+			AsyncReadSize		+= Other.AsyncReadSize;
+			AsyncReadCount		+= Other.AsyncReadCount;
+			AsyncReadOpenTime	+= Other.AsyncReadOpenTime;
+			AsyncReadTime		+= Other.AsyncReadTime;
+			WriteSize			+= Other.WriteSize;
+			WriteCount			+= Other.WriteCount;
+			WriteOpenTime		+= Other.WriteOpenTime;
+			WriteTime			+= Other.WriteTime;
+			return *this;
+		}
+
+		/** Filename all this data is for. */
+		FString	Filename;
+		/** Whether file handle is currently open. */
+		UBOOL	bIsOpen;
+		/** Total amount of bytes read. */
+		QWORD	ReadSize;
+		/** Number of read requests. */
+		QWORD	ReadCount;
+		/** Total time spent opening file for read. */
+		DOUBLE	ReadOpenTime;
+		/** Total time spent reading. */
+		DOUBLE	ReadTime;
+		/** Total amount of bytes read async. */
+		QWORD	AsyncReadSize;
+		/** Number of async read requests. */
+		QWORD	AsyncReadCount;
+		/** Total time spent opening file for async reading. */
+		DOUBLE	AsyncReadOpenTime;
+		/** Total time spent reading async. */
+		DOUBLE	AsyncReadTime;
+		/** Total amount of bytes written. */
+		QWORD	WriteSize;
+		/** Number of write requests */
+		QWORD	WriteCount;
+		/** Total time spent opening file for writing. */
+		DOUBLE	WriteOpenTime;
+		/** Total amount of time spent writing. */
+		DOUBLE	WriteTime;
+	};
+
+	/**
+	 * Dumps a file summary to the log.
+	 *
+	 * @param Summary	Summary to dump
+	 * @param FileSize	Current size of associated file
+	 */
+	void DumpSummary( const FFileIOSummary& Summary, QWORD FileSize );
+
+	/** Critical section used to syncronize access to stats. */
+	FCriticalSection CriticalSection;
+	/** Map from handle to summary, used by AddRequest. */
+	TMap<INT,FFileIOSummary> HandleToSummaryMap;
+	/** Map from filename to handle used by GetHandle. */
+	TMap<FString,INT> FilenameToHandleMap;
+};
+
+/** Returns global file I/O stats collector and creates it if necessary. */
+extern FFileIOStats* GetFileIOStats();
+
+/** Scoped file I/O request helper. */
+struct FScopedFileIORequestStats
+{
+	/** Constructor, initializing all members and keeping track of start  time. */
+	FScopedFileIORequestStats( INT InStatsHandle, QWORD InSize, QWORD InOffset, EFileIOType InRequestType )
+	:	StatsHandle	( InStatsHandle )
+	,	Size		( InSize )
+	,	Offset		( InOffset )
+	,	StartTime	( appSeconds() )
+	,	RequestType	( InRequestType )
+	{}
+
+	/** Destructor, adding IO request to global I/O stats collector after measuring delta time. */
+	~FScopedFileIORequestStats()
+	{
+		DOUBLE Duration = appSeconds() - StartTime;
+		GetFileIOStats()->AddRequest( StatsHandle, Size, Offset, Duration, RequestType );
+	}
+
+private:
+	/** Stats handle used. */
+	INT StatsHandle;
+	/** Size of request. */
+	QWORD Size;
+	/** Offset of request. */
+	QWORD Offset;
+	/** Start time of request. */
+	DOUBLE StartTime;
+	/** Classifies I/O request type. */
+	EFileIOType RequestType;
+};
+
+#endif // PERF_TRACK_FILEIO_STATS
 
 /*-----------------------------------------------------------------------------
 	File Manager.
 -----------------------------------------------------------------------------*/
 
-#define COPYBLOCKSIZE	32768
-#define MAXCOMPSIZE		33096		// 32768 + 1%
-
 class FFileManagerGeneric : public FFileManager
 {
 public:
-	INT FileSize( const TCHAR* Filename )
-	{
-		// Create a generic file reader, get its size, and return it.
-		FArchive* Ar = CreateFileReader( Filename );
-		if( !Ar )
-			return -1;
-		INT Result = Ar->TotalSize();
-		delete Ar;
-		return Result;
-	}
-	DWORD Copy( const TCHAR* InDestFile, const TCHAR* InSrcFile, UBOOL ReplaceExisting, UBOOL EvenIfReadOnly, UBOOL Attributes, DWORD Compress, FCopyProgress* Progress )
-	{
-		// Direct file copier.
-		if( Progress && !Progress->Poll( 0.0 ) )
-			return COPY_Canceled;
-		DWORD Result = COPY_OK;
-		FString SrcFile = InSrcFile;
-		FString DestFile = InDestFile;
-		switch( Compress )
-		{
-		case FILECOPY_Compress:
-			DestFile = DestFile + COMPRESSED_EXTENSION;
-			break;
-		case FILECOPY_Decompress:
-			SrcFile = SrcFile + COMPRESSED_EXTENSION;
-			break;
-		}
+	virtual void	Init(UBOOL Startup);
+	virtual INT		FileSize( const TCHAR* Filename );
+	virtual INT		UncompressedFileSize( const TCHAR* Filename );
+	virtual DWORD	Copy( const TCHAR* InDestFile, const TCHAR* InSrcFile, UBOOL ReplaceExisting, UBOOL EvenIfReadOnly, UBOOL Attributes, FCopyProgress* Progress );
+	virtual UBOOL	MakeDirectory( const TCHAR* Path, UBOOL Tree=0 );
+	virtual UBOOL	DeleteDirectory( const TCHAR* Path, UBOOL RequireExists=0, UBOOL Tree=0 );
+	virtual UBOOL	Move( const TCHAR* Dest, const TCHAR* Src, UBOOL ReplaceExisting=1, UBOOL EvenIfReadOnly=0, UBOOL Attributes=0 );
+	virtual INT		FindAvailableFilename( const TCHAR* Base, const TCHAR* Extension, FString& OutFilename, INT StartVal=-1 );
+	/** 
+	 * Read the contents of a TOC file
+	 */
+	void ReadTOC( FTableOfContents& TOC, const TCHAR* ToCName, UBOOL bRequired );
 
-		FArchive* Src = CreateFileReader( *SrcFile );
-		if( !Src )
-			Result = COPY_ReadFail;
-		else
-		{
-			INT Size = Src->TotalSize();
-			FArchive* Dest = CreateFileWriter( *DestFile, (ReplaceExisting?0:FILEWRITE_NoReplaceExisting) | (EvenIfReadOnly?FILEWRITE_EvenIfReadOnly:0) );
-			if( !Dest )
-				Result = COPY_WriteFail;
-			else
-			{
-				INT Percent=0, NewPercent=0;
-				switch( Compress )
-				{
-				case FILECOPY_Normal:
-					{
-						BYTE Buffer[COPYBLOCKSIZE];
-						for( INT Total=0; Total<Size; Total+=sizeof(Buffer) )
-						{
-							INT Count = Min( Size-Total, (INT)sizeof(Buffer) );
-							Src->Serialize( Buffer, Count );
-							if( Src->IsError() )
-							{
-								Result = COPY_ReadFail;
-								break;
-							}
-							Dest->Serialize( Buffer, Count );
-							if( Dest->IsError() )
-							{
-								Result = COPY_WriteFail;
-								break;
-							}
-							NewPercent = Total * 100 / Size;
-							if( Progress && Percent != NewPercent && !Progress->Poll( (FLOAT)NewPercent / 100.f ) )
-							{
-								Result = COPY_Canceled;
-								break;
-							}
-							Percent = NewPercent;
-						}
-					}
-					break;
-				case FILECOPY_Decompress:
-					{
-						BYTE UncBuffer[COPYBLOCKSIZE];
-						BYTE ComBuffer[MAXCOMPSIZE];
-						while( !Src->AtEnd() )
-						{
-							DWORD ComSize, UncSize;
-							Src->Serialize( &ComSize, sizeof(ComSize) );
-							Src->Serialize( &UncSize, sizeof(UncSize) );
-							if( ComSize > MAXCOMPSIZE || UncSize > COPYBLOCKSIZE )
-							{
-								Result = COPY_DecompFail;
-								break;
-							}
-							Src->Serialize( ComBuffer, ComSize );
-							if( Src->IsError() )
-							{
-								Result = COPY_ReadFail;
-								break;
-							}
-                            if( uncompress( UncBuffer, (uLongf *) &UncSize, ComBuffer, ComSize ) != Z_OK )
-							{
-								Result = COPY_DecompFail;
-								break;
-							}
-							Dest->Serialize( UncBuffer, UncSize );
-							if( Dest->IsError() )
-							{
-								Result = COPY_WriteFail;
-								break;
-							}
-							NewPercent = Src->Tell() * 100 / Size;
-							if( Progress && Percent != NewPercent && !Progress->Poll( (FLOAT)NewPercent / 100.f ) )
-							{
-								Result = COPY_Canceled;
-								break;
-							}
-							Percent = NewPercent;
-						}
-					}
-					break;
-				case FILECOPY_Compress:
-					{
-						BYTE UncBuffer[COPYBLOCKSIZE];
-						BYTE ComBuffer[MAXCOMPSIZE];
-
-						for( INT Total=0; Total<Size; Total+=sizeof(UncBuffer) )
-						{
-							DWORD UncSize = Min( Size-Total, (INT)sizeof(UncBuffer) );
-							Src->Serialize( UncBuffer, UncSize );
-							if( Src->IsError() )
-							{
-								Result = COPY_ReadFail;
-								break;
-							}
-							DWORD ComSize = MAXCOMPSIZE;
-							if( compress( ComBuffer, (uLongf *) &ComSize, UncBuffer, UncSize ) != Z_OK )
-							{
-								Result = COPY_CompFail;
-								break;
-							}
-							Dest->Serialize( &ComSize, sizeof(ComSize) );
-							Dest->Serialize( &UncSize, sizeof(UncSize) );
-							Dest->Serialize( ComBuffer, ComSize );
-							if( Dest->IsError() )
-							{
-								Result = COPY_WriteFail;
-								break;
-							}
-							NewPercent = Total * 100 / Size;
-							if( Progress && Percent != NewPercent && !Progress->Poll( (FLOAT)NewPercent / 100.f ) )
-							{
-								Result = COPY_Canceled;
-								break;
-							}
-							Percent = NewPercent;
-						}
-					}
-					break;
-				}
-				if( Result == COPY_OK )
-					if( !Dest->Close() )
-						Result = COPY_WriteFail;
-				delete Dest;
-				if( Result != COPY_OK )
-					Delete( *DestFile );
-			}
-			if( Result == COPY_OK )
-				if( !Src->Close() )
-					Result = COPY_ReadFail;
-			delete Src;
-		}
-		if( Progress && Result==COPY_OK && !Progress->Poll( 1.0 ) )
-			Result = COPY_Canceled;
-		return Result;
-	}
-	UBOOL MakeDirectory( const TCHAR* Path, UBOOL Tree=0 )
-	{
-		// Support code for making a directory tree.
-		check(Tree);
-		INT SlashCount=0, CreateCount=0;
-		for( TCHAR Full[256]=TEXT(""), *Ptr=Full; ; *Ptr++=*Path++ )
-		{
-			if( *Path==PATH_SEPARATOR[0] || *Path==0 )
-			{
-				if( SlashCount++>0 && !IsDrive(Full) )
-				{
-					*Ptr = 0;
-					if( !MakeDirectory( Full, 0 ) )
-						return 0;
-					CreateCount++;
-				}
-			}
-			if( *Path==0 )
-				break;
-		}
-		return CreateCount!=0;
-	}
-	UBOOL DeleteDirectory( const TCHAR* Path, UBOOL RequireExists=0, UBOOL Tree=0 )
-	{
-		// Support code for removing a directory tree.
-		check(Tree);
-		if( !appStrlen(Path) )
-			return 0;
-		FString Spec = FString(Path) * TEXT("*");
-		TArray<FString> List;
-		FindFiles( List, *Spec, 1, 0 );
-		for( INT i=0; i<List.Num(); i++ )
-			if( !Delete(*(FString(Path) * List(i)),1,1) )
-				return 0;
-		FindFiles( List, *Spec, 0, 1 );
-		for( INT i=0; i<List.Num(); i++ )
-			if( !DeleteDirectory(*(FString(Path) * List(i)),1,1) )
-				return 0;
-		return DeleteDirectory( Path, RequireExists, 0 );
-	}
-	UBOOL Move( const TCHAR* Dest, const TCHAR* Src, UBOOL ReplaceExisting=1, UBOOL EvenIfReadOnly=0, UBOOL Attributes=0 )
-	{
-		// Move file manually.
-		if( Copy(Dest,Src,ReplaceExisting,EvenIfReadOnly,Attributes,FILECOPY_Normal,NULL) != COPY_OK )
-			return 0;
-		Delete( Src, 1, 1 );
-		return 1;
-	}
-private:
-	UBOOL IsDrive( const TCHAR* Path )
-	{
-		// Does Path refer to a drive letter or BNC path?
-		if( appStricmp(Path,TEXT(""))==0 )
-			return 1;
-		else if( appToUpper(Path[0])!=appToLower(Path[0]) && Path[1]==':' && Path[2]==0 )
-			return 1;
-		else if( appStricmp(Path,TEXT("\\"))==0 )
-			return 1;
-		else if( appStricmp(Path,TEXT("\\\\"))==0 )
-			return 1;
-		else if( Path[0]=='\\' && Path[1]=='\\' && !appStrchr(Path+2,'\\') )
-			return 1;
-		else if( Path[0]=='\\' && Path[1]=='\\' && appStrchr(Path+2,'\\') && !appStrchr(appStrchr(Path+2,'\\')+1,'\\') )
-			return 1;
-		else
-			return 0;
-	}
+protected:
+	virtual UBOOL	IsDrive( const TCHAR* Path );
 };
 
-/*-----------------------------------------------------------------------------
-	The End.
------------------------------------------------------------------------------*/
 
+
+#endif

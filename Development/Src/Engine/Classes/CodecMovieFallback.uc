@@ -1,10 +1,21 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class CodecMovieFallback extends CodecMovie
 	native;
 
-var const float	CurrentTime;
+/** seconds since start of playback */
+var const transient float CurrentTime;
 
 cpptext
 {
+	// CodecMovie interface
+
+	/**
+	* Not all codec implementations are available
+	* @return TRUE if the current codec is supported
+	*/
+	virtual UBOOL IsSupported();
 	/**
 	 * Returns the movie width.
 	 *
@@ -28,8 +39,7 @@ cpptext
 	 *
 	 * @return framerate the movie was encoded at.
 	 */
-	virtual FLOAT GetFrameRate();
-	
+	virtual FLOAT GetFrameRate();	
 	/**
 	 * Initializes the decoder to stream from disk.
 	 *
@@ -50,25 +60,13 @@ cpptext
 	 */
 	virtual UBOOL Open( void* Source, DWORD Size );
 	/**
-	 * Tears down stream.
-	 */	
-	virtual void Close();
-
-	/**
-	 * Resets the stream to its initial state so it can be played again from the beginning.
-	 */
+	* Resets the stream to its initial state so it can be played again from the beginning.
+	*/
 	virtual void ResetStream();
 	/**
-	 * Blocks until the decoder has finished the pending decompression request.
-	 *
-	 * @return	Time into movie playback as seen from the decoder side.
-	 */
-	virtual FLOAT BlockUntilIdle();
-	/**
-	 * Queues the request to retrieve the next frame.
-	 *
- 	 * @param	Destination		Memory block to uncompress data into.
-	 * @return	FALSE if the end of the frame has been reached and the frame couldn't be completed, TRUE otherwise
-	 */
-	virtual UBOOL GetFrame( void* Destination );
+	* Queues the request to retrieve the next frame.
+	*
+	* @param InTextureMovieResource - output from movie decoding is written to this resource
+	*/
+	virtual void GetFrame( class FTextureMovieResource* InTextureMovieResource );
 }

@@ -1,0 +1,46 @@
+﻿@model EpicGames.Tools.Builder.Frontend.Models.VerifyBranchModel
+
+@{
+    ViewBag.Title = "Verification System";
+    ViewBag.Description = "Current Status for Branch '" + Model.BranchName + "'";
+}
+
+
+<script type="text/javascript">
+    function GetStatusList () {
+        return ($.ajax({
+            url: "@Url.RouteUrl(new { action = "BranchCommands", controller = "Verify", id = Model.BranchName })",
+            async: false
+        }));
+    }
+
+    function UpdateStatusList () {
+        var query = GetStatusList().success(
+            function () {
+                setTimeout(function () {
+                    UpdateStatusList();
+                },
+                5000);
+            });
+
+        $('#commandsList').html(query.responseText);
+    }
+
+    $(document).ready(function () {
+        UpdateStatusList();
+    });
+</script>
+
+<section>
+    <div class="grid6">
+        <span class="linkBack">
+            @Html.ActionLink("Build Status", "Status", "Verify")
+        </span>
+
+        <span class="fr">
+            <a href="#verifications">Verifications</a>
+        </span>
+    </div>
+</section>
+
+<section id="commandsList"></section>

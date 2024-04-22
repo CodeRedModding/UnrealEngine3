@@ -1,0 +1,495 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="Builder" Class="DataClassesDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="WebSettings" ConnectionString="Data Source=db-09;Initial Catalog=Builder;Integrated Security=True" SettingsObjectName="System.Configuration.ConfigurationManager.ConnectionStrings" SettingsPropertyName="BuilderConnectionString1" Provider="System.Data.SqlClient" />
+  <Function Name="dbo.SP_GetFailedCommands" Method="SP_GetFailedCommands">
+    <Parameter Name="WithinDays" Parameter="withinDays" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetFailedCommandsResult">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(40) NOT NULL" CanBeNull="false" />
+      <Column Name="Game" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Platform" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="PrimaryBuild" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="LastGoodChangeList" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttemptedChangeList" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="DaysBroken" Type="System.Int32" DbType="Int" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetInfrastructureState" Method="SP_GetInfrastructureState">
+    <ElementType Name="SP_GetInfrastructureStateResult">
+      <Column Name="State" Type="System.String" DbType="VarChar(16) NOT NULL" CanBeNull="false" />
+      <Column Name="MachineCount" Type="System.Int32" DbType="Int" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetBranchList" Method="SP_GetBranchList">
+    <ElementType Name="SP_GetBranchListResult">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_StopCommand" Method="SP_StopCommand">
+    <Parameter Name="CommandId" Parameter="commandId" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Killer" Parameter="killer" Type="System.String" DbType="VarChar(32)" />
+    <Return Type="System.Int32" />
+  </Function>
+  <Function Name="dbo.SP_TriggerCommand" Method="SP_TriggerCommand">
+    <Parameter Name="CommandId" Parameter="commandId" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Operator" Parameter="operator" Type="System.String" DbType="VarChar(32)" />
+    <Return Type="System.Int32" />
+  </Function>
+  <Function Name="dbo.SP_GetCommandSubscriptions" Method="SP_GetCommandSubscriptions">
+    <Parameter Name="CommandId" Parameter="commandId" Type="System.Int32" DbType="Int" />
+    <Parameter Name="UserEmail" Parameter="userEmail" Type="System.String" DbType="VarChar(32)" />
+    <ElementType Name="SP_GetCommandSubscriptionsResult">
+      <Column Name="Type" Type="System.Byte" DbType="TinyInt NOT NULL" CanBeNull="false" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_RemoveCommandSubscription" Method="SP_RemoveCommandSubscription">
+    <Parameter Name="CommandId" Parameter="commandId" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Type" Parameter="type" Type="System.Byte" DbType="TinyInt" />
+    <Parameter Name="UserEmail" Parameter="userEmail" Type="System.String" DbType="VarChar(32)" />
+    <Return Type="System.Int32" />
+  </Function>
+  <Function Name="dbo.SP_AddCommandSubscription" Method="SP_AddCommandSubscription">
+    <Parameter Name="CommandId" Parameter="commandId" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Type" Parameter="type" Type="System.Byte" DbType="TinyInt" />
+    <Parameter Name="UserEmail" Parameter="userEmail" Type="System.String" DbType="VarChar(32)" />
+    <Return Type="System.Int32" />
+  </Function>
+  <Function Name="dbo.SP_GetChangelistBuildLogs" Method="SP_GetChangelistBuildLogs">
+    <Parameter Name="Changelist" Parameter="changelist" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Branch" Parameter="branch" Type="System.String" DbType="VarChar(32)" />
+    <ElementType Name="SP_GetChangelistBuildLogsResult">
+      <Column Name="Command" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="CommandID" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Machine" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="BuildStarted" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="BuildEnded" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="CurrentStatus" Type="System.String" DbType="VarChar(128)" CanBeNull="true" />
+      <Column Name="BuildLabel" Type="System.String" DbType="VarChar(128)" CanBeNull="true" />
+      <Column Name="DetailedLogPath" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+      <Column Name="CommandDescription" Type="System.String" DbType="VarChar(40)" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_SetMachineMaintenance" Method="SP_SetMachineMaintenance">
+    <Parameter Name="MachineName" Parameter="machineName" Type="System.String" DbType="VarChar(32)" />
+    <Parameter Name="Maintenance" Parameter="maintenance" Type="System.Int32" DbType="Int" />
+    <Return Type="System.Int32" />
+  </Function>
+  <Function Name="dbo.SP_GetOverallBuildTime" Method="SP_GetOverallBuildTime">
+    <Parameter Name="CommandID" Parameter="commandID" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Days" Parameter="days" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetOverallBuildTimeResult">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="DateTimeStamp" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="IntValue" Type="System.Int64" DbType="BigInt NOT NULL" CanBeNull="false" />
+      <Column Name="MachineName" Type="System.String" DbType="Char(64)" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetVerificationBranches" Method="SP_GetVerificationBranches">
+    <ElementType Name="SP_GetVerificationBranchesResult">
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="NumCommands" Type="System.Int32" DbType="Int" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetCommandActivity" Method="SP_GetCommandActivity">
+    <Parameter Name="CommandId" Parameter="commandId" Type="System.Int32" DbType="Int" />
+    <Parameter Name="StatusFilter" Parameter="statusFilter" Type="System.String" DbType="VarChar(128)" />
+    <Parameter Name="Days" Parameter="days" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetCommandActivityResult">
+      <Column Name="BuildStartedDate" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="LogCount" Type="System.Int32" DbType="Int" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetCommandBuildLogs" Method="SP_GetCommandBuildLogs">
+    <Parameter Name="CommandId" Parameter="commandId" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Page" Parameter="page" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Count" Parameter="count" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetCommandBuildLogsResult">
+      <Column Name="Machine" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="BuildStarted" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="BuildEnded" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="ChangeList" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="CurrentStatus" Type="System.String" DbType="VarChar(128)" CanBeNull="true" />
+      <Column Name="BuildLabel" Type="System.String" DbType="VarChar(128)" CanBeNull="true" />
+      <Column Name="DetailedLogPath" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetUserChangelists" Method="SP_GetUserChangelists">
+    <Parameter Name="Submitter" Parameter="submitter" Type="System.String" DbType="VarChar(32)" />
+    <Parameter Name="Page" Parameter="page" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Count" Parameter="count" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetUserChangelistsResult">
+      <Column Name="Changelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="TimeStamp" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetUserActivity" Method="SP_GetUserActivity">
+    <Parameter Name="SubmitterFilter" Parameter="submitterFilter" Type="System.String" DbType="VarChar(32)" />
+    <Parameter Name="Days" Parameter="days" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetUserActivityResult">
+      <Column Name="TimeStamp" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="ChangelistCount" Type="System.Int32" DbType="Int" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetBranchCommands" Method="SP_GetBranchCommands">
+    <Parameter Name="BranchId" Parameter="branchId" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetBranchCommandsResult">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Type" Type="System.Byte" DbType="TinyInt NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(40) NOT NULL" CanBeNull="false" />
+      <Column Name="Platform" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Game" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Operator" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="PrimaryBuild" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttemptedChangelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttemptedDateTime" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="LastGoodChangelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastGoodDateTime" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="BuildLogID" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Machine" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="StartTime" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetCisLatestChangelists" Method="SP_GetCisLatestChangelists">
+    <ElementType Name="SP_GetCisLatestChangelistsResult">
+      <Column Name="BranchConfigID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Changelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="BuildStatus" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Submitter" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="TimeStamp" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetPromotableLabels" Method="SP_GetPromotableLabels">
+    <Parameter Name="PromoteCommandId" Parameter="promoteCommandId" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Count" Parameter="count" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetPromotableLabelsResult">
+      <Column Name="ChangeList" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="BuildEnded" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="CurrentStatus" Type="System.String" DbType="VarChar(128)" CanBeNull="true" />
+      <Column Name="BuildLabel" Type="System.String" DbType="VarChar(128)" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetLatestBuilds" Method="SP_GetLatestBuilds">
+    <ElementType Name="SP_GetLatestBuildsResult">
+      <Column Name="ID" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="Build" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="Label" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="ChangeList" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="BuildEnded" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetPromotedLabel" Method="SP_GetPromotedLabel">
+    <Parameter Name="CommandId" Parameter="commandId" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetPromotedLabelResult">
+      <Column Name="Value" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetPerformanceData" Method="SP_GetPerformanceData">
+    <Parameter Name="CounterId" Parameter="counterId" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Days" Parameter="days" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetPerformanceDataResult">
+      <Column Name="MachineID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="IntValue" Type="System.Int64" DbType="BigInt NOT NULL" CanBeNull="false" />
+      <Column Name="DateTimeStamp" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="Changelist" Type="System.Int32" DbType="Int" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetChangelistCisLogs" Method="SP_GetChangelistCisLogs">
+    <Parameter Name="Changelist" Parameter="changelist" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetChangelistCisLogsResult">
+      <Column Name="Name" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="JobState" Type="System.Byte" DbType="TinyInt NOT NULL" CanBeNull="false" />
+      <Column Name="Error" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetMachineBuildLogs" Method="SP_GetMachineBuildLogs">
+    <Parameter Name="MachineName" Parameter="machineName" Type="System.String" DbType="VarChar(32)" />
+    <Parameter Name="Page" Parameter="page" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Count" Parameter="count" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetMachineBuildLogsResult">
+      <Column Name="Command" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="CommandID" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="JobID" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="ChangeList" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="BuildStarted" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="BuildEnded" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="CurrentStatus" Type="System.String" DbType="VarChar(128)" CanBeNull="true" />
+      <Column Name="BuildLabel" Type="System.String" DbType="VarChar(128)" CanBeNull="true" />
+      <Column Name="DetailedLogPath" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+      <Column Name="BranchConfigID" Type="System.Int16" DbType="SmallInt" CanBeNull="true" />
+      <Column Name="CommandDescription" Type="System.String" DbType="VarChar(40)" CanBeNull="true" />
+      <Column Name="Type" Type="System.Byte" DbType="TinyInt" CanBeNull="true" />
+      <Column Name="JobDescription" Type="System.String" DbType="VarChar(64)" CanBeNull="true" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetBuildCommands" Method="SP_GetBuildCommands">
+    <ElementType Name="SP_GetBuildCommandsResult">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(40) NOT NULL" CanBeNull="false" />
+      <Column Name="BranchConfigID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Game" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Platform" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Operator" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="PrimaryBuild" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttemptedChangelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttemptedDateTime" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="LastGoodChangelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastGoodDateTime" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="BuildLogID" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Pending" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Machine" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="BuildStarted" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetVerificationBranchCommands" Method="SP_GetVerificationBranchCommands">
+    <Parameter Name="BranchNameFilter" Parameter="branchNameFilter" Type="System.String" DbType="VarChar(32)" />
+    <ElementType Name="SP_GetVerificationBranchCommandsResult">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(40) NOT NULL" CanBeNull="false" />
+      <Column Name="Platform" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Game" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Operator" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="PrimaryBuild" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttemptedChangelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttemptedDateTime" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="LastGoodChangelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastGoodDateTime" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="BuildLogID" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Pending" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="Machine" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="BuildStarted" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetCisPendingTasks" Method="SP_GetCisPendingTasks">
+    <ElementType Name="SP_GetCisPendingTasksResult">
+      <Column Name="Name" Type="System.String" DbType="VarChar(64)" CanBeNull="true" />
+      <Column Name="Platform" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="Game" Type="System.String" DbType="VarChar(16)" CanBeNull="true" />
+      <Column Name="Config" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="CISTaskID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetCommandDetails" Method="SP_GetCommandDetails">
+    <Parameter Name="CommandId" Parameter="commandId" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetCommandDetailsResult">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Type" Type="System.Byte" DbType="TinyInt NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(40) NOT NULL" CanBeNull="false" />
+      <Column Name="Command" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="BranchConfigID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Platform" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Game" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Config" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Language" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Parameter" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="UserLevel" Type="System.Int16" DbType="SmallInt NOT NULL" CanBeNull="false" />
+      <Column Name="Hint" Type="System.String" DbType="VarChar(16) NOT NULL" CanBeNull="false" />
+      <Column Name="IsPromotable" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="MachineLock" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="NextTriggerDelay" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="NextTrigger" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Access" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Display" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="DisplayDetail" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="PrimaryBuild" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttemptedChangeList" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastAttemptedDateTime" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="LastFailedChangeList" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastFailedDateTime" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="LastGoodChangeList" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LastGoodLabel" Type="System.String" DbType="VarChar(96)" CanBeNull="true" />
+      <Column Name="LastGoodDateTime" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="Operator" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Killer" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Pending" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Killing" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Machine" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="BuildLogID" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="ConchHolder" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Machine1" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="StartTime" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetPromotionCommands" Method="SP_GetPromotionCommands">
+    <ElementType Name="SP_GetPromotionCommandsResult">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(40) NOT NULL" CanBeNull="false" />
+      <Column Name="LastGoodChangelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Type" Type="System.Byte" DbType="TinyInt NOT NULL" CanBeNull="false" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="LatestApproved" Type="System.String" DbType="VarChar(MAX)" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetMachineDetails" Method="SP_GetMachineDetails">
+    <Parameter Name="MachineName" Parameter="machineName" Type="System.String" DbType="VarChar(32)" />
+    <ElementType Name="SP_GetMachineDetailsResult">
+      <Column Name="MachineName" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="FirstStart" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="LastStart" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="CPUString" Type="System.String" DbType="VarChar(64)" CanBeNull="true" />
+      <Column Name="CurrentState" Type="System.String" DbType="VarChar(16)" CanBeNull="true" />
+      <Column Name="CurrendAndroidSDKVersion" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="CurrentDirectXSDKVersion" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="CurrentFlashSDKVersion" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="CurrentIPhoneSDKVersion" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="CurrentMacSDKVersion" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="CurrentNgpSDKVersion" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="CurrentPS3SDKVersion" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="CurrentWiiUSDKVersion" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="CurrentXbox360SDKVersion" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="CurrentTime" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="CurrentUptime" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Column Name="Crashes" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="DriveCSize" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="DriveCFree" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="DriveDSize" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="DriveDFree" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="MachineLock" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+      <Column Name="ProcessorCount" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Memory" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Version" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetPerforceSize" Method="SP_GetPerforceSize">
+    <Parameter Name="NumWeeks" Parameter="numWeeks" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetPerforceSizeResult">
+      <Column Name="SubmittedBytes" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Column Name="WeekOfYear" Type="System.Int32" DbType="Int" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetBuildsPerDay" Method="SP_GetBuildsPerDay">
+    <Parameter Name="NumDays" Parameter="numDays" Type="System.Int32" DbType="Int" />
+    <Parameter Name="CommandType" Parameter="commandType" Type="System.String" DbType="VarChar(32)" />
+    <Parameter Name="Exceptions" Parameter="exceptions" Type="System.Boolean" DbType="Bit" />
+    <ElementType Name="SP_GetBuildsPerDayResult">
+      <Column Name="CommandCount" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="BuildAge" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="BuildDate" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetCisTurnaround" Method="SP_GetCisTurnaround">
+    <Parameter Name="NumDays" Parameter="numDays" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetCisTurnaroundResult">
+      <Column Name="Name" Type="System.String" DbType="VarChar(64)" CanBeNull="true" />
+      <Column Name="TimeStamp" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="Changelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="SpawnTime" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Column Name="BuildStarted" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="BuildEnded" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetDesktopPerformance" Method="SP_GetDesktopPerformance">
+    <Parameter Name="CounterId" Parameter="counterId" Type="System.Int32" DbType="Int" />
+    <Parameter Name="MachineId" Parameter="machineId" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetDesktopPerformanceResult">
+      <Column Name="Changelist" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Performance" Type="System.Int64" DbType="BigInt" CanBeNull="true" />
+      <Column Name="DateTimeStamp" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetMachineStatus" Method="SP_GetMachineStatus">
+    <Parameter Name="MachineNameFilter" Parameter="machineNameFilter" Type="System.String" DbType="VarChar(32)" />
+    <ElementType Name="SP_GetMachineStatusResult">
+      <Column Name="MachineName" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="State" Type="System.String" DbType="VarChar(16) NOT NULL" CanBeNull="false" />
+      <Column Name="StartTime" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="CurrentStatus" Type="System.String" DbType="VarChar(128)" CanBeNull="true" />
+      <Column Name="CurrentTime" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Deployed" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="Version" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="MachineLock" Type="System.String" DbType="VarChar(32)" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetPerformanceDataDanV" Method="SP_GetPerformanceDataDanV">
+    <Parameter Name="CounterId" Parameter="counterId" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Days" Parameter="days" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetPerformanceDataDanVResult">
+      <Column Name="Changelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="BuildStatus" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Submitter" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="TimeStamp" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="IntValue" Type="System.Int64" DbType="BigInt NOT NULL" CanBeNull="false" />
+      <Column Name="MachineID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_PromoteBuild" Method="SP_PromoteBuild">
+    <Parameter Name="PromotionCommandId" Parameter="promotionCommandId" Type="System.Int32" DbType="Int" />
+    <Parameter Name="BuildLabel" Parameter="buildLabel" Type="System.String" DbType="VarChar(128)" />
+    <Parameter Name="Operator" Parameter="operator" Type="System.String" DbType="VarChar(32)" />
+    <Return Type="System.Int32" />
+  </Function>
+  <Function Name="dbo.SP_GetBuildBranches" Method="SP_GetBuildBranches">
+    <ElementType Name="SP_GetBuildBranchesResult">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="LockedDown" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="NumCommands" Type="System.Int32" DbType="Int" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetCisBranches" Method="SP_GetCisBranches">
+    <ElementType Name="SP_GetCisBranchesResult">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="LockedDown" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="NumTasks" Type="System.Int32" DbType="Int" CanBeNull="true" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetBranchDetails" Method="SP_GetBranchDetails">
+    <Parameter Name="BranchId" Parameter="branchId" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetBranchDetailsResult">
+      <Column Name="ID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Server" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="BranchAdmin" Type="System.String" DbType="VarChar(64) NOT NULL" CanBeNull="false" />
+      <Column Name="HeadChangelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LockedDown" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_SetBranchLockDown" Method="SP_SetBranchLockDown">
+    <Parameter Name="ID" Parameter="iD" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Lock" Parameter="lock" Type="System.Int32" DbType="Int" />
+    <Return Type="System.Int32" />
+  </Function>
+  <Function Name="dbo.SP_GetCisBranchChangelists" Method="SP_GetCisBranchChangelists">
+    <Parameter Name="ID" Parameter="iD" Type="System.Int32" DbType="Int" />
+    <Parameter Name="Count" Parameter="count" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetCisBranchChangelistsResult">
+      <Column Name="Changelist" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="BuildStatus" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Submitter" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="Timestamp" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetChangelistDetails" Method="SP_GetChangelistDetails">
+    <Parameter Name="ChangelistId" Parameter="changelistId" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetChangelistDetailsResult">
+      <Column Name="Submitter" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="TimeStamp" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="VarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="Branch" Type="System.String" DbType="VarChar(32) NOT NULL" CanBeNull="false" />
+      <Column Name="BranchConfigID" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+    </ElementType>
+  </Function>
+  <Function Name="dbo.SP_GetMachineActivity" Method="SP_GetMachineActivity">
+    <Parameter Name="MachineNameFilter" Parameter="machineNameFilter" Type="System.String" DbType="VarChar(32)" />
+    <Parameter Name="StatusFilter" Parameter="statusFilter" Type="System.String" DbType="VarChar(128)" />
+    <Parameter Name="bIncludeCIS" Type="System.Boolean" DbType="Bit" />
+    <Parameter Name="Days" Parameter="days" Type="System.Int32" DbType="Int" />
+    <ElementType Name="SP_GetMachineActivityResult">
+      <Column Name="BuildStartedDate" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="LogCount" Type="System.Int32" DbType="Int" CanBeNull="true" />
+    </ElementType>
+  </Function>
+</Database>

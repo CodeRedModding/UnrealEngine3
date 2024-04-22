@@ -1,6 +1,6 @@
 /*=============================================================================
 	UnPhysAsset.cpp: Physics Asset Tools - tools for creating a collection of rigid bodies and joints.
-	Copyright 2004 Epic Games, Inc. All Rights Reserved.
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
 =============================================================================*/ 
 
 #include "EnginePrivate.h"
@@ -15,8 +15,8 @@ static const FLOAT	MinPrimSize = 0.5f;
 //////////// UPhysicsAsset ////////////
 ///////////////////////////////////////
 
-/** Returns INDEX_NONE if no children or more than 1 child. */
-static INT GetChildIndex(INT BoneIndex, USkeletalMesh* skelMesh)
+/** Returns INDEX_NONE if no children in the visual asset or if more than one parent */
+static INT GetChildIndex(INT BoneIndex, USkeletalMesh* skelMesh, TArray<FBoneVertInfo>& Infos)
 {
 	INT ChildIndex = INDEX_NONE;
 
@@ -28,10 +28,9 @@ static INT GetChildIndex(INT BoneIndex, USkeletalMesh* skelMesh)
 		{
 			if(ChildIndex != INDEX_NONE)
 			{
-
 				return INDEX_NONE; // if we already have a child, this bone has more than one so return INDEX_NONE.
 			}
-			else
+			else if (Infos(i).Positions.Num() > 0)
 			{
 				ChildIndex = i;
 			}
@@ -41,7 +40,7 @@ static INT GetChildIndex(INT BoneIndex, USkeletalMesh* skelMesh)
 	return ChildIndex;
 }
 
-static FLOAT CalcBoneInfoMinDimension(const FBoneVertInfo& Info)
+static FLOAT CalcBoneInfoLength(const FBoneVertInfo& Info)
 {
 	FBox BoneBox(0);
 	for(INT j=0; j<Info.Positions.Num(); j++)
@@ -52,7 +51,7 @@ static FLOAT CalcBoneInfoMinDimension(const FBoneVertInfo& Info)
 	if(BoneBox.IsValid)
 	{
 		FVector BoxExtent = BoneBox.GetExtent();
-		return BoxExtent.GetMin();
+		return BoxExtent.Size();
 	}
 	else
 	{
@@ -77,9 +76,9 @@ static FLOAT GetMaximalMinSizeBelow(INT BoneIndex, USkeletalMesh* SkelMesh, cons
 	{
 		if( SkelMesh->BoneIsChildOf(i, BoneIndex) )
 		{
-			FLOAT MinBoneDim = CalcBoneInfoMinDimension( Infos(i) );
+			FLOAT MinBoneDim = CalcBoneInfoLength( Infos(i) );
 			
-			debugf( TEXT("Parent: %s Bone: %s Size: %f"), *SkelMesh->RefSkeleton(BoneIndex).Name, *SkelMesh->RefSkeleton(i).Name, MinBoneDim );
+			debugf( TEXT("Parent: %s Bone: %s Size: %f"), *SkelMesh->RefSkeleton(BoneIndex).Name.ToString(), *SkelMesh->RefSkeleton(i).Name.ToString(), MinBoneDim );
 
 			MaximalMinBoxSize = Max(MaximalMinBoxSize, MinBoneDim);
 		}
@@ -94,6 +93,7 @@ static FLOAT GetMaximalMinSizeBelow(INT BoneIndex, USkeletalMesh* SkelMesh, cons
  */
 UBOOL UPhysicsAsset::CreateFromSkeletalMesh( USkeletalMesh* skelMesh, FPhysAssetCreateParams& Params )
 {
+#if WITH_EDITORONLY_DATA
 	DefaultSkelMesh = skelMesh;
 
 	// Create an empty default PhysicsInstance
@@ -104,16 +104,16 @@ UBOOL UPhysicsAsset::CreateFromSkeletalMesh( USkeletalMesh* skelMesh, FPhysAsset
 
 	if(Params.VertWeight == EVW_DominantWeight)
 	{
-		skelMesh->CalcBoneVertInfos(Infos, true);
+		skelMesh->CalcBoneVertInfos(Infos, TRUE);
 	}
 	else
 	{
-		skelMesh->CalcBoneVertInfos(Infos, false);
+		skelMesh->CalcBoneVertInfos(Infos, FALSE);
 	}
 
 	check( Infos.Num() == skelMesh->RefSkeleton.Num() );
 
-	UBOOL bHitRoot = false;
+	UBOOL bHitRoot = FALSE;
 
 	// Iterate over each graphics bone creating body/joint.
 	for(INT i=0; i<skelMesh->RefSkeleton.Num(); i++)
@@ -139,23 +139,28 @@ UBOOL UPhysicsAsset::CreateFromSkeletalMesh( USkeletalMesh* skelMesh, FPhysAsset
 		}
 
 		// Determine if we should create a physics body for this bone
-		UBOOL bMakeBone = false;
+		UBOOL bMakeBone = FALSE;
 
+		// If desired - make a body for EVERY bone
+		if(Params.bBodyForAll)
+		{
+			bMakeBone = TRUE;
+		}
 		// If we have passed the physics 'root', and this bone has no physical parent, ignore it.
-		if( !(bHitRoot && ParentBodyIndex == INDEX_NONE) )
+		else if( !(bHitRoot && ParentBodyIndex == INDEX_NONE) )
 		{
 			// If bone is big enough - create physics.
-			if( CalcBoneInfoMinDimension( Infos(i) ) > Params.MinBoneSize )
+			if( CalcBoneInfoLength( Infos(i) ) > Params.MinBoneSize )
 			{
-				bMakeBone = true;
+				bMakeBone = TRUE;
 			}
 
-			// If its too small, and its not the physics root, and we have set the option, see if it has any large children.
-			if( !bMakeBone && bHitRoot && Params.bWalkPastSmall )
+			// If its too small, and we have set the option, see if it has any large children.
+			if( !bMakeBone && Params.bWalkPastSmall )
 			{
 				if( GetMaximalMinSizeBelow(i, skelMesh, Infos) > Params.MinBoneSize )
 				{
-					bMakeBone = true;
+					bMakeBone = TRUE;
 				}
 			}
 		}
@@ -197,11 +202,15 @@ UBOOL UPhysicsAsset::CreateFromSkeletalMesh( USkeletalMesh* skelMesh, FPhysAsset
 				DefaultInstance->DisableCollision(bodyInstance, parentInstance);
 			}
 
-			bHitRoot = true;
+			bHitRoot = TRUE;
 		}
 	}
 
-	return 1;
+	const UBOOL bSuccess = BodySetup.Num() > 0;
+	return bSuccess;
+#else
+	return FALSE;
+#endif // WITH_EDITORONLY_DATA
 }
 
 
@@ -219,24 +228,33 @@ void UPhysicsAsset::CreateCollisionFromBone( URB_BodySetup* bs, USkeletalMesh* s
 
 	if(Params.bAlignDownBone)
 	{
-		INT ChildIndex = GetChildIndex(BoneIndex, skelMesh);
+		INT ChildIndex = GetChildIndex(BoneIndex, skelMesh, Infos);
 		if(ChildIndex != INDEX_NONE)
 		{
 			// Get position of child relative to parent.
 			FMatrix RelTM = skelMesh->GetRefPoseMatrix(ChildIndex);
 			FVector ChildPos = RelTM.GetOrigin();
 
-			// ZAxis for collision geometry lies down axis to child bone.
-			FVector ZAxis = ChildPos.SafeNormal();
+			// Check that child is not on top of parent. If it is - we can't make an orientation
+			if(ChildPos.Size() > KINDA_SMALL_NUMBER)
+			{
+				// ZAxis for collision geometry lies down axis to child bone.
+				FVector ZAxis = ChildPos.SafeNormal();
 
-			// Then we pick X and Y randomly. 
-			// JTODO: Should project all the vertices onto ZAxis plane and fit a bounding box using calipers or something...
-			FVector XAxis, YAxis;
-			ZAxis.FindBestAxisVectors( YAxis, XAxis );
+				// Then we pick X and Y randomly. 
+				// JTODO: Should project all the vertices onto ZAxis plane and fit a bounding box using calipers or something...
+				FVector XAxis, YAxis;
+				ZAxis.FindBestAxisVectors( YAxis, XAxis );
 
-			ElemTM = FMatrix( XAxis, YAxis, ZAxis, FVector(0) );
+				ElemTM = FMatrix( XAxis, YAxis, ZAxis, FVector(0) );
 
-			bSphyl = true;
+				bSphyl = true;			
+			}
+			else
+			{
+				ElemTM = FMatrix::Identity;
+				bSphyl = false;
+			}
 		}
 		else
 		{
@@ -309,7 +327,6 @@ void UPhysicsAsset::CreateCollisionFromBone( URB_BodySetup* bs, USkeletalMesh* s
 			se->Radius = BoxExtent.GetMax() * 1.01f;
 		}
 	}
-
 }
 
 /**
@@ -323,24 +340,18 @@ void UPhysicsAsset::WeldBodies(INT BaseBodyIndex, INT AddBodyIndex, USkeletalMes
 	if(BaseBodyIndex == INDEX_NONE || AddBodyIndex == INDEX_NONE)
 		return;
 
-	FVector Scale3D = SkelComp->Owner->DrawScale3D * SkelComp->Owner->DrawScale;
-	check( Scale3D.IsUniform() );
-	FVector InvScale3D( 1.0f/Scale3D.X );
-
 	URB_BodySetup* Body1 = BodySetup(BaseBodyIndex);
 	INT Bone1Index = SkelComp->SkeletalMesh->MatchRefBone(Body1->BoneName);
 	check(Bone1Index != INDEX_NONE);
 	FMatrix Bone1TM = SkelComp->GetBoneMatrix(Bone1Index);
 	Bone1TM.RemoveScaling();
-	Bone1TM.ScaleTranslation(InvScale3D); // Remove any asset scaling here.
-	FMatrix InvBone1TM = Bone1TM.Inverse();
+	FMatrix InvBone1TM = Bone1TM.InverseSafe();
 
 	URB_BodySetup* Body2 = BodySetup(AddBodyIndex);
 	INT Bone2Index = SkelComp->SkeletalMesh->MatchRefBone(Body2->BoneName);
 	check(Bone2Index != INDEX_NONE);
 	FMatrix Bone2TM = SkelComp->GetBoneMatrix(Bone2Index);
 	Bone2TM.RemoveScaling();
-	Bone2TM.ScaleTranslation(InvScale3D);
 
 	FMatrix Bone2ToBone1TM = Bone2TM * InvBone1TM;
 
@@ -373,6 +384,9 @@ void UPhysicsAsset::WeldBodies(INT BaseBodyIndex, INT AddBodyIndex, USkeletalMes
 		{
 			cElem->VertexData(j) = Bone2ToBone1TM.TransformFVector( cElem->VertexData(j) );
 		}
+
+		// Update face data.
+		cElem->GenerateHullData();
 	}
 
 	// We need to update the collision disable table to shift any pairs that included body2 to include body1 instead.
@@ -383,7 +397,7 @@ void UPhysicsAsset::WeldBodies(INT BaseBodyIndex, INT AddBodyIndex, USkeletalMes
 		if(i == AddBodyIndex) 
 			continue;
 
-		QWORD Key = RigidBodyIndicesToKey(i, AddBodyIndex);
+		FRigidBodyIndexPair Key(i, AddBodyIndex);
 
 		if( DefaultInstance->CollisionDisableTable.Find(Key) )
 		{
@@ -392,7 +406,7 @@ void UPhysicsAsset::WeldBodies(INT BaseBodyIndex, INT AddBodyIndex, USkeletalMes
 			// Only re-add pair if its not between 'base' and 'add' bodies.
 			if(i != BaseBodyIndex)
 			{
-				QWORD NewKey = RigidBodyIndicesToKey(i, BaseBodyIndex);
+				FRigidBodyIndexPair NewKey(i, BaseBodyIndex);
 				DefaultInstance->CollisionDisableTable.Set(NewKey, 0);
 			}
 		}
@@ -450,68 +464,69 @@ void UPhysicsAsset::WeldBodies(INT BaseBodyIndex, INT AddBodyIndex, USkeletalMes
 
 	// Finally remove the body
 	DestroyBody(AddBodyIndex);
-
 }
 
-INT UPhysicsAsset::CreateNewConstraint(FName constraintName, URB_ConstraintSetup* constraintSetup)
+INT UPhysicsAsset::CreateNewConstraint(FName InConstraintName, URB_ConstraintSetup* InConstraintSetup)
 {
 	// constraintClass must be a subclass of URB_ConstraintSetup
 	check( ConstraintSetup.Num() == DefaultInstance->Constraints.Num() );
 
-	INT constraintIndex = FindConstraintIndex(constraintName);
-	if(constraintIndex != INDEX_NONE)
-		return constraintIndex;
+	INT ConstraintIndex = FindConstraintIndex(InConstraintName);
+	if(ConstraintIndex != INDEX_NONE)
+		return ConstraintIndex;
 
 
-	URB_ConstraintSetup* newConstraintSetup = ConstructObject<URB_ConstraintSetup>( URB_ConstraintSetup::StaticClass(), this, NAME_None, RF_Transactional );
+	URB_ConstraintSetup* NewConstraintSetup = ConstructObject<URB_ConstraintSetup>( URB_ConstraintSetup::StaticClass(), this, NAME_None, RF_Transactional );
 
-	if(constraintSetup)
-		newConstraintSetup->CopyConstraintParamsFrom( constraintSetup );
+	if(InConstraintSetup)
+	{
+		NewConstraintSetup->CopyConstraintParamsFrom( InConstraintSetup );
+	}
 
-	INT ConstraintSetupIndex = ConstraintSetup.AddItem( newConstraintSetup );
-	newConstraintSetup->JointName = constraintName;
+	INT ConstraintSetupIndex = ConstraintSetup.AddItem( NewConstraintSetup );
+	NewConstraintSetup->JointName = InConstraintName;
 
 
-	URB_ConstraintInstance* newConstraintInstance = ConstructObject<URB_ConstraintInstance>( URB_ConstraintInstance::StaticClass(), DefaultInstance, NAME_None, RF_Transactional );
-	INT ConstraintInstanceIndex = DefaultInstance->Constraints.AddItem( newConstraintInstance );
+	URB_ConstraintInstance* NewConstraintInstance = ConstructObject<URB_ConstraintInstance>( URB_ConstraintInstance::StaticClass(), DefaultInstance, NAME_None, RF_Transactional );
+	INT ConstraintInstanceIndex = DefaultInstance->Constraints.AddItem( NewConstraintInstance );
 
 	check(ConstraintSetupIndex == ConstraintInstanceIndex);
 
 	return ConstraintSetupIndex;
-
 }
 
-void UPhysicsAsset::DestroyConstraint(INT constraintIndex)
+void UPhysicsAsset::DestroyConstraint(INT ConstraintIndex)
 {
-	ConstraintSetup.Remove(constraintIndex);
-	DefaultInstance->Constraints.Remove(constraintIndex);
-
+	ConstraintSetup.Remove(ConstraintIndex);
+	DefaultInstance->Constraints.Remove(ConstraintIndex);
 }
 
 // Create a new URB_BodySetup and default URB_BodyInstance if there is not one for this body already.
 // Returns the Index for this body.
-INT UPhysicsAsset::CreateNewBody(FName bodyName)
+INT UPhysicsAsset::CreateNewBody(FName InBodyName)
 {
 	check( BodySetup.Num() == DefaultInstance->Bodies.Num() );
 
-	INT bodyIndex = FindBodyIndex(bodyName);
-	if(bodyIndex != INDEX_NONE)
-		return bodyIndex; // if we already have one for this name - just return that.
+	INT BodyIndex = FindBodyIndex(InBodyName);
+	if(BodyIndex != INDEX_NONE)
+	{
+		return BodyIndex; // if we already have one for this name - just return that.
+	}
 
-	URB_BodySetup* newBodySetup = ConstructObject<URB_BodySetup>( URB_BodySetup::StaticClass(), this, NAME_None, RF_Transactional );
-	INT BodySetupIndex = BodySetup.AddItem( newBodySetup );
-	newBodySetup->BoneName = bodyName;
+	URB_BodySetup* NewBodySetup = ConstructObject<URB_BodySetup>( URB_BodySetup::StaticClass(), this, NAME_None, RF_Transactional );
+	INT BodySetupIndex = BodySetup.AddItem( NewBodySetup );
+	NewBodySetup->BoneName = InBodyName;
 
-	URB_BodyInstance* newBodyInstance = ConstructObject<URB_BodyInstance>( URB_BodyInstance::StaticClass(), DefaultInstance, NAME_None, RF_Transactional );
-	INT BodyInstanceIndex = DefaultInstance->Bodies.AddItem( newBodyInstance );
+	URB_BodyInstance* NewBodyInstance = ConstructObject<URB_BodyInstance>( URB_BodyInstance::StaticClass(), DefaultInstance, NAME_None, RF_Transactional );
+	INT BodyInstanceIndex = DefaultInstance->Bodies.AddItem( NewBodyInstance );
 
 	check(BodySetupIndex == BodyInstanceIndex);
 
+	UpdateBodySetupIndexMap();
 	UpdateBodyIndices();
 
 	// Return index of new body.
 	return BodySetupIndex;
-
 }
 
 void UPhysicsAsset::DestroyBody(INT bodyIndex)
@@ -520,12 +535,12 @@ void UPhysicsAsset::DestroyBody(INT bodyIndex)
 	// All elements which refer to bodyIndex are removed.
 	// All elements which refer to a body with index >bodyIndex are adjusted. 
 
-	TMap<QWORD, UBOOL> NewCDT;
+	TMap<FRigidBodyIndexPair,UBOOL> NewCDT;
 	for(INT i=1; i<BodySetup.Num(); i++)
 	{
 		for(INT j=0; j<i; j++)
 		{
-			QWORD Key = RigidBodyIndicesToKey(j,i);
+			FRigidBodyIndexPair Key(j,i);
 
 			// If there was an entry for this pair, and it doesn't refer to the removed body, we need to add it to the new CDT.
 			if( DefaultInstance->CollisionDisableTable.Find(Key) )
@@ -535,8 +550,7 @@ void UPhysicsAsset::DestroyBody(INT bodyIndex)
 					INT NewI = (i > bodyIndex) ? i-1 : i;
 					INT NewJ = (j > bodyIndex) ? j-1 : j;
 
-					QWORD NewKey = RigidBodyIndicesToKey(NewJ, NewI);
-
+					FRigidBodyIndexPair NewKey(NewJ, NewI);
 					NewCDT.Set(NewKey, 0);
 				}
 			}
@@ -560,8 +574,37 @@ void UPhysicsAsset::DestroyBody(INT bodyIndex)
 	BodySetup.Remove(bodyIndex);
 	DefaultInstance->Bodies.Remove(bodyIndex);
 
+	UpdateBodySetupIndexMap();
 	// Update body indices.
 	UpdateBodyIndices();
+}
+
+/** Update the BoundsBodies array and cache the indices of bodies marked with bConsiderForBounds to BoundsBodies array. */
+void UPhysicsAsset::UpdateBoundsBodiesArray()
+{
+	BoundsBodies.Empty();
+
+	for(INT i=0; i<BodySetup.Num(); i++)
+	{
+		check(BodySetup(i));
+		if(BodySetup(i)->bConsiderForBounds)
+		{
+			BoundsBodies.AddItem(i);
+		}
+	}
+}
+
+/** Update the BoundsBodies array and cache the indices of bodies marked with bConsiderForBounds to BoundsBodies array. */
+void UPhysicsAsset::UpdateBodySetupIndexMap()
+{
+	// update BodySetupIndexMap
+	BodySetupIndexMap.Empty();
+
+	for(INT i=0; i<BodySetup.Num(); i++)
+	{
+		check(BodySetup(i));
+		BodySetupIndexMap.Set(BodySetup(i)->BoneName, i);
+	}
 }
 
 // Ensure 'Outers' of objects are correct.
@@ -575,7 +618,7 @@ void UPhysicsAsset::FixOuters()
 
 	if( DefaultInstance->GetOuter() != this )
 	{
-		DefaultInstance->Rename( DefaultInstance->GetName(), this );
+		DefaultInstance->Rename( *DefaultInstance->GetName(), this );
 		bChangedOuter = true;
 	}
 
@@ -583,13 +626,13 @@ void UPhysicsAsset::FixOuters()
 	{
 		if(BodySetup(i)->GetOuter() != this)
 		{
-			BodySetup(i)->Rename( BodySetup(i)->GetName(), this );
+			BodySetup(i)->Rename( *BodySetup(i)->GetName(), this );
 			bChangedOuter = true;
 		}
 
 		if(DefaultInstance->Bodies(i)->GetOuter() != DefaultInstance)
 		{
-			DefaultInstance->Bodies(i)->Rename( DefaultInstance->Bodies(i)->GetName(), DefaultInstance );
+			DefaultInstance->Bodies(i)->Rename( *DefaultInstance->Bodies(i)->GetName(), DefaultInstance );
 			bChangedOuter = true;
 		}
 	}
@@ -598,71 +641,65 @@ void UPhysicsAsset::FixOuters()
 	{
 		if(ConstraintSetup(i)->GetOuter() != this)
 		{
-			ConstraintSetup(i)->Rename( ConstraintSetup(i)->GetName(), this );
+			ConstraintSetup(i)->Rename( *ConstraintSetup(i)->GetName(), this );
 			bChangedOuter = true;
 		}
 
 		if(DefaultInstance->Constraints(i)->GetOuter() != DefaultInstance)
 		{
-			DefaultInstance->Constraints(i)->Rename( DefaultInstance->Constraints(i)->GetName(), DefaultInstance );
+			DefaultInstance->Constraints(i)->Rename( *DefaultInstance->Constraints(i)->GetName(), DefaultInstance );
 			bChangedOuter = true;
 		}
 	}
 
 	if(bChangedOuter)
 	{
-		debugf( TEXT("Fixed Outers for PhysicsAsset: %s"), GetName() );
+		debugf( TEXT("Fixed Outers for PhysicsAsset: %s"), *GetName() );
 		MarkPackageDirty();
 	}
 }
 
+void UPhysicsAsset::PostLoad()
+{
+	Super::PostLoad();
+
+	// Ensure array of bounds bodies is up to date.
+	if(BoundsBodies.Num() == 0)
+	{
+		UpdateBoundsBodiesArray();
+	}
+
+	if (BodySetup.Num() > 0 && BodySetupIndexMap.Num() == 0)
+	{
+		UpdateBodySetupIndexMap();
+	}
+}
 
 ///// THUMBNAIL SUPPORT //////
 
+/** 
+ * Returns a one line description of an object for viewing in the thumbnail view of the generic browser
+ */
 FString UPhysicsAsset::GetDesc()
 {
 	return FString::Printf( TEXT("%d Bodies, %d Constraints"), BodySetup.Num(), ConstraintSetup.Num() );
-
 }
 
-void UPhysicsAsset::DrawThumbnail( EThumbnailPrimType InPrimType, INT InX, INT InY, struct FChildViewport* InViewport, struct FRenderInterface* InRI, FLOAT InZoom, UBOOL InShowBackground, FLOAT InZoomPct, INT InFixedSz )
+/** 
+ * Returns detailed info to populate listview columns
+ */
+FString UPhysicsAsset::GetDetailedDescription( INT InIndex )
 {
-	UTexture2D* Icon = CastChecked<UTexture2D>(UObject::StaticFindObject( UTexture2D::StaticClass(), ANY_PACKAGE, TEXT("EngineResources.UnrealEdIcon_PhysAsset") ));
-
-	InRI->DrawTile
-		(
-		InX,
-		InY,
-		InFixedSz ? InFixedSz : Icon->SizeX*InZoom,
-		InFixedSz ? InFixedSz : Icon->SizeY*InZoom,
-		0.0f,
-		0.0f,
-		1.0f,
-		1.0f,
-		FLinearColor::White,
-		Icon
-		);
-
+	FString Description = TEXT( "" );
+	switch( InIndex )
+	{
+	case 0:
+		Description = FString::Printf( TEXT( "%d Bodies" ), BodySetup.Num() );
+		break;
+	case 1:
+		Description = FString::Printf( TEXT( "%d Constraints" ), ConstraintSetup.Num() );
+		break;
+	}
+	return( Description );
 }
 
-FThumbnailDesc UPhysicsAsset::GetThumbnailDesc( FRenderInterface* InRI, FLOAT InZoom, INT InFixedSz )
-{
-	UTexture2D* Icon = CastChecked<UTexture2D>(UObject::StaticFindObject( UTexture2D::StaticClass(), ANY_PACKAGE, TEXT("EngineResources.UnrealEdIcon_PhysAsset") ));
-	FThumbnailDesc td;
-
-	td.Width = InFixedSz ? InFixedSz : Icon->SizeX*InZoom;
-	td.Height = InFixedSz ? InFixedSz : Icon->SizeY*InZoom;
-	return td;
-
-}
-
-INT UPhysicsAsset::GetThumbnailLabels( TArray<FString>* InLabels )
-{
-	InLabels->Empty();
-
-	new( *InLabels )FString( GetName() );
-	new( *InLabels )FString( FString::Printf( TEXT("%d Bodies, %d Constraints"), BodySetup.Num(), ConstraintSetup.Num() ) );
-
-	return InLabels->Num();
-
-}

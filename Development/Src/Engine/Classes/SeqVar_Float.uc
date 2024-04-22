@@ -1,9 +1,12 @@
+/**
+ * Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+ */
 class SeqVar_Float extends SequenceVariable
 	native(Sequence);
 
 cpptext
 {
-	virtual FLOAT* GetFloatRef()
+	virtual FLOAT* GetRef()
 	{
 		return &FloatValue;
 	}
@@ -12,6 +15,15 @@ cpptext
 	{
 		return FString::Printf(TEXT("%2.3f"),FloatValue);
 	}
+
+	virtual UBOOL SupportsProperty(UProperty *Property)
+	{
+		return (Property->IsA(UFloatProperty::StaticClass()) ||
+				(Property->IsA(UArrayProperty::StaticClass()) && ((UArrayProperty*)Property)->Inner->IsA(UFloatProperty::StaticClass())));
+	}
+
+	virtual void PublishValue(USequenceOp *Op, UProperty *Property, FSeqVarLink &VarLink);
+	virtual void PopulateValue(USequenceOp *Op, UProperty *Property, FSeqVarLink &VarLink);
 }
 
 var() float			FloatValue;
@@ -19,5 +31,6 @@ var() float			FloatValue;
 defaultproperties
 {
 	ObjName="Float"
-	ObjColor=(R=0,G=0,B=255,A=255)
+	ObjCategory="Float"
+	ObjColor=(R=0,G=0,B=255,A=255)			// blue
 }

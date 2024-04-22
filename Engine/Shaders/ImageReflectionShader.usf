@@ -1,0 +1,1129 @@
+/*=============================================================================
+	ImageReflectionShader.usf: Image reflection related shader code
+	Copyright 1998-2013 Epic Games, Inc. All Rights Reserved.
+=============================================================================*/
+
+#include "Common.usf"
+#include "DeferredLightingCommon.usf"
+
+#if SM5_PROFILE
+
+/** Texture that contains the dynamic shadow factor and depth. */
+sampler2D ReflectionMaskTexture;
+
+float ArraySettings;
+
+struct FGeometryShaderInput
+{
+	float2 PixelPos : TEXCOORD0;
+	float4 Position : POSITION;
+};
+
+struct FGeometryShaderOutput
+{
+	float4 PixelPosAndColor : TEXCOORD0;
+	float4 Position : POSITION; 
+};
+
+// to compute Screen Pos, XY:mul, ZW:add
+float4 SceneCoordinate1ScaleBias;
+// to compute UV Pos, XY:mul, ZW:add
+float4 SceneCoordinate2ScaleBias;
+
+/** Converts a pixel coordinate into screen space position. */
+float2 ConvertPixelPosToScreen(float2 In)
+{
+	return In * SceneCoordinate1ScaleBias.xy + SceneCoordinate1ScaleBias.zw;
+} 
+
+/** Converts a pixel coordinate into UVs into ReflectionMaskTexture. */
+float2 ConvertPixelPosToUV(float2 In)
+{
+	return In * SceneCoordinate2ScaleBias.xy + SceneCoordinate2ScaleBias.zw;
+} 
+
+[maxvertexcount(4)]
+/** Geometry shader that creates quads used to implement a varying kernel radius blur through scattering. */
+void MaskBlurGeometryShader(
+	triangle FGeometryShaderInput input[3],
+	inout TriangleStream<FGeometryShaderOutput> TriStream,
+	uint PId: SV_PrimitiveID )
+{
+	int TileCountInX = ArraySettings;
+
+	// Determine pixel position from primitive Id
+	float x = PId % TileCountInX;
+	float y = PId / TileCountInX;
+
+	FGeometryShaderOutput Out;
+
+	float2 HalfResUV = ConvertPixelPosToUV(float2(x, y));
+
+	// Look up the dynamic occlusion value
+	float4 ReflectionMask = tex2Dlod(ReflectionMaskTexture, float4(HalfResUV, 0, 0));
+
+	// Only scatter for pixels with an occlusion value (1 is occlusion at this point)
+	if (ReflectionMask.x > 0)
+	{
+		Out.Position.zw = 1;
+		
+		// Setup the scatter kernel radius, clamp for a minimum blurriness to hide artifacts from operating in half res
+		float ExtendedBy = clamp(ReflectionMask.y, 3, 30);
+
+		//@todo - make this work with the occlusion distance tracking
+		float Anisotropy = 1.0f;
+		float InvAreaWeight = 1.0f / (4 * ExtendedBy * ExtendedBy); 
+		// Weight color inversely to the area of the scatter
+		Out.PixelPosAndColor.z = ReflectionMask.x * InvAreaWeight;
+		// Pass through distance to the occluder
+		Out.PixelPosAndColor.w = ReflectionMask.w;
+
+		Out.Position.xy = ConvertPixelPosToScreen(float2(x - ExtendedBy / Anisotropy, y - ExtendedBy * Anisotropy));
+		Out.PixelPosAndColor.xy = float2(-1, -1);
+		TriStream.Append(Out);
+
+		Out.Position.xy = ConvertPixelPosToScreen(float2(x + (ExtendedBy + 1) / Anisotropy, y - ExtendedBy * Anisotropy));
+		Out.PixelPosAndColor.xy = float2(1, -1);
+		TriStream.Append(Out);
+
+		Out.Position.xy = ConvertPixelPosToScreen(float2(x - ExtendedBy / Anisotropy, y + (ExtendedBy + 1) * Anisotropy));
+		Out.PixelPosAndColor.xy = float2(-1, 1);
+		TriStream.Append(Out);
+
+		Out.Position.xy = ConvertPixelPosToScreen(float2(x + (ExtendedBy + 1) / Anisotropy, y + (ExtendedBy + 1) * Anisotropy));
+		Out.PixelPosAndColor.xy = float2(1, 1);
+		TriStream.Append(Out);
+
+		TriStream.RestartStrip();
+	}
+}
+
+/** Scale used to encode the distance sum in fp16 to make sure it doesn't overflow. */
+const static float DistanceSumScale = .001f;
+/** Scale used to encode the weight sum in fp16 to make sure it doesn't lose data due to being so small. */
+const static float DistanceWeightScale = 100.0f;
+
+void MaskBlurPixelShader(float4 InUVAndColor : TEXCOORD0, out float4 OutColor : COLOR0)
+{
+	// Setup a weight based on distance to the quad center
+	float DistanceWeight = pow(saturate(1 - sqrt(dot(InUVAndColor.xy, InUVAndColor.xy))), 4);
+	OutColor = float4(
+		// Output color weighted by distance from the quad center
+		//@todo - gaussian or something smoother than linear
+		InUVAndColor.z * (saturate(1 - sqrt(dot(InUVAndColor.xy, InUVAndColor.xy)))) * 4.3, 
+		0, 
+		// Accumulate weight in Z
+		DistanceWeight * DistanceWeightScale, 
+		// Accumulate weighted distance to the occlusion in W
+		InUVAndColor.w * DistanceWeight * DistanceSumScale);
+}
+
+/** Input parameters needed by CalculateTotalReflectionContribution(). */
+struct FImageReflectionParameters
+{
+	float3 WorldNormal;
+	float3 WorldPosition;
+	float3 SpecularColor;
+	float SpecularPower;
+	float2 ScreenUV;
+};
+
+#ifndef NUM_IMAGE_REFLECTIONS
+	#define NUM_IMAGE_REFLECTIONS 1
+#endif
+
+#ifndef NUM_LIGHT_REFLECTIONS
+	#define NUM_LIGHT_REFLECTIONS 1
+#endif
+
+// Warning: The register offsets MUST match what is defined in D3D11ConstantBuffer.h!
+// Putting image reflection constants in two constant buffers to allow more reflection primitives,
+// Since constant buffers are limited to 4Kb each.
+cbuffer ImageReflectionConstants1 : register(b6)
+{
+	/** FPlane of the reflection primitive */
+	float4 ImageReflectionPlane[NUM_IMAGE_REFLECTIONS];
+	/** World space position of the reflection primitive.  Texture index is in w. */
+	float4 ImageReflectionOrigin[NUM_IMAGE_REFLECTIONS];
+	/** World space X Axis of the reflection primitive with scale.  Y Axis scale is in w. */
+	float4 ReflectionXAxis[NUM_IMAGE_REFLECTIONS];
+};
+
+cbuffer ImageReflectionConstants2 : register(b7)
+{
+	/** HDR reflection color in xyz, bTwoSided in w. */
+	float4 ReflectionColor[NUM_IMAGE_REFLECTIONS];
+	/** Light reflection positions. */
+	float4 LightReflectionOrigin[NUM_LIGHT_REFLECTIONS];
+	/** Light reflection colors. */
+	float4 LightReflectionColor[NUM_LIGHT_REFLECTIONS];
+};
+
+/** 
+ * Texture array containing all the image reflection textures. 
+ * This has to be a texture array because a Texture2D[] can't be indexed by a temporary (loop index), 
+ * So the compiler would force the loop to unroll, which makes for very long compile times.
+ */
+Texture2DArray ImageReflectionTexture;
+
+/** Sampler state for image reflections, which sets trilinear filtering and black border color. */
+SamplerState ImageReflectionSampler;
+
+/** Plane that dynamic reflection shadows were reflected about. */
+float4 MirrorPlane;
+
+/** NumImageReflections in x, NumLightReflections in y, TextureResolution in z, AnisotropyFactor in w. */
+float4 NumReflectionsAndTextureResolution;
+
+/** Volume min in xyz, MaxDistance in w. */
+float4 VolumeMinAndMaxDistance;
+
+/** Volume size. */
+float4 VolumeSizeAndbCalculateShadowing;
+
+/** Texture to map to the upper hemisphere, using spherical coordinates. */
+Texture2D EnvironmentTexture;
+
+/** Environment Color in rgb, rotation in w. */
+float4 EnvironmentColor;
+
+SamplerState EnvironmentSampler;
+
+/** Volume texture storing a signed distance field representing the scene. */
+Texture3D DistanceFieldTexture;
+
+/** Sampler to be used with DistanceFieldTexture. */
+SamplerState DistanceFieldSampler;
+
+/** Stores the first set of opacity step function values, which are outputs from the downsampled static reflection shadowing pass. */
+sampler2D StaticShadowingTexture0;
+
+/** Stores the second set of opacity step function values. */
+sampler2D StaticShadowingTexture1;
+
+/** Full res texel size in xy, half res texel size in zw. */
+float4 TexelSizes;
+
+/** Full res pixel size in xy, half res pixel size in zw. */
+float4 PixelSizes;
+
+struct FOpacityStepFunction
+{
+	// OpaqueIntersectionOpacity0 is the opacity at the point closest to a solid surface, which is also guaranteed to be the furthest opacity value along the ray.
+	// Fully opaque is actually 0, and transparent is 1.
+	float OpaqueIntersectionOpacity0;
+	float OpaqueIntersectionTime0;
+
+	// OpaqueIntersectionOpacity1 will be calculated as the opacity at the point along the traversal that's just before the largest distance gap
+	float OpaqueIntersectionOpacity1;
+	float OpaqueIntersectionTime1;
+
+	// OpaqueIntersectionOpacity2 will be calculated as the opacity at the point along the traversal that's just before the second largest distance gap
+	float OpaqueIntersectionOpacity2;
+	float OpaqueIntersectionTime2;
+
+	// OpaqueIntersectionOpacity3 is not generated by the distance field shadowing, but is used to store a fourth step function value for when dynamic occlusion is inserted.
+	// This it the occlusion at the value in the function that's closest to the ray start position.
+	float OpaqueIntersectionOpacity3;
+	float OpaqueIntersectionTime3;
+};
+
+/** Generates an opacity step function of the scene's static shadowing by tracing through a signed distance field volume texture that represents the scene's opaque surfaces. */
+FOpacityStepFunction CalculateStaticShadowing(FImageReflectionParameters Parameters, float3 StartPosition, float3 DirectionVector)
+{
+	// Opacity values and distances along the ray at which they occur
+	// This is a step function of opacity over distance, which is constructed during the distance field traversal,
+	// And applied during the image reflection actor traversal.
+	FOpacityStepFunction OpacityStepFunction;
+
+	// Initialize to unshadowed values
+	OpacityStepFunction.OpaqueIntersectionOpacity0 = OpacityStepFunction.OpaqueIntersectionOpacity1 = OpacityStepFunction.OpaqueIntersectionOpacity2 = OpacityStepFunction.OpaqueIntersectionOpacity3 = 1;
+	OpacityStepFunction.OpaqueIntersectionTime0 = OpacityStepFunction.OpaqueIntersectionTime1 = OpacityStepFunction.OpaqueIntersectionTime2 = OpacityStepFunction.OpaqueIntersectionTime3 = 0;
+
+	float DirectionVectorLength = length(DirectionVector);
+	float3 DirectionVectorNormalized = DirectionVector / DirectionVectorLength;
+
+	// Scale up the direction vector for the purposes of calling RayBoxIntersect, since RayBoxIntersect clamps the max to 1
+	// Future math with the intersections will need to undo this scaling to get the real intersection time along the DirectionVector ray
+	float IntersectionDirectionScale = 100.0f;
+	float2 Intersections = RayBoxIntersect(StartPosition, StartPosition + DirectionVector * IntersectionDirectionScale, VolumeMinAndMaxDistance.xyz, VolumeMinAndMaxDistance.xyz + VolumeSizeAndbCalculateShadowing.xyz);
+	
+	BRANCH
+	if (VolumeSizeAndbCalculateShadowing.w > 0 && Intersections.x < Intersections.y)
+	{
+		float MinDistanceToOpaqueIntersection0 = 1000.0f;
+		float MaxDistanceGap1 = 0;
+		float MaxDistanceGap2 = 0;
+		float3 InvVolumeSize = 1.0f / VolumeSizeAndbCalculateShadowing.xyz;
+
+		float BiasDistance = 0;
+		{
+			// World space bias distance along the surface normal
+			float NormalOffsetDistance = 30;
+			// Calculate the influence of NormalOffsetDistance on the ray direction using Cos(theta) = adjacent / hypotenuse.
+			float RayOffsetDistance = min(NormalOffsetDistance / saturate(dot(Parameters.WorldNormal, DirectionVectorNormalized) + .0001f), 200.0f);
+			// Calculate a bias that offsets some distance along the ray, and some distance along the surface normal
+			// The bias reduces incorrect self shadowing
+			BiasDistance = (10.0f + RayOffsetDistance) / DirectionVectorLength / IntersectionDirectionScale;
+		}
+
+		// Start tracing at the entrance to the volume + the bias
+		float CurrentDistance = Intersections.x + BiasDistance;
+		// Maximum number of steps through the distance field
+		// This has a big influence on performance and quality
+		int MaxSampleCount = 128;
+		LOOP
+		for (int SampleIndex = 0; SampleIndex < MaxSampleCount && CurrentDistance < Intersections.y; SampleIndex++)
+		{
+			// Calculate world position at the current distance along the ray
+			float3 CurrentWorldPosition = StartPosition + CurrentDistance * DirectionVector * IntersectionDirectionScale;
+			// Transform to UVs
+			float3 UVs = (CurrentWorldPosition - VolumeMinAndMaxDistance.xyz) * InvVolumeSize;
+			// Sample the distance field at the current position
+			float4 DistanceField = DistanceFieldTexture.SampleLevel(DistanceFieldSampler, UVs, 0)FCOLOR_COMPONENT_SWIZZLE;
+			
+			// Calculate shadow softness as a function of distance traveled along the ray
+			float ShadowSoftness = DirectionVectorLength * CurrentDistance * IntersectionDirectionScale * .000002 * 900.0f / VolumeMinAndMaxDistance.w;
+			// Calculate the range of the distances from the distance field that will be transformed into shadow penumbra
+			// Penumbra size is calculated as a heuristic based on distance traveled and specular power (material glossiness)
+			float HalfRange = clamp(ShadowSoftness / (Parameters.SpecularPower * .0001f), 0.01f, .1);
+
+			float2 MaskedDistances = max(1 - DistanceField.zw, saturate((DistanceField.xy - .5f + HalfRange) / (2 * HalfRange)));
+			float DistanceToOpaqueIntersection = min(MaskedDistances.x, MaskedDistances.y);
+
+			if (DistanceToOpaqueIntersection < MinDistanceToOpaqueIntersection0)
+			{
+				// Don't track the gap from the beginning of the ray to the first traversal point
+				if (OpacityStepFunction.OpaqueIntersectionOpacity0 < 1.0f)
+				{
+					// Distance along the ray between the last traversal point that was determined 'closest to a surface' at the time and the current position
+					// These gaps are used to determine where to store the opacity step function's values
+					float CurrentDistanceGap = CurrentDistance * IntersectionDirectionScale - OpacityStepFunction.OpaqueIntersectionTime0;
+					if (CurrentDistanceGap > MaxDistanceGap1)
+					{
+						// Update the second largest gap values
+						OpacityStepFunction.OpaqueIntersectionOpacity2 = OpacityStepFunction.OpaqueIntersectionOpacity1;
+						OpacityStepFunction.OpaqueIntersectionTime2 = OpacityStepFunction.OpaqueIntersectionTime1;
+						MaxDistanceGap2 = MaxDistanceGap1;
+
+						// Update the largest gap values
+						OpacityStepFunction.OpaqueIntersectionOpacity1 = OpacityStepFunction.OpaqueIntersectionOpacity0;
+						OpacityStepFunction.OpaqueIntersectionTime1 = OpacityStepFunction.OpaqueIntersectionTime0;
+						MaxDistanceGap1 = CurrentDistanceGap;
+					}
+					else if (CurrentDistanceGap > MaxDistanceGap2)
+					{
+						// Current gap was smaller than the largest gap, but larger than the second largest gap, so update the second largest gap
+						OpacityStepFunction.OpaqueIntersectionOpacity2 = OpacityStepFunction.OpaqueIntersectionOpacity0;
+						OpacityStepFunction.OpaqueIntersectionTime2 = OpacityStepFunction.OpaqueIntersectionTime0;
+						MaxDistanceGap2 = CurrentDistanceGap;
+					}
+				}
+
+				OpacityStepFunction.OpaqueIntersectionTime0 = CurrentDistance * IntersectionDirectionScale;
+				MinDistanceToOpaqueIntersection0 = DistanceToOpaqueIntersection;
+				float OpacityFromDistance = DistanceToOpaqueIntersection;
+				OpacityStepFunction.OpaqueIntersectionOpacity0 = smoothstep(0, 1, OpacityFromDistance * OpacityFromDistance);
+
+				if (DistanceToOpaqueIntersection < .001f)
+				{
+					// Stop traversing if the ray has gone inside a solid surface
+					break;
+				}
+			}
+			
+			float2 UnmaskedDistances = abs(DistanceField.xy - .5f) * VolumeMinAndMaxDistance.ww;
+			float NearestOpaqueSurfaceDistance = min(UnmaskedDistances.x, UnmaskedDistances.y);
+			// Amount to subtract from the distance field value when traversing the distance field
+			// This causes the traversal to go more slowly through areas near intersections, which is needed to construct a stable opacity step function
+			float DistanceBias = 10;
+			//@todo - currently oversampling, should use a minimum step of the actual distance between cells along the ray
+			float ConstantStepDistance = (Intersections.y - (Intersections.x + BiasDistance)) / (float)MaxSampleCount;
+			// Step along the ray by the distance from the distance field, which allows skipping over large empty sections
+			CurrentDistance += max((NearestOpaqueSurfaceDistance - DistanceBias) / DirectionVectorLength / IntersectionDirectionScale, ConstantStepDistance);
+		}
+	}
+
+	// Sort OpaqueIntersectionTime1 and OpaqueIntersectionTime2 by distance
+	// OpaqueIntersectionTime2 needs to be the closer of the two since it will be applied last
+	FLATTEN
+	if (OpacityStepFunction.OpaqueIntersectionTime1 < OpacityStepFunction.OpaqueIntersectionTime2)
+	{
+		float Temp = OpacityStepFunction.OpaqueIntersectionTime2;
+		OpacityStepFunction.OpaqueIntersectionTime2 = OpacityStepFunction.OpaqueIntersectionTime1;
+		OpacityStepFunction.OpaqueIntersectionTime1 = Temp;
+
+		float Temp2 = OpacityStepFunction.OpaqueIntersectionOpacity2;
+		OpacityStepFunction.OpaqueIntersectionOpacity2 = OpacityStepFunction.OpaqueIntersectionOpacity1;
+		OpacityStepFunction.OpaqueIntersectionOpacity1 = Temp2;
+	}
+
+	return OpacityStepFunction;
+}
+
+/** Upsamples the static shadowing results with a bilateral filter. */
+FOpacityStepFunction InterpolateStaticShadowing(FImageReflectionParameters Parameters)
+{
+	// Integer coordinate of the pixel currently being shaded
+	int2 PixelCoordinate = (int2)(Parameters.ScreenUV / TexelSizes.xy);
+
+	// Coordinate of the top left half res pixel of the 2x2 half res block that this pixel falls in
+	int2 TopLeft = (int2)(Parameters.ScreenUV / TexelSizes.zw);
+
+	// UV position of the top left half res texel, as a UV into the low res texture
+	float2 TopLeftLowResUV = TopLeft * TexelSizes.zw + TexelSizes.xy;
+
+	// UV position of the top left half res texel, as a UV into the high res texture 
+	float2 TopLeftUV = TopLeftLowResUV - .5f * TexelSizes.xy;
+	float2 TopRightUV = TopLeftUV + float2(TexelSizes.z, 0);
+	float2 BottomLeftUV = TopLeftUV + float2(0, TexelSizes.w);
+	float2 BottomRightUV = TopLeftUV + TexelSizes.zw;
+
+	// Index of this pixel in the current 2x2 block
+	int PixelIndex = 2 * (PixelCoordinate.y - TopLeft.y * 2) + PixelCoordinate.x - TopLeft.x * 2;
+
+	float4 IBRWeights;
+
+#if IMAGE_REFLECTION_MSAA
+
+	int Width; 
+	int Height;
+	int Dummy;
+	WorldReflectionNormalGBufferTextureMS.GetDimensions(Width, Height, Dummy);
+
+	// If we are in the per sample image reflection pass,
+	// Setup weights based on sample 0 of the attributes that were used to calculate the downsampled static shadowing
+	IBRWeights.x = IsPixelAffectedByIBR(SpecularGBufferTextureMS.Load(TopLeftUV * float2(Width, Height), 0));
+	IBRWeights.y = IsPixelAffectedByIBR(SpecularGBufferTextureMS.Load(TopRightUV * float2(Width, Height), 0));
+	IBRWeights.z = IsPixelAffectedByIBR(SpecularGBufferTextureMS.Load(BottomLeftUV * float2(Width, Height), 0));
+	IBRWeights.w = IsPixelAffectedByIBR(SpecularGBufferTextureMS.Load(BottomRightUV * float2(Width, Height), 0));
+
+	//@todo - store the 'affected by IBR' flag in the WorldReflectionNormalGBuffer alpha so we can get them both with one lookup
+	float3 TopLeftReflectionNormal = WorldReflectionNormalGBufferTextureMS.Load(TopLeftUV * float2(Width, Height), 0).xyz * 2 - 1;
+	float3 TopRightReflectionNormal = WorldReflectionNormalGBufferTextureMS.Load(TopRightUV * float2(Width, Height), 0).xyz * 2 - 1;
+	float3 BottomLeftReflectionNormal = WorldReflectionNormalGBufferTextureMS.Load(BottomLeftUV * float2(Width, Height), 0).xyz * 2 - 1;
+	float3 BottomRightReflectionNormal = WorldReflectionNormalGBufferTextureMS.Load(BottomRightUV * float2(Width, Height), 0).xyz * 2 - 1;
+
+#else
+
+	// Setup weights based on the attributes that were used to calculate the downsampled static shadowing
+	// If this is the per-pixel image reflection pass with MSAA enabled, then the downsampled static shadowing was actually calculated with sample 0's attributes
+	// But using the resolved attributes works correctly because the per-pixel image reflection pass only shades pixels with similar subsamples.
+	IBRWeights.x = IsPixelAffectedByIBR(tex2Dlod(SpecularGBufferTexture, float4(TopLeftUV, 0, 0)));
+	IBRWeights.y = IsPixelAffectedByIBR(tex2Dlod(SpecularGBufferTexture, float4(TopRightUV, 0, 0)));
+	IBRWeights.z = IsPixelAffectedByIBR(tex2Dlod(SpecularGBufferTexture, float4(BottomLeftUV, 0, 0)));
+	IBRWeights.w = IsPixelAffectedByIBR(tex2Dlod(SpecularGBufferTexture, float4(BottomRightUV, 0, 0)));
+
+	float3 TopLeftReflectionNormal = tex2Dlod(WorldReflectionNormalGBufferTexture, float4(TopLeftUV, 0, 0)).xyz * 2 - 1;
+	float3 TopRightReflectionNormal = tex2Dlod(WorldReflectionNormalGBufferTexture, float4(TopRightUV, 0, 0)).xyz * 2 - 1;
+	float3 BottomLeftReflectionNormal = tex2Dlod(WorldReflectionNormalGBufferTexture, float4(BottomLeftUV, 0, 0)).xyz * 2 - 1;
+	float3 BottomRightReflectionNormal = tex2Dlod(WorldReflectionNormalGBufferTexture, float4(BottomRightUV, 0, 0)).xyz * 2 - 1;
+
+#endif
+	
+	// Weights based on how close each high res pixel is to a low res texel in the 2x2 block
+	static float4 DistanceWeights[4] = 
+	{
+		float4(9.0f / 16, 3.0f / 16, 3.0f / 16, 1.0f / 16),
+		float4(3.0f / 16, 9.0f / 16, 1.0f / 16, 3.0f / 16),
+		float4(3.0f / 16, 1.0f / 16, 9.0f / 16, 3.0f / 16),
+		float4(1.0f / 16, 3.0f / 16, 3.0f / 16, 9.0f / 16)
+	};
+
+	float4 NormalWeights = float4(
+		dot(Parameters.WorldNormal, TopLeftReflectionNormal),
+		dot(Parameters.WorldNormal, TopRightReflectionNormal),
+		dot(Parameters.WorldNormal, BottomLeftReflectionNormal),
+		dot(Parameters.WorldNormal, BottomRightReflectionNormal));
+
+	// Combine weights
+	float4 CombinedWeights = DistanceWeights[PixelIndex] * pow(saturate(NormalWeights), 64) * IBRWeights;
+
+	// Note: Might want to weight based on depth too, otherwise different surfaces with the same normal will not upsample correctly
+	float MaxWeight = max(max(CombinedWeights.x, CombinedWeights.y), max(CombinedWeights.z, CombinedWeights.w));
+
+	float2 LowResUV = 0;
+
+	// Pick a low res UV based on which low res texel has the most similar attributes to the pixel being shaded
+	// If the values in the static shadowing texture were filterable, we could do this with bilinear weights instead of picking a corner texel explicitly
+	if (CombinedWeights.w == MaxWeight)
+	{
+		LowResUV = BottomRightUV;
+	}
+	else if (CombinedWeights.y == MaxWeight)
+	{
+		LowResUV = TopRightUV;
+	}
+	else if (CombinedWeights.z == MaxWeight) 
+	{
+		LowResUV = BottomLeftUV;
+	}
+	else
+	{
+		LowResUV = TopLeftUV;
+	}
+
+	// Lookup the opacity step function values stored at the chosen low res texel
+	float4 StaticOcclusionValue0 = tex2Dlod(StaticShadowingTexture0, float4(LowResUV + TexelSizes.xy * .5f, 0, 0));
+	float4 StaticOcclusionValue1 = tex2Dlod(StaticShadowingTexture1, float4(LowResUV + TexelSizes.xy * .5f, 0, 0));
+
+	// Upsampled static shadowing without bilateral filtering
+	//float4 StaticOcclusionValue0 = tex2Dlod(StaticShadowingTexture0, float4(Parameters.ScreenUV, 0, 0));
+	//float4 StaticOcclusionValue1 = tex2Dlod(StaticShadowingTexture1, float4(Parameters.ScreenUV, 0, 0));
+
+	FOpacityStepFunction OpacityStepFunction;
+	OpacityStepFunction.OpaqueIntersectionOpacity0 = StaticOcclusionValue0.x;
+	OpacityStepFunction.OpaqueIntersectionTime0 = StaticOcclusionValue0.y;
+	OpacityStepFunction.OpaqueIntersectionOpacity1 = StaticOcclusionValue0.z;
+	OpacityStepFunction.OpaqueIntersectionTime1 = StaticOcclusionValue0.w;
+	OpacityStepFunction.OpaqueIntersectionOpacity2 = StaticOcclusionValue1.x;
+	OpacityStepFunction.OpaqueIntersectionTime2 = StaticOcclusionValue1.y;
+
+	OpacityStepFunction.OpaqueIntersectionOpacity3 = 1;
+	OpacityStepFunction.OpaqueIntersectionTime3 = 0;
+
+	return OpacityStepFunction;
+}
+
+/** Looks up the shadow mask of dynamic objects rendered through a planar reflection, and updates the opacity step function based on the depth the shadowing is at. */
+void CalculateDynamicShadowing(FImageReflectionParameters Parameters, float3 StartPosition, float3 DirectionVectorNormalized, float DirectionVectorLength, inout FOpacityStepFunction OpacityStepFunction)
+{
+	float PlaneDotNormal = dot(MirrorPlane.xyz, Parameters.WorldNormal);
+	float DistanceFromPlane = dot(StartPosition, MirrorPlane.xyz) - MirrorPlane.w;
+	// Setup a mask based on pixel normal and distance from the reflection plane
+	float PlanarReflectionFade = saturate(PlaneDotNormal / .707 - .414) * (1 - Square(saturate(abs(DistanceFromPlane) * .001f)));
+
+	BRANCH
+	// Skip pixels too far from the reflection plane
+	if (PlanarReflectionFade > 0)
+	{
+		// Lookup the blurred planar reflection values
+		float4 MirrorOcclusionValue = tex2Dlod(ReflectionMaskTexture, float4(Parameters.ScreenUV * float2(.5f, 1.0f), 0, 0));
+
+		// Calculate the dynamic occlusion value
+		float DynamicOcclusion = lerp(1, Square(1 - saturate(MirrorOcclusionValue.x)), 1);
+
+		BRANCH
+		// Skip pixels with no dyamic occlusion
+		if (DynamicOcclusion < 1)
+		{
+			// Divide by the scale used to encode the sum
+			float AccumulatedWeightedDistance = MirrorOcclusionValue.w / DistanceSumScale;
+			float AccumulatedWeight = MirrorOcclusionValue.z / DistanceWeightScale;
+			// Calculate the world space distance that the occlusion mask is from the reflection plane (not from the current pixel)
+			float DynamicOcclusionDistance = AccumulatedWeightedDistance / max(AccumulatedWeight, .0001f);
+			float CosAngleFromPlaneNormal = dot(MirrorPlane.xyz, DirectionVectorNormalized);
+			// Calculate the world space distance that the current pixel is from the reflection plane
+			float IntersectionDistance = DistanceFromPlane / max(CosAngleFromPlaneNormal, .0001f);
+			// Calculate the time along the reflection ray that the dynamic occlusion factor is at
+			float DynamicOcclusionTime = (DynamicOcclusionDistance + IntersectionDistance) / DirectionVectorLength;
+			
+			// Insert the dynamic occlusion into the opacity step function
+			if (DynamicOcclusionTime > OpacityStepFunction.OpaqueIntersectionTime0)
+			{
+				//@todo - can we get away with just 3 step function values?
+				// Inserting into the slot that's furthest along the ray (Time0), so shift all the existing forward
+				OpacityStepFunction.OpaqueIntersectionTime3 = OpacityStepFunction.OpaqueIntersectionTime2;
+				OpacityStepFunction.OpaqueIntersectionOpacity3 = OpacityStepFunction.OpaqueIntersectionOpacity2;
+				OpacityStepFunction.OpaqueIntersectionTime2 = OpacityStepFunction.OpaqueIntersectionTime1;
+				OpacityStepFunction.OpaqueIntersectionOpacity2 = OpacityStepFunction.OpaqueIntersectionOpacity1;
+				OpacityStepFunction.OpaqueIntersectionTime1 = OpacityStepFunction.OpaqueIntersectionTime0;
+				OpacityStepFunction.OpaqueIntersectionOpacity1 = OpacityStepFunction.OpaqueIntersectionOpacity0;
+
+				// Overwrite the 0'th entry with the dynamic occlusion
+				OpacityStepFunction.OpaqueIntersectionTime0 = DynamicOcclusionTime;
+				OpacityStepFunction.OpaqueIntersectionOpacity0 = DynamicOcclusion * OpacityStepFunction.OpaqueIntersectionOpacity0;
+			}
+			else if (DynamicOcclusionTime > OpacityStepFunction.OpaqueIntersectionTime1)
+			{
+				OpacityStepFunction.OpaqueIntersectionTime3 = OpacityStepFunction.OpaqueIntersectionTime2;
+				OpacityStepFunction.OpaqueIntersectionOpacity3 = OpacityStepFunction.OpaqueIntersectionOpacity2;
+				OpacityStepFunction.OpaqueIntersectionTime2 = OpacityStepFunction.OpaqueIntersectionTime1;
+				OpacityStepFunction.OpaqueIntersectionOpacity2 = OpacityStepFunction.OpaqueIntersectionOpacity1;
+
+				OpacityStepFunction.OpaqueIntersectionTime1 = DynamicOcclusionTime;
+				OpacityStepFunction.OpaqueIntersectionOpacity1 = DynamicOcclusion * OpacityStepFunction.OpaqueIntersectionOpacity1;
+				
+				// Update the opacity of any opacity points that are further from the pixel's position than the dynamic occlusion,
+				// Since opacity must increase at each step of the step function
+				OpacityStepFunction.OpaqueIntersectionOpacity0 *= DynamicOcclusion;
+			}
+			else if (DynamicOcclusionTime > OpacityStepFunction.OpaqueIntersectionTime2)
+			{
+				OpacityStepFunction.OpaqueIntersectionTime3 = OpacityStepFunction.OpaqueIntersectionTime2;
+				OpacityStepFunction.OpaqueIntersectionOpacity3 = OpacityStepFunction.OpaqueIntersectionOpacity2;
+
+				OpacityStepFunction.OpaqueIntersectionTime2 = DynamicOcclusionTime;
+				OpacityStepFunction.OpaqueIntersectionOpacity2 = DynamicOcclusion * OpacityStepFunction.OpaqueIntersectionOpacity2;
+
+				OpacityStepFunction.OpaqueIntersectionOpacity1 *= DynamicOcclusion;
+				OpacityStepFunction.OpaqueIntersectionOpacity0 *= DynamicOcclusion;
+			}
+			else
+			{
+				// The dynamic occlusion is closer than all of the existing opacity values, insert in the closest slot
+				OpacityStepFunction.OpaqueIntersectionTime3 = DynamicOcclusionTime;
+				OpacityStepFunction.OpaqueIntersectionOpacity3 = DynamicOcclusion;
+
+				OpacityStepFunction.OpaqueIntersectionOpacity2 *= DynamicOcclusion;
+				OpacityStepFunction.OpaqueIntersectionOpacity1 *= DynamicOcclusion;
+				OpacityStepFunction.OpaqueIntersectionOpacity0 *= DynamicOcclusion;
+			}
+		}
+	}
+}
+
+/** 
+ * Number of image reflection quad intersections closest to the origin of the ray to track.
+ * Tracking more intersections reduces artifacts where there is overlap, but is slower.
+ */
+#define NUM_CLOSEST_IMAGE_INTERSECTIONS 3
+
+struct FClosestReflectionValues
+{
+	float3 ClosestReflectionTimes[NUM_CLOSEST_IMAGE_INTERSECTIONS];
+	float4 ClosestReflectionTextures[NUM_CLOSEST_IMAGE_INTERSECTIONS];
+};
+
+/** Traces a ray through the image reflection quads in the scene and returns the closest ones to the origin of the ray. */
+FClosestReflectionValues CalculateImageReflection(FImageReflectionParameters Parameters, float3 StartPosition, float3 DirectionVector, FOpacityStepFunction OpacityStepFunction, float TanTheta)
+{
+	float DirectionVectorLength = length(DirectionVector);
+	float3 DirectionVectorNormalized = DirectionVector / DirectionVectorLength;
+
+	// Vector that is in the same plane as the reflection vector and the normal
+	// Used to calculate the anisotropy direction later
+	float3 ReflectedHalfVector = .5 * (DirectionVectorNormalized + Parameters.WorldNormal) * DirectionVectorLength;
+
+	float ClosestDistances[NUM_CLOSEST_IMAGE_INTERSECTIONS];
+	FClosestReflectionValues ClosestValues;
+	UNROLL
+	for (int i = 0; i < NUM_CLOSEST_IMAGE_INTERSECTIONS; i++)
+	{
+		// Initialize to the values for no intersection
+		ClosestDistances[i] = 100000.0f;
+		ClosestValues.ClosestReflectionTimes[i] = 0;
+		ClosestValues.ClosestReflectionTextures[i] = float4(0, 0, 0, 0);
+	}
+	
+	LOOP
+	// Trace the reflection array through the scene of image reflection quads
+	for (int PlaneIndex = 0; PlaneIndex < NumReflectionsAndTextureResolution.x && PlaneIndex < NUM_IMAGE_REFLECTIONS; PlaneIndex++)
+	{
+		float4 ImagePlane = ImageReflectionPlane[PlaneIndex];
+		float VectorDotPlaneNormal = dot(ImagePlane.xyz, DirectionVector);
+		// Using two sided quads, VectorDotPlaneNormal < 0 means the ray hit the front face
+		BRANCH
+		if (ReflectionColor[PlaneIndex].w > 0 || VectorDotPlaneNormal < 0)
+		{
+			float PlaneDistance = dot(ImagePlane.xyz, Parameters.WorldPosition) - ImagePlane.w;
+			// Time along the ray defined by WorldPosition + IntersectionTime * DirectionVector that the intersection took place
+			float IntersectionTime = -PlaneDistance / VectorDotPlaneNormal;
+			BRANCH
+			// Skip intersections behind the pixel being shaded
+			if (IntersectionTime > 0)
+			{
+				// Calculate the world space intersection position
+				float3 IntersectionPosition = Parameters.WorldPosition + IntersectionTime * DirectionVector;
+				float2 ReflectionUVs;
+				float4 CurrentReflectionXAxis = ReflectionXAxis[PlaneIndex];
+				float4 CurrentImageReflectionOrigin = ImageReflectionOrigin[PlaneIndex];
+				// Calculate the quad UVs by projecting the vector from the intersection to the quad origin onto each quad axis
+				ReflectionUVs.x = dot(CurrentReflectionXAxis.xyz, IntersectionPosition - CurrentImageReflectionOrigin.xyz);
+				float3 ReflectionYAxis = cross(ImagePlane.xyz, CurrentReflectionXAxis.xyz) * CurrentReflectionXAxis.w;
+				ReflectionUVs.y = dot(ReflectionYAxis, IntersectionPosition - CurrentImageReflectionOrigin.xyz);
+				// Center [0,0] around ImageReflectionOrigin
+				ReflectionUVs = ReflectionUVs + .5f;
+				BRANCH
+				// Optimization to skip processing if we hit far outside the quad
+				// Have to continue processing for hits slightly outside the quad because bilinear filtering of a low detail mip may pull in some content.
+				// Also have to leave room for anisotropic blurring
+				if (ReflectionUVs.x > -.5 && ReflectionUVs.x < 1.5 && ReflectionUVs.y > -.5 && ReflectionUVs.y < 1.5)
+				{
+					// World space distance that the ray traveled before intersecting
+					float IntersectionDistance = IntersectionTime * DirectionVectorLength;
+
+					// Calculate the opposite side of the right triangle formed by the ray to the intersection and the side of the reflection cone
+					float OppositeLength = IntersectionDistance * TanTheta;
+					// Calculate world space size (inverted) of the quad by averaging the length along each axis
+					// Could change this to an area calculation to be more accurate for drastic non-uniform scaling
+					float InvLength = .5f * length(CurrentReflectionXAxis.xyz) * (1 + CurrentReflectionXAxis.w);
+					// Calculate the world space size of a texel on this reflection quad
+					float TexelSize = 1.0f / (NumReflectionsAndTextureResolution.z * InvLength);
+					// Figure out how many texels are contained in the reflection cone at the intersection in one dimension,
+					// With a fudge factor to compensate for TMGS_Blur5 being used to generate image reflection mips instead of a simple average
+					float NumTexels = OppositeLength * 2 / TexelSize * .03f;
+
+					#define USE_ANISOTROPIC_REFLECTION 1
+					#if USE_ANISOTROPIC_REFLECTION
+
+						// Find the position in UV space that the ReflectedHalfVector intersects the quad
+						// This gives us the direction of anisotropy - assuming a BRDF that reflects more light in the plane of the normal and the reflection vector
+						float AnisoIntersectionTime = -PlaneDistance / dot(ImagePlane.xyz, ReflectedHalfVector);
+						float3 AnisoReflectionPosition = Parameters.WorldPosition + AnisoIntersectionTime * ReflectedHalfVector;
+						float2 AnisoReflectionUVs;
+						AnisoReflectionUVs.x = dot(CurrentReflectionXAxis.xyz, AnisoReflectionPosition - CurrentImageReflectionOrigin.xyz);
+						AnisoReflectionUVs.y = dot(ReflectionYAxis, AnisoReflectionPosition - CurrentImageReflectionOrigin.xyz);
+						AnisoReflectionUVs = AnisoReflectionUVs + .5f;
+
+						// Set the length of the blur direction vector based on the geometric approximation of how big the intersection of the BRDF reflection cone and the plane is
+						// Divide by resolution to transform to texture space
+						float2 BlurDirection = normalize(AnisoReflectionUVs - ReflectionUVs) * NumTexels / NumReflectionsAndTextureResolution.z;
+						
+						// Set DDX to the direction we want to blur in
+						// Anisotropic filtering takes the blur direction from the longer vector
+						float2 DDX = BlurDirection * NumReflectionsAndTextureResolution.w;
+						// Set DDY to be perpendicular to DDX
+						// Anisotropic filtering takes the mip level from the length of the smaller vector
+						float2 DDY = float2(BlurDirection.y, -BlurDirection.x);
+
+						// Sample the right slice of the image reflection texture array for this reflection object, 
+						// Using anisotropic filtering and mip maps to simulate anisotropic, glossy reflections
+						float4 ReflectionTexture = ImageReflectionTexture.SampleGrad(ImageReflectionSampler, float3(ReflectionUVs.x, ReflectionUVs.y, CurrentImageReflectionOrigin.w), DDX, DDY);
+
+					#else
+
+						// Derive the mip level from how many texels are contained in the reflection cone in one dimension
+						float MipLevel = log2(NumTexels);
+
+						// Sample the right slice of the image reflection texture array for this reflection object, 
+						// Using trilinear filtering and mip maps to simulate glossy reflections
+						float4 ReflectionTexture = ImageReflectionTexture.SampleLevel(ImageReflectionSampler, float3(ReflectionUVs.x, ReflectionUVs.y, CurrentImageReflectionOrigin.w), MipLevel);
+						
+					#endif
+
+					// Only store the intersection if we hit a partially opaque area
+					if (ReflectionTexture.a > 0)
+					{
+						// Iterate through the closest intersections
+						for (int i = 0; i < NUM_CLOSEST_IMAGE_INTERSECTIONS; i++)
+						{
+							if (IntersectionTime < ClosestDistances[i])
+							{
+								// If this intersection is closer than the existing ones, move all the existing intersections back one index in the array
+								for (int j = NUM_CLOSEST_IMAGE_INTERSECTIONS - 1; j > i; j--)
+								{
+									ClosestDistances[j] = ClosestDistances[j - 1];
+									ClosestValues.ClosestReflectionTextures[j] = ClosestValues.ClosestReflectionTextures[j - 1];
+									ClosestValues.ClosestReflectionTimes[j] = ClosestValues.ClosestReflectionTimes[j - 1];
+								}
+								// Store the new closer intersection
+								ClosestDistances[i] = IntersectionTime;
+								
+								// Distance along the normal of the plane to bias the intersection time for the purposes of shadowing
+								float NormalOffsetDistance = 100;
+								// Calculate the influence of NormalOffsetDistance on the ray direction using Cos(theta) = adjacent / hypotenuse.
+								float RayOffsetDistance = NormalOffsetDistance / abs(dot(ImagePlane.xyz, DirectionVectorNormalized));
+								// Bias the time so that image reflections embedded in opaque objects don't receive shadowing from that object
+								float BiasedIntersectionTime = IntersectionTime - RayOffsetDistance / DirectionVectorLength;
+
+								// Attenuate the reflection's emissive value by the opacity step function from the distance field traversal
+								// OpaqueIntersectionTime3 is the closest step function value, apply it first
+								float OcclusionScale = BiasedIntersectionTime < OpacityStepFunction.OpaqueIntersectionTime3 ? 1.0f : OpacityStepFunction.OpaqueIntersectionOpacity3;
+								OcclusionScale = BiasedIntersectionTime < OpacityStepFunction.OpaqueIntersectionTime2 ? OcclusionScale : OpacityStepFunction.OpaqueIntersectionOpacity2;
+								OcclusionScale = BiasedIntersectionTime < OpacityStepFunction.OpaqueIntersectionTime1 ? OcclusionScale : OpacityStepFunction.OpaqueIntersectionOpacity1;
+								OcclusionScale = BiasedIntersectionTime < OpacityStepFunction.OpaqueIntersectionTime0 ? OcclusionScale : OpacityStepFunction.OpaqueIntersectionOpacity0;
+								
+								// Make the reflection more transparent when viewed from a 90 degree angle to the plane normal
+								// This reduces a lot of aliasing
+								float EdgeFalloff = saturate((abs(dot(DirectionVectorNormalized, ImagePlane.xyz)) - .01) * 2);
+								ReflectionTexture.a *= EdgeFalloff * EdgeFalloff;
+
+								ReflectionTexture.rgb *= OcclusionScale * ReflectionColor[PlaneIndex].rgb;
+								ClosestValues.ClosestReflectionTextures[i] = ReflectionTexture;
+								ClosestValues.ClosestReflectionTimes[i] = IntersectionDistance;
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return ClosestValues;
+}
+
+/** Calculates the amount of reflected light from an environment texture that represents infinitely far scene features. */
+float3 CalculateEnvironmentReflection(float3 ReflectedCameraToWorldNormalized, float TanTheta)
+{
+	// Convert the reflection direction vector into spherical coordinates
+	float Rho = acos(ReflectedCameraToWorldNormalized.z);
+	float Theta = atan2(ReflectedCameraToWorldNormalized.y, ReflectedCameraToWorldNormalized.x);
+	const float PI = 3.14159265f;
+	// Remap the spherical coordinates into texture coordinates
+	float2 EnvironmentUVs = float2((Theta + EnvironmentColor.w + PI) / (2 * PI), (Rho) / (PI / 2));
+	float EnvOppositeLength = 1 * TanTheta;
+	float EnvTexelSize = 1.0f / (NumReflectionsAndTextureResolution.z);
+	float EnvNumTexels = EnvOppositeLength * 2 / EnvTexelSize * .03f;
+	float EnvMipLevel = log2(EnvNumTexels);
+
+	float3 EnvironmentReflection = EnvironmentTexture.SampleLevel(EnvironmentSampler, EnvironmentUVs, EnvMipLevel).rgb * EnvironmentColor.rgb;
+	return EnvironmentReflection;
+}
+
+/** 
+ * Calculates the amount of reflected light from lights in the scene. 
+ * Lights use analytical reflections instead of image based because analytical is cheaper for simple known shapes, and allows us to generate a more anisotropic reflection. 
+ */
+float3 CalculateAnalyticalLightsReflections(FImageReflectionParameters Parameters, FOpacityStepFunction OpacityStepFunction, float3 CameraToWorldNormalized, float DirectionVectorLength)
+{
+	float3 Reflection = 0;
+
+	float3 ViewVector = -CameraToWorldNormalized;
+
+	// Normalization constant for energy conservation
+	float NormalizationConstant = (Parameters.SpecularPower + 8.0f) / (8.0f * 3.1415926f);
+
+	// Amount to increase the anisotropy of the reflection, larger values stretch the reflection out further.
+	float AnisotropyFactor = 2.5;
+
+	// Factor to be multiplied against the view and light vector before calculating the half vector off of them
+	// This effectively brings the vectors closer to the plane of the normal, which elongates the resulting highlight
+	float3 ExaggerationFactor = lerp(1, 1 / AnisotropyFactor, abs(Parameters.WorldNormal));
+	float3 ExaggeratedViewVector = normalize(ViewVector * ExaggerationFactor);
+
+	LOOP
+	// Trace the reflection array through the scene of image reflection quads
+	for (int LightIndex = 0; LightIndex < NumReflectionsAndTextureResolution.y; LightIndex++)
+	{
+		float3 LightPosition = LightReflectionOrigin[LightIndex].xyz;
+		float3 LightVector = LightPosition - Parameters.WorldPosition;
+
+		// Calculate various masks that will be applied to the final highlight
+		float NormalDotLight = dot(Parameters.WorldNormal, LightVector);
+		float3 CameraToLight = LightPosition - CameraPositionPS.xyz;
+		float LightAngleMask = dot(LightVector, CameraToLight);
+		float ViewAngleMask = dot(CameraToWorldNormalized, CameraToLight);
+
+		BRANCH
+		// Skip this light if any of the masks are 0
+		if (LightAngleMask * ViewAngleMask * NormalDotLight > 0)
+		{
+			float LightVectorLength = length(LightVector);
+			float InvLightVectorLength = 1.0f / LightVectorLength;
+			LightVector *= InvLightVectorLength;
+			NormalDotLight *= InvLightVectorLength;
+
+			// Setup a mask so that only surfaces in a cone around the vector from the camera to the light can be affected
+			float InvCameraToLightLength = 1.0f / length(CameraToLight);
+			ViewAngleMask = saturate(ViewAngleMask * InvCameraToLightLength);
+			ViewAngleMask *= ViewAngleMask;
+			ViewAngleMask *= ViewAngleMask;
+			ViewAngleMask *= ViewAngleMask;
+			ViewAngleMask *= ViewAngleMask; 
+
+			// Setup a mask so that only surfaces between the camera and the light can be affected
+			LightAngleMask = saturate(LightAngleMask * InvCameraToLightLength * InvLightVectorLength);
+			LightAngleMask *= LightAngleMask;
+			LightAngleMask *= LightAngleMask;
+
+			// Mask to prevent backfaces to the light from being affected
+			// Scale up to compensate for the brightness loss from N dot L
+			float NormalAngleMask = saturate(NormalDotLight) * 1.5707f;
+
+			// 1 / R^2 distance attenuation
+			float DistanceAttenuation = saturate(InvLightVectorLength * InvLightVectorLength * 1000000.0f);
+	   
+			// Half angle vector needed by Blinn
+			float3 HalfVector = normalize(normalize(LightVector * ExaggerationFactor) + ExaggeratedViewVector);
+
+			float BRDFResult = 
+				// Energy normalization, sharper highlights should be brighter
+				NormalizationConstant 
+				// Calculate a Blinn half angle vector specular
+				* pow(saturate(dot(HalfVector, Parameters.WorldNormal)), max(Parameters.SpecularPower, .001f));
+
+			// Attenuate the light's specular by the opacity step function from the distance field traversal
+			// OpaqueIntersectionTime3 is the closest step function value, apply it first
+			float IntersectionTime = (LightVectorLength - 50.0f) / DirectionVectorLength;
+			float OcclusionScale = IntersectionTime < OpacityStepFunction.OpaqueIntersectionTime3 ? 1.0f : OpacityStepFunction.OpaqueIntersectionOpacity3;
+			OcclusionScale = IntersectionTime < OpacityStepFunction.OpaqueIntersectionTime2 ? OcclusionScale : OpacityStepFunction.OpaqueIntersectionOpacity2;
+			OcclusionScale = IntersectionTime < OpacityStepFunction.OpaqueIntersectionTime1 ? OcclusionScale : OpacityStepFunction.OpaqueIntersectionOpacity1;
+			OcclusionScale = IntersectionTime < OpacityStepFunction.OpaqueIntersectionTime0 ? OcclusionScale : OpacityStepFunction.OpaqueIntersectionOpacity0;
+
+			Reflection += ViewAngleMask * LightAngleMask * NormalAngleMask * DistanceAttenuation * BRDFResult * OcclusionScale * LightReflectionColor[LightIndex].rgb;
+		}
+	}
+	return Reflection;
+}
+
+/** Calculates the image based reflection for the given parameters. */
+float3 CalculateTotalReflectionContribution(FImageReflectionParameters Parameters)
+{
+	float3 Reflection = 0;
+	
+	float3 CameraToWorld = Parameters.WorldPosition -  CameraPositionPS.xyz;
+	float3 CameraToWorldNormalized = normalize(CameraToWorld);
+
+	// Calculate the world space reflection vector off the per pixel normal map
+	float3 ReflectedCameraToWorld = reflect(CameraToWorld, Parameters.WorldNormal);
+	float ReflectionVectorLength = length(ReflectedCameraToWorld);
+	float3 ReflectedCameraToWorldNormalized = ReflectedCameraToWorld / ReflectionVectorLength;
+
+	// Value of the phong specular lobe at which Theta should be defined, 
+	// Where Theta is the angle of the cone around the reflection vector that approximates the incoming light that contributes to the reflection.
+	float SpecularConstant = .1f;
+	// Solve for Cos of Theta given the phong specular lobe of cos(Theta)^SpecularPower = SpecularConstant
+	float CosTheta = pow(SpecularConstant, 1.0f / Parameters.SpecularPower);
+	// Calculate Tangent of Theta using the identity Tan(ArcCos(Theta)) = sqrt(1 - Theta^2) / Theta
+	float TanTheta = sqrt(1 - CosTheta * CosTheta) / CosTheta;
+
+	float3 StartPosition = Parameters.WorldPosition;
+	float3 DirectionVector = ReflectedCameraToWorld;
+	float DirectionVectorLength = ReflectionVectorLength;
+	float3 DirectionVectorNormalized = ReflectedCameraToWorldNormalized;
+
+	FOpacityStepFunction OpacityStepFunction = 
+#if DOWNSAMPLE_STATIC_SHADOWING
+		InterpolateStaticShadowing(Parameters);
+#else
+		CalculateStaticShadowing(Parameters, StartPosition, DirectionVector);
+#endif
+
+	CalculateDynamicShadowing(Parameters, StartPosition, DirectionVectorNormalized, DirectionVectorLength, OpacityStepFunction);
+
+	// Environment texture is effectively at infinite distance, so composite it first
+	Reflection = lerp(Reflection, CalculateEnvironmentReflection(DirectionVectorNormalized, TanTheta), OpacityStepFunction.OpaqueIntersectionOpacity0);
+
+	FClosestReflectionValues ReflectionValues = CalculateImageReflection(Parameters, StartPosition, DirectionVector, OpacityStepFunction, TanTheta);
+	
+	UNROLL
+	for (int j = NUM_CLOSEST_IMAGE_INTERSECTIONS - 1; j >= 0; j--)
+	{
+		// Composite the final reflection as light filtered through the reflections in back to front order
+		Reflection = lerp(Reflection, ReflectionValues.ClosestReflectionTextures[j].rgb, ReflectionValues.ClosestReflectionTextures[j].a);
+	}
+
+	//@todo - make the image reflections block light reflections
+	Reflection += CalculateAnalyticalLightsReflections(Parameters, OpacityStepFunction, CameraToWorldNormalized, DirectionVectorLength);
+
+	// Make sure NumActiveReflections is bound, even while outputting debug values
+	Reflection.r += .000001f * NumReflectionsAndTextureResolution.x;
+
+	return Reflection * Parameters.SpecularColor;
+}
+ 
+void VertexMain(
+	in float2 InPosition : POSITION,
+	in float2 InUV       : TEXCOORD0,
+	out float4 OutUVAndPosition : TEXCOORD0,
+	out float3 OutScreenVector : TEXCOORD1,
+	out float4 OutPosition : POSITION
+	)
+{	
+	OutPosition = float4(InPosition, 0, 1);
+	OutUVAndPosition.xy = InUV;
+	OutUVAndPosition.zw = InPosition;
+	OutScreenVector = MulMatrix(ScreenToWorldMatrix, float4(InPosition, 1, 0)).xyz;	
+}
+
+/** Pixel shader that calculates static reflection shadowing in half res, and outputs an opacity step function. */
+void StaticShadowPixelMain(
+	float4 InUVAndPosition : TEXCOORD0,
+	float3 UnusedScreenVector : TEXCOORD1,
+	out float4 OutColor0 : COLOR0,
+	out float4 OutColor1 : COLOR1
+	)
+{
+	OutColor0 = 0;
+	OutColor1 = 0;
+
+	// Interpolate UV to the center of the top left high res texel of a high res 2x2 block
+	// We have to calculate this half res texel with the exact same sample attributes that the top left high res texel would have used,
+	// Because in the bilateral upsample, we will lookup the attributes of the top left high res texel to weight the calculated static shadowing value.
+	float2 AdjustedUV = InUVAndPosition.xy - TexelSizes.xy * .5f;
+
+#if IMAGE_REFLECTION_MSAA
+
+	// Interpolate UV to MSAA sample 0
+	AdjustedUV -= TexelSizes.xy * float2(.119608f, .358824);
+
+	int Width, Height, Dummy;
+	WorldReflectionNormalGBufferTextureMS.GetDimensions(Width, Height, Dummy);
+	float4 SpecularAndPower = SpecularGBufferTextureMS.Load(AdjustedUV * float2(Width, Height), 0);
+
+#else
+
+	float4 SpecularAndPower = tex2D(SpecularGBufferTexture, AdjustedUV);
+
+#endif
+
+	FImageReflectionParameters Parameters;
+	Parameters.ScreenUV = AdjustedUV;
+	Parameters.SpecularColor = SpecularAndPower.rgb;
+	Parameters.SpecularPower = DecodeSpecularPower(SpecularAndPower,true);
+
+	BRANCH
+	if (IsPixelAffectedByIBR(SpecularAndPower))
+	{
+		// Interpolate screen position to the center of the top left high res texel of a high res 2x2 block
+		float2 ScreenPosition = InUVAndPosition.zw + PixelSizes.xy * float2(-.5, .5);
+
+#if IMAGE_REFLECTION_MSAA
+
+		float4 ReflectionNormalGBuffer = WorldReflectionNormalGBufferTextureMS.Load(AdjustedUV * float2(Width, Height), 0);
+		float SceneDepth = ConvertFromDeviceZ(SceneDepthSurface.Load(AdjustedUV * float2(Width, Height), 0));
+
+		// Interpolate screen position to MSAA sample 0
+		ScreenPosition += PixelSizes.xy * float2(-.119608f, .358824);
+
+#else
+
+		float4 ReflectionNormalGBuffer = tex2Dlod(WorldReflectionNormalGBufferTexture, float4(AdjustedUV, 0, 0));
+		float SceneDepth = CalcSceneDepth(AdjustedUV);
+
+#endif
+		Parameters.WorldNormal = ReflectionNormalGBuffer.xyz * 2 - 1;
+
+		float3 ScreenVector = MulMatrix(ScreenToWorldMatrix, float4(ScreenPosition, 1, 0)).xyz;	
+		Parameters.WorldPosition = ScreenVector * SceneDepth + CameraPositionPS;
+		
+		float3 CameraToWorld = Parameters.WorldPosition - CameraPositionPS.xyz;
+
+		// Calculate the world space reflection vector off the per pixel normal map
+		float3 ReflectedCameraToWorld = reflect(CameraToWorld, Parameters.WorldNormal);
+	
+		float3 StartPosition = Parameters.WorldPosition;
+		float3 DirectionVector = ReflectedCameraToWorld;
+
+		FOpacityStepFunction OpacityStepFunction = CalculateStaticShadowing(Parameters, StartPosition, DirectionVector);
+
+		// Store the opacity step function generated by static shadowing
+		OutColor0 = float4(OpacityStepFunction.OpaqueIntersectionOpacity0, OpacityStepFunction.OpaqueIntersectionTime0, 
+			OpacityStepFunction.OpaqueIntersectionOpacity1, OpacityStepFunction.OpaqueIntersectionTime1);
+
+		OutColor1 = float4(OpacityStepFunction.OpaqueIntersectionOpacity2, OpacityStepFunction.OpaqueIntersectionTime2, 
+			0, 0);
+	}
+
+	// Make sure NumActiveReflections is bound, even while outputting debug values
+	OutColor0.r += .000001f * NumReflectionsAndTextureResolution.x;
+}
+
+/** 
+ * Pixel shader that calculates image reflections in a deferred pass.
+ * If MSAA is being handled, this shader kills pixels that need to be shaded per-sample in a second pass.
+ */
+void PixelMain(
+	float4 InUVAndPosition : TEXCOORD0,
+	float3 ScreenVector : TEXCOORD1,
+	out float4 OutColor : COLOR0
+	)
+{
+	OutColor = 0;
+
+	float3 Reflection = float3(0,0,0);
+	FImageReflectionParameters Parameters;
+	Parameters.ScreenUV = InUVAndPosition.xy;
+
+#if IMAGE_REFLECTION_MSAA
+
+	float4 SpecularColorAndPower = tex2Dlod(SpecularGBufferTexture, float4(InUVAndPosition.xy, 0, 0));
+
+	BRANCH 
+	// Skip pixels belonging to materials that don't use image based reflections
+	if (IsPixelAffectedByIBR(SpecularColorAndPower))
+	{
+		float4 WorldReflectionNormal = tex2Dlod(WorldReflectionNormalGBufferTexture, float4(InUVAndPosition.xy, 0, 0));
+		WorldReflectionNormal.xyz = WorldReflectionNormal.xyz * 2 - 1;
+
+		int Width; 
+		int Height;
+		int Dummy;
+		SceneDepthSurface.GetDimensions(Width, Height, Dummy);
+
+		float MinDepth = 100000000000000000.0f;
+		float MaxDepth = 0;
+
+		float2 ScreenUVMS = InUVAndPosition.xy * float2(Width, Height);
+		UNROLL
+		for (int SampleIndex = 0; SampleIndex < NumMSAASamples; SampleIndex++)
+		{
+			// Load the GBuffer values of each sample
+			float EncodedDepth = SceneDepthSurface.Load(ScreenUVMS, SampleIndex);
+			float SampleDepth = ConvertFromDeviceZ(EncodedDepth);
+			// Track the min and max MSAA sample depths
+			MinDepth = min(MinDepth, SampleDepth);
+			MaxDepth = max(MaxDepth, SampleDepth);
+		}
+
+		// If the MSAA samples are significantly different, kill this pixel so that it will be processed in the second pass
+		// Use the length of the resolved normal to determine if any of the subsamples were different
+		if (length(WorldReflectionNormal.xyz) < .99f
+			|| abs(MinDepth - MaxDepth) / (.5f * (MinDepth + MaxDepth)) > .04f)
+		{
+			discard;
+		}
+		else
+		{
+			// The MSAA samples are nearly the same, shade the average
+			Parameters.SpecularColor = SpecularColorAndPower.rgb;
+			Parameters.SpecularPower = DecodeSpecularPower(SpecularColorAndPower,true);
+			Parameters.WorldNormal = WorldReflectionNormal.xyz;
+			Parameters.WorldPosition = ScreenVector * MaxDepth + CameraPositionPS;
+			Reflection = CalculateTotalReflectionContribution(Parameters);		
+		}
+	}
+
+#else
+	float4 SpecularAndPower = tex2D(SpecularGBufferTexture, InUVAndPosition.xy);
+	Parameters.SpecularColor = SpecularAndPower.rgb;
+	Parameters.SpecularPower = DecodeSpecularPower(SpecularAndPower,true);
+
+	BRANCH
+	if (IsPixelAffectedByIBR(SpecularAndPower))
+	{
+		float4 ReflectionNormalGBuffer = tex2Dlod(WorldReflectionNormalGBufferTexture, float4(InUVAndPosition.xy, 0, 0));
+		Parameters.WorldNormal = ReflectionNormalGBuffer.xyz * 2 - 1;
+		
+		float SceneDepth = CalcSceneDepth(InUVAndPosition.xy);
+		Parameters.WorldPosition = ScreenVector * SceneDepth + CameraPositionPS;
+		Reflection = CalculateTotalReflectionContribution(Parameters);
+	}
+
+#endif
+
+	OutColor.rgb = Reflection;
+}
+
+#if IMAGE_REFLECTION_MSAA
+
+// This is required to get early stencil in DX11 on Nvidia cards for some reason
+EARLYDEPTHSTENCIL
+/** Shader that runs on every MSAA sample in the second pass. */
+void SampleMain(
+	float4 InUVAndPosition : TEXCOORD0,
+	float3 ScreenVector : TEXCOORD1,
+	// Taking SV_SampleIndex as an input causes the shader to be run once per sample
+	uint SampleIndex : SV_SampleIndex,
+	out float4 OutColor : COLOR0
+	)
+{
+	int Width; 
+	int Height;
+	int Dummy;
+	WorldReflectionNormalGBufferTextureMS.GetDimensions(Width, Height, Dummy);
+
+	float3 Reflection = float3(0,0,0);
+	FImageReflectionParameters Parameters;
+	Parameters.ScreenUV = InUVAndPosition.xy;
+	float4 ReflectionNormalGBuffer = WorldReflectionNormalGBufferTextureMS.Load(InUVAndPosition.xy * float2(Width, Height), SampleIndex);
+	Parameters.WorldNormal = ReflectionNormalGBuffer.xyz * 2 - 1;
+	float4 SpecularColorAndPower = SpecularGBufferTextureMS.Load(InUVAndPosition.xy * float2(Width, Height), SampleIndex);
+	Parameters.SpecularColor = SpecularColorAndPower.rgb;
+	Parameters.SpecularPower = DecodeSpecularPower(SpecularColorAndPower,true);
+	float EncodedDepth = SceneDepthSurface.Load(InUVAndPosition.xy * float2(Width, Height), SampleIndex);
+	Parameters.WorldPosition = ScreenVector * ConvertFromDeviceZ(EncodedDepth) + CameraPositionPS;
+
+	if(IsPixelAffectedByIBR(SpecularColorAndPower))
+	{
+		Reflection = CalculateTotalReflectionContribution(Parameters);
+	}
+
+	OutColor = float4(Reflection, 0);
+}
+
+#endif // #if IMAGE_REFLECTION_MSAA
+
+#endif // #if SM5_PROFILE
