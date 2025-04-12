@@ -1,6 +1,10 @@
 # Unreal Engine 3 (10897)
 
-Just a list of useful references people may need.
+A list of useful references that people may need.
+
+ ### Files
+ - AES Encryption & Decryption
+  - [Development/Src/Core/Src/AES.cpp](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Src/AES.cpp)
 
 ### Functions
 - ProcessEvent
@@ -25,6 +29,16 @@ Just a list of useful references people may need.
   - [UnrealEngine3/Development/Src/Core/Inc/UnClass.h#L983](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnClass.h#L983)
 - UProperty
   - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L135](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L135)
+- UStruct
+  - [UnrealEngine3/Development/Src/Core/Inc/UnClass.h#L171](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnClass.h#L171)
+- UFunction
+  - [UnrealEngine3/Development/Src/Core/Inc/UnClass.h#L377](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnClass.h#L377)
+- UScriptStruct
+  - [UnrealEngine3/Development/Src/Core/Inc/UnClass.h#L320](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnClass.h#L320)
+- UState
+  - [UnrealEngine3/Development/Src/Core/Inc/UnClass.h#L468](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnClass.h#L468)
+- UClass
+  - [UnrealEngine3/Development/Src/Core/Inc/UnClass.h#L632](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnClass.h#L632)
  
 ### Structs
 - FGuid
@@ -45,7 +59,3 @@ Just a list of useful references people may need.
   - [UnrealEngine3/Development/Src/Engine/Inc/RenderResource.h#L47](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Engine/Inc/UnTex.h#L47)
 - FD3D11Texture
   - [UnrealEngine3/Development/Src/D3D11Drv/Inc/D3D11Resources.h#L72](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/D3D11Drv/Inc/D3D11Resources.h#L72)
- 
- ### Files
- - AES Encryption & Decryption
-  - [Development/Src/Core/Src/AES.cpp](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Src/AES.cpp)
