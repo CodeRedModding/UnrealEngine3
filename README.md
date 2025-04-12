@@ -11,10 +11,30 @@ Just a list of useful references people may need.
   - [UnrealEngine3/Development/Src/Core/Src/UnCorSc.cpp#L5933](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Src/UnCorSc.cpp#L5933)
 - LoadFileAndDecrypt
   - [UnrealEngine3/Development/Src/Engine/Src/ScriptPlatformInterface.cpp#L31](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Engine/Src/ScriptPlatformInterface.cpp#L31)
+
+## Classes
+- UObject
+  - [UnrealEngine3/Development/Src/Core/Inc/UnObjBas.h#L1070](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnObjBas.h#L1070)
+- UPackage
+  - [UnrealEngine3/Development/Src/Core/Inc/UnCorObj.h#L133](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnCorObj.h#L133)
+- UField
+  - [UnrealEngine3/Development/Src/Core/Inc/UnClass.h#L79](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnClass.h#L79)
+- UEnum
+  - [UnrealEngine3/Development/Src/Core/Inc/UnClass.h#L519](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnClass.h#L519)
+- UConst
+  - [UnrealEngine3/Development/Src/Core/Inc/UnClass.h#L983](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnClass.h#L983)
+- UProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L135](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L135)
  
-### Classes / Structs
+### Structs
 - FGuid
   - [UnrealEngine3/Engine/Source/Runtime/Core/Public/Misc/Guid.h#L108](https://github.com/EpicGames/UnrealEngine/blob/release/Engine/Source/Runtime/Core/Public/Misc/Guid.h#L108)
+- FNameEntry
+  - [UnrealEngine3/Development/Src/Core/Inc/UnName.h#L74](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnName.h#L74)
+- FName
+  - [UnrealEngine3/Development/Src/Core/Inc/UnName.h#L262](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnName.h#L262)
+- FScriptDelegate
+  - [UnrealEngine3/Development/Src/Core/Inc/UnObjBas.h#L3454](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnObjBas.h#L3454)
 - FOutputDevice
   - [UnrealEngine3/Development/Src/Core/Inc/Core.h #L702](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/Core.h#L702)
 - FFrame
@@ -26,6 +46,6 @@ Just a list of useful references people may need.
 - FD3D11Texture
   - [UnrealEngine3/Development/Src/D3D11Drv/Inc/D3D11Resources.h#L72](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/D3D11Drv/Inc/D3D11Resources.h#L72)
  
- ### Files / Code
+ ### Files
  - AES Encryption & Decryption
   - [Development/Src/Core/Src/AES.cpp](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Src/AES.cpp)
