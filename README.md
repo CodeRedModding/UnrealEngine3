@@ -3,8 +3,10 @@
 A list of useful references that people may need.
 
  ### Files
- - AES Encryption & Decryption
-  - [Development/Src/Core/Src/AES.cpp](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Src/AES.cpp)
+- AES Encryption & Decryption
+  - [UnrealEngine3/Development/Src/Core/Src/AES.cpp](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Src/AES.cpp)
+- FColorList RGB Values
+  - [UnrealEngine3/Runtime/Core/Private/Math/ColorList.cpp#L212](https://github.com/EpicGames/UnrealEngine/blob/release/Engine/Source/Runtime/Core/Private/Math/ColorList.cpp#L212)
 
 ### Functions
 - ProcessEvent
