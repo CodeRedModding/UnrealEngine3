@@ -69,7 +69,7 @@ A list of useful references that people may need.
   - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L607](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L607)
 - UBoolProperty
   - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L695](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L695)
- - UBoolProperty
+- UArrayProperty
   - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L1129](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L1129)
 
 ### Structs
