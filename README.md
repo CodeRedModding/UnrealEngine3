@@ -15,6 +15,8 @@ A list of useful references that people may need.
   - [UnrealEngine3/Development/Src/Core/Src/UnCorSc.cpp#L5933](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Src/UnCorSc.cpp#L5933)
 - LoadFileAndDecrypt
   - [UnrealEngine3/Development/Src/Engine/Src/ScriptPlatformInterface.cpp#L31](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Engine/Src/ScriptPlatformInterface.cpp#L31)
+- appLoadFileToArray
+  - [UnrealEngine3/Development/Src/Core/Src/UnMisc.cpp#L3222](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Engine/Src/ScriptPlatformInterface.cpp#L31)
 
 ## Classes
 - UObject
@@ -39,7 +41,35 @@ A list of useful references that people may need.
   - [UnrealEngine3/Development/Src/Core/Inc/UnClass.h#L468](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnClass.h#L468)
 - UClass
   - [UnrealEngine3/Development/Src/Core/Inc/UnClass.h#L632](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnClass.h#L632)
- 
+- UStructProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L1353](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L1353)
+- UStrProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L1089](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L1089)
+- UObjectProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L784](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L784)
+- UClassProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L933](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L933)
+- UComponentProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L896](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L896)
+- UNameProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L1053](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L1053)
+- UMapProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L1233](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L1233)
+- UIntProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L658](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L658)
+- UInterfaceProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L980](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L980)
+- UFloatProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L747](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L747)
+- UDelegateProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L1461](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L1461)
+- UByteProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L607](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L607)
+- UBoolProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L695](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L695)
+ - UBoolProperty
+  - [UnrealEngine3/Development/Src/Core/Inc/UnType.h#L1129](https://github.com/CodeRedModding/UnrealEngine3/blob/main/Development/Src/Core/Inc/UnType.h#L1129)
+
 ### Structs
 - FGuid
   - [UnrealEngine3/Engine/Source/Runtime/Core/Public/Misc/Guid.h#L108](https://github.com/EpicGames/UnrealEngine/blob/release/Engine/Source/Runtime/Core/Public/Misc/Guid.h#L108)
